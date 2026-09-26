@@ -10,6 +10,8 @@ const LABELS: Record<SignalLevel, string> = {
   4: "Solid ang connection",
 };
 
+const SHORT: Record<SignalLevel, string> = { 0: "Offline", 1: "Mahina", 2: "Okay lang", 3: "Malakas", 4: "Solid" };
+
 function colorFor(level: SignalLevel) {
   if (level <= 1) return "#EF4444";
   if (level === 2) return "#F59E0B";
@@ -27,7 +29,11 @@ export function SignalBars({ level, className, showLabel = false }: { level: Sig
           return <rect key={i} x={i * 2 + 0.5} y={7 - h} width="1.5" height={h} fill={i < level ? color : "rgb(255 255 255 / 0.18)"} />;
         })}
       </svg>
-      {showLabel && <span className="font-silk text-[10px] uppercase tracking-wider" style={{ color }}>{LABELS[level]}</span>}
+      {showLabel && (
+        <span className="whitespace-nowrap font-silk text-[10px] uppercase tracking-wider" style={{ color }} aria-hidden>
+          {SHORT[level]}
+        </span>
+      )}
     </span>
   );
 }
