@@ -48,6 +48,17 @@ test.describe("smoke (no backend required)", () => {
     await expect(page.getByText("Mukhang mali ang email")).toBeVisible();
     await expect(page.getByText(/Kulang ang password: 10\+ characters/)).toBeVisible();
     await expect(page.getByTestId("password-rules")).toContainText("uppercase letter");
+    await expect(page.getByText("Hindi magkapareho ang passwords")).toBeVisible();
+  });
+
+  test("sign-up blocks a mismatched password confirmation", async ({ page }) => {
+    await page.goto("/signup");
+    await page.getByLabel("Password", { exact: true }).fill("Kape-Muna-2026");
+    await page.getByLabel("Confirm password").fill("Kape-Muna-2025");
+    await expect(page.getByText("Hindi magkapareho ang passwords")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Sali na!" })).toBeDisabled();
+    await page.getByLabel("Confirm password").fill("Kape-Muna-2026");
+    await expect(page.getByRole("button", { name: "Sali na!" })).toBeEnabled();
   });
 });
 

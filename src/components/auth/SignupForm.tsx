@@ -6,11 +6,14 @@ import { useActionState, useState } from "react";
 import { signUpAction, type AuthFormState } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/Button";
 import { InputField } from "@/components/ui/Field";
+import { PASSWORD_MISMATCH } from "@/lib/profile";
 import { PasswordChecklist } from "./PasswordChecklist";
 
 export function SignupForm() {
   const [state, action, pending] = useActionState<AuthFormState, FormData>(signUpAction, {});
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const mismatch = confirm.length > 0 && confirm !== password;
 
   if (state.notice) {
     return (
@@ -71,12 +74,25 @@ export function SignupForm() {
         placeholder="••••••••••"
       />
       <PasswordChecklist value={password} />
+      <InputField
+        label="Confirm password"
+        name="confirmPassword"
+        type="password"
+        autoComplete="new-password"
+        required
+        maxLength={72}
+        value={confirm}
+        onChange={(e) => setConfirm(e.target.value)}
+        error={mismatch ? PASSWORD_MISMATCH : state.fieldErrors?.confirmPassword}
+        hint={confirm && !mismatch ? "Magkapareho ✓" : undefined}
+        placeholder="••••••••••"
+      />
       {state.error && (
         <p role="alert" className="rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
           {state.error}
         </p>
       )}
-      <Button type="submit" size="lg" className="w-full" loading={pending}>
+      <Button type="submit" size="lg" className="w-full" loading={pending} disabled={mismatch}>
         Sali na!
       </Button>
       <p className="text-center text-sm text-slate-400">

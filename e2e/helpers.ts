@@ -27,6 +27,7 @@ export async function signUpAndOnboard(page: Page, user: TestUser, opts: { avata
   await page.getByLabel("Username").fill(user.username);
   await page.getByLabel("Email").fill(user.email);
   await page.getByLabel("Password", { exact: true }).fill(user.password);
+  await page.getByLabel("Confirm password").fill(user.password);
   await page.getByRole("button", { name: "Sali na!" }).click();
   await expect(page).toHaveURL(/\/onboarding$/);
   await expect(page.getByRole("heading", { name: new RegExp(`Buuin ang profile mo, ${user.displayName}`) })).toBeVisible();

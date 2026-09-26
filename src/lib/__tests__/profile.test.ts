@@ -89,6 +89,15 @@ describe("auth schemas", () => {
     expect(credentialsSchema.safeParse({ email: "nope", password: "short" }).success).toBe(false);
   });
 
+  it("requires the password confirmation to match", () => {
+    const base = { email: "a@b.co", password: "Kape-Muna-2026", username: "juan", displayName: "Juan" };
+    expect(signUpSchema.safeParse({ ...base, confirmPassword: "Kape-Muna-2026" }).success).toBe(true);
+    const mismatch = signUpSchema.safeParse({ ...base, confirmPassword: "Kape-Muna-2027" });
+    expect(mismatch.success).toBe(false);
+    expect(mismatch.error?.issues[0]).toMatchObject({ path: ["confirmPassword"], message: "Hindi magkapareho ang passwords" });
+    expect(signUpSchema.safeParse({ ...base }).success).toBe(false);
+  });
+
   it("requires username and display name at sign-up", () => {
     expect(signUpSchema.safeParse({ email: "a@b.co", password: "12345678", username: "x", displayName: "" }).success).toBe(false);
   });

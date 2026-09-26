@@ -22,7 +22,7 @@ describe("password policy", () => {
   });
 
   it("enforces the policy at sign-up but never leaks it at sign-in", () => {
-    expect(signUpSchema.safeParse({ email: "a@b.co", password: "weakpass", username: "juan", displayName: "Juan" }).success).toBe(false);
+    expect(signUpSchema.safeParse({ email: "a@b.co", password: "weakpass", confirmPassword: "weakpass", username: "juan", displayName: "Juan" }).success).toBe(false);
     expect(credentialsSchema.safeParse({ email: "a@b.co", password: "weakpass" }).success).toBe(true);
   });
 });
