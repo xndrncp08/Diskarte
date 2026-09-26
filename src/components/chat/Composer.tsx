@@ -241,7 +241,7 @@ export function Composer({
               e.target.value = "";
             }}
           />
-          <button type="button" aria-label="Attach files" onClick={() => fileInput.current?.click()} className="touch-target relative rounded-md p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white">
+          <button type="button" aria-label="Attach files" onClick={() => fileInput.current?.click()} className="touch-target relative rounded-md p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white pointer-coarse:p-3">
             <Paperclip className="size-5" aria-hidden />
           </button>
           <label htmlFor={`composer-${channelId}`} className="sr-only">
@@ -264,12 +264,12 @@ export function Composer({
             className="max-h-60 min-h-6 flex-1 resize-none bg-transparent px-1 py-1.5 text-[15px] text-slate-100 outline-none placeholder:text-slate-500"
             data-testid="composer"
           />
-          <EmojiPicker onPick={(value) => insert(value.startsWith(":") ? `${value} ` : value)} label="Insert emoji" />
+          <EmojiPicker onPick={(value) => insert(value.startsWith(":") ? `${value} ` : value)} label="Insert emoji" triggerClassName="pointer-coarse:p-3.5" />
           <button
             type="submit"
             disabled={(!draft.trim() && ready.length === 0) || busy}
             aria-label="Send message"
-            className="touch-target relative rounded-md p-1.5 text-sun transition-opacity hover:bg-white/10 disabled:opacity-30"
+            className="touch-target relative rounded-md p-1.5 text-sun transition-opacity hover:bg-white/10 disabled:opacity-30 pointer-coarse:p-3"
           >
             <SendHorizontal className="size-5" aria-hidden />
           </button>
