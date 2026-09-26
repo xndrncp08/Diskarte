@@ -14,7 +14,7 @@ const publicSchema = z.object({
 
 const serverSchema = z.object({
   livekitApiKey: z.string().min(3),
-  livekitApiSecret: z.string().min(10),
+  livekitApiSecret: z.string().min(6), // `livekit-server --dev` uses "secret"
 });
 
 export type PublicEnv = z.infer<typeof publicSchema>;

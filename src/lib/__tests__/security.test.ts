@@ -30,6 +30,17 @@ describe("buildCsp", () => {
     expect(dev).not.toContain("upgrade-insecure-requests");
   });
 
+  it("only upgrades insecure requests on https origins", () => {
+    expect(buildCsp("n", {}, false, false)).not.toContain("upgrade-insecure-requests");
+    expect(buildCsp("n", {}, false, true)).toContain("upgrade-insecure-requests");
+  });
+
+  it("allows plain ws/http for local Supabase and LiveKit", () => {
+    const local = buildCsp("n", { supabaseUrl: "http://127.0.0.1:54321", livekitUrl: "ws://localhost:7880" }, false, false);
+    expect(local).toContain("http://127.0.0.1:54321 ws://127.0.0.1:54321");
+    expect(local).toContain("http://localhost:7880 ws://localhost:7880");
+  });
+
   it("ignores malformed URLs", () => {
     expect(() => buildCsp("n", { supabaseUrl: "not a url" }, false)).not.toThrow();
   });

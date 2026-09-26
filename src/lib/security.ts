@@ -23,7 +23,11 @@ function pairedOrigins(url: string | null | undefined): string[] {
   return [`${secure ? "https" : "http"}://${u.host}`, `${secure ? "wss" : "ws"}://${u.host}`];
 }
 
-export function buildCsp(nonce: string, sources: CspSources, isDev: boolean): string {
+/**
+ * @param upgradeInsecure only when the site itself is served over HTTPS — on plain-http origins
+ *   (local production runs, CI) the directive would rewrite Supabase/LiveKit calls to https and break them.
+ */
+export function buildCsp(nonce: string, sources: CspSources, isDev: boolean, upgradeInsecure = !isDev): string {
   const supabase = pairedOrigins(sources.supabaseUrl);
   const livekit = pairedOrigins(sources.livekitUrl);
   const supabaseHttp = supabase[0] ? [supabase[0]] : [];
@@ -46,7 +50,7 @@ export function buildCsp(nonce: string, sources: CspSources, isDev: boolean): st
   };
 
   const parts = Object.entries(directives).map(([k, v]) => `${k} ${Array.from(new Set(v)).join(" ")}`);
-  if (!isDev) parts.push("upgrade-insecure-requests");
+  if (upgradeInsecure && !isDev) parts.push("upgrade-insecure-requests");
   return parts.join("; ");
 }
 
