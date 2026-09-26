@@ -1,6 +1,7 @@
 "use client";
 
 import { Music } from "lucide-react";
+import { SmartImage } from "@/components/ui/SmartImage";
 import { useSignedUrls } from "@/hooks/useSignedUrls";
 import { isAudioAttachment, isImageAttachment, isVideoAttachment, type Attachment } from "@/lib/messages";
 import { formatBytes } from "@/lib/utils";
@@ -26,13 +27,11 @@ export function Attachments({ attachments }: { attachments: Attachment[] }) {
                 href={urls[a.path]}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block overflow-hidden rounded-lg border border-white/10 bg-black/30"
+                className="relative block overflow-hidden rounded-lg border border-white/10 bg-black/30"
                 style={{ width, aspectRatio: ratio, maxHeight: 360 }}
               >
                 {urls[a.path] ? (
-                  // Signed, short-lived Storage URLs: skip next/image (no caching/optimising private files).
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={urls[a.path]} alt={a.name} loading="lazy" referrerPolicy="no-referrer" className="size-full object-cover" />
+                  <SmartImage src={urls[a.path]} alt={a.name} fill sizes="(max-width: 640px) 90vw, 360px" className="object-cover" />
                 ) : (
                   <span className="block size-full animate-pulse bg-white/5" aria-label={`Loading ${a.name}`} />
                 )}

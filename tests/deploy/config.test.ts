@@ -10,10 +10,15 @@ const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
 const REQUIRED_ENV = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET"];
 
 describe("deployment configuration", () => {
-  it("builds Next.js in standalone mode without the image optimiser", () => {
+  it("builds Next.js in standalone mode with AVIF/WebP image optimisation for allow-listed hosts", () => {
     expect(nextConfig.output).toBe("standalone");
     expect(nextConfig.poweredByHeader).toBe(false);
-    expect(nextConfig.images?.unoptimized).toBe(true);
+    expect(nextConfig.images?.unoptimized).toBeFalsy();
+    expect(nextConfig.images?.formats).toEqual(["image/avif", "image/webp"]);
+    expect(nextConfig.images?.dangerouslyAllowSVG).toBe(false);
+    const hosts = (nextConfig.images?.remotePatterns ?? []).map((p) => (p instanceof URL ? p.hostname : p.hostname));
+    expect(hosts).toEqual(expect.arrayContaining(["**.supabase.co", "avatars.githubusercontent.com"]));
+    expect(hosts).not.toContain("**");
   });
 
   it("ships a multi-stage, non-root Dockerfile with a health check", () => {

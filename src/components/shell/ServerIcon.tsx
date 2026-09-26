@@ -1,3 +1,4 @@
+import { SmartImage } from "@/components/ui/SmartImage";
 import { serverInitials } from "@/lib/servers";
 import { cn } from "@/lib/utils";
 
@@ -23,8 +24,7 @@ export function ServerIcon({ server, size = 48, active = false, className }: { s
       aria-hidden
     >
       {server.icon_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={server.icon_url} alt="" width={size} height={size} className="size-full object-cover" />
+        <SmartImage src={server.icon_url} alt="" width={size} height={size} className="size-full object-cover" />
       ) : (
         serverInitials(server.name)
       )}

@@ -101,7 +101,7 @@ docker run --rm -p 3000:3000 --env-file .env.local diskarte
 docker compose up --build
 ```
 
-The multi-stage `Dockerfile` builds Next.js in `standalone` mode on `node:22-alpine`, then runs it on plain `alpine` with Alpine's own `nodejs` package (shared system libraries instead of the ~110 MB bundled binary), without the unused image-optimiser binaries, as an unprivileged user with a `HEALTHCHECK` on `/api/health`. CI prints the final image size and fails the build if it grows past 150 MB.
+The multi-stage `Dockerfile` builds Next.js in `standalone` mode on `node:22-alpine`, then runs it on plain `alpine` with Alpine's own `nodejs` package (shared system libraries instead of the ~110 MB bundled binary) and English-only ICU data (all time zones included), leaving room for sharp so `next/image` can serve AVIF/WebP, as an unprivileged user with a `HEALTHCHECK` on `/api/health`. CI prints the final image size and fails the build if it grows past 150 MB.
 
 ## CI/CD
 
