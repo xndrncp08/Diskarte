@@ -233,6 +233,9 @@ export function Composer({
             accept={ATTACHMENT_ACCEPT}
             className="sr-only"
             aria-label="Attach files"
+            // Triggered by the visible button below; keep it out of the tab order / a11y tree.
+            aria-hidden
+            tabIndex={-1}
             onChange={(e) => {
               addFiles(Array.from(e.target.files ?? []));
               e.target.value = "";

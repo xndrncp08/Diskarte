@@ -20,7 +20,9 @@ RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
 FROM ${NODE_IMAGE} AS builder
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
-ENV NEXT_TELEMETRY_DISABLED=1
+# Trace only sharp's musl binaries into the standalone output (see next.config.ts).
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    DISKARTE_SHARP_TARGET=linuxmusl
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build

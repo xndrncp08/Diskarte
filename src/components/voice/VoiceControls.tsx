@@ -34,7 +34,8 @@ function ControlButton({
         className={cn(
           "flex items-center justify-center transition-[color,background-color,transform] duration-150",
           "active:scale-95 motion-reduce:active:scale-100",
-          size === "lg" ? "size-12 rounded-2xl" : "h-8 w-full rounded-md pointer-coarse:h-11",
+          // 6 buttons must fit a 360 px phone: 44 px (the touch minimum) below sm, 48 px above.
+          size === "lg" ? "size-11 rounded-2xl sm:size-12" : "h-8 w-full rounded-md pointer-coarse:h-11",
           danger ? "bg-red-500 text-white hover:bg-red-400" : active ? "bg-white text-abyss hover:bg-slate-200" : "bg-white/10 text-slate-200 hover:bg-white/20",
         )}
       >
@@ -49,7 +50,11 @@ export function VoiceControls({ size = "lg", compact = false }: { size?: "sm" | 
   const call = useCall();
   const icon = size === "lg" ? "size-5" : "size-4";
   return (
-    <div className={cn("flex items-center", size === "lg" ? "gap-3" : "w-full gap-1")} role="toolbar" aria-label="Call controls">
+    <div
+      className={cn("flex items-center", size === "lg" ? "flex-wrap justify-center gap-1.5 sm:gap-3" : "w-full gap-1")}
+      role="toolbar"
+      aria-label="Call controls"
+    >
       <ControlButton size={size} label={call.muted ? "Unmute" : "Mute"} active={call.muted} onClick={() => void call.toggleMute()}>
         {call.muted ? <MicOff className={cn(icon, "text-red-500")} aria-hidden /> : <Mic className={icon} aria-hidden />}
       </ControlButton>

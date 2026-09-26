@@ -74,7 +74,7 @@ function Stage() {
         </div>
       )}
       <div className="flex justify-center">
-        <div className="glass rounded-3xl px-4 py-3">
+        <div className="glass pb-safe max-w-full rounded-3xl px-2 pt-3 sm:px-4">
           <VoiceControls />
         </div>
       </div>
