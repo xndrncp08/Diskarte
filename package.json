@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "brand:wordmark": "node scripts/build-wordmark-path.mjs",
-    "brand:assets": "tsx scripts/generate-brand-assets.tsx"
+    "brand:assets": "tsx scripts/generate-brand-assets.tsx",
+    "start:standalone": "node scripts/start-standalone.mjs"
   },
   "dependencies": {
     "@livekit/components-react": "^2.9.24",
