@@ -22,13 +22,15 @@ interface SmartImageProps {
   style?: CSSProperties;
   priority?: boolean;
   referrerPolicy?: React.HTMLAttributeReferrerPolicy;
+  /** next/image quality (1–100); low-data mode asks for less. */
+  quality?: number;
 }
 
 /**
  * next/image (AVIF/WebP, responsive srcset, lazy loading, blur placeholder) for hosts the optimiser
  * is configured for; a plain lazy <img> for anything else, so an unexpected host never breaks a render.
  */
-export function SmartImage({ src, alt, width, height, fill, sizes, className, style, priority, referrerPolicy = "no-referrer" }: SmartImageProps) {
+export function SmartImage({ src, alt, width, height, fill, sizes, className, style, priority, referrerPolicy = "no-referrer", quality }: SmartImageProps) {
   if (isOptimizable(src, process.env.NEXT_PUBLIC_IMAGE_HOSTS)) {
     return (
       <Image
@@ -39,6 +41,7 @@ export function SmartImage({ src, alt, width, height, fill, sizes, className, st
         className={className}
         style={style}
         priority={priority}
+        quality={quality}
         placeholder="blur"
         blurDataURL={BLUR_DATA_URL}
         referrerPolicy={referrerPolicy}

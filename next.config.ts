@@ -43,6 +43,8 @@ const nextConfig: NextConfig = {
     deviceSizes: [640, 828, 1080, 1280, 1920],
     imageSizes: [16, 24, 32, 40, 48, 64, 80, 96, 128, 256, 384],
     minimumCacheTTL: 3600,
+    // 75 = default; 40 = low-data mode (lib/low-data.ts).
+    qualities: [40, 75],
     dangerouslyAllowSVG: false,
   },
   outputFileTracingExcludes: { "*": SHARP_EXCLUDES },

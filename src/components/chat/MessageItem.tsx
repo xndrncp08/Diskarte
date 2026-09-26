@@ -1,6 +1,6 @@
 "use client";
 
-import { CornerUpLeft, Pencil, Pin, PinOff, RotateCw, Trash2, X } from "lucide-react";
+import { Clock, CornerUpLeft, MessagesSquare, Pencil, Pin, PinOff, RotateCw, Trash2, X } from "lucide-react";
 import { memo, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import type { ChatMessage } from "@/hooks/useChannelChat";
@@ -10,14 +10,17 @@ import { Attachments } from "./Attachments";
 import { EmojiPicker } from "./EmojiPicker";
 import { MessageMarkdown } from "./MessageMarkdown";
 import { ReactionBar } from "./ReactionBar";
+import { Sticker } from "./Sticker";
 import { Timestamp } from "./Timestamp";
 
 export interface MessageActions {
   onReply: (m: ChatMessage) => void;
   onEdit: (id: string, content: string) => Promise<boolean>;
   onDelete: (m: ChatMessage, skipConfirm: boolean) => void;
-  onPin: (id: string, pinned: boolean) => void;
-  onReact: (id: string, emoji: string) => void;
+  /** Omitted where pins / reactions / threads don't exist (DMs, inside a thread). */
+  onPin?: (id: string, pinned: boolean) => void;
+  onReact?: (id: string, emoji: string) => void;
+  onOpenThread?: (m: ChatMessage) => void;
   onRetry: (m: ChatMessage) => void;
   onDiscard: (id: string) => void;
   onJump: (id: string) => void;
@@ -127,7 +130,7 @@ export const MessageItem = memo(function MessageItem({
         "group relative flex gap-3 rounded-md px-3 transition-colors",
         grouped ? "py-0.5" : "mt-3 pb-0.5 pt-1",
         mentioned ? "border-l-2 border-sun bg-sun/[0.07] hover:bg-sun/10" : "hover:bg-white/[0.03]",
-        message.pending && "opacity-60",
+        (message.pending || message.queued) && "opacity-60",
       )}
     >
       <div className="w-10 shrink-0">
@@ -151,7 +154,7 @@ export const MessageItem = memo(function MessageItem({
             {replyTo ? (
               <>
                 <span className="shrink-0 whitespace-nowrap font-semibold text-slate-300">@{replyTo.author?.display_name ?? "Deleted user"}</span>
-                <span className="truncate">{previewText(replyTo.content) || "Attachment"}</span>
+                <span className="truncate">{previewText(replyTo.content) || (replyTo.sticker ? "Sticker" : "Attachment")}</span>
               </>
             ) : (
               <span className="italic">Hindi na makita ang original message</span>
@@ -165,6 +168,8 @@ export const MessageItem = memo(function MessageItem({
             {message.pinned && <Pin className="size-3 shrink-0 text-sun" aria-label="Pinned" />}
           </p>
         )}
+
+        {message.sticker && <Sticker id={message.sticker} size={144} className="mt-1" />}
 
         {editing ? (
           <EditBox
@@ -189,7 +194,33 @@ export const MessageItem = memo(function MessageItem({
         )}
 
         <Attachments attachments={attachments} />
-        <ReactionBar reactions={reactions} meId={meId} onToggle={(emoji) => actions.onReact(message.id, emoji)} names={actions.nameOf} />
+        {actions.onReact && <ReactionBar reactions={reactions} meId={meId} onToggle={(emoji) => actions.onReact?.(message.id, emoji)} names={actions.nameOf} />}
+
+        {actions.onOpenThread && message.thread_reply_count > 0 && (
+          <button
+            type="button"
+            onClick={() => actions.onOpenThread?.(message)}
+            className="mt-1 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-sky-300 transition-colors hover:border-sky-300/40 hover:bg-sky-400/10 pointer-coarse:py-2"
+            data-testid="thread-chip"
+          >
+            <MessagesSquare className="size-3.5" aria-hidden />
+            {message.thread_reply_count} {message.thread_reply_count === 1 ? "reply" : "replies"}
+            {message.thread_last_reply_at && (
+              <span className="font-normal text-slate-500">
+                · <Timestamp iso={message.thread_last_reply_at} variant="time" />
+              </span>
+            )}
+          </button>
+        )}
+
+        {message.queued && (
+          <p className="mt-1 flex items-center gap-1.5 font-silk text-[11px] text-sun" role="status">
+            <Clock className="size-3" aria-hidden /> Naka-queue — ise-send pagbalik ng signal
+            <button type="button" onClick={() => actions.onDiscard(message.id)} className="ml-1 text-slate-400 underline-offset-2 hover:text-white hover:underline">
+              Cancel
+            </button>
+          </p>
+        )}
 
         {message.failed && (
           <p className="mt-1 flex items-center gap-2 text-xs text-red-300" role="alert">
@@ -204,7 +235,7 @@ export const MessageItem = memo(function MessageItem({
         )}
       </div>
 
-      {!message.pending && !message.failed && !editing && (
+      {!message.pending && !message.failed && !message.queued && !editing && (
         <div
           role="toolbar"
           aria-label="Message actions"
@@ -218,17 +249,22 @@ export const MessageItem = memo(function MessageItem({
             "motion-reduce:transition-none",
           )}
         >
-          <EmojiPicker onPick={(emoji) => actions.onReact(message.id, emoji)} placement="bottom" />
+          {actions.onReact && <EmojiPicker onPick={(emoji) => actions.onReact?.(message.id, emoji)} placement="bottom" />}
           <ToolbarButton label="Reply" onClick={() => actions.onReply(message)}>
             <CornerUpLeft className="size-4" aria-hidden />
           </ToolbarButton>
-          {mine && (
+          {actions.onOpenThread && !message.thread_id && (
+            <ToolbarButton label={message.thread_reply_count > 0 ? "Open thread" : "Start thread"} onClick={() => actions.onOpenThread?.(message)}>
+              <MessagesSquare className="size-4" aria-hidden />
+            </ToolbarButton>
+          )}
+          {mine && !message.sticker && (
             <ToolbarButton label="Edit" onClick={() => setEditing(message.id)}>
               <Pencil className="size-4" aria-hidden />
             </ToolbarButton>
           )}
-          {canModerate && (
-            <ToolbarButton label={message.pinned ? "Unpin" : "Pin"} onClick={() => actions.onPin(message.id, !message.pinned)}>
+          {canModerate && actions.onPin && (
+            <ToolbarButton label={message.pinned ? "Unpin" : "Pin"} onClick={() => actions.onPin?.(message.id, !message.pinned)}>
               {message.pinned ? <PinOff className="size-4" aria-hidden /> : <Pin className="size-4" aria-hidden />}
             </ToolbarButton>
           )}

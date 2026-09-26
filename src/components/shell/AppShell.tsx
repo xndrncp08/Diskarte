@@ -77,9 +77,9 @@ function Frame({ servers, children }: { servers: Server[]; children: ReactNode }
   );
 }
 
-export function AppShell({ profile, servers, children }: { profile: Tables<"profiles">; servers: Server[]; children: ReactNode }) {
+export function AppShell({ profile, verified = true, servers, children }: { profile: Tables<"profiles">; verified?: boolean; servers: Server[]; children: ReactNode }) {
   return (
-    <MeProvider profile={profile}>
+    <MeProvider profile={profile} verified={verified}>
       {/* Honour the OS "reduce motion" setting for every framer-motion animation in the app. */}
       <MotionConfig reducedMotion="user">
         <PresenceProvider>

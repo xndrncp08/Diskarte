@@ -14,6 +14,10 @@ export interface ActionResult<T = undefined> {
   error?: string;
   fieldErrors?: Record<string, string>;
   data?: T;
+  /** Machine-readable failure reason for callers that react to it (e.g. "SLOWMODE"). */
+  code?: string;
+  /** Seconds until the action may be retried (slow mode). */
+  retryAfter?: number;
 }
 
 const DB_ERRORS: Record<string, string> = {

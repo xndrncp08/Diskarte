@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowDown, Hash, Loader2, Pin } from "lucide-react";
+import { ArrowDown, CloudOff, Hash, Loader2, Pin } from "lucide-react";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useMe } from "@/components/providers/MeProvider";
@@ -12,6 +12,7 @@ import { useShellUI } from "@/components/shell/ShellUI";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { mentionsUser, useChannelChat, type ChatMessage } from "@/hooks/useChannelChat";
+import { useOnline } from "@/hooks/useOnline";
 import { useTyping } from "@/hooks/useTyping";
 import { isGroupedWithPrevious, sameDay } from "@/lib/chat-format";
 import type { MessageWithAuthor, Reaction } from "@/lib/messages";
@@ -21,17 +22,40 @@ import { Composer } from "./Composer";
 import { VirtualMessageList, type VirtualMessageListHandle } from "./VirtualMessageList";
 import { MessageItem, type MessageActions } from "./MessageItem";
 import { PinsDrawer } from "./PinsDrawer";
+import { ThreadPanel } from "./ThreadPanel";
 import { Timestamp } from "./Timestamp";
 
 const NO_REACTIONS: Reaction[] = [];
 
-export function ChatView({ channel, initial }: { channel: Channel; initial: { messages: MessageWithAuthor[]; reactions: Reaction[]; hasMore: boolean } }) {
-  const { me } = useMe();
-  const { server, myRole, members } = useServer();
+export const VERIFY_NOTICE = "Verified accounts lang ang pwedeng mag-chat dito. I-confirm muna ang email o phone number mo.";
+
+/** 8-bit strip shown while offline or while queued messages wait to be sent. */
+export function OfflineBanner({ queued }: { queued: number }) {
+  const online = useOnline();
+  if (online && queued === 0) return null;
+  return (
+    <div role="status" className="mx-4 mb-2 flex items-center gap-2 rounded-lg border-2 border-sun/70 bg-sun/10 px-3 py-2 font-pixel text-[9px] leading-relaxed text-sun" data-testid="offline-banner">
+      <CloudOff className="size-4 shrink-0" aria-hidden />
+      {online
+        ? `SYNCING ${queued} MESSAGE${queued === 1 ? "" : "S"}…`
+        : queued > 0
+          ? `OFFLINE — ${queued} MESSAGE${queued === 1 ? "" : "S"} NAKA-QUEUE. ISE-SEND PAGBALIK NG SIGNAL.`
+          : "OFFLINE — NAKA-QUEUE ANG MGA ISESEND MO HANGGANG BUMALIK ANG SIGNAL."}
+    </div>
+  );
+}
+
+export function ChatView({ channel: initialChannel, initial }: { channel: Channel; initial: { messages: MessageWithAuthor[]; reactions: Reaction[]; hasMore: boolean } }) {
+  const { me, verified } = useMe();
+  const { server, myRole, members, channels } = useServer();
   const { membersOpen } = useShellUI();
-  const chat = useChannelChat(channel.id, initial);
-  const { typingNames, notifyTyping, stopTyping } = useTyping(channel.id);
+  // Slow mode / verification settings change live (ServerProvider keeps channels current).
+  const channel = channels.find((c) => c.id === initialChannel.id) ?? initialChannel;
   const canModerate = hasRole(myRole, "moderator");
+  const chat = useChannelChat(channel.id, initial, { slowmodeSeconds: channel.slowmode_seconds, slowmodeExempt: canModerate });
+  const { typingNames, notifyTyping, stopTyping } = useTyping(channel.id);
+  const locked = channel.requires_verification && !verified && !canModerate ? VERIFY_NOTICE : null;
+  const [threadRootId, setThreadRootId] = useState<string | null>(null);
 
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -50,6 +74,7 @@ export function ChatView({ channel, initial }: { channel: Channel; initial: { me
   const byId = useMemo(() => new Map(chat.messages.map((m) => [m.id, m])), [chat.messages]);
   const liveIds = useMemo(() => new Set(chat.messages.map((m) => m.id)), [chat.messages]);
   const names = useMemo(() => new Map(members.map((m) => [m.user_id, m.nickname ?? m.profile.display_name])), [members]);
+  const threadRoot = threadRootId ? (byId.get(threadRootId) ?? null) : null;
 
   // Keep the viewport anchored: stick to bottom for new messages, preserve position when older ones prepend.
   useLayoutEffect(() => {
@@ -114,6 +139,7 @@ export function ChatView({ channel, initial }: { channel: Channel; initial: { me
       onDelete: (m, skipConfirm) => (skipConfirm ? void chat.remove(m.id) : setConfirmDelete(m)),
       onPin: (id, pinned) => void chat.setPinned(id, pinned),
       onReact: (id, emoji) => void chat.toggleReaction(id, emoji),
+      onOpenThread: (m) => setThreadRootId(m.id),
       onRetry: (m) => void chat.retry(m),
       onDiscard: (id) => chat.discard(id),
       onJump: jumpTo,
@@ -229,6 +255,7 @@ export function ChatView({ channel, initial }: { channel: Channel; initial: { me
           </button>
         )}
 
+        <OfflineBanner queued={chat.queuedCount} />
         <Composer
           channelName={channel.name}
           serverId={server.id}
@@ -236,14 +263,23 @@ export function ChatView({ channel, initial }: { channel: Channel; initial: { me
           replyTo={replyTo}
           onCancelReply={() => setReplyTo(null)}
           onSend={chat.send}
+          onSticker={(sticker) => {
+            void chat.send("", [], replyTo?.id ?? null, { sticker });
+            setReplyTo(null);
+          }}
           onEditLast={editLast}
           typingNames={typingNames}
           onTyping={notifyTyping}
           onStopTyping={stopTyping}
+          cooldownUntil={chat.cooldownUntil}
+          slowmodeSeconds={canModerate ? 0 : channel.slowmode_seconds}
+          locked={locked}
         />
       </motion.section>
 
-      {membersOpen && (
+      {threadRoot ? (
+        <ThreadPanel key={threadRoot.id} channel={channel} root={threadRoot} onClose={() => setThreadRootId(null)} locked={locked} />
+      ) : membersOpen && (
         <div className="hidden lg:flex">
           <MemberList />
         </div>
@@ -259,7 +295,7 @@ export function ChatView({ channel, initial }: { channel: Channel; initial: { me
         title="I-delete ang message?"
         confirmLabel="Delete"
       >
-        <span className="line-clamp-3 block rounded-lg bg-black/40 p-2 text-slate-300">{confirmDelete?.content || "(attachment)"}</span>
+        <span className="line-clamp-3 block rounded-lg bg-black/40 p-2 text-slate-300">{confirmDelete?.content || (confirmDelete?.sticker ? "(sticker)" : "(attachment)")}</span>
         <span className="mt-2 block text-xs">Tip: Shift + click sa delete para i-skip ang confirmation.</span>
       </ConfirmDialog>
     </div>

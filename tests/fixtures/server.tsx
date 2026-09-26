@@ -42,12 +42,18 @@ export const server: Server = {
   icon_url: null,
   owner_id: OWNER_ID,
   invite_code: "ABCDEFGH23",
+  automod_enabled: true,
+  automod_categories: ["hate", "phishing", "spam"],
+  automod_custom_terms: [],
+  gcash_number: null,
+  maya_number: null,
+  support_note: "",
   created_at: "2026-09-01T00:00:00Z",
   updated_at: "2026-09-01T00:00:00Z",
 };
 
 export function makeChannel(id: string, name: string, type: "text" | "voice", position: number, category = type === "text" ? "Text Channels" : "Voice Channels"): Channel {
-  return { id, server_id: SERVER_ID, name, type, category, topic: "", position, created_at: "2026-09-01T00:00:00Z" };
+  return { id, server_id: SERVER_ID, name, type, category, topic: "", position, slowmode_seconds: 0, requires_verification: false, created_at: "2026-09-01T00:00:00Z" };
 }
 
 export const channels: Channel[] = [

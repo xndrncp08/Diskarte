@@ -1,4 +1,4 @@
-// Types mirroring supabase/migrations/20260926000000_schema.sql.
+// Types mirroring supabase/migrations/*.sql (schema, security hardening, community).
 // Regenerate with `npx supabase gen types typescript --local > src/lib/supabase/database.types.ts`.
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
@@ -6,6 +6,19 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type MemberRole = "member" | "moderator" | "admin";
 export type ChannelType = "text" | "voice";
 export type PresenceStatus = "online" | "idle" | "dnd" | "invisible";
+export type AutomodCategory = "spam" | "phishing" | "hate" | "explicit";
+export type BadgeKind = "booster" | "lodi_supporter" | "gcash_contributor";
+export type LfgStatus = "open" | "full" | "closed";
+export type FriendshipStatus = "pending" | "accepted";
+export type DmKind = "direct" | "group";
+
+/** Row/Insert pair helper for the community tables (Update = Partial<Insert>). */
+interface TableDef<Row, Insert> {
+  Row: Row;
+  Insert: Insert;
+  Update: Partial<Insert>;
+  Relationships: [];
+}
 
 export interface Database {
   __InternalSupabase: {
@@ -57,6 +70,12 @@ export interface Database {
           icon_url: string | null;
           owner_id: string;
           invite_code: string;
+          automod_enabled: boolean;
+          automod_categories: AutomodCategory[];
+          automod_custom_terms: string[];
+          gcash_number: string | null;
+          maya_number: string | null;
+          support_note: string;
           created_at: string;
           updated_at: string;
         };
@@ -67,6 +86,12 @@ export interface Database {
           icon_url?: string | null;
           owner_id: string;
           invite_code?: string;
+          automod_enabled?: boolean;
+          automod_categories?: AutomodCategory[];
+          automod_custom_terms?: string[];
+          gcash_number?: string | null;
+          maya_number?: string | null;
+          support_note?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -105,6 +130,8 @@ export interface Database {
           category: string;
           topic: string;
           position: number;
+          slowmode_seconds: number;
+          requires_verification: boolean;
           created_at: string;
         };
         Insert: {
@@ -115,6 +142,8 @@ export interface Database {
           category?: string;
           topic?: string;
           position?: number;
+          slowmode_seconds?: number;
+          requires_verification?: boolean;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["channels"]["Insert"]>;
@@ -135,6 +164,10 @@ export interface Database {
           pinned_at: string | null;
           pinned_by: string | null;
           edited_at: string | null;
+          thread_id: string | null;
+          sticker: string | null;
+          thread_reply_count: number;
+          thread_last_reply_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -149,6 +182,8 @@ export interface Database {
           pinned_at?: string | null;
           pinned_by?: string | null;
           edited_at?: string | null;
+          thread_id?: string | null;
+          sticker?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["messages"]["Insert"]>;
@@ -182,6 +217,67 @@ export interface Database {
           { foreignKeyName: "reactions_user_id_fkey"; columns: ["user_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
         ];
       };
+      audit_logs: TableDef<
+        { id: number; server_id: string; actor_id: string | null; action: string; target_type: string | null; target_id: string | null; metadata: Json; created_at: string },
+        never
+      >;
+      server_bans: TableDef<{ server_id: string; user_id: string; banned_by: string | null; reason: string; created_at: string }, never>;
+      server_badges: TableDef<
+        { server_id: string; user_id: string; badge: BadgeKind; granted_by: string | null; created_at: string },
+        { server_id: string; user_id: string; badge: BadgeKind; granted_by?: string | null; created_at?: string }
+      >;
+      lfg_beacons: TableDef<
+        {
+          id: string;
+          server_id: string;
+          author_id: string;
+          game: string;
+          description: string;
+          party_size: number;
+          voice_channel_id: string | null;
+          status: LfgStatus;
+          expires_at: string;
+          created_at: string;
+        },
+        never
+      >;
+      lfg_party_members: TableDef<{ beacon_id: string; server_id: string; user_id: string; joined_at: string }, never>;
+      soundboard_clips: TableDef<
+        { id: string; server_id: string; name: string; emoji: string; storage_path: string; created_by: string | null; created_at: string },
+        { id?: string; server_id: string; name: string; emoji?: string; storage_path: string; created_by?: string | null; created_at?: string }
+      >;
+      friendships: TableDef<
+        { user_low: string; user_high: string; requested_by: string; status: FriendshipStatus; created_at: string; accepted_at: string | null },
+        never
+      >;
+      user_blocks: TableDef<{ blocker_id: string; blocked_id: string; created_at: string }, never>;
+      dm_conversations: TableDef<
+        { id: string; kind: DmKind; name: string | null; owner_id: string | null; direct_key: string | null; created_at: string; last_message_at: string },
+        never
+      >;
+      dm_participants: TableDef<{ conversation_id: string; user_id: string; joined_at: string; last_read_at: string }, never>;
+      direct_messages: TableDef<
+        {
+          id: string;
+          conversation_id: string;
+          author_id: string | null;
+          content: string;
+          sticker: string | null;
+          reply_to_id: string | null;
+          edited_at: string | null;
+          created_at: string;
+        },
+        {
+          id?: string;
+          conversation_id: string;
+          author_id?: string | null;
+          content?: string;
+          sticker?: string | null;
+          reply_to_id?: string | null;
+          edited_at?: string | null;
+          created_at?: string;
+        }
+      >;
     };
     Views: { [_ in never]: never };
     Functions: {
@@ -196,6 +292,27 @@ export interface Database {
       is_server_member: { Args: { p_server_id: string }; Returns: boolean };
       has_server_role: { Args: { p_server_id: string; p_min: MemberRole }; Returns: boolean };
       server_role: { Args: { p_server_id: string }; Returns: MemberRole };
+      is_verified_user: { Args: Record<string, never>; Returns: boolean };
+      ban_member: { Args: { p_server_id: string; p_user_id: string; p_reason?: string }; Returns: undefined };
+      unban_member: { Args: { p_server_id: string; p_user_id: string }; Returns: undefined };
+      create_lfg: {
+        Args: { p_server_id: string; p_game: string; p_description?: string; p_party_size?: number; p_voice_channel_id?: string | null; p_duration_minutes?: number };
+        Returns: string;
+      };
+      join_lfg: { Args: { p_beacon_id: string }; Returns: string | null };
+      leave_lfg: { Args: { p_beacon_id: string }; Returns: undefined };
+      close_lfg: { Args: { p_beacon_id: string }; Returns: undefined };
+      send_friend_request: { Args: { p_username: string }; Returns: FriendshipStatus };
+      respond_friend_request: { Args: { p_user_id: string; p_accept: boolean }; Returns: undefined };
+      remove_friend: { Args: { p_user_id: string }; Returns: undefined };
+      block_user: { Args: { p_user_id: string }; Returns: undefined };
+      unblock_user: { Args: { p_user_id: string }; Returns: undefined };
+      open_dm: { Args: { p_user_id: string }; Returns: string };
+      create_group_dm: { Args: { p_user_ids: string[]; p_name?: string | null }; Returns: string };
+      add_to_group_dm: { Args: { p_conversation_id: string; p_user_id: string }; Returns: undefined };
+      rename_group_dm: { Args: { p_conversation_id: string; p_name: string }; Returns: undefined };
+      leave_dm: { Args: { p_conversation_id: string }; Returns: undefined };
+      mark_dm_read: { Args: { p_conversation_id: string }; Returns: undefined };
     };
     Enums: {
       member_role: MemberRole;
