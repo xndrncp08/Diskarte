@@ -192,6 +192,7 @@ export interface Database {
       };
       join_server: { Args: { p_code: string }; Returns: string };
       regenerate_invite: { Args: { p_server_id: string }; Returns: string };
+      username_available: { Args: { p_username: string }; Returns: boolean };
       is_server_member: { Args: { p_server_id: string }; Returns: boolean };
       has_server_role: { Args: { p_server_id: string; p_min: MemberRole }; Returns: boolean };
       server_role: { Args: { p_server_id: string }; Returns: MemberRole };

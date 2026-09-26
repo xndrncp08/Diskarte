@@ -75,6 +75,13 @@ describe("profiles", () => {
     expect((await one<{ custom_status: string }>(db, "select custom_status from public.profiles where id = $1", [member])).custom_status).toBe("LFG");
   });
 
+  it("checks username availability for anonymous visitors", async () => {
+    await asAnon(db);
+    expect((await one<{ ok: boolean }>(db, "select public.username_available('KAPITAN') as ok")).ok).toBe(false);
+    expect((await one<{ ok: boolean }>(db, "select public.username_available('bagong_user') as ok")).ok).toBe(true);
+    expect((await one<{ ok: boolean }>(db, "select public.username_available('x') as ok")).ok).toBe(false);
+  });
+
   it("rejects invalid usernames", async () => {
     await asUser(db, member);
     expect(await failure(db, "update public.profiles set username = 'Bad Name!' where id = $1", [member])).toMatch(/check constraint/);
