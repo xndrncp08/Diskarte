@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { MailCheck } from "lucide-react";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { signUpAction, type AuthFormState } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/Button";
 import { InputField } from "@/components/ui/Field";
+import { PasswordChecklist } from "./PasswordChecklist";
 
 export function SignupForm() {
   const [state, action, pending] = useActionState<AuthFormState, FormData>(signUpAction, {});
+  const [password, setPassword] = useState("");
 
   if (state.notice) {
     return (
@@ -61,11 +63,14 @@ export function SignupForm() {
         type="password"
         autoComplete="new-password"
         required
-        minLength={8}
+        minLength={10}
+        maxLength={72}
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
         error={state.fieldErrors?.password}
-        hint="At least 8 characters"
-        placeholder="••••••••"
+        placeholder="••••••••••"
       />
+      <PasswordChecklist value={password} />
       {state.error && (
         <p role="alert" className="rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
           {state.error}

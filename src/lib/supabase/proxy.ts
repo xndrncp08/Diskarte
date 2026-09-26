@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import type { NextRequest, NextResponse } from "next/server";
 import type { PublicEnv } from "@/lib/env";
+import { authCookieOptions } from "./cookies";
 import type { Database } from "./database.types";
 
 /**
@@ -15,7 +16,9 @@ export async function refreshSession(
 ): Promise<{ response: NextResponse; userId: string | null }> {
   let response = makeResponse();
 
+  const secure = request.nextUrl.protocol === "https:" || request.headers.get("x-forwarded-proto") === "https";
   const supabase = createServerClient<Database>(env.supabaseUrl, env.supabaseAnonKey, {
+    cookieOptions: authCookieOptions(secure),
     cookies: {
       getAll() {
         return request.cookies.getAll();

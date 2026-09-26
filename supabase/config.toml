@@ -41,7 +41,9 @@ enable_refresh_token_rotation = true
 refresh_token_reuse_interval = 10
 enable_signup = true
 enable_anonymous_sign_ins = false
-minimum_password_length = 8
+minimum_password_length = 10
+# Mirrors passwordSchema in src/lib/profile.ts.
+password_requirements = "lower_upper_letters_digits_symbols"
 
 [auth.rate_limit]
 # Local/CI: E2E suites create many users from one IP.
