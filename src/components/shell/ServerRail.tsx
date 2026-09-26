@@ -30,7 +30,7 @@ export function ServerRail({ servers }: { servers: Server[] }) {
   const [adding, setAdding] = useState(false);
 
   return (
-    <nav aria-label="Servers" className="flex h-full w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto bg-abyss py-3 scrollbar-none">
+    <nav aria-label="Servers" className="pt-safe flex h-full w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto bg-abyss pb-3 scrollbar-none">
       <Tooltip label="Home">
         <Link href="/tambayan" aria-label="Home" aria-current={!activeId ? "page" : undefined} className="group relative flex">
           <Pill active={!activeId} />
@@ -57,6 +57,7 @@ export function ServerRail({ servers }: { servers: Server[] }) {
           type="button"
           onClick={() => setAdding(true)}
           aria-label="Add a server"
+          aria-haspopup="dialog"
           className="group flex size-12 items-center justify-center rounded-[50%] bg-midnight text-signal-green transition-[border-radius,background-color,color] duration-200 hover:rounded-2xl hover:bg-signal-green hover:text-white"
         >
           <Plus className="size-6" aria-hidden />

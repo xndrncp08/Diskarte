@@ -1,10 +1,17 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { SmilePlus } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { FloatingPortal, useFloating } from "@/components/ui/floating";
-import { CLASSIC_EMOJI, PINOY_REACTIONS } from "@/lib/emoji";
+import { InertWhenExiting } from "@/components/ui/InertWhenExiting";
+
+/** The reaction grid is its own chunk, fetched the first time any picker opens. */
+const EmojiPickerPanel = dynamic(() => import("./EmojiPickerPanel").then((m) => m.EmojiPickerPanel), {
+  ssr: false,
+  loading: () => <div className="h-72 w-full animate-pulse rounded-lg bg-white/5" aria-busy="true" aria-label="Loading emoji" data-testid="emoji-skeleton" />,
+});
 import { cn } from "@/lib/utils";
 
 /**
@@ -26,9 +33,8 @@ export function EmojiPicker({
   placement?: "top" | "bottom";
 }) {
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<"pinoy" | "classic">("pinoy");
-  const [query, setQuery] = useState("");
   const root = useRef<HTMLDivElement>(null);
+  const panelId = useId();
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const { style, side } = useFloating(open, trigger, panel, { side: placement, align: align === "end" ? "end" : "start" });
@@ -53,13 +59,9 @@ export function EmojiPicker({
     };
   }, [open]);
 
-  const q = query.trim().toLowerCase();
-  const pinoy = PINOY_REACTIONS.filter((r) => !q || r.label.toLowerCase().includes(q) || r.code.includes(q));
-
   function pick(value: string) {
     onPick(value);
     setOpen(false);
-    setQuery("");
   }
 
   return (
@@ -69,16 +71,19 @@ export function EmojiPicker({
         type="button"
         aria-label={label}
         aria-expanded={open}
+        aria-haspopup="dialog"
+        aria-controls={open ? panelId : undefined}
         onClick={() => setOpen((o) => !o)}
-        className={cn("rounded-md p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white", triggerClassName)}
+        className={cn("touch-target relative rounded-md p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white", triggerClassName)}
       >
         <SmilePlus className="size-4" aria-hidden />
       </button>
       <FloatingPortal>
         <AnimatePresence>
           {open && (
-            <motion.div
+            <InertWhenExiting
               ref={panel}
+              id={panelId}
               role="dialog"
               aria-label="Emoji picker"
               data-side={side}
@@ -86,67 +91,12 @@ export function EmojiPicker({
               style={style}
               initial={{ opacity: 0, scale: 0.96, y: side === "top" ? 4 : -4 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, pointerEvents: "none" }}
+              exit={{ opacity: 0, scale: 0.96 }}
               transition={{ duration: 0.12 }}
               className="glass-strong z-50 w-72 max-w-[calc(100vw-1rem)] rounded-xl p-2 shadow-2xl shadow-black/60"
             >
-              <div className="mb-2 flex gap-1">
-                {(
-                  [
-                    ["pinoy", "🇵🇭 Pinoy"],
-                    ["classic", "😀 Classic"],
-                  ] as const
-                ).map(([key, text]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    aria-pressed={tab === key}
-                    onClick={() => setTab(key)}
-                    className={cn("flex-1 rounded-md py-1 text-xs font-semibold", tab === key ? "bg-sun text-abyss" : "text-slate-300 hover:bg-white/10")}
-                  >
-                    {text}
-                  </button>
-                ))}
-              </div>
-              {tab === "pinoy" && (
-                <input
-                  type="search"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Hanapin: petmalu, lodi…"
-                  aria-label="Search reactions"
-                  className="mb-2 h-8 w-full rounded-md border border-white/10 bg-black/40 px-2 text-sm outline-none focus:border-sun/60"
-                  autoFocus
-                />
-              )}
-              <div className="scrollbar-thin grid max-h-56 grid-cols-6 gap-1 overflow-y-auto">
-                {tab === "pinoy"
-                  ? pinoy.map((r) => (
-                      <button
-                        key={r.code}
-                        type="button"
-                        title={`${r.label} ${r.code}`}
-                        aria-label={r.label}
-                        onClick={() => pick(r.code)}
-                        className="flex flex-col items-center rounded-md p-1 transition-transform hover:scale-110 hover:bg-white/10"
-                      >
-                        <span className="text-xl leading-none">{r.emoji}</span>
-                        <span className="mt-0.5 w-full truncate text-center font-silk text-[8px] uppercase text-slate-400">{r.label}</span>
-                      </button>
-                    ))
-                  : CLASSIC_EMOJI.map((e) => (
-                      <button
-                        key={e}
-                        type="button"
-                        aria-label={e}
-                        onClick={() => pick(e)}
-                        className="rounded-md p-1 text-xl transition-transform hover:scale-110 hover:bg-white/10"
-                      >
-                        {e}
-                      </button>
-                    ))}
-              </div>
-            </motion.div>
+              <EmojiPickerPanel onPick={pick} />
+            </InertWhenExiting>
           )}
         </AnimatePresence>
       </FloatingPortal>

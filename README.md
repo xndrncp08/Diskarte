@@ -20,6 +20,11 @@
 - **Profiles**: salakot mascot avatars, banners, bios, and Filipino status triggers ("Nagluto ng Canton", "AFK / Tulog", "LFG").
 - **Look and feel**: Apple-style glass panels, a Discord multi-column layout, and 8-bit touches (pixel status dots, arcade signal bars, synthesized Web Audio sound effects).
 - **Security**: RLS on every table, guard triggers, DB and app rate limiting, nonce-based CSP, CSRF checks, XSS-safe Markdown, and server-side LiveKit token minting.
+- **Fast on cheap phones**: a virtualised chat stream (@tanstack/react-virtual). LiveKit and the emoji grid load on demand, which cuts the chat page's initial JavaScript by about 30%, and images are served as AVIF/WebP with blur placeholders.
+- **Mobile-first**: a swipeable navigation drawer, 44 px touch targets, `100dvh` layouts with safe-area padding, and tap-to-reveal message actions.
+- **Voice quality**: an 8-bit meter shows latency, packet loss and jitter, and whoever is speaking gets a neon glow.
+- **Accessible**: keyboard navigation with visible focus, ARIA roles on menus, dialogs and tabs, a skip link, reduced-motion support, and axe-core audits in the test suite.
+- **8-bit sound**: synthesised cues for joining, leaving, messages and mute toggles, with a volume control in the user panel.
 
 ## Stack
 

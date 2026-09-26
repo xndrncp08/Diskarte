@@ -87,7 +87,7 @@ describe("CallProvider", () => {
       await result.current.toggleDeafen();
     });
     expect(result.current).toMatchObject({ deafened: true, muted: true });
-    expect(screen.getByTestId("audio-renderer")).toHaveAttribute("data-muted", "true");
+    expect(await screen.findByTestId("audio-renderer")).toHaveAttribute("data-muted", "true"); // lazily loaded chunk
     await act(async () => {
       await result.current.toggleDeafen();
     });

@@ -20,10 +20,10 @@ const variants: Record<Variant, string> = {
 };
 
 const sizes: Record<Size, string> = {
-  sm: "h-8 px-3 text-xs",
-  md: "h-10 px-4 text-sm",
+  sm: "h-8 px-3 text-xs pointer-coarse:h-11",
+  md: "h-10 px-4 text-sm pointer-coarse:h-11",
   lg: "h-12 px-6 text-base",
-  icon: "h-9 w-9",
+  icon: "h-9 w-9 pointer-coarse:size-11",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(

@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronDown, Hash, HeadphoneOff, LogOut, MicOff, Pencil, Plus, Settings, UserPlus, Video, Volume2 } from "lucide-react";
@@ -15,7 +16,6 @@ import { useShellUI } from "@/components/shell/ShellUI";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CallDock } from "@/components/voice/CallDock";
 import { useCall } from "@/components/voice/CallProvider";
-import { useSpeakingParticipants } from "@livekit/components-react";
 import { Menu } from "@/components/ui/Menu";
 import { useOnline } from "@/hooks/useOnline";
 import { signalLevel } from "@/lib/presence";
@@ -26,22 +26,13 @@ import { InviteDialog } from "./InviteDialog";
 import { ServerSettingsDialog } from "./ServerSettingsDialog";
 
 type DialogState =
-  | { kind: "invite" }
-  | { kind: "settings" }
-  | { kind: "leave" }
-  | { kind: "channel"; channel?: Channel; type?: "text" | "voice"; category?: string }
-  | null;
-
-/** Speaking identities for the call you're in (LiveKit active-speaker detection). */
-function SpeakingSet({ children }: { children: (speaking: Set<string>) => React.ReactNode }) {
-  const speakers = useSpeakingParticipants();
-  return <>{children(new Set(speakers.map((p) => p.identity)))}</>;
-}
+  { kind: "invite" } | { kind: "settings" } | { kind: "leave" } | { kind: "channel"; channel?: Channel; type?: "text" | "voice"; category?: string } | null;
 
 function VoiceOccupants({ channelId }: { channelId: string }) {
   const call = useCall();
-  const live = call.room && call.status === "connected" && call.target?.channelId === channelId;
-  return live ? <SpeakingSet>{(speaking) => <OccupantList channelId={channelId} speaking={speaking} />}</SpeakingSet> : <OccupantList channelId={channelId} speaking={null} />;
+  // Active-speaker identities come from CallProvider's room events (no LiveKit UI bundle needed).
+  const live = call.status === "connected" && call.target?.channelId === channelId;
+  return <OccupantList channelId={channelId} speaking={live ? new Set(call.speaking) : null} />;
 }
 
 function OccupantList({ channelId, speaking }: { channelId: string; speaking: Set<string> | null }) {
@@ -59,7 +50,11 @@ function OccupantList({ channelId, speaking }: { channelId: string; speaking: Se
             <span className="ml-auto flex items-center gap-1 text-slate-500">
               {p?.screen && <span className="rounded bg-red-500/80 px-1 font-silk text-[9px] text-white">LIVE</span>}
               {p?.video && <Video className="size-3.5" aria-label="Camera on" />}
-              {p?.deafened ? <HeadphoneOff className="size-3.5 text-red-400" aria-label="Deafened" /> : p?.muted ? <MicOff className="size-3.5 text-red-400" aria-label="Muted" /> : null}
+              {p?.deafened ? (
+                <HeadphoneOff className="size-3.5 text-red-400" aria-label="Deafened" />
+              ) : p?.muted ? (
+                <MicOff className="size-3.5 text-red-400" aria-label="Muted" />
+              ) : null}
             </span>
           </li>
         );
@@ -101,9 +96,25 @@ export function ChannelSidebar() {
         label="Server menu"
         items={[
           { label: "Invite people", icon: <UserPlus className="size-4" aria-hidden />, onSelect: () => setDialog({ kind: "invite" }) },
-          { label: "Tambayan settings", icon: <Settings className="size-4" aria-hidden />, onSelect: () => setDialog({ kind: "settings" }), hidden: myRole !== "admin" },
-          { label: "Create channel", icon: <Plus className="size-4" aria-hidden />, onSelect: () => setDialog({ kind: "channel" }), hidden: !canManageChannels },
-          { label: "Leave tambayan", icon: <LogOut className="size-4" aria-hidden />, onSelect: () => setDialog({ kind: "leave" }), danger: true, hidden: isOwner },
+          {
+            label: "Tambayan settings",
+            icon: <Settings className="size-4" aria-hidden />,
+            onSelect: () => setDialog({ kind: "settings" }),
+            hidden: myRole !== "admin",
+          },
+          {
+            label: "Create channel",
+            icon: <Plus className="size-4" aria-hidden />,
+            onSelect: () => setDialog({ kind: "channel" }),
+            hidden: !canManageChannels,
+          },
+          {
+            label: "Leave tambayan",
+            icon: <LogOut className="size-4" aria-hidden />,
+            onSelect: () => setDialog({ kind: "leave" }),
+            danger: true,
+            hidden: isOwner,
+          },
         ]}
         trigger={({ toggle, open, id }) => (
           <button
@@ -111,6 +122,7 @@ export function ChannelSidebar() {
             onClick={toggle}
             aria-expanded={open}
             aria-controls={id}
+            aria-haspopup="menu"
             className="flex h-12 w-full items-center justify-between border-b border-white/5 px-4 text-left font-bold text-white transition-colors hover:bg-white/5"
             data-testid="server-menu"
           >
@@ -128,7 +140,7 @@ export function ChannelSidebar() {
                 type="button"
                 onClick={() => setCollapsed((c) => ({ ...c, [category]: !c[category] }))}
                 aria-expanded={!collapsed[category]}
-                className="flex items-center gap-1 font-silk text-[11px] uppercase tracking-wider text-slate-400 hover:text-slate-200"
+                className="touch-target relative flex items-center gap-1 font-silk text-[11px] uppercase tracking-wider text-slate-400 hover:text-slate-200"
               >
                 <ChevronDown className={cn("size-3 transition-transform", collapsed[category] && "-rotate-90")} aria-hidden />
                 {category}
@@ -138,7 +150,7 @@ export function ChannelSidebar() {
                   type="button"
                   aria-label={`Create channel in ${category}`}
                   onClick={() => setDialog({ kind: "channel", category, type: list[0]?.type ?? "text" })}
-                  className="rounded p-0.5 text-slate-400 opacity-0 transition-opacity hover:text-white focus:opacity-100 group-hover:opacity-100"
+                  className="touch-target relative rounded p-0.5 text-slate-400 opacity-0 transition-opacity hover:text-white focus:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"
                 >
                   <Plus className="size-4" aria-hidden />
                 </button>
@@ -154,15 +166,23 @@ export function ChannelSidebar() {
                     <li key={channel.id}>
                       <div
                         className={cn(
-                          "group flex items-center rounded-md transition-colors",
+                          "group relative flex items-center rounded-md transition-colors",
                           active ? "bg-white/10 text-white" : "text-slate-400 hover:bg-white/5 hover:text-slate-200",
                         )}
                       >
+                        {active && (
+                          <motion.span
+                            layoutId={`channel-pill-${server.id}`}
+                            className="absolute -left-2 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r bg-sun"
+                            transition={{ type: "spring", stiffness: 520, damping: 38 }}
+                            aria-hidden
+                          />
+                        )}
                         <Link
                           href={`/tambayan/${server.id}/${channel.id}`}
                           onClick={() => setNavOpen(false)}
                           aria-current={active ? "page" : undefined}
-                          className="flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1.5 text-[15px]"
+                          className="flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1.5 text-[15px] pointer-coarse:py-2.5"
                           data-channel-type={channel.type}
                         >
                           <Icon className="size-4 shrink-0 opacity-70" aria-hidden />
@@ -173,7 +193,7 @@ export function ChannelSidebar() {
                             type="button"
                             aria-label={`Edit ${channel.name}`}
                             onClick={() => setDialog({ kind: "channel", channel })}
-                            className="mr-1 rounded p-1 text-slate-400 opacity-0 transition-opacity hover:text-white focus:opacity-100 group-hover:opacity-100"
+                            className="touch-target relative mr-1 rounded p-1 text-slate-400 opacity-0 transition-opacity hover:text-white focus:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"
                           >
                             <Pencil className="size-3.5" aria-hidden />
                           </button>
@@ -204,7 +224,14 @@ export function ChannelSidebar() {
         defaultType={dialog?.kind === "channel" ? dialog.type : "text"}
         defaultCategory={dialog?.kind === "channel" ? dialog.category : undefined}
       />
-      <ConfirmDialog open={dialog?.kind === "leave"} onClose={() => setDialog(null)} onConfirm={leave} pending={leaving} title={`Umalis sa ${server.name}?`} confirmLabel="Leave">
+      <ConfirmDialog
+        open={dialog?.kind === "leave"}
+        onClose={() => setDialog(null)}
+        onConfirm={leave}
+        pending={leaving}
+        title={`Umalis sa ${server.name}?`}
+        confirmLabel="Leave"
+      >
         Kailangan mo ng bagong invite para makabalik.
       </ConfirmDialog>
     </aside>

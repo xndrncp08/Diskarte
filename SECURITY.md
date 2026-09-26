@@ -86,7 +86,7 @@ Rate limits live in process memory by default (Diskarte runs as one container). 
 | Database trigger | Rejects any attachment outside the uploader's folder, non-UUID names, disallowed types, `..`, non-numeric or oversized sizes |
 | Storage bucket | `attachments` is **private** with `file_size_limit = 10 MB` and `allowed_mime_types` set to the same list; `avatars` is public-read, images only, ≤ 5 MB |
 | Storage RLS | Attachments are readable only by members of the server in the path. Uploads must come from a member, into their own folder of a real channel, with a UUID name. Deletes are limited to the uploader or moderators. Avatar uploads are limited to `<uid>/(avatar\|banner)-<uuid>.<ext>` or, for admins, `servers/<id>/icon-<uuid>.<ext>` |
-| Delivery | Short-lived signed URLs from Supabase's own origin, so uploaded content never executes on Diskarte's origin |
+| Delivery | Short-lived signed URLs from Supabase's own origin, so uploaded content never executes on Diskarte's origin. Images may be re-encoded by the Next.js optimiser (`/_next/image`), which only fetches from `remotePatterns` (Supabase Storage paths and OAuth avatar CDNs) and never serves SVG |
 
 ### 5. HTTP, CORS & CSRF
 

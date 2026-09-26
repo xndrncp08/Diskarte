@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { resolveBannerCss } from "@/lib/profile";
 import type { PresenceStatus } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
+import { SmartImage } from "@/components/ui/SmartImage";
 import { UserAvatar } from "./UserAvatar";
 
 export interface ProfileCardData {
@@ -21,10 +22,9 @@ export interface ProfileCardData {
 export function ProfileCard({ profile, className, footer, role }: { profile: ProfileCardData; className?: string; footer?: ReactNode; role?: string | null }) {
   return (
     <div className={cn("glass-strong w-72 overflow-hidden rounded-2xl", className)} data-testid="profile-card">
-      <div
-        className="h-24 w-full bg-cover bg-center"
-        style={profile.banner_url ? { backgroundImage: `url("${encodeURI(profile.banner_url)}")` } : { background: resolveBannerCss(profile.banner_preset) }}
-      />
+      <div className="relative h-24 w-full overflow-hidden" style={profile.banner_url ? undefined : { background: resolveBannerCss(profile.banner_preset) }} data-testid="profile-banner">
+        {profile.banner_url && <SmartImage src={profile.banner_url} alt="" fill sizes="288px" className="object-cover" />}
+      </div>
       <div className="relative px-4 pb-4">
         <div className="-mt-10 mb-2 inline-block rounded-full border-4 border-abyss">
           <UserAvatar profile={profile} size={72} status={profile.status} />

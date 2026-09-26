@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { ArrowDown, Hash, Loader2, Pin } from "lucide-react";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -17,6 +18,7 @@ import type { MessageWithAuthor, Reaction } from "@/lib/messages";
 import { hasRole, type Channel } from "@/lib/servers";
 import { cn } from "@/lib/utils";
 import { Composer } from "./Composer";
+import { VirtualMessageList, type VirtualMessageListHandle } from "./VirtualMessageList";
 import { MessageItem, type MessageActions } from "./MessageItem";
 import { PinsDrawer } from "./PinsDrawer";
 import { Timestamp } from "./Timestamp";
@@ -33,23 +35,25 @@ export function ChatView({ channel, initial }: { channel: Channel; initial: { me
 
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [pinsOpen, setPinsOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<ChatMessage | null>(null);
   const [atBottom, setAtBottom] = useState(true);
   const [unseen, setUnseen] = useState(0);
 
-  const scroller = useRef<HTMLDivElement>(null);
+  const listRef = useRef<VirtualMessageListHandle>(null);
   const prevHeight = useRef(0);
   const prevFirstId = useRef<string | undefined>(chat.messages[0]?.id);
   const prevCount = useRef(chat.messages.length);
 
+  const messageKeys = useMemo(() => chat.messages.map((m) => m.id), [chat.messages]);
   const byId = useMemo(() => new Map(chat.messages.map((m) => [m.id, m])), [chat.messages]);
   const liveIds = useMemo(() => new Set(chat.messages.map((m) => m.id)), [chat.messages]);
   const names = useMemo(() => new Map(members.map((m) => [m.user_id, m.nickname ?? m.profile.display_name])), [members]);
 
   // Keep the viewport anchored: stick to bottom for new messages, preserve position when older ones prepend.
   useLayoutEffect(() => {
-    const el = scroller.current;
+    const el = listRef.current?.element;
     if (!el) return;
     const firstId = chat.messages[0]?.id;
     const grewAtTop = firstId !== prevFirstId.current && prevCount.current > 0 && chat.messages.length > prevCount.current;
@@ -57,10 +61,10 @@ export function ChatView({ channel, initial }: { channel: Channel; initial: { me
       el.scrollTop += el.scrollHeight - prevHeight.current;
     } else if (chat.messages.length > prevCount.current) {
       const last = chat.messages[chat.messages.length - 1];
-      if (atBottom || last?.author_id === me.id) el.scrollTop = el.scrollHeight;
+      if (atBottom || last?.author_id === me.id) listRef.current?.scrollToBottom();
       else setUnseen((n) => n + (chat.messages.length - prevCount.current));
     } else if (prevCount.current === 0 || atBottom) {
-      el.scrollTop = el.scrollHeight;
+      listRef.current?.scrollToBottom();
     }
     prevFirstId.current = firstId;
     prevCount.current = chat.messages.length;
@@ -68,7 +72,7 @@ export function ChatView({ channel, initial }: { channel: Channel; initial: { me
   }, [chat.messages, atBottom, me.id]);
 
   function onScroll() {
-    const el = scroller.current;
+    const el = listRef.current?.element;
     if (!el) return;
     const bottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
     if (bottom !== atBottom) setAtBottom(bottom);
@@ -78,21 +82,29 @@ export function ChatView({ channel, initial }: { channel: Channel; initial: { me
   }
 
   function scrollToBottom() {
-    const el = scroller.current;
-    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    listRef.current?.scrollToBottom("smooth");
     setUnseen(0);
   }
 
   const jumpTo = useCallback((id: string) => {
-    const el = document.getElementById(`message-${id}`);
-    if (!el) {
+    // The target may be outside the rendered window: scroll the virtualizer there, then flash it.
+    if (!listRef.current?.scrollToKey(id)) {
       toast("Nasa mas lumang history ang message — mag-scroll pataas para i-load.");
       return;
     }
-    el.scrollIntoView({ block: "center", behavior: "smooth" });
-    el.classList.add("ring-2", "ring-sun/60");
-    setTimeout(() => el.classList.remove("ring-2", "ring-sun/60"), 1600);
     setPinsOpen(false);
+    let tries = 0;
+    const flash = () => {
+      const el = document.getElementById(`message-${id}`);
+      if (!el) {
+        if (tries++ < 10) requestAnimationFrame(flash);
+        return;
+      }
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+      el.classList.add("ring-2", "ring-sun/60");
+      setTimeout(() => el.classList.remove("ring-2", "ring-sun/60"), 1600);
+    };
+    requestAnimationFrame(flash);
   }, []);
 
   const actions = useMemo<MessageActions>(
@@ -117,7 +129,13 @@ export function ChatView({ channel, initial }: { channel: Channel; initial: { me
 
   return (
     <div className="flex min-w-0 flex-1">
-      <section className="relative flex min-w-0 flex-1 flex-col" aria-label={`#${channel.name}`}>
+      <motion.section
+        className="relative flex min-w-0 flex-1 flex-col"
+        aria-label={`#${channel.name}`}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
+      >
         <ChannelHeader
           channel={channel}
           actions={
@@ -127,7 +145,7 @@ export function ChatView({ channel, initial }: { channel: Channel; initial: { me
                 aria-label="Pinned messages"
                 aria-expanded={pinsOpen}
                 onClick={() => setPinsOpen((o) => !o)}
-                className={cn("rounded-md p-1.5 transition-colors hover:bg-white/10", pinsOpen ? "text-white" : "text-slate-400")}
+                className={cn("touch-target relative rounded-md p-1.5 transition-colors hover:bg-white/10", pinsOpen ? "text-white" : "text-slate-400")}
               >
                 <Pin className="size-5" aria-hidden />
               </button>
@@ -145,10 +163,19 @@ export function ChatView({ channel, initial }: { channel: Channel; initial: { me
           onJump={jumpTo}
         />
 
-        <div ref={scroller} onScroll={onScroll} className="scrollbar-thin flex-1 overflow-y-auto" role="log" aria-live="polite" aria-relevant="additions" data-testid="message-list">
-          <div className="pb-4">
-            {chat.hasMore ? (
-              <div className="flex justify-center py-4 text-slate-500">{chat.loadingOlder ? <Loader2 className="size-5 animate-spin" aria-label="Loading older messages" /> : <span className="text-xs">Scroll up for more</span>}</div>
+        <VirtualMessageList
+          ref={listRef}
+          onScroll={onScroll}
+          keys={messageKeys}
+          header={
+            chat.hasMore ? (
+              <div className="flex justify-center py-4 text-slate-500">
+                {chat.loadingOlder ? (
+                  <Loader2 className="size-5 animate-spin" aria-label="Loading older messages" />
+                ) : (
+                  <span className="text-xs">Scroll up for more</span>
+                )}
+              </div>
             ) : (
               <div className="px-4 pb-2 pt-10">
                 <span className="mb-3 flex size-16 items-center justify-center rounded-full bg-white/10">
@@ -157,36 +184,39 @@ export function ChatView({ channel, initial }: { channel: Channel; initial: { me
                 <h2 className="text-3xl font-extrabold text-white">Welcome sa #{channel.name}!</h2>
                 <p className="text-slate-400">{channel.topic || "Ito ang simula ng channel na 'to."}</p>
               </div>
-            )}
-            {chat.messages.map((m, i) => {
-              const prev = chat.messages[i - 1];
-              const newDay = !prev || !sameDay(prev.created_at, m.created_at);
-              return (
-                <div key={m.id}>
-                  {newDay && (
-                    <div className="mx-4 my-4 flex items-center gap-2" role="separator">
-                      <span className="h-px flex-1 bg-white/10" />
-                      <Timestamp iso={m.created_at} variant="day" className="font-silk text-[10px] uppercase tracking-wider text-slate-500" />
-                      <span className="h-px flex-1 bg-white/10" />
-                    </div>
-                  )}
-                  <MessageItem
-                    message={m}
-                    grouped={!newDay && isGroupedWithPrevious(prev, m)}
-                    replyTo={m.reply_to_id ? (byId.get(m.reply_to_id) ?? null) : undefined}
-                    reactions={chat.reactions.get(m.id) ?? NO_REACTIONS}
-                    meId={me.id}
-                    canModerate={canModerate}
-                    mentioned={m.author_id !== me.id && mentionsUser(m.content, me.username)}
-                    editing={editingId === m.id}
-                    setEditing={setEditingId}
-                    actions={actions}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
+            )
+          }
+          renderItem={(i) => {
+            const m = chat.messages[i];
+            const prev = chat.messages[i - 1];
+            const newDay = !prev || !sameDay(prev.created_at, m.created_at);
+            return (
+              <>
+                {newDay && (
+                  <div className="mx-4 my-4 flex items-center gap-2" role="separator">
+                    <span className="h-px flex-1 bg-white/10" />
+                    <Timestamp iso={m.created_at} variant="day" className="font-silk text-[10px] uppercase tracking-wider text-slate-500" />
+                    <span className="h-px flex-1 bg-white/10" />
+                  </div>
+                )}
+                <MessageItem
+                  message={m}
+                  grouped={!newDay && isGroupedWithPrevious(prev, m)}
+                  replyTo={m.reply_to_id ? (byId.get(m.reply_to_id) ?? null) : undefined}
+                  reactions={chat.reactions.get(m.id) ?? NO_REACTIONS}
+                  meId={me.id}
+                  canModerate={canModerate}
+                  mentioned={m.author_id !== me.id && mentionsUser(m.content, me.username)}
+                  editing={editingId === m.id}
+                  setEditing={setEditingId}
+                  active={activeId === m.id}
+                  onActivate={setActiveId}
+                  actions={actions}
+                />
+              </>
+            );
+          }}
+        />
 
         {!atBottom && (
           <button
@@ -211,7 +241,7 @@ export function ChatView({ channel, initial }: { channel: Channel; initial: { me
           onTyping={notifyTyping}
           onStopTyping={stopTyping}
         />
-      </section>
+      </motion.section>
 
       {membersOpen && (
         <div className="hidden lg:flex">

@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { Crown, Shield, ShieldCheck, UserMinus } from "lucide-react";
 import { useEffect, useRef, useState, useTransition, type RefObject } from "react";
 import { toast } from "sonner";
@@ -11,6 +11,7 @@ import { ProfileCard } from "@/components/profile/ProfileCard";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { Button } from "@/components/ui/Button";
 import { FloatingPortal, useFloating } from "@/components/ui/floating";
+import { InertWhenExiting } from "@/components/ui/InertWhenExiting";
 import { visibleStatus, type PresencePayload } from "@/lib/presence";
 import { canManageMember, ROLE_LABEL, ROLE_RANK, type MemberWithProfile } from "@/lib/servers";
 import type { MemberRole } from "@/lib/supabase/database.types";
@@ -83,7 +84,7 @@ function MemberPopover({
   };
 
   return (
-    <motion.div
+    <InertWhenExiting
       ref={ref}
       role="dialog"
       aria-label={`${member.profile.display_name}'s profile`}
@@ -92,7 +93,7 @@ function MemberPopover({
       style={style}
       initial={{ opacity: 0, x: 8 }}
       animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 8, pointerEvents: "none" }}
+      exit={{ opacity: 0, x: 8 }}
       transition={{ duration: 0.15 }}
       className="z-50"
     >
@@ -129,7 +130,7 @@ function MemberPopover({
           )
         }
       />
-    </motion.div>
+    </InertWhenExiting>
   );
 }
 
@@ -148,6 +149,7 @@ function MemberRow({ member, presence, dim }: { member: MemberWithProfile; prese
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
+        aria-haspopup="dialog"
         className={cn("flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-white/5", dim && "opacity-45 hover:opacity-100")}
         data-testid="member-row"
       >

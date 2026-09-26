@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { SignalBars } from "@/components/retro/SignalBars";
 import { useCall } from "./CallProvider";
+import { ConnectionMeter } from "./ConnectionMeter";
 import { VoiceControls } from "./VoiceControls";
 
 const STATUS_TEXT = { connecting: "Kumokonekta…", reconnecting: "Nagre-reconnect…", connected: "Voice Connected", idle: "" } as const;
@@ -24,9 +24,9 @@ export function CallDock() {
           data-testid="call-dock"
         >
           <div className="mb-2 flex items-start justify-between gap-2">
+            <ConnectionMeter />
             <div className="min-w-0">
-              <p className={`flex items-center gap-1.5 text-sm font-bold ${call.status === "connected" ? "text-signal-green" : "text-signal-idle"}`}>
-                <SignalBars level={call.status === "connected" ? call.quality : 1} />
+              <p className={`text-sm font-bold ${call.status === "connected" ? "text-signal-green" : "text-signal-idle"}`} role="status">
                 {STATUS_TEXT[call.status]}
               </p>
               <Link href={`/tambayan/${call.target!.serverId}/${call.target!.channelId}`} className="block truncate text-xs text-slate-400 hover:text-white hover:underline">

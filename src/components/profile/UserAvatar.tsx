@@ -1,6 +1,7 @@
 import { PixelStatus } from "@/components/retro/PixelStatus";
 import type { PresenceStatus } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
+import { SmartImage } from "@/components/ui/SmartImage";
 import { SalakotAvatar } from "./SalakotAvatar";
 
 export interface AvatarProfile {
@@ -32,17 +33,7 @@ export function UserAvatar({
       data-speaking={speaking || undefined}
     >
       {profile.avatar_url ? (
-        // Plain <img>: avatar hosts vary (Supabase Storage, OAuth providers) and are already sized.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={profile.avatar_url}
-          alt=""
-          width={size}
-          height={size}
-          loading="lazy"
-          referrerPolicy="no-referrer"
-          className="size-full rounded-full object-cover"
-        />
+        <SmartImage src={profile.avatar_url} alt="" width={size} height={size} className="size-full rounded-full object-cover" />
       ) : (
         <SalakotAvatar preset={profile.avatar_preset} size={size} />
       )}

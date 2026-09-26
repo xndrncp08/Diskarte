@@ -8,8 +8,22 @@ import { FloatingPortal, useFloating, type Side } from "./floating";
  * Hover/focus tooltip rendered in a <body> portal so scrollable rails and sidebars can't clip it.
  * Purely visual (aria-hidden): the trigger keeps its own accessible name.
  */
-export function Tooltip({ label, side = "right", children, className }: { label: string; side?: Side; children: ReactNode; className?: string }) {
-  const [open, setOpen] = useState(false);
+export function Tooltip({
+  label,
+  side = "right",
+  children,
+  className,
+  disabled = false,
+}: {
+  label: string;
+  side?: Side;
+  children: ReactNode;
+  className?: string;
+  /** Suppress while the trigger's own popover is open (they'd overlap). */
+  disabled?: boolean;
+}) {
+  const [hovered, setOpen] = useState(false);
+  const open = hovered && !disabled;
   const anchor = useRef<HTMLSpanElement>(null);
   const tip = useRef<HTMLSpanElement>(null);
   const { style, side: resolved } = useFloating(open, anchor, tip, { side, align: "center", offset: 10 });

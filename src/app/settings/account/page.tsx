@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { LogOut, ShieldAlert } from "lucide-react";
 import { signOutAction } from "@/app/(auth)/actions";
 import { ChangePasswordForm } from "@/components/profile/ChangePasswordForm";
+import { SoundSettings } from "@/components/profile/SoundSettings";
 import { requireProfile } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Account & Sessions" };
@@ -43,6 +44,11 @@ export default async function AccountSettingsPage() {
           <ChangePasswordForm />
         </section>
       )}
+
+      <section className="glass rounded-2xl p-5">
+        <h2 className="mb-3 font-pixel text-[10px] text-sun">8-BIT SOUNDS</h2>
+        <SoundSettings className="max-w-md" />
+      </section>
 
       <section className="glass rounded-2xl p-5">
         <h2 className="mb-1 font-pixel text-[10px] text-sun">SESSIONS</h2>

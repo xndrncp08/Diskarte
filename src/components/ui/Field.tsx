@@ -55,7 +55,7 @@ export const InputField = forwardRef<HTMLInputElement, InputFieldProps>(function
         id={inputId}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined}
-        className={cn(control, "h-10", className)}
+        className={cn(control, "h-10 pointer-coarse:h-11", className)}
         {...props}
       />
     </FieldShell>

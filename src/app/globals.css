@@ -85,6 +85,56 @@ body {
   border: 1px solid rgb(255 255 255 / 0.12);
 }
 
+/*
+ * 44×44 px minimum hit area on touch screens (WCAG 2.5.5 / Apple HIG) without changing layout:
+ * an invisible pseudo-element extends the tappable box. The element must be positioned
+ * (add `relative` unless it's already absolute/fixed).
+ */
+@utility touch-target {
+  @media (pointer: coarse) {
+    &::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: max(100%, 44px);
+      height: max(100%, 44px);
+      transform: translate(-50%, -50%);
+    }
+  }
+}
+
+/* iOS notch / home-indicator padding for fixed chrome (composer, panels, call controls). */
+@utility pb-safe {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+@utility pt-safe {
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+}
+
+/* Active speaker: glowing neon border on glass tiles (static when motion is reduced). */
+@utility neon-speaking {
+  box-shadow:
+    0 0 0 2px #22c55e,
+    0 0 10px 2px rgb(34 197 94 / 0.65),
+    0 0 28px 6px rgb(34 197 94 / 0.28),
+    inset 0 0 18px rgb(34 197 94 / 0.18);
+  animation: neon-pulse 1.4s ease-in-out infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes neon-pulse {
+  50% {
+    box-shadow:
+      0 0 0 2px #4ade80,
+      0 0 16px 4px rgb(74 222 128 / 0.75),
+      0 0 40px 10px rgb(34 197 94 / 0.35),
+      inset 0 0 22px rgb(34 197 94 / 0.24);
+  }
+}
+
 /* Stepped 8-bit border drawn with box-shadows (no border-radius). */
 @utility pixel-border {
   box-shadow:

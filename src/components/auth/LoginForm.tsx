@@ -32,7 +32,7 @@ export function LoginForm({ next, initialError }: { next: string; initialError?:
         placeholder="••••••••"
       />
       <p className="-mt-2 text-right text-xs">
-        <Link href="/forgot-password" className="text-slate-400 hover:text-sun hover:underline">
+        <Link href="/forgot-password" className="inline-flex items-center pointer-coarse:min-h-11 pointer-coarse:min-w-11 pointer-coarse:justify-center pointer-coarse:px-1 text-slate-400 hover:text-sun hover:underline">
           Nakalimutan ang password?
         </Link>
       </p>
@@ -46,7 +46,7 @@ export function LoginForm({ next, initialError }: { next: string; initialError?:
       </Button>
       <p className="text-center text-sm text-slate-400">
         Bago ka dito?{" "}
-        <Link href={`/signup${next !== "/tambayan" ? `?next=${encodeURIComponent(next)}` : ""}`} className="font-semibold text-sun hover:underline">
+        <Link href={`/signup${next !== "/tambayan" ? `?next=${encodeURIComponent(next)}` : ""}`} className="inline-flex items-center pointer-coarse:min-h-11 pointer-coarse:min-w-11 pointer-coarse:justify-center pointer-coarse:px-1 font-semibold text-sun hover:underline">
           Gumawa ng account
         </Link>
       </p>

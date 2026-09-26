@@ -1,4 +1,7 @@
 import type { NextConfig } from "next";
+import { imageHosts, serializeImageHosts } from "./src/lib/image-hosts";
+
+const IMAGE_HOSTS = imageHosts(process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL);
 
 /** Static security headers; the per-request CSP (with a script nonce) is set in src/proxy.ts. */
 const securityHeaders = [
@@ -17,12 +20,17 @@ const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
   reactStrictMode: true,
-  // All user images are served straight from Supabase Storage / OAuth CDNs via <img>, so the
-  // built-in optimiser (and its ~28 MB sharp/libvips binaries) is left out of the container.
-  images: { unoptimized: true },
-  outputFileTracingExcludes: {
-    "*": ["node_modules/@img/**", "node_modules/sharp/**", "node_modules/@emnapi/**"],
+  // Avatars, server icons and image attachments are resized per device and served as AVIF/WebP.
+  images: {
+    formats: ["image/avif", "image/webp"],
+    remotePatterns: IMAGE_HOSTS,
+    deviceSizes: [640, 828, 1080, 1280, 1920],
+    imageSizes: [16, 24, 32, 40, 48, 64, 80, 96, 128, 256, 384],
+    minimumCacheTTL: 3600,
+    dangerouslyAllowSVG: false,
   },
+  // Lets <SmartImage> know at runtime which hosts the optimiser accepts (falls back to <img> otherwise).
+  env: { NEXT_PUBLIC_IMAGE_HOSTS: serializeImageHosts(IMAGE_HOSTS) },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

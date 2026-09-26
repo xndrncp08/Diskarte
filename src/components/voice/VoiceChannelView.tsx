@@ -1,13 +1,18 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { Loader2, Volume2 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useServer } from "@/components/providers/ServerProvider";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { ChannelHeader } from "@/components/server/ChannelHeader";
 import { Button } from "@/components/ui/Button";
 import type { Channel } from "@/lib/servers";
 import { useCall } from "./CallProvider";
-import { VoiceStage } from "./VoiceStage";
+import { StageSkeleton } from "./StageSkeleton";
+
+// The call grid pulls in @livekit/components-react; load it only once you're in the call.
+const VoiceStage = dynamic(() => import("./live/VoiceStage").then((m) => m.VoiceStage), { ssr: false, loading: () => <StageSkeleton /> });
 
 /** Voice channel page: lobby with who's inside + Join, or the live stage when you're connected. */
 export function VoiceChannelView({ channel }: { channel: Channel }) {
@@ -17,7 +22,13 @@ export function VoiceChannelView({ channel }: { channel: Channel }) {
   const inRoom = members.filter((m) => presence.get(m.user_id)?.voice_channel_id === channel.id);
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col" aria-label={channel.name}>
+    <motion.section
+      className="flex min-w-0 flex-1 flex-col"
+      aria-label={channel.name}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
+    >
       <ChannelHeader channel={channel} />
       {here && call.status === "connected" ? (
         <VoiceStage />
@@ -57,9 +68,11 @@ export function VoiceChannelView({ channel }: { channel: Channel }) {
               "Join Voice"
             )}
           </Button>
-          <p className="max-w-sm text-xs text-slate-500">Hihingi ang browser ng permiso para sa mikropono. Pwede kang mag-on ng camera at screen share pagpasok.</p>
+          <p className="max-w-sm text-xs text-slate-500">
+            Hihingi ang browser ng permiso para sa mikropono. Pwede kang mag-on ng camera at screen share pagpasok.
+          </p>
         </div>
       )}
-    </section>
+    </motion.section>
   );
 }
