@@ -1,18 +1,7 @@
 "use client";
 
-import { RoomAudioRenderer, RoomContext } from "@livekit/components-react";
-import {
-  ConnectionQuality,
-  DisconnectReason,
-  MediaDeviceFailure,
-  Room,
-  RoomEvent,
-  ScreenSharePresets,
-  Track,
-  VideoPresets,
-  type LocalTrackPublication,
-  type Participant,
-} from "livekit-client";
+import type { ConnectionQuality, DisconnectReason, LocalTrackPublication, Participant, Room } from "livekit-client";
+import dynamic from "next/dynamic";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useServerPresence, useVoicePresence } from "@/components/providers/PresenceProvider";
@@ -41,6 +30,8 @@ export interface CallState {
 
 export interface CallContextValue extends CallState {
   room: Room | null;
+  /** Identities LiveKit currently reports as speaking (active speaker detection). */
+  speaking: string[];
   join: (target: CallTarget) => Promise<void>;
   leave: () => void;
   toggleMute: () => Promise<void>;
@@ -50,31 +41,43 @@ export interface CallContextValue extends CallState {
   toggleNoiseSuppression: () => Promise<void>;
 }
 
+/**
+ * LiveKit's SDK (~650 KB) is only fetched when someone actually joins voice. Everything that needs
+ * `@livekit/components-react` lives in lazily loaded modules under ./live.
+ */
+let livekitModule: Promise<typeof import("livekit-client")> | null = null;
+export function loadLivekit() {
+  livekitModule ??= import("livekit-client");
+  return livekitModule;
+}
+
+const CallAudio = dynamic(() => import("./live/CallAudio").then((m) => m.CallAudio), { ssr: false });
+
 /** Exported for tests; app code uses <CallProvider> / useCall(). */
 export const CallContext = createContext<CallContextValue | null>(null);
 const NS_KEY = "diskarte:noise-suppression";
 
-export function qualityToLevel(quality: ConnectionQuality): SignalLevel {
+export function qualityToLevel(quality: ConnectionQuality | string): SignalLevel {
   switch (quality) {
-    case ConnectionQuality.Excellent:
+    case "excellent":
       return 4;
-    case ConnectionQuality.Good:
+    case "good":
       return 3;
-    case ConnectionQuality.Poor:
+    case "poor":
       return 1;
-    case ConnectionQuality.Lost:
+    case "lost":
       return 0;
     default:
       return 2;
   }
 }
 
-function mediaErrorMessage(err: unknown, device: "mic" | "camera" | "screen") {
-  const failure = MediaDeviceFailure.getFailure(err as Error);
+export function mediaErrorMessage(err: unknown, device: "mic" | "camera" | "screen") {
+  const name = (err as Error | undefined)?.name ?? "";
   const what = device === "mic" ? "mikropono" : device === "camera" ? "camera" : "screen share";
-  if (failure === MediaDeviceFailure.PermissionDenied || (err as Error)?.name === "NotAllowedError") return `Walang permiso sa ${what}. I-allow sa browser settings.`;
-  if (failure === MediaDeviceFailure.NotFound) return `Walang nakitang ${what}.`;
-  if (failure === MediaDeviceFailure.DeviceInUse) return `Gamit ng ibang app ang ${what}.`;
+  if (["NotAllowedError", "PermissionDeniedError", "SecurityError"].includes(name)) return `Walang permiso sa ${what}. I-allow sa browser settings.`;
+  if (["NotFoundError", "DevicesNotFoundError", "OverconstrainedError"].includes(name)) return `Walang nakitang ${what}.`;
+  if (["NotReadableError", "TrackStartError", "AbortError"].includes(name)) return `Gamit ng ibang app ang ${what}.`;
   return `Hindi ma-on ang ${what}.`;
 }
 
@@ -90,12 +93,13 @@ const IDLE: CallState = { status: "idle", target: null, muted: false, deafened: 
 
 /**
  * Owns the LiveKit room for the whole app shell so a call survives navigation between channels and
- * servers. Exposes the room through LiveKit's RoomContext for @livekit/components-react hooks.
+ * servers. Components that need LiveKit's React hooks wrap themselves in RoomContext (see ./live).
  */
 export function CallProvider({ children }: { children: ReactNode }) {
   // Only rendered once a call starts (client-side), so reading localStorage here cannot cause a hydration mismatch.
   const [state, setState] = useState<CallState>(() => ({ ...IDLE, noiseSuppression: readNoiseSuppression() }));
   const [room, setRoom] = useState<Room | null>(null);
+  const [speaking, setSpeaking] = useState<string[]>([]);
   const roomRef = useRef<Room | null>(null);
   const leaving = useRef(false);
   const mutedBeforeDeafen = useRef(false);
@@ -117,6 +121,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
     roomRef.current?.removeAllListeners();
     roomRef.current = null;
     setRoom(null);
+    setSpeaking([]);
     setState((s) => ({ ...IDLE, noiseSuppression: s.noiseSuppression }));
   }, []);
 
@@ -149,35 +154,37 @@ export function CallProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      const lk = await loadLivekit();
       const ns = readNoiseSuppression();
-      const next = new Room({
+      const next = new lk.Room({
         adaptiveStream: true,
         dynacast: true,
         disconnectOnPageLeave: true,
         audioCaptureDefaults: { echoCancellation: true, noiseSuppression: ns, autoGainControl: true },
-        videoCaptureDefaults: { resolution: VideoPresets.h720.resolution },
-        publishDefaults: { simulcast: true, screenShareEncoding: ScreenSharePresets.h1080fps15.encoding, dtx: true, red: true },
+        videoCaptureDefaults: { resolution: lk.VideoPresets.h720.resolution },
+        publishDefaults: { simulcast: true, screenShareEncoding: lk.ScreenSharePresets.h1080fps15.encoding, dtx: true, red: true },
       });
 
       next
-        .on(RoomEvent.ParticipantConnected, () => playSfx("join"))
-        .on(RoomEvent.ParticipantDisconnected, () => playSfx("leave"))
-        .on(RoomEvent.Reconnecting, () => setState((s) => ({ ...s, status: "reconnecting", quality: 1 })))
-        .on(RoomEvent.Reconnected, () => setState((s) => ({ ...s, status: "connected" })))
-        .on(RoomEvent.ConnectionQualityChanged, (quality: ConnectionQuality, participant: Participant) => {
+        .on(lk.RoomEvent.ParticipantConnected, () => playSfx("join"))
+        .on(lk.RoomEvent.ParticipantDisconnected, () => playSfx("leave"))
+        .on(lk.RoomEvent.ActiveSpeakersChanged, (speakers: Participant[]) => setSpeaking(speakers.map((p) => p.identity)))
+        .on(lk.RoomEvent.Reconnecting, () => setState((s) => ({ ...s, status: "reconnecting", quality: 1 })))
+        .on(lk.RoomEvent.Reconnected, () => setState((s) => ({ ...s, status: "connected" })))
+        .on(lk.RoomEvent.ConnectionQualityChanged, (quality: ConnectionQuality, participant: Participant) => {
           if (participant.isLocal) setState((s) => ({ ...s, quality: qualityToLevel(quality) }));
         })
-        .on(RoomEvent.LocalTrackUnpublished, (publication: LocalTrackPublication) => {
+        .on(lk.RoomEvent.LocalTrackUnpublished, (publication: LocalTrackPublication) => {
           // Browser "Stop sharing" button or a revoked camera.
-          if (publication.source === Track.Source.ScreenShare) setState((s) => ({ ...s, screen: false }));
-          if (publication.source === Track.Source.Camera) setState((s) => ({ ...s, camera: false }));
+          if (publication.source === lk.Track.Source.ScreenShare) setState((s) => ({ ...s, screen: false }));
+          if (publication.source === lk.Track.Source.Camera) setState((s) => ({ ...s, camera: false }));
         })
-        .on(RoomEvent.MediaDevicesError, (err: Error) => toast.error(mediaErrorMessage(err, "mic")))
-        .on(RoomEvent.Disconnected, (reason?: DisconnectReason) => {
+        .on(lk.RoomEvent.MediaDevicesError, (err: Error) => toast.error(mediaErrorMessage(err, "mic")))
+        .on(lk.RoomEvent.Disconnected, (reason?: DisconnectReason) => {
           if (roomRef.current !== next) return;
           if (!leaving.current) {
             playSfx("leave");
-            toast(reason === DisconnectReason.DUPLICATE_IDENTITY ? "Nag-join ka sa voice mula sa ibang tab." : "Na-disconnect ka sa voice.");
+            toast(reason === (lk.DisconnectReason.DUPLICATE_IDENTITY as DisconnectReason) ? "Nag-join ka sa voice mula sa ibang tab." : "Na-disconnect ka sa voice.");
           }
           teardown();
         });
@@ -266,7 +273,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
       // ignore storage failures
     }
     setState((s) => ({ ...s, noiseSuppression: enabled }));
-    const mic = roomRef.current?.localParticipant.getTrackPublication(Track.Source.Microphone)?.audioTrack;
+    const mic = roomRef.current?.localParticipant.getTrackPublication("microphone" as Parameters<Room["localParticipant"]["getTrackPublication"]>[0])?.audioTrack;
     if (mic && "restartTrack" in mic) {
       await (mic as { restartTrack: (o: MediaTrackConstraints) => Promise<void> })
         .restartTrack({ noiseSuppression: enabled, echoCancellation: true, autoGainControl: true })
@@ -278,16 +285,14 @@ export function CallProvider({ children }: { children: ReactNode }) {
   useEffect(() => () => void roomRef.current?.disconnect(), []);
 
   const value = useMemo<CallContextValue>(
-    () => ({ ...state, room, join, leave, toggleMute, toggleDeafen, toggleCamera, toggleScreen, toggleNoiseSuppression }),
-    [state, room, join, leave, toggleMute, toggleDeafen, toggleCamera, toggleScreen, toggleNoiseSuppression],
+    () => ({ ...state, room, speaking, join, leave, toggleMute, toggleDeafen, toggleCamera, toggleScreen, toggleNoiseSuppression }),
+    [state, room, speaking, join, leave, toggleMute, toggleDeafen, toggleCamera, toggleScreen, toggleNoiseSuppression],
   );
 
   return (
     <CallContext.Provider value={value}>
-      <RoomContext.Provider value={room ?? undefined}>
-        {children}
-        {room && state.status !== "idle" && <RoomAudioRenderer room={room} muted={state.deafened} />}
-      </RoomContext.Provider>
+      {children}
+      {room && state.status !== "idle" && <CallAudio room={room} muted={state.deafened} />}
     </CallContext.Provider>
   );
 }

@@ -9,7 +9,7 @@ import { useOptionalServer } from "@/components/providers/ServerProvider";
 import { UserAvatar, type AvatarProfile } from "@/components/profile/UserAvatar";
 import { SignalBars } from "@/components/retro/SignalBars";
 import { cn } from "@/lib/utils";
-import { qualityToLevel } from "./CallProvider";
+import { qualityToLevel } from "../CallProvider";
 
 /** Resolve a participant (identity = user id) to a profile: Tambayan members first, token metadata second. */
 export function useParticipantProfile(participant: Participant): AvatarProfile & { name: string } {
@@ -51,8 +51,8 @@ export function ParticipantTile({ trackRef, className, compact = false }: { trac
   return (
     <div
       className={cn(
-        "relative flex items-center justify-center overflow-hidden rounded-2xl bg-midnight/80 transition-shadow duration-150",
-        speaking && !isScreen ? "shadow-[0_0_0_3px_#22C55E]" : "shadow-[0_0_0_1px_rgb(255_255_255_/_0.08)]",
+        "relative flex items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-midnight/80 backdrop-blur-md transition-shadow duration-150",
+        speaking && !isScreen ? "neon-speaking" : "shadow-[0_0_0_1px_rgb(255_255_255_/_0.06)]",
         className,
       )}
       data-testid="participant-tile"

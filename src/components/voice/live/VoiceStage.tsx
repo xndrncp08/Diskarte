@@ -1,11 +1,12 @@
 "use client";
 
-import { useTracks, type TrackReferenceOrPlaceholder } from "@livekit/components-react";
+import { RoomContext, useTracks, type TrackReferenceOrPlaceholder } from "@livekit/components-react";
 import { Track } from "livekit-client";
 import { useEffect, useRef, useState } from "react";
 import { bestGrid } from "@/lib/voice-layout";
 import { ParticipantTile } from "./ParticipantTile";
-import { VoiceControls } from "./VoiceControls";
+import { useCall } from "../CallProvider";
+import { VoiceControls } from "../VoiceControls";
 
 function useSize<T extends HTMLElement>() {
   const ref = useRef<T>(null);
@@ -22,8 +23,19 @@ function useSize<T extends HTMLElement>() {
 
 const trackKey = (t: TrackReferenceOrPlaceholder) => `${t.participant.identity}:${t.source}`;
 
-/** Live call stage: adaptive camera grid, or focus layout (screen + filmstrip) when someone shares. */
+/** Lazily loaded with LiveKit's React bindings; scopes them to the active room. */
 export function VoiceStage() {
+  const { room } = useCall();
+  if (!room) return null;
+  return (
+    <RoomContext.Provider value={room}>
+      <Stage />
+    </RoomContext.Provider>
+  );
+}
+
+/** Live call stage: adaptive camera grid, or focus layout (screen + filmstrip) when someone shares. */
+function Stage() {
   const tracks = useTracks(
     [
       { source: Track.Source.Camera, withPlaceholder: true },
