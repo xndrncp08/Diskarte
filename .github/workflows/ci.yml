@@ -101,14 +101,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - uses: supabase/setup-cli@v1
-        with:
-          version: latest
+      # The CLI comes from npm (its binary downloads from release assets), which avoids the
+      # unauthenticated GitHub API lookups that `setup-cli` with `version: latest` gets rate-limited on.
       - name: Start Supabase (applies supabase/migrations)
-        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,postgres-meta
+        run: npx --yes supabase@latest start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,postgres-meta
       - name: Export Supabase credentials
         run: |
-          supabase status -o env > supabase.env
+          npx --yes supabase@latest status -o env > supabase.env
           get() { grep -E "^$1=" supabase.env | head -n1 | cut -d= -f2- | tr -d '"'; }
           KEY=$(get ANON_KEY); [ -n "$KEY" ] || KEY=$(get PUBLISHABLE_KEY)
           echo "SUPABASE_URL=$(get API_URL)" >> "$GITHUB_ENV"
@@ -133,4 +132,4 @@ jobs:
         if: failure()
         run: |
           docker logs livekit 2>&1 | tail -n 100 || true
-          supabase status || true
+          npx --yes supabase@latest status || true
