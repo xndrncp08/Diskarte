@@ -1,0 +1,3 @@
+# Diskarte
+
+> Walang Shutdown-Shutdown: Ang Bagong Istambayan ng Bayan.
