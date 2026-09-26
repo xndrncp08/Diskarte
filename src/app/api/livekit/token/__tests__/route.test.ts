@@ -9,6 +9,7 @@ const VOICE = "20000000-0000-4000-8000-000000000003";
 const TEXT = "20000000-0000-4000-8000-000000000001";
 
 let currentUser: { id: string } | null = { id: USER };
+let isMember = true;
 const channels: Record<string, { id: string; type: string; server_id: string }> = {
   [VOICE]: { id: VOICE, type: "voice", server_id: "s1" },
   [TEXT]: { id: TEXT, type: "text", server_id: "s1" },
@@ -22,7 +23,9 @@ vi.mock("@/lib/supabase/server", () => ({
       const api = {
         select: () => api,
         eq: (_c: string, v: string) => ((id = v), api),
-        maybeSingle: async () => ({ data: table === "channels" ? (channels[id] ?? null) : null }),
+        maybeSingle: async () => ({
+          data: table === "channels" ? (channels[id] ?? null) : table === "members" ? (isMember ? { role: "member" } : null) : null,
+        }),
         single: async () => ({ data: { display_name: "Juan", username: "juan", avatar_url: null, avatar_preset: "ube" } }),
       };
       return api;
@@ -38,6 +41,7 @@ function request(body: unknown) {
 
 beforeEach(() => {
   currentUser = { id: USER };
+  isMember = true;
   limiters.voiceToken.reset();
   vi.stubEnv("SUPABASE_URL", "https://proj.supabase.co");
   vi.stubEnv("SUPABASE_ANON_KEY", "anon-key-that-is-long-enough");
@@ -58,6 +62,18 @@ describe("POST /api/livekit/token", () => {
     expect((await POST(request({ channelId: TEXT }))).status).toBe(400);
   });
 
+  it("refuses non-members even if they know the channel id", async () => {
+    isMember = false;
+    const res = await POST(request({ channelId: VOICE }));
+    expect(res.status).toBe(403);
+    expect(await res.json()).not.toHaveProperty("token");
+  });
+
+  it("never returns the API secret", async () => {
+    const text = await (await POST(request({ channelId: VOICE }))).text();
+    expect(text).not.toContain("a-very-long-livekit-secret-for-tests-123456");
+  });
+
   it("mints a room-scoped token bound to the user's identity", async () => {
     const res = await POST(request({ channelId: VOICE }));
     expect(res.status).toBe(200);
@@ -69,6 +85,8 @@ describe("POST /api/livekit/token", () => {
     expect(claims.name).toBe("Juan");
     expect(claims.video).toMatchObject({ room: `voice:${VOICE}`, roomJoin: true, canPublish: true, canSubscribe: true, canUpdateOwnMetadata: false });
     expect(JSON.parse(claims.metadata!)).toMatchObject({ username: "juan", avatar_preset: "ube" });
+    // Short-lived: at most one hour.
+    expect(claims.exp! - claims.nbf!).toBeLessThanOrEqual(3600);
   });
 
   it("rejects tokens signed with another secret", async () => {

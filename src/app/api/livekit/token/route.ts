@@ -11,8 +11,9 @@ const noStore = { "Cache-Control": "no-store" };
 
 /**
  * POST /api/livekit/token { channelId }
- * Verifies the Supabase session, that the channel is a voice channel, and (through RLS) that the
- * caller is a member of its Tambayan — only then mints a room-scoped LiveKit token.
+ * Verifies the Supabase session, that the channel is a voice channel, and that the caller is a
+ * member of its Tambayan (RLS + explicit membership check) — only then mints a 1-hour, room-scoped
+ * LiveKit token. The API secret never leaves the server (lib/livekit.ts is `server-only`).
  * CSRF: proxy.ts rejects cross-origin POSTs to /api/*.
  */
 export async function POST(request: NextRequest) {
@@ -37,6 +38,10 @@ export async function POST(request: NextRequest) {
   const { data: channel } = await supabase.from("channels").select("id, type, server_id").eq("id", parsed.data.channelId).maybeSingle();
   if (!channel) return NextResponse.json({ error: "Channel not found" }, { status: 404, headers: noStore });
   if (channel.type !== "voice") return NextResponse.json({ error: "Not a voice channel" }, { status: 400, headers: noStore });
+
+  // Defence in depth: an explicit membership row, not just the RLS-filtered channel read.
+  const { data: membership } = await supabase.from("members").select("role").eq("server_id", channel.server_id).eq("user_id", user.id).maybeSingle();
+  if (!membership) return NextResponse.json({ error: "Not a member of this Tambayan" }, { status: 403, headers: noStore });
 
   const { data: profile } = await supabase.from("profiles").select("display_name, username, avatar_url, avatar_preset").eq("id", user.id).single();
   if (!profile) return NextResponse.json({ error: "Profile missing" }, { status: 403, headers: noStore });

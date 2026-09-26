@@ -1,15 +1,6 @@
 import { z } from "zod";
 import type { Tables } from "@/lib/supabase/database.types";
 
-export interface Attachment {
-  path: string;
-  name: string;
-  size: number;
-  type: string;
-  width?: number;
-  height?: number;
-}
-
 export type Message = Tables<"messages">;
 export type Reaction = Tables<"reactions">;
 export type MessageAuthor = Pick<Tables<"profiles">, "id" | "username" | "display_name" | "avatar_url" | "avatar_preset">;
@@ -36,14 +27,21 @@ export const MESSAGE_SELECT = `*, author:profiles!messages_author_id_fkey(${AUTH
 
 export const MAX_ATTACHMENTS = 10;
 
+export const ATTACHMENT_MIME = ["image/jpeg", "image/png", "image/webp", "image/gif", "audio/mpeg", "video/mp4"] as const;
+export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
+/** `<server uuid>/<channel uuid>/<user uuid>/<random uuid>.<ext>` — nothing user-controlled. */
+export const ATTACHMENT_PATH_RE = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp|gif|mp3|mp4)$/;
+
 export const attachmentSchema = z.object({
-  path: z.string().min(1).max(512).refine((p) => !p.includes("..") && !p.startsWith("/"), "Invalid path"),
+  path: z.string().max(200).regex(ATTACHMENT_PATH_RE, "Invalid path"),
   name: z.string().min(1).max(120),
-  size: z.number().int().nonnegative().max(25 * 1024 * 1024),
-  type: z.string().max(120),
+  size: z.number().int().positive().max(ATTACHMENT_MAX_BYTES),
+  type: z.enum(ATTACHMENT_MIME),
   width: z.number().int().positive().max(20000).optional(),
   height: z.number().int().positive().max(20000).optional(),
 });
+
+export type Attachment = z.infer<typeof attachmentSchema>;
 
 /** Every attachment must live in the uploader's folder for this exact channel (DB trigger enforces too). */
 export function attachmentPrefix(serverId: string, channelId: string, userId: string) {
@@ -59,7 +57,15 @@ export function parseAttachments(value: unknown): Attachment[] {
 }
 
 export function isImageAttachment(a: Attachment) {
-  return ["image/png", "image/jpeg", "image/webp", "image/gif"].includes(a.type);
+  return a.type.startsWith("image/");
+}
+
+export function isVideoAttachment(a: Attachment) {
+  return a.type === "video/mp4";
+}
+
+export function isAudioAttachment(a: Attachment) {
+  return a.type === "audio/mpeg";
 }
 
 /** One-line plain-text preview of a Markdown message (reply bars, notifications, pins). */

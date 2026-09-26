@@ -1,15 +1,17 @@
 "use client";
 
-import { Download, FileText } from "lucide-react";
+import { Music } from "lucide-react";
 import { useSignedUrls } from "@/hooks/useSignedUrls";
-import { isImageAttachment, type Attachment } from "@/lib/messages";
+import { isAudioAttachment, isImageAttachment, isVideoAttachment, type Attachment } from "@/lib/messages";
 import { formatBytes } from "@/lib/utils";
 
+/** Renders allow-listed attachments from short-lived signed URLs (private bucket). */
 export function Attachments({ attachments }: { attachments: Attachment[] }) {
   const urls = useSignedUrls(attachments.map((a) => a.path));
   if (attachments.length === 0) return null;
   const images = attachments.filter(isImageAttachment);
-  const files = attachments.filter((a) => !isImageAttachment(a));
+  const videos = attachments.filter(isVideoAttachment);
+  const audio = attachments.filter(isAudioAttachment);
 
   return (
     <div className="mt-1 space-y-1.5" data-testid="attachments">
@@ -30,7 +32,7 @@ export function Attachments({ attachments }: { attachments: Attachment[] }) {
                 {urls[a.path] ? (
                   // Signed, short-lived Storage URLs: skip next/image (no caching/optimising private files).
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={urls[a.path]} alt={a.name} loading="lazy" className="size-full object-cover" />
+                  <img src={urls[a.path]} alt={a.name} loading="lazy" referrerPolicy="no-referrer" className="size-full object-cover" />
                 ) : (
                   <span className="block size-full animate-pulse bg-white/5" aria-label={`Loading ${a.name}`} />
                 )}
@@ -39,18 +41,23 @@ export function Attachments({ attachments }: { attachments: Attachment[] }) {
           })}
         </div>
       )}
-      {files.map((a) => (
-        <div key={a.path} className="flex max-w-sm items-center gap-3 rounded-lg border border-white/10 bg-black/30 px-3 py-2">
-          <FileText className="size-8 shrink-0 text-sky-300" aria-hidden />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-sky-200">{a.name}</p>
-            <p className="text-xs text-slate-500">{formatBytes(a.size)}</p>
-          </div>
-          {urls[a.path] && (
-            <a href={urls[a.path]} target="_blank" rel="noopener noreferrer" aria-label={`Download ${a.name}`} className="rounded-md p-1.5 text-slate-300 hover:bg-white/10 hover:text-white">
-              <Download className="size-4" aria-hidden />
-            </a>
+      {videos.map((a) => (
+        <div key={a.path} className="max-w-xl overflow-hidden rounded-lg border border-white/10 bg-black">
+          {urls[a.path] ? (
+            <video src={urls[a.path]} controls preload="metadata" playsInline className="max-h-96 w-full" aria-label={a.name} />
+          ) : (
+            <span className="block aspect-video w-full animate-pulse bg-white/5" aria-label={`Loading ${a.name}`} />
           )}
+        </div>
+      ))}
+      {audio.map((a) => (
+        <div key={a.path} className="flex max-w-sm flex-col gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2">
+          <div className="flex items-center gap-2">
+            <Music className="size-5 shrink-0 text-sun" aria-hidden />
+            <p className="min-w-0 flex-1 truncate text-sm font-medium text-slate-200">{a.name}</p>
+            <span className="text-xs text-slate-500">{formatBytes(a.size)}</span>
+          </div>
+          {urls[a.path] && <audio src={urls[a.path]} controls preload="none" className="w-full" aria-label={a.name} />}
         </div>
       ))}
     </div>
