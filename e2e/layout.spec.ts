@@ -61,8 +61,10 @@ test.describe("overlay layout regression", () => {
   test("menus, pickers, popovers and modals never shift columns or overflow", async ({ page }) => {
     await signUpAndOnboard(page, makeUser("Layout"));
     await createServer(page, `Layout ${Date.now().toString(36)}`);
-    for (let i = 0; i < 12; i++) await sendMessage(page, `Filler message ${i} para may scroll`);
-    await expect(messageItem(page, "Filler message 11")).toBeVisible();
+    // The DB allows 8 messages / 10 s per user, so use 7 tall messages to get a scrolling list.
+    for (let i = 0; i < 7; i++) await sendMessage(page, `Filler message ${i}\npara\nmay\nscroll\ndito`);
+    await expect(messageItem(page, "Filler message 6")).toBeVisible();
+    await expect(page.getByTestId("message").filter({ hasText: "Hindi na-send" })).toHaveCount(0);
     const before = await columnBoxes(page);
     await expectNoPageOverflow(page);
 
@@ -85,7 +87,7 @@ test.describe("overlay layout regression", () => {
     await expect(statusMenu).toHaveCount(0);
 
     // Reaction picker from the hover toolbar on the last (bottom-most) message flips upward.
-    const last = messageItem(page, "Filler message 11");
+    const last = messageItem(page, "Filler message 6");
     await last.hover();
     await last.getByRole("toolbar", { name: "Message actions" }).getByRole("button", { name: "Add reaction" }).click();
     const picker = page.getByRole("dialog", { name: "Emoji picker" });
