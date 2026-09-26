@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { Inter, JetBrains_Mono, Press_Start_2P, Silkscreen } from "next/font/google";
-import { Toaster } from "sonner";
+import { AppToaster } from "@/components/AppToaster";
 import { RuntimeConfigProvider } from "@/components/providers/RuntimeConfig";
 import { tryGetPublicEnv } from "@/lib/env";
 import "./globals.css";
@@ -57,16 +57,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         >
           {children}
         </RuntimeConfigProvider>
-        <Toaster
-          theme="dark"
-          position="bottom-right"
-          toastOptions={{
-            classNames: {
-              toast: "!bg-black/70 !backdrop-blur-md !border !border-white/10 !text-slate-100 !rounded-xl",
-              description: "!text-slate-400",
-            },
-          }}
-        />
+        <AppToaster />
       </body>
     </html>
   );

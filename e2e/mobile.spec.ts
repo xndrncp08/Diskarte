@@ -3,6 +3,11 @@ import { createServer, FULL, FULL_REASON, makeUser, signUpAndOnboard } from "./h
 
 test.use({ ...devices["Pixel 7"], permissions: ["microphone", "camera"] });
 
+/** Transient toasts legitimately sit on top of the UI for a few seconds; let them clear first. */
+async function waitForToasts(page: Page) {
+  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0, { timeout: 15_000 });
+}
+
 /** Checks the *tappable* area (including touch-target pseudo-elements) is at least 44×44 px. */
 async function expectTouchTarget(locator: Locator) {
   const ok = await locator.evaluate((el) => {
@@ -47,10 +52,22 @@ test.describe("mobile — public pages", () => {
 test.describe("mobile — app shell", () => {
   test.skip(!FULL, FULL_REASON);
 
+  test("toasts appear at the top on phones, clear of the composer", async ({ page }) => {
+    await signUpAndOnboard(page, makeUser("Toast"));
+    await createServer(page, `Toast ${Date.now().toString(36)}`); // shows a success toast
+    const toast = page.locator("[data-sonner-toast]").first();
+    await expect(toast).toBeVisible();
+    const toastBox = (await toast.boundingBox())!;
+    const composerBox = (await page.getByTestId("composer").boundingBox())!;
+    expect(toastBox.y + toastBox.height).toBeLessThan(composerBox.y);
+    expect(toastBox.y).toBeLessThan(page.viewportSize()!.height / 2);
+  });
+
   test("swipe opens the navigation drawer; chat controls are touch-sized and above the fold", async ({ page }) => {
     await signUpAndOnboard(page, makeUser("Phone"));
     await createServer(page, `Phone ${Date.now().toString(36)}`);
     const viewport = page.viewportSize()!;
+    await waitForToasts(page);
 
     // The composer sits fully inside the dynamic viewport (100dvh), not under the URL bar.
     const composer = await page.getByTestId("composer").boundingBox();
@@ -100,6 +117,7 @@ test.describe("mobile — app shell", () => {
     await page.getByRole("navigation", { name: "Channels" }).getByRole("link", { name: "Tambayan 1" }).click();
     await page.getByTestId("join-voice").click();
     await expect(page.getByTestId("voice-stage")).toBeVisible({ timeout: 30_000 });
+    await waitForToasts(page);
     const bar = page.getByTestId("voice-stage").getByRole("toolbar", { name: "Call controls" });
     const box = (await bar.boundingBox())!;
     expect(box.x).toBeGreaterThanOrEqual(0);
