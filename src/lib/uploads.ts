@@ -33,3 +33,41 @@ export function safeFileName(name: string): string {
     .slice(-80);
   return cleaned || "file";
 }
+
+/** Read intrinsic image size so the chat can reserve layout space (no jump when it loads). */
+export async function imageSize(file: File): Promise<{ width: number; height: number } | null> {
+  if (!file.type.startsWith("image/") || typeof createImageBitmap === "undefined") return null;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const size = { width: bitmap.width, height: bitmap.height };
+    bitmap.close();
+    return size;
+  } catch {
+    return null;
+  }
+}
+
+export const BLOCKED_ATTACHMENT_TYPES = ["text/html", "image/svg+xml", "application/xhtml+xml", "application/javascript", "text/javascript"];
+
+export function validateAttachment(file: File): string | null {
+  if (file.size === 0) return `${file.name}: walang laman ang file.`;
+  if (file.size > MAX_ATTACHMENT_BYTES) return `${file.name}: hanggang 25 MB lang bawat file.`;
+  if (BLOCKED_ATTACHMENT_TYPES.includes(file.type)) return `${file.name}: hindi pwedeng i-upload ang ganitong file.`;
+  return null;
+}
+
+/** Upload a chat attachment into `<server>/<channel>/<user>/<uuid>-<name>` in the private bucket. */
+export async function uploadAttachment(
+  supabase: SupabaseClient,
+  opts: { serverId: string; channelId: string; userId: string; file: File },
+): Promise<{ path: string; name: string; size: number; type: string; width?: number; height?: number }> {
+  const problem = validateAttachment(opts.file);
+  if (problem) throw new Error(problem);
+  const name = safeFileName(opts.file.name);
+  const path = `${opts.serverId}/${opts.channelId}/${opts.userId}/${crypto.randomUUID()}-${name}`;
+  const type = opts.file.type || "application/octet-stream";
+  const { error } = await supabase.storage.from("attachments").upload(path, opts.file, { contentType: type, upsert: false });
+  if (error) throw new Error(`${opts.file.name}: hindi na-upload.`);
+  const size = await imageSize(opts.file);
+  return { path, name: opts.file.name.slice(0, 120), size: opts.file.size, type, ...(size ?? {}) };
+}

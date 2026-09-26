@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { TextChannelView } from "@/components/chat/TextChannelView";
+import { ChatView } from "@/components/chat/ChatView";
 import { VoiceChannelView } from "@/components/voice/VoiceChannelView";
 import { requireProfile } from "@/lib/auth";
-import { getRecentMessages } from "@/lib/data/messages";
+import { getChannelHistory } from "@/lib/data/messages";
 import { getServerBundle } from "@/lib/data/servers";
 
 async function load(params: PageProps<"/tambayan/[serverId]/[channelId]">["params"]) {
@@ -24,6 +24,6 @@ export default async function ChannelPage({ params }: PageProps<"/tambayan/[serv
   const { channel } = await load(params);
   if (!channel) notFound();
   if (channel.type === "voice") return <VoiceChannelView channel={channel} />;
-  const messages = await getRecentMessages(channel.id);
-  return <TextChannelView key={channel.id} channel={channel} initialMessages={messages} />;
+  const history = await getChannelHistory(channel.id);
+  return <ChatView key={channel.id} channel={channel} initial={history} />;
 }
