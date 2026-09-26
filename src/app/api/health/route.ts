@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   const status = deep && report.status !== "ok" ? 503 : 200;
   return Response.json(report, {
     status,
-    headers: { "Cache-Control": "no-store", "Access-Control-Allow-Origin": "*" },
+    headers: { "Cache-Control": "no-store" },
   });
 }
 
