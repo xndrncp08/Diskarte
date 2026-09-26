@@ -1,121 +1,25 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { audioMock } from "../mocks/audio";
 import { livekitMock, mockCameraPlaceholder, mockParticipant } from "../mocks/livekit";
 import { navigation } from "../mocks/navigation";
-import { MEMBER_ID, MOD_ID, OWNER_ID, SERVER_ID, ServerFixture, makeChannel, makeMember, makeProfile, presenceFor, server } from "../fixtures/server";
+import { MOD_ID, OWNER_ID, makeProfile, server } from "../fixtures/server";
 
 // ---- server actions (the only server boundary the UI talks to) ---------------------------
-vi.mock("@/actions/messages", () => ({
-  sendMessageAction: vi.fn(async (input: { id: string; channelId: string; content: string }) => ({
-    ok: true,
-    data: {
-      message: {
-        id: input.id,
-        channel_id: input.channelId,
-        server_id: "10000000-0000-4000-8000-000000000001",
-        author_id: "00000000-0000-4000-8000-00000000000a",
-        content: input.content,
-        attachments: [],
-        reply_to_id: null,
-        pinned: false,
-        pinned_at: null,
-        pinned_by: null,
-        edited_at: null,
-        created_at: new Date().toISOString(),
-        author: { id: "00000000-0000-4000-8000-00000000000a", username: "kapitan", display_name: "Kapitan", avatar_url: null, avatar_preset: "araw" },
-      },
-    },
-  })),
-  editMessageAction: vi.fn(async () => ({ ok: true })),
-  deleteMessageAction: vi.fn(async () => ({ ok: true })),
-  setPinnedAction: vi.fn(async () => ({ ok: true })),
-  toggleReactionAction: vi.fn(async () => ({ ok: true })),
-}));
-vi.mock("@/actions/servers", () => ({
-  leaveServerAction: vi.fn(async () => ({ ok: true })),
-  regenerateInviteAction: vi.fn(async () => ({ ok: true, data: { code: "NEWCODE234" } })),
-  createChannelAction: vi.fn(async () => ({ ok: true })),
-  updateChannelAction: vi.fn(async () => ({ ok: true })),
-  deleteChannelAction: vi.fn(async () => ({ ok: true })),
-  updateServerAction: vi.fn(async () => ({ ok: true })),
-  deleteServerAction: vi.fn(async () => ({ ok: true })),
-  setMemberRoleAction: vi.fn(async () => ({ ok: true })),
-  kickMemberAction: vi.fn(async () => ({ ok: true })),
-  createServerAction: vi.fn(async () => ({ ok: true, data: { serverId: "x" } })),
-  joinServerAction: vi.fn(async () => ({ ok: true, data: { serverId: "x" } })),
-}));
-vi.mock("@/actions/profile", () => ({
-  setStatusAction: vi.fn(async () => ({ ok: true })),
-  updateProfileAction: vi.fn(async () => ({ ok: true })),
-}));
-vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }), Toaster: () => null }));
+vi.mock("@/actions/messages", async () => (await import("../mocks/actions")).messageActions);
+vi.mock("@/actions/servers", async () => (await import("../mocks/actions")).serverActions);
+vi.mock("@/actions/profile", async () => (await import("../mocks/actions")).profileActions);
+vi.mock("sonner", async () => (await import("../mocks/actions")).toastMock);
 
 const { DiskarteLogo } = await import("@/components/brand/DiskarteLogo");
 const { DiskarteWordmark } = await import("@/components/brand/DiskarteWordmark");
 const { default: LandingPage } = await import("@/app/page");
 const { RuntimeConfigProvider } = await import("@/components/providers/RuntimeConfig");
-const { PresenceProvider } = await import("@/components/providers/PresenceProvider");
-const { useServer } = await import("@/components/providers/ServerProvider");
-const { CallProvider } = await import("@/components/voice/CallProvider");
-const { ChannelSidebar } = await import("@/components/server/ChannelSidebar");
-const { DrawerPanel } = await import("@/components/shell/AppShell");
-const { ChatView } = await import("@/components/chat/ChatView");
-const { VoiceChannelView } = await import("@/components/voice/VoiceChannelView");
 const { UserAvatar } = await import("@/components/profile/UserAvatar");
 const { ProfileBuilder } = await import("@/components/profile/ProfileBuilder");
-const { useParams } = await import("next/navigation");
+const { DiskarteLayout, GENERAL, MEMBERS: members, RUNTIME, TAMBAYAN, channelUrl } = await import("../fixtures/layout");
 
-// ---- fixtures --------------------------------------------------------------------------------
-const CHANNELS = [
-  makeChannel("20000000-0000-4000-8000-000000000001", "general", "text", 0),
-  makeChannel("20000000-0000-4000-8000-000000000002", "chika", "text", 1),
-  makeChannel("20000000-0000-4000-8000-000000000003", "lfg-valorant", "text", 2),
-  makeChannel("20000000-0000-4000-8000-000000000004", "Tambayan 1", "voice", 3),
-  makeChannel("20000000-0000-4000-8000-000000000005", "Chill & Music", "voice", 4),
-];
-const [GENERAL, , , TAMBAYAN] = CHANNELS;
-const members = [makeMember(OWNER_ID, "Kapitan", "admin"), makeMember(MOD_ID, "Maria", "moderator", { avatar_preset: "ube" }), makeMember(MEMBER_ID, "Juan", "member", { avatar_preset: "dagat" })];
-const RUNTIME = { supabaseUrl: "https://proj.supabase.co", supabaseAnonKey: "anon-key-that-is-long-enough", livekitUrl: "wss://proj.livekit.cloud", siteUrl: "http://localhost:3000" };
-
-/** Mirrors app/(app)/tambayan/[serverId]/[channelId]/page.tsx: text → chat, voice → call view. */
-function ChannelRoute() {
-  const { channelId } = useParams<{ channelId?: string }>();
-  const { channels } = useServer();
-  const channel = channels.find((c) => c.id === channelId);
-  if (!channel) return <p>Pumili ng channel</p>;
-  return channel.type === "voice" ? (
-    <VoiceChannelView channel={channel} />
-  ) : (
-    <ChatView key={channel.id} channel={channel} initial={{ messages: [], reactions: [], hasMore: false }} />
-  );
-}
-
-function DiskarteLayout({ children }: { children?: ReactNode }) {
-  return (
-    <RuntimeConfigProvider value={RUNTIME}>
-      <ServerFixture members={members} overrides={{ channels: CHANNELS }} presence={new Map([[MOD_ID, presenceFor(MOD_ID, { voice_channel_id: TAMBAYAN.id })]])}>
-        <PresenceProvider>
-          <CallProvider>
-            <div className="flex h-dvh">
-              <DrawerPanel>
-                <ChannelSidebar />
-              </DrawerPanel>
-              <main data-testid="active-view" className="flex min-w-0 flex-1">
-                <ChannelRoute />
-              </main>
-              {children}
-            </div>
-          </CallProvider>
-        </PresenceProvider>
-      </ServerFixture>
-    </RuntimeConfigProvider>
-  );
-}
-
-const channelUrl = (id: string) => `/tambayan/${SERVER_ID}/${id}`;
 const channelNav = () => screen.getByRole("navigation", { name: "Channels" });
 
 beforeEach(() => {

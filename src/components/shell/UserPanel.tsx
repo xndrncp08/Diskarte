@@ -64,6 +64,7 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
     <div className="flex items-center gap-1 border-t border-white/5 bg-black/40 px-2 py-2" data-testid="user-panel">
       <Menu
         label="Set status"
+        side="top"
         className="min-w-0 flex-1"
         items={items}
         trigger={({ toggle, open, id }) => (

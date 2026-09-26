@@ -1,23 +1,44 @@
-import type { ReactNode } from "react";
-import { cn } from "@/lib/utils";
+"use client";
 
-/** CSS-only tooltip shown on hover/focus-within; the trigger keeps its own accessible name. */
-export function Tooltip({ label, side = "right", children, className }: { label: string; side?: "right" | "top" | "bottom"; children: ReactNode; className?: string }) {
+import { useRef, useState, type ReactNode } from "react";
+import { cn } from "@/lib/utils";
+import { FloatingPortal, useFloating, type Side } from "./floating";
+
+/**
+ * Hover/focus tooltip rendered in a <body> portal so scrollable rails and sidebars can't clip it.
+ * Purely visual (aria-hidden): the trigger keeps its own accessible name.
+ */
+export function Tooltip({ label, side = "right", children, className }: { label: string; side?: Side; children: ReactNode; className?: string }) {
+  const [open, setOpen] = useState(false);
+  const anchor = useRef<HTMLSpanElement>(null);
+  const tip = useRef<HTMLSpanElement>(null);
+  const { style, side: resolved } = useFloating(open, anchor, tip, { side, align: "center", offset: 10 });
+
   return (
-    <span className={cn("group/tt relative inline-flex", className)}>
+    <span
+      ref={anchor}
+      className={cn("relative inline-flex", className)}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+      onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
+    >
       {children}
-      <span
-        role="presentation"
-        className={cn(
-          "pointer-events-none absolute z-50 whitespace-nowrap rounded-md bg-black/90 px-2.5 py-1 text-xs font-semibold text-white opacity-0 shadow-lg transition-opacity duration-100",
-          "group-hover/tt:opacity-100 group-focus-within/tt:opacity-100",
-          side === "right" && "left-full top-1/2 ml-3 -translate-y-1/2",
-          side === "top" && "bottom-full left-1/2 mb-2 -translate-x-1/2",
-          side === "bottom" && "left-1/2 top-full mt-2 -translate-x-1/2",
-        )}
-      >
-        {label}
-      </span>
+      {open && (
+        <FloatingPortal>
+          <span
+            ref={tip}
+            aria-hidden
+            data-floating="tooltip"
+            data-side={resolved}
+            style={style}
+            className="pointer-events-none z-50 whitespace-nowrap rounded-md bg-black/90 px-2.5 py-1 text-xs font-semibold text-white shadow-lg"
+          >
+            {label}
+          </span>
+        </FloatingPortal>
+      )}
     </span>
   );
 }
