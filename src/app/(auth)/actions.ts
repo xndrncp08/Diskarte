@@ -45,6 +45,7 @@ export async function signUpAction(_prev: AuthFormState, form: FormData): Promis
     const parsed = signUpSchema.safeParse({
       email: text(form, "email"),
       password: text(form, "password"),
+      confirmPassword: text(form, "confirmPassword"),
       username: text(form, "username"),
       displayName: text(form, "displayName"),
     });

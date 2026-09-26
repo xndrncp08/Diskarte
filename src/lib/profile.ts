@@ -151,15 +151,20 @@ export const credentialsSchema = z.object({
   password: z.string().min(1, "Ilagay ang password").max(72, "Hanggang 72 characters lang"),
 });
 
-export const signUpSchema = z.object({
-  email: emailSchema,
-  password: passwordSchema,
-  username: usernameSchema,
-  displayName: z
-    .string()
-    .transform((v) => stripControl(v).trim())
-    .pipe(z.string().min(1, "Ano'ng itatawag namin sa'yo?").max(32)),
-});
+export const PASSWORD_MISMATCH = "Hindi magkapareho ang passwords";
+
+export const signUpSchema = z
+  .object({
+    email: emailSchema,
+    password: passwordSchema,
+    confirmPassword: z.string(),
+    username: usernameSchema,
+    displayName: z
+      .string()
+      .transform((v) => stripControl(v).trim())
+      .pipe(z.string().min(1, "Ano'ng itatawag namin sa'yo?").max(32)),
+  })
+  .refine((v) => v.password === v.confirmPassword, { path: ["confirmPassword"], message: PASSWORD_MISMATCH });
 
 export const OAUTH_PROVIDERS = ["github", "google", "discord"] as const;
 export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];

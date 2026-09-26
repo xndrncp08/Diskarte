@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/app/(auth)/actions", () => ({
@@ -29,8 +29,21 @@ describe("LoginForm", () => {
 describe("SignupForm", () => {
   it("asks for display name, username, email and password", () => {
     render(<SignupForm />);
-    for (const label of ["Display name", "Username", "Email", "Password"]) expect(screen.getByLabelText(label)).toBeInTheDocument();
+    for (const label of ["Display name", "Username", "Email", "Password", "Confirm password"]) expect(screen.getByLabelText(label)).toBeInTheDocument();
+    expect(screen.getByLabelText("Confirm password")).toHaveAttribute("name", "confirmPassword");
     expect(screen.getByRole("button", { name: "Sali na!" })).toBeInTheDocument();
+  });
+
+  it("flags mismatched confirmation live and blocks submit until it matches", () => {
+    render(<SignupForm />);
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "Kape-Muna-2026" } });
+    fireEvent.change(screen.getByLabelText("Confirm password"), { target: { value: "Kape-Muna-202" } });
+    expect(screen.getByRole("alert")).toHaveTextContent("Hindi magkapareho ang passwords");
+    expect(screen.getByRole("button", { name: "Sali na!" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Confirm password"), { target: { value: "Kape-Muna-2026" } });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByText("Magkapareho ✓")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sali na!" })).toBeEnabled();
   });
 });
 
