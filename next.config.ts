@@ -17,8 +17,11 @@ const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
   reactStrictMode: true,
-  images: {
-    remotePatterns: [{ protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/**" }],
+  // All user images are served straight from Supabase Storage / OAuth CDNs via <img>, so the
+  // built-in optimiser (and its ~28 MB sharp/libvips binaries) is left out of the container.
+  images: { unoptimized: true },
+  outputFileTracingExcludes: {
+    "*": ["node_modules/@img/**", "node_modules/sharp/**", "node_modules/@emnapi/**"],
   },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];

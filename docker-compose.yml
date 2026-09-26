@@ -1,0 +1,49 @@
+# Local container orchestration.
+#   docker compose up --build                 # web app only (uses your hosted Supabase/LiveKit from .env)
+#   docker compose --profile livekit up       # + a local LiveKit server in dev mode for voice/video
+# For a local database run `npx supabase start` (see DEPLOYMENT.md) and point SUPABASE_URL at it.
+name: diskarte
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: diskarte:local
+    ports:
+      - "3000:3000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      SITE_URL: ${SITE_URL:-http://localhost:3000}
+      # host.docker.internal lets the container reach `supabase start` / LiveKit on your machine.
+      SUPABASE_URL: ${SUPABASE_URL:-http://host.docker.internal:54321}
+      LIVEKIT_URL: ${LIVEKIT_URL:-ws://localhost:7880}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-secret}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.next/cache:uid=1001,gid=1001
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  livekit:
+    profiles: ["livekit"]
+    image: livekit/livekit-server:latest # dev-only helper; pin a release tag for anything shared
+    command: ["--dev", "--bind", "0.0.0.0", "--node-ip", "127.0.0.1"]
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+    restart: unless-stopped
