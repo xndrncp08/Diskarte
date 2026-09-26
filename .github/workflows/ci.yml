@@ -57,6 +57,7 @@ jobs:
           GZ=$(( $(docker save diskarte:ci | gzip -c | wc -c) / 1000 / 1000 ))
           echo "### Docker image: ${MB} MB (${GZ} MB compressed)" >> "$GITHUB_STEP_SUMMARY"
           echo "Image size: ${MB} MB (${GZ} MB gzipped)"
+          echo "::notice title=Docker image size::${MB} MB uncompressed, ${GZ} MB gzipped"
           test "$MB" -lt 150
       - name: Container smoke test
         run: |

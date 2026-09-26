@@ -74,7 +74,7 @@ test.describe("servers, channels and real-time chat", () => {
 
     const outsider = await newUserPage(browser, "Outsider");
     await outsider.page.goto(serverUrl);
-    await expect(outsider.page.getByText(/404|could not be found/i)).toBeVisible();
+    await expect(outsider.page.getByRole("heading", { name: "Walang ganitong tambayan" })).toBeVisible();
 
     const invite = await inviteLink(page);
     await outsider.page.goto(invite);
