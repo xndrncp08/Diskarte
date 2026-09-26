@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Compass, Menu as MenuIcon, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { DiskarteLogo } from "@/components/brand/DiskarteLogo";
+import { CallDock } from "@/components/voice/CallDock";
 import { useMe } from "@/components/providers/MeProvider";
 import type { Server } from "@/lib/servers";
 import { AddServerDialog } from "./AddServerDialog";
@@ -36,6 +37,7 @@ export function HomeView({ servers }: { servers: Server[] }) {
               {servers.length === 0 && <li className="px-2 text-sm text-slate-500">Wala pa. Gumawa o sumali!</li>}
             </ul>
           </nav>
+          <CallDock />
           <UserPanel />
         </aside>
       </DrawerPanel>
