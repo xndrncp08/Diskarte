@@ -30,7 +30,8 @@ export async function proxy(request: NextRequest) {
 
   const env = tryGetPublicEnv();
   const nonce = createNonce();
-  const csp = buildCsp(nonce, { supabaseUrl: env?.supabaseUrl, livekitUrl: env?.livekitUrl }, process.env.NODE_ENV === "development");
+  const secure = request.nextUrl.protocol === "https:" || request.headers.get("x-forwarded-proto") === "https";
+  const csp = buildCsp(nonce, { supabaseUrl: env?.supabaseUrl, livekitUrl: env?.livekitUrl }, process.env.NODE_ENV === "development", secure);
 
   const makeResponse = () => {
     const requestHeaders = new Headers(request.headers);
