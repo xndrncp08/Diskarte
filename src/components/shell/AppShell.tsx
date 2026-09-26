@@ -40,7 +40,9 @@ function Frame({ servers, children }: { servers: Server[]; children: ReactNode }
       <div className={cn("fixed inset-y-0 left-0 z-40 transition-transform duration-200 ease-out md:static md:z-auto md:translate-x-0", navOpen ? "translate-x-0" : "-translate-x-full")}>
         <ServerRail servers={servers} />
       </div>
-      <div className="relative z-10 flex min-w-0 flex-1">{children}</div>
+      {/* No z-index here: a stacking context would trap the mobile drawer panels (z-40) beneath the
+          drawer backdrop (z-30), making the channel sidebar untappable on phones. */}
+      <div className="relative flex min-w-0 flex-1">{children}</div>
       <FloatingCallHUD />
     </div>
   );
