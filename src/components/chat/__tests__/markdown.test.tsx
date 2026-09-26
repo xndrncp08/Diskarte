@@ -12,11 +12,13 @@ describe("MessageMarkdown", () => {
     expect(container.querySelector(".hljs-keyword")).toHaveTextContent("const");
   });
 
-  it("never renders raw HTML", () => {
-    const { container } = render(<MessageMarkdown content={'<img src=x onerror="alert(1)"><script>alert(1)</script><b>hi</b>'} />);
+  it("never renders raw HTML — it shows up as the literal text that was typed", () => {
+    const payload = '<img src=x onerror="alert(1)"><script>alert(1)</script><b>hi</b>';
+    const { container } = render(<MessageMarkdown content={payload} />);
     expect(container.querySelector("img")).toBeNull();
     expect(container.querySelector("script")).toBeNull();
     expect(container.querySelector("b")).toBeNull();
+    expect(container.textContent).toContain(payload);
   });
 
   it("drops dangerous link protocols and hardens external links", () => {
