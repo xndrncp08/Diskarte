@@ -1,9 +1,10 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { FloatingPortal, useFloating, type Side } from "./floating";
+import { InertWhenExiting } from "./InertWhenExiting";
 
 export interface MenuItem {
   label: string;
@@ -90,7 +91,7 @@ export function Menu({
       <FloatingPortal>
         <AnimatePresence>
           {open && visible.length > 0 && (
-            <motion.div
+            <InertWhenExiting
               ref={panel}
               id={id}
               role="menu"
@@ -100,7 +101,7 @@ export function Menu({
               style={style}
               initial={{ opacity: 0, y: resolvedSide === "top" ? 4 : -4, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.98, pointerEvents: "none" }}
+              exit={{ opacity: 0, scale: 0.98 }}
               transition={{ duration: 0.12 }}
               className="glass-strong z-50 min-w-52 max-w-[calc(100vw-1rem)] rounded-xl p-1.5 shadow-xl shadow-black/50"
             >
@@ -114,7 +115,7 @@ export function Menu({
                     item.onSelect();
                   }}
                   className={cn(
-                    "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm outline-none transition-colors",
+                    "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm outline-none transition-colors pointer-coarse:py-3",
                     item.danger ? "text-red-300 hover:bg-red-500/20 focus:bg-red-500/20" : "text-slate-200 hover:bg-sun/90 hover:text-abyss focus:bg-sun/90 focus:text-abyss",
                   )}
                 >
@@ -122,7 +123,7 @@ export function Menu({
                   {item.label}
                 </button>
               ))}
-            </motion.div>
+            </InertWhenExiting>
           )}
         </AnimatePresence>
       </FloatingPortal>

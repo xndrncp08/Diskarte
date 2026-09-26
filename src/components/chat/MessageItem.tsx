@@ -31,7 +31,10 @@ function ToolbarButton({ label, onClick, children, danger = false }: { label: st
       aria-label={label}
       title={label}
       onClick={onClick}
-      className={cn("rounded-md p-1.5 transition-colors hover:bg-white/10", danger ? "text-red-300 hover:text-red-200" : "text-slate-400 hover:text-white")}
+      className={cn(
+        "touch-target relative rounded-md p-1.5 transition-colors hover:bg-white/10 pointer-coarse:p-2.5",
+        danger ? "text-red-300 hover:text-red-200" : "text-slate-400 hover:text-white",
+      )}
     >
       {children}
     </button>
@@ -84,6 +87,8 @@ export const MessageItem = memo(function MessageItem({
   canModerate,
   mentioned,
   editing,
+  active = false,
+  onActivate,
   setEditing,
   actions,
 }: {
@@ -96,6 +101,9 @@ export const MessageItem = memo(function MessageItem({
   mentioned: boolean;
   editing: boolean;
   setEditing: (id: string | null) => void;
+  /** Touch: whether this message's action bar is pinned open, and a setter for the active message. */
+  active?: boolean;
+  onActivate?: (id: string | null) => void;
   actions: MessageActions;
 }) {
   const mine = message.author_id === meId;
@@ -108,6 +116,13 @@ export const MessageItem = memo(function MessageItem({
       aria-label={`${name}: ${message.content.slice(0, 80)}`}
       data-testid="message"
       data-message-id={message.id}
+      data-active={active || undefined}
+      onClick={(e) => {
+        // Touch screens have no hover: tapping a message (not one of its controls) toggles its actions.
+        if (!onActivate || !window.matchMedia?.("(pointer: coarse)").matches) return;
+        if ((e.target as Element).closest("button, a, textarea, input, [role=dialog]")) return;
+        onActivate(active ? null : message.id);
+      }}
       className={cn(
         "group relative flex gap-3 rounded-md px-3 transition-colors",
         grouped ? "py-0.5" : "mt-3 pb-0.5 pt-1",
@@ -193,7 +208,15 @@ export const MessageItem = memo(function MessageItem({
         <div
           role="toolbar"
           aria-label="Message actions"
-          className="glass-strong absolute -top-4 right-3 z-10 hidden items-center rounded-lg p-0.5 shadow-lg group-focus-within:flex group-hover:flex"
+          className={cn(
+            "glass-strong absolute -top-4 right-3 z-10 flex items-center rounded-lg p-0.5 shadow-lg",
+            // Slides in on hover (mouse), focus (keyboard) or tap (touch: no hover on phones).
+            "pointer-events-none translate-y-1 scale-95 opacity-0 transition-[opacity,transform] duration-150 ease-out",
+            "group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100",
+            "group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:scale-100 group-focus-within:opacity-100",
+            "group-data-[active=true]:pointer-events-auto group-data-[active=true]:translate-y-0 group-data-[active=true]:scale-100 group-data-[active=true]:opacity-100",
+            "motion-reduce:transition-none",
+          )}
         >
           <EmojiPicker onPick={(emoji) => actions.onReact(message.id, emoji)} placement="bottom" />
           <ToolbarButton label="Reply" onClick={() => actions.onReply(message)}>

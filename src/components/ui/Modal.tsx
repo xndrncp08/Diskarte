@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { useEffect, useEffectEvent, useId, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
+import { InertWhenExiting } from "./InertWhenExiting";
 
 const FOCUSABLE = 'a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
@@ -67,11 +68,11 @@ export function Modal({ open, onClose, title, description, children, className, 
   return createPortal(
     <AnimatePresence>
       {open && (
-        <motion.div
+        <InertWhenExiting
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0, pointerEvents: "none" }}
+          exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
         >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} aria-hidden />
@@ -91,7 +92,7 @@ export function Modal({ open, onClose, title, description, children, className, 
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="absolute right-3 top-3 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+              className="touch-target absolute right-3 top-3 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
             >
               <X className="size-4" aria-hidden />
             </button>
@@ -105,7 +106,7 @@ export function Modal({ open, onClose, title, description, children, className, 
             )}
             <div className={cn(!hideTitle && "mt-5")}>{children}</div>
           </motion.div>
-        </motion.div>
+        </InertWhenExiting>
       )}
     </AnimatePresence>,
     document.body,

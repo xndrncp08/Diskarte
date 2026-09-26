@@ -233,7 +233,7 @@ describe("reaction emoji picker & message actions", () => {
     expect(screen.getByTestId("message-list").contains(picker)).toBe(false);
     expect(message.contains(picker)).toBe(false);
     expect(picker).toHaveClass("z-50");
-    expect(within(picker).getByRole("button", { name: "Petmalu" })).toBeInTheDocument();
+    expect(await within(picker).findByRole("button", { name: "Petmalu" })).toBeInTheDocument();
   });
 
   it("opens downward for messages near the top of the viewport", async () => {
@@ -250,7 +250,7 @@ describe("reaction emoji picker & message actions", () => {
 
   it("reacts and closes; Escape returns focus to the trigger", async () => {
     const { user, picker, trigger } = await openToolbarPicker({ top: 300, left: 900 });
-    await user.click(within(picker).getByRole("button", { name: "Lodi" }));
+    await user.click(await within(picker).findByRole("button", { name: "Lodi" }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Emoji picker" })).toBeNull());
     expect(await screen.findByRole("button", { name: "Lodi: 1 reaction" })).toBeInTheDocument();
     await user.click(trigger);
@@ -271,7 +271,7 @@ describe("reaction emoji picker & message actions", () => {
     expect(picker.closest(".overflow-hidden")).toBeNull(); // …but the panel doesn't.
     await waitFor(() => expect(picker).toHaveAttribute("data-side", "top"));
     expectInsideViewport(picker, "emoji-picker");
-    await user.click(within(picker).getByRole("button", { name: "Petmalu" }));
+    await user.click(await within(picker).findByRole("button", { name: "Petmalu" }));
     expect(screen.getByTestId("composer")).toHaveValue(":petmalu: ");
   });
 });

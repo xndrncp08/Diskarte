@@ -26,7 +26,7 @@ export function OAuthButtons({ providers, next }: { providers: OAuthProvider[]; 
               <input type="hidden" name="next" value={next} />
               <button
                 type="submit"
-                className="flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 text-sm font-semibold text-slate-100 transition-colors hover:bg-white/10"
+                className="flex h-10 w-full items-center justify-center gap-2 pointer-coarse:h-11 rounded-lg border border-white/10 bg-white/5 text-sm font-semibold text-slate-100 transition-colors hover:bg-white/10"
               >
                 <Icon className="size-4" />
                 Continue with {label}

@@ -6,17 +6,35 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/utils";
 import { useCall } from "./CallProvider";
 
-function ControlButton({ label, active, danger, onClick, children, size }: { label: string; active?: boolean; danger?: boolean; onClick: () => void; children: ReactNode; size: "sm" | "lg" }) {
+function ControlButton({
+  label,
+  active,
+  danger,
+  onClick,
+  children,
+  size,
+  secondary = false,
+}: {
+  label: string;
+  active?: boolean;
+  danger?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+  size: "sm" | "lg";
+  /** In the compact dock on touch screens only mic / deafen / leave stay, at 44 px. */
+  secondary?: boolean;
+}) {
   return (
-    <Tooltip label={label} side="top" className={size === "sm" ? "min-w-0 flex-1" : undefined}>
+    <Tooltip label={label} side="top" className={cn(size === "sm" && "min-w-0 flex-1", size === "sm" && secondary && "pointer-coarse:hidden")}>
       <button
         type="button"
         aria-label={label}
         aria-pressed={active}
         onClick={onClick}
         className={cn(
-          "flex items-center justify-center transition-colors",
-          size === "lg" ? "size-12 rounded-2xl" : "h-8 w-full rounded-md",
+          "flex items-center justify-center transition-[color,background-color,transform] duration-150",
+          "active:scale-95 motion-reduce:active:scale-100",
+          size === "lg" ? "size-12 rounded-2xl" : "h-8 w-full rounded-md pointer-coarse:h-11",
           danger ? "bg-red-500 text-white hover:bg-red-400" : active ? "bg-white text-abyss hover:bg-slate-200" : "bg-white/10 text-slate-200 hover:bg-white/20",
         )}
       >
@@ -40,13 +58,13 @@ export function VoiceControls({ size = "lg", compact = false }: { size?: "sm" | 
       </ControlButton>
       {!compact && (
         <>
-          <ControlButton size={size} label={call.camera ? "Turn off camera" : "Turn on camera"} active={call.camera} onClick={() => void call.toggleCamera()}>
+          <ControlButton size={size} secondary label={call.camera ? "Turn off camera" : "Turn on camera"} active={call.camera} onClick={() => void call.toggleCamera()}>
             {call.camera ? <Video className={icon} aria-hidden /> : <VideoOff className={icon} aria-hidden />}
           </ControlButton>
-          <ControlButton size={size} label={call.screen ? "Stop sharing" : "Share screen"} active={call.screen} onClick={() => void call.toggleScreen()}>
+          <ControlButton size={size} secondary label={call.screen ? "Stop sharing" : "Share screen"} active={call.screen} onClick={() => void call.toggleScreen()}>
             {call.screen ? <MonitorOff className={icon} aria-hidden /> : <MonitorUp className={icon} aria-hidden />}
           </ControlButton>
-          <ControlButton size={size} label={`Noise suppression ${call.noiseSuppression ? "on" : "off"}`} active={call.noiseSuppression} onClick={() => void call.toggleNoiseSuppression()}>
+          <ControlButton size={size} secondary label={`Noise suppression ${call.noiseSuppression ? "on" : "off"}`} active={call.noiseSuppression} onClick={() => void call.toggleNoiseSuppression()}>
             <AudioLines className={icon} aria-hidden />
           </ControlButton>
         </>

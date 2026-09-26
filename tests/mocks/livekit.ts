@@ -16,8 +16,10 @@ export class MockRoom {
   handlers = new Map<string, (...args: unknown[]) => void>();
   connect = vi.fn(async () => undefined);
   disconnect = vi.fn(async () => undefined);
+  remoteParticipants = new Map<string, unknown>();
   localParticipant = {
     identity: "local",
+    trackPublications: new Map<string, unknown>(),
     setMicrophoneEnabled: vi.fn(async () => undefined),
     setCameraEnabled: vi.fn(async () => undefined),
     setScreenShareEnabled: vi.fn(async () => undefined),

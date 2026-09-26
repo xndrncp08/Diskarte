@@ -1,7 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { useEffect, type ReactNode } from "react";
+import { useSwipeDrawer } from "@/hooks/useSwipeDrawer";
 import { MeProvider } from "@/components/providers/MeProvider";
 import { PresenceProvider } from "@/components/providers/PresenceProvider";
 import { CallProvider } from "@/components/voice/CallProvider";
@@ -34,15 +36,42 @@ function MembershipWatcher({ userId }: { userId: string }) {
 
 function Frame({ servers, children }: { servers: Server[]; children: ReactNode }) {
   const { navOpen, setNavOpen } = useShellUI();
+  const swipe = useSwipeDrawer(navOpen, setNavOpen);
   return (
-    <div className="diskarte-backdrop relative flex h-dvh overflow-hidden">
-      {navOpen && <button type="button" aria-label="Close navigation" className="fixed inset-0 z-30 bg-black/60 md:hidden" onClick={() => setNavOpen(false)} />}
-      <div className={cn("fixed inset-y-0 left-0 z-40 transition-transform duration-200 ease-out md:static md:z-auto md:translate-x-0", navOpen ? "translate-x-0" : "-translate-x-full")}>
+    <div className="diskarte-backdrop relative flex h-dvh overflow-hidden" data-testid="shell" {...swipe}>
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-lg focus:bg-sun focus:px-4 focus:py-2 focus:font-semibold focus:text-abyss"
+      >
+        Skip to content
+      </a>
+      <AnimatePresence>
+        {navOpen && (
+          <motion.button
+            type="button"
+            aria-label="Close navigation"
+            className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm md:hidden"
+            onClick={() => setNavOpen(false)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, pointerEvents: "none" }}
+            transition={{ duration: 0.2 }}
+          />
+        )}
+      </AnimatePresence>
+      <div
+        className={cn(
+          "fixed inset-y-0 left-0 z-40 transition-transform duration-200 ease-out md:static md:z-auto md:translate-x-0",
+          navOpen ? "translate-x-0" : "-translate-x-full",
+        )}
+      >
         <ServerRail servers={servers} />
       </div>
       {/* No z-index here: a stacking context would trap the mobile drawer panels (z-40) beneath the
           drawer backdrop (z-30), making the channel sidebar untappable on phones. */}
-      <div className="relative flex min-w-0 flex-1">{children}</div>
+      <div id="main-content" tabIndex={-1} className="relative flex min-w-0 flex-1 outline-none">
+        {children}
+      </div>
       <FloatingCallHUD />
     </div>
   );
@@ -51,14 +80,17 @@ function Frame({ servers, children }: { servers: Server[]; children: ReactNode }
 export function AppShell({ profile, servers, children }: { profile: Tables<"profiles">; servers: Server[]; children: ReactNode }) {
   return (
     <MeProvider profile={profile}>
-      <PresenceProvider>
-        <CallProvider>
-          <ShellUIProvider>
-            <MembershipWatcher userId={profile.id} />
-            <Frame servers={servers}>{children}</Frame>
-          </ShellUIProvider>
-        </CallProvider>
-      </PresenceProvider>
+      {/* Honour the OS "reduce motion" setting for every framer-motion animation in the app. */}
+      <MotionConfig reducedMotion="user">
+        <PresenceProvider>
+          <CallProvider>
+            <ShellUIProvider>
+              <MembershipWatcher userId={profile.id} />
+              <Frame servers={servers}>{children}</Frame>
+            </ShellUIProvider>
+          </CallProvider>
+        </PresenceProvider>
+      </MotionConfig>
     </MeProvider>
   );
 }

@@ -3,16 +3,16 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Settings } from "lucide-react";
-import { useState, useTransition, type ReactNode } from "react";
+import { useTransition, type ReactNode } from "react";
 import { toast } from "sonner";
 import { setStatusAction } from "@/actions/profile";
 import { useMe } from "@/components/providers/MeProvider";
+import { SoundSettingsPopover } from "@/components/profile/SoundSettingsPopover";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { PixelStatus } from "@/components/retro/PixelStatus";
 import { Menu } from "@/components/ui/Menu";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { PRESENCE_OPTIONS, STATUS_TRIGGERS } from "@/lib/profile";
-import { playSfx, setSfxEnabled, sfxEnabled } from "@/lib/sfx";
 import type { PresenceStatus } from "@/lib/supabase/database.types";
 
 /** Bottom-left identity panel with the quick status switcher; `controls` slot hosts voice buttons. */
@@ -20,7 +20,6 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
   const { me, setMe } = useMe();
   const router = useRouter();
   const [, startTransition] = useTransition();
-  const [sounds, setSounds] = useState(sfxEnabled);
 
   function apply(next: { status?: PresenceStatus; customStatus?: string | null; customStatusEmoji?: string | null }) {
     const previous = me;
@@ -50,18 +49,10 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
       onSelect: () => apply({ customStatus: t.text, customStatusEmoji: t.emoji }),
     })),
     { label: "Clear custom status", onSelect: () => apply({ customStatus: null, customStatusEmoji: null }), hidden: !me.custom_status && !me.custom_status_emoji },
-    {
-      label: sounds ? "🔊 8-bit sounds: ON" : "🔇 8-bit sounds: OFF",
-      onSelect: () => {
-        setSfxEnabled(!sounds);
-        setSounds(!sounds);
-        if (!sounds) playSfx("start");
-      },
-    },
   ];
 
   return (
-    <div className="flex items-center gap-1 border-t border-white/5 bg-black/40 px-2 py-2" data-testid="user-panel">
+    <div className="pb-safe flex items-center gap-1 border-t border-white/5 bg-black/40 px-2 pt-2" data-testid="user-panel">
       <Menu
         label="Set status"
         side="top"
@@ -73,8 +64,9 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
             onClick={toggle}
             aria-expanded={open}
             aria-controls={id}
+            aria-haspopup="menu"
             aria-label={`Set status (currently ${me.status})`}
-            className="flex w-full min-w-0 items-center gap-2 rounded-md p-1 text-left transition-colors hover:bg-white/10"
+            className="flex w-full min-w-0 items-center gap-2 rounded-md p-1 text-left transition-colors hover:bg-white/10 pointer-coarse:py-1.5"
           >
             <UserAvatar profile={me} size={32} status={me.status === "invisible" ? "offline" : me.status} ring="#0b1020" />
             <span className="min-w-0">
@@ -87,8 +79,9 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
         )}
       />
       {controls}
+      <SoundSettingsPopover />
       <Tooltip label="User settings" side="top">
-        <Link href="/settings/profile" aria-label="User settings" className="rounded-md p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-white">
+        <Link href="/settings/profile" aria-label="User settings" className="touch-target relative rounded-md p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-white">
           <Settings className="size-4" aria-hidden />
         </Link>
       </Tooltip>

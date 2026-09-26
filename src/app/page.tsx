@@ -25,12 +25,12 @@ export default function LandingPage() {
           <DiskarteWordmark height={40} />
         </Link>
         <nav className="flex items-center gap-2">
-          <Link href="/login" className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/10">
+          <Link href="/login" className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/10 pointer-coarse:py-3">
             Log in
           </Link>
           <Link
             href="/signup"
-            className="rounded-lg bg-sun px-4 py-2 text-sm font-semibold text-abyss shadow-[0_3px_0_0_#b45309] transition-transform active:translate-y-[3px] active:shadow-none"
+            className="rounded-lg bg-sun px-4 py-2 text-sm font-semibold text-abyss shadow-[0_3px_0_0_#b45309] transition-transform active:translate-y-[3px] active:shadow-none pointer-coarse:py-3"
           >
             Sali na!
           </Link>

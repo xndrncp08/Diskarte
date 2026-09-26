@@ -160,7 +160,7 @@ export function Composer({
 
   return (
     <div
-      className="relative px-4 pb-1"
+      className="relative px-4 pb-safe"
       onDragOver={(e) => {
         if (e.dataTransfer.types.includes("Files")) {
           e.preventDefault();
@@ -175,7 +175,7 @@ export function Composer({
           I-DROP ANG FILES DITO
         </div>
       )}
-      <div className="glass overflow-hidden rounded-xl">
+      <div className="glass overflow-hidden rounded-xl transition-shadow focus-within:border-sun/50 focus-within:ring-2 focus-within:ring-sun/25">
         {replyTo && (
           <div className="flex items-center justify-between border-b border-white/5 bg-black/30 px-3 py-1.5 text-xs text-slate-400">
             <span className="truncate">
@@ -238,7 +238,7 @@ export function Composer({
               e.target.value = "";
             }}
           />
-          <button type="button" aria-label="Attach files" onClick={() => fileInput.current?.click()} className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white">
+          <button type="button" aria-label="Attach files" onClick={() => fileInput.current?.click()} className="touch-target relative rounded-md p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white">
             <Paperclip className="size-5" aria-hidden />
           </button>
           <label htmlFor={`composer-${channelId}`} className="sr-only">
@@ -266,7 +266,7 @@ export function Composer({
             type="submit"
             disabled={(!draft.trim() && ready.length === 0) || busy}
             aria-label="Send message"
-            className="rounded-md p-1.5 text-sun transition-opacity hover:bg-white/10 disabled:opacity-30"
+            className="touch-target relative rounded-md p-1.5 text-sun transition-opacity hover:bg-white/10 disabled:opacity-30"
           >
             <SendHorizontal className="size-5" aria-hidden />
           </button>
