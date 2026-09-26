@@ -1,0 +1,31 @@
+# Render Blueprint — 1-click free deployment of the Diskarte web container.
+# Dashboard → New → Blueprint → pick this repo. You'll be prompted for the secret values below.
+services:
+  - type: web
+    name: diskarte
+    runtime: docker
+    plan: free
+    region: singapore # closest Render region to the Philippines
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      # Supabase (Project Settings → API)
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      # LiveKit Cloud (Settings → Keys)
+      - key: LIVEKIT_URL
+        sync: false
+      - key: LIVEKIT_API_KEY
+        sync: false
+      - key: LIVEKIT_API_SECRET
+        sync: false
+      # Optional: comma-separated Supabase OAuth providers you enabled
+      - key: AUTH_OAUTH_PROVIDERS
+        value: github,google
+      # SITE_URL defaults to RENDER_EXTERNAL_URL; set it when you add a custom domain.
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=384
