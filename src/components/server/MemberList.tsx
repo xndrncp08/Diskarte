@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { Crown, Shield, ShieldCheck, UserMinus } from "lucide-react";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition, type RefObject } from "react";
 import { toast } from "sonner";
 import { kickMemberAction, setMemberRoleAction } from "@/actions/servers";
 import { useMe } from "@/components/providers/MeProvider";
@@ -10,6 +10,7 @@ import { useServer } from "@/components/providers/ServerProvider";
 import { ProfileCard } from "@/components/profile/ProfileCard";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { Button } from "@/components/ui/Button";
+import { FloatingPortal, useFloating } from "@/components/ui/floating";
 import { visibleStatus, type PresencePayload } from "@/lib/presence";
 import { canManageMember, ROLE_LABEL, ROLE_RANK, type MemberWithProfile } from "@/lib/servers";
 import type { MemberRole } from "@/lib/supabase/database.types";
@@ -22,16 +23,29 @@ function RoleIcon({ role, owner }: { role: MemberRole; owner: boolean }) {
   return null;
 }
 
-function MemberPopover({ member, presence, onClose }: { member: MemberWithProfile; presence: PresencePayload | undefined; onClose: () => void }) {
+function MemberPopover({
+  member,
+  presence,
+  onClose,
+  anchor,
+}: {
+  member: MemberWithProfile;
+  presence: PresencePayload | undefined;
+  onClose: () => void;
+  anchor: RefObject<HTMLButtonElement | null>;
+}) {
   const { server, myRole } = useServer();
   const { me } = useMe();
   const [pending, startTransition] = useTransition();
   const ref = useRef<HTMLDivElement>(null);
+  const { style, side } = useFloating(true, anchor, ref, { side: "left", align: "start", offset: 12 });
   const perms = canManageMember({ actorRole: myRole, actorId: me.id, target: member, ownerId: server.owner_id });
 
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) onClose();
+      const target = e.target as Node;
+      // The row toggles itself; treating it as "outside" would close then instantly reopen.
+      if (!ref.current?.contains(target) && !anchor.current?.contains(target)) onClose();
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("mousedown", onDown);
@@ -40,7 +54,7 @@ function MemberPopover({ member, presence, onClose }: { member: MemberWithProfil
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [onClose]);
+  }, [onClose, anchor]);
 
   function setRole(role: MemberRole) {
     startTransition(async () => {
@@ -73,11 +87,14 @@ function MemberPopover({ member, presence, onClose }: { member: MemberWithProfil
       ref={ref}
       role="dialog"
       aria-label={`${member.profile.display_name}'s profile`}
+      data-floating="member-popover"
+      data-side={side}
+      style={style}
       initial={{ opacity: 0, x: 8 }}
       animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 8 }}
+      exit={{ opacity: 0, x: 8, pointerEvents: "none" }}
       transition={{ duration: 0.15 }}
-      className="absolute right-full top-0 z-40 mr-2"
+      className="z-50"
     >
       <ProfileCard
         profile={profile}
@@ -119,6 +136,7 @@ function MemberPopover({ member, presence, onClose }: { member: MemberWithProfil
 function MemberRow({ member, presence, dim }: { member: MemberWithProfile; presence: PresencePayload | undefined; dim: boolean }) {
   const { server } = useServer();
   const [open, setOpen] = useState(false);
+  const row = useRef<HTMLButtonElement>(null);
   const status = visibleStatus(presence);
   const customStatus = presence?.custom_status ?? member.profile.custom_status;
   const customEmoji = presence?.custom_status_emoji ?? member.profile.custom_status_emoji;
@@ -126,6 +144,7 @@ function MemberRow({ member, presence, dim }: { member: MemberWithProfile; prese
   return (
     <li className="relative">
       <button
+        ref={row}
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
@@ -147,7 +166,9 @@ function MemberRow({ member, presence, dim }: { member: MemberWithProfile; prese
           )}
         </span>
       </button>
-      <AnimatePresence>{open && <MemberPopover member={member} presence={presence} onClose={() => setOpen(false)} />}</AnimatePresence>
+      <FloatingPortal>
+        <AnimatePresence>{open && <MemberPopover member={member} presence={presence} anchor={row} onClose={() => setOpen(false)} />}</AnimatePresence>
+      </FloatingPortal>
     </li>
   );
 }
