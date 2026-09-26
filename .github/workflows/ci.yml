@@ -1,0 +1,132 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  quality:
+    name: Lint, type-check & unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Type-check
+        run: npm run typecheck
+      - name: Unit, component & database (RLS) tests
+        run: npm test
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: diskarte:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Enforce image size budget (< 150 MB)
+        run: |
+          BYTES=$(docker image inspect diskarte:ci --format '{{.Size}}')
+          MB=$((BYTES / 1000 / 1000))
+          GZ=$(( $(docker save diskarte:ci | gzip -c | wc -c) / 1000 / 1000 ))
+          echo "### Docker image: ${MB} MB (${GZ} MB compressed)" >> "$GITHUB_STEP_SUMMARY"
+          echo "Image size: ${MB} MB (${GZ} MB gzipped)"
+          test "$MB" -lt 150
+      - name: Container smoke test
+        run: |
+          docker run -d --name diskarte -p 3000:3000 \
+            -e SUPABASE_URL=https://example.supabase.co \
+            -e SUPABASE_ANON_KEY=anon-key-that-is-long-enough \
+            -e LIVEKIT_URL=wss://example.livekit.cloud \
+            -e LIVEKIT_API_KEY=devkey -e LIVEKIT_API_SECRET=secret \
+            diskarte:ci
+          for i in $(seq 1 30); do
+            STATUS=$(docker inspect --format '{{.State.Health.Status}}' diskarte)
+            [ "$STATUS" = "healthy" ] && break
+            sleep 2
+          done
+          docker inspect --format '{{.State.Health.Status}}' diskarte | grep -q healthy
+          curl -fsS http://localhost:3000/api/health | tee /dev/stderr | grep -q '"status":"ok"'
+          curl -fsS -o /dev/null -w '%{http_code}\n' http://localhost:3000/ | grep -q 200
+          test "$(docker exec diskarte id -u)" = "1001"
+      - name: Container logs
+        if: always()
+        run: docker logs diskarte || true
+
+  e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      E2E_FULL: "1"
+      SITE_URL: http://localhost:3000
+      LIVEKIT_URL: ws://localhost:7880
+      LIVEKIT_API_KEY: devkey
+      LIVEKIT_API_SECRET: secret
+      AUTH_OAUTH_PROVIDERS: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Start Supabase (applies supabase/migrations)
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,postgres-meta
+      - name: Export Supabase credentials
+        run: |
+          supabase status -o env > supabase.env
+          get() { grep -E "^$1=" supabase.env | head -n1 | cut -d= -f2- | tr -d '"'; }
+          KEY=$(get ANON_KEY); [ -n "$KEY" ] || KEY=$(get PUBLISHABLE_KEY)
+          echo "SUPABASE_URL=$(get API_URL)" >> "$GITHUB_ENV"
+          echo "SUPABASE_ANON_KEY=$KEY" >> "$GITHUB_ENV"
+      - name: Start LiveKit (dev mode)
+        run: docker run -d --name livekit --network host livekit/livekit-server:latest --dev --bind 0.0.0.0 --node-ip 127.0.0.1
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+      - name: Build
+        run: npm run build
+      - name: Run E2E suite
+        run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+      - name: Service logs
+        if: failure()
+        run: |
+          docker logs livekit 2>&1 | tail -n 100 || true
+          supabase status || true
