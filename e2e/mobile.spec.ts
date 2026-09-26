@@ -56,7 +56,7 @@ test.describe("mobile — app shell", () => {
     const composer = await page.getByTestId("composer").boundingBox();
     expect(composer!.y + composer!.height).toBeLessThanOrEqual(viewport.height);
     for (const name of ["Attach files", "Insert emoji", "Open navigation", "Pinned messages"]) {
-      await expectTouchTarget(page.getByRole("button", { name }).first());
+      await expectTouchTarget(page.locator(`button[aria-label="${name}"]:visible`).first());
     }
 
     // Edge swipe → drawer.
@@ -100,7 +100,11 @@ test.describe("mobile — app shell", () => {
     await page.getByRole("navigation", { name: "Channels" }).getByRole("link", { name: "Tambayan 1" }).click();
     await page.getByTestId("join-voice").click();
     await expect(page.getByTestId("voice-stage")).toBeVisible({ timeout: 30_000 });
-    for (const name of ["Mute", "Deafen", "Disconnect"]) await expectTouchTarget(page.getByTestId("voice-stage").getByRole("button", { name }));
+    const bar = page.getByTestId("voice-stage").getByRole("toolbar", { name: "Call controls" });
+    const box = (await bar.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+    for (const name of ["Mute", "Deafen", "Turn on camera", "Share screen", "Disconnect"]) await expectTouchTarget(bar.getByRole("button", { name }));
     await page.getByTestId("voice-stage").getByRole("button", { name: "Disconnect" }).click();
   });
 });

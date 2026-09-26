@@ -35,7 +35,14 @@ test.describe("accessibility audit — app shell", () => {
     await createServer(page, `A11y ${Date.now().toString(36)}`);
     await sendMessage(page, "Accessible ba 'to? **Oo**!");
     expect(await audit(page)).toEqual([]);
+    // From a fresh load, the first Tab lands on the skip link, which jumps past the navigation.
+    await page.reload();
+    await page.getByTestId("composer").waitFor();
     await page.keyboard.press("Tab");
-    await expect(page.getByRole("link", { name: "Skip to content" })).toBeFocused();
+    const skip = page.getByRole("link", { name: "Skip to content" });
+    await expect(skip).toBeFocused();
+    await expect(skip).toBeInViewport();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#main-content")).toBeFocused();
   });
 });
