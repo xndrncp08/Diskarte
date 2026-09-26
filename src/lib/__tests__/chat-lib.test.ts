@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { isValidReaction, PINOY_REACTIONS, reactionDisplay, renderShortcodes } from "@/lib/emoji";
 import { attachmentPrefix, parseAttachments, previewText } from "@/lib/messages";
 import { playSfx, SFX_NAMES, setSfxEnabled, sfxEnabled } from "@/lib/sfx";
-import { safeFileName, validateAttachment } from "@/lib/uploads";
+import { safeFileName, sniffMatches, validateAttachment } from "@/lib/uploads";
 
 describe("emoji", () => {
   it("keeps every custom reaction valid for the database check", () => {
@@ -29,7 +29,8 @@ describe("emoji", () => {
 describe("messages helpers", () => {
   it("builds attachment prefixes and filters malformed attachments", () => {
     expect(attachmentPrefix("s", "c", "u")).toBe("s/c/u/");
-    expect(parseAttachments([{ path: "s/c/u/a.png", name: "a.png", size: 1, type: "image/png" }, { path: "../x" }, "nope"])).toHaveLength(1);
+    const ok = { path: "11111111-2222-4333-8444-555555555555/11111111-2222-4333-8444-555555555555/11111111-2222-4333-8444-555555555555/11111111-2222-4333-8444-555555555555.png", name: "a.png", size: 1, type: "image/png" };
+    expect(parseAttachments([ok, { ...ok, path: "s/c/u/a.png" }, { ...ok, type: "text/html" }, { ...ok, size: 11 * 1024 * 1024 }, { path: "../x" }, "nope"])).toHaveLength(1);
     expect(parseAttachments(null)).toEqual([]);
   });
 
@@ -46,13 +47,30 @@ describe("uploads", () => {
     expect(safeFileName("<>")).toBe("file");
   });
 
-  it("rejects empty, huge and active-content files", () => {
-    expect(validateAttachment(new File([], "empty.txt"))).toMatch(/walang laman/);
-    expect(validateAttachment(new File(["<svg/>"], "x.svg", { type: "image/svg+xml" }))).toMatch(/hindi pwede/);
-    const big = new File(["x"], "big.bin");
-    Object.defineProperty(big, "size", { value: 26 * 1024 * 1024 });
-    expect(validateAttachment(big)).toMatch(/25 MB/);
-    expect(validateAttachment(new File(["hi"], "notes.txt", { type: "text/plain" }))).toBeNull();
+  it("only allows the MIME allow-list up to 10 MB", () => {
+    expect(validateAttachment(new File([], "empty.png", { type: "image/png" }))).toMatch(/walang laman/);
+    for (const type of ["image/svg+xml", "text/html", "text/plain", "application/pdf", "application/x-msdownload"]) {
+      expect(validateAttachment(new File(["x"], "f", { type }))).toMatch(/lang ang pwede/);
+    }
+    const big = new File(["x"], "big.mp4", { type: "video/mp4" });
+    Object.defineProperty(big, "size", { value: 10 * 1024 * 1024 + 1 });
+    expect(validateAttachment(big)).toMatch(/10 MB/);
+    for (const type of ["image/jpeg", "image/png", "image/webp", "image/gif", "audio/mpeg", "video/mp4"]) {
+      expect(validateAttachment(new File(["x"], "f", { type }))).toBeNull();
+    }
+  });
+
+  it("sniffs magic bytes", () => {
+    const bytes = (...b: number[]) => new Uint8Array([...b, ...new Array(16).fill(0)]);
+    const ascii = (s: string, offset = 0) => bytes(...new Array(offset).fill(0), ...Array.from(s, (c) => c.charCodeAt(0)));
+    expect(sniffMatches("image/jpeg", bytes(0xff, 0xd8, 0xff, 0xe0))).toBe(true);
+    expect(sniffMatches("image/png", bytes(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a))).toBe(true);
+    expect(sniffMatches("image/gif", ascii("GIF89a"))).toBe(true);
+    expect(sniffMatches("image/webp", new Uint8Array([...Array.from("RIFF", (c) => c.charCodeAt(0)), 0, 0, 0, 0, ...Array.from("WEBP", (c) => c.charCodeAt(0))]))).toBe(true);
+    expect(sniffMatches("audio/mpeg", ascii("ID3"))).toBe(true);
+    expect(sniffMatches("video/mp4", ascii("ftyp", 4))).toBe(true);
+    expect(sniffMatches("image/png", ascii("<svg onload=alert(1)>"))).toBe(false);
+    expect(sniffMatches("video/mp4", ascii("<html>"))).toBe(false);
   });
 });
 

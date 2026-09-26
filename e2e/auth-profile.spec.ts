@@ -47,7 +47,7 @@ test.describe("registration and profile customisation", () => {
     await p2.getByLabel("Display name").fill("Impostor");
     await p2.getByLabel("Username").fill(first.username);
     await p2.getByLabel("Email").fill(makeUser("x").email);
-    await p2.getByLabel("Password").fill("Diskarte!12345");
+    await p2.getByLabel("Password", { exact: true }).fill("Diskarte!12345");
     await p2.getByRole("button", { name: "Sali na!" }).click();
     await expect(p2.getByText("May gumagamit na ng username na 'yan.")).toBeVisible();
     await other.close();

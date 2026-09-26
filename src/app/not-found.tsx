@@ -1,0 +1,18 @@
+import Link from "next/link";
+import { DiskarteLogo } from "@/components/brand/DiskarteLogo";
+
+export default function NotFound() {
+  return (
+    <main className="diskarte-backdrop relative flex min-h-dvh flex-col items-center justify-center gap-4 px-4 text-center">
+      <div className="relative z-10 flex flex-col items-center gap-4">
+        <DiskarteLogo size={96} variant="mascot" />
+        <p className="font-pixel text-xs text-sun">404 · GAME OVER</p>
+        <h1 className="text-2xl font-extrabold text-white">Walang ganitong tambayan</h1>
+        <p className="max-w-sm text-slate-400">Wala ang page na &apos;yan, o hindi ka member ng tambayan na ito.</p>
+        <Link href="/tambayan" className="rounded-lg bg-sun px-4 py-2 font-semibold text-abyss">
+          Balik sa tambayan
+        </Link>
+      </div>
+    </main>
+  );
+}

@@ -16,7 +16,7 @@ export function makeUser(label: string): TestUser {
     displayName: `${label} ${id.slice(-4)}`,
     username: `e2e_${label.toLowerCase()}_${id}`.slice(0, 32),
     email: `e2e+${label.toLowerCase()}.${id}@diskarte.test`,
-    password: `Diskarte!${id}`,
+    password: `Diskarte!2026-${id}`, // meets the 10+ char upper/lower/number/symbol policy
   };
 }
 
@@ -26,7 +26,7 @@ export async function signUpAndOnboard(page: Page, user: TestUser, opts: { avata
   await page.getByLabel("Display name").fill(user.displayName);
   await page.getByLabel("Username").fill(user.username);
   await page.getByLabel("Email").fill(user.email);
-  await page.getByLabel("Password").fill(user.password);
+  await page.getByLabel("Password", { exact: true }).fill(user.password);
   await page.getByRole("button", { name: "Sali na!" }).click();
   await expect(page).toHaveURL(/\/onboarding$/);
   await expect(page.getByRole("heading", { name: new RegExp(`Buuin ang profile mo, ${user.displayName}`) })).toBeVisible();
@@ -41,7 +41,7 @@ export async function signUpAndOnboard(page: Page, user: TestUser, opts: { avata
 export async function logIn(page: Page, user: TestUser) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(user.email);
-  await page.getByLabel("Password").fill(user.password);
+  await page.getByLabel("Password", { exact: true }).fill(user.password);
   await page.getByRole("button", { name: "Pasok!" }).click();
   await expect(page).toHaveURL(/\/tambayan/);
 }

@@ -33,7 +33,7 @@ cp .env.example .env.local   # add Supabase + LiveKit credentials
 npm run dev                   # http://localhost:3000
 ```
 
-For a free production deploy (Supabase + LiveKit Cloud + Render) and local Supabase/LiveKit, see **[DEPLOYMENT.md](DEPLOYMENT.md)**.
+For a free production deploy (Supabase + LiveKit Cloud + Render) and local Supabase/LiveKit, see **[DEPLOYMENT.md](DEPLOYMENT.md)**. The threat model, security controls and vulnerability reporting are in **[SECURITY.md](SECURITY.md)**.
 
 ## Scripts
 

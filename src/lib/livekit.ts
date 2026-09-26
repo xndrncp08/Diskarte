@@ -1,7 +1,11 @@
 import "server-only";
 import { AccessToken, TrackSource } from "livekit-server-sdk";
 
-export const VOICE_TOKEN_TTL_SECONDS = 2 * 60 * 60;
+/**
+ * Tokens only gate *joining* (and reconnecting within the hour); LiveKit refreshes credentials for
+ * connected participants itself, so long calls keep working with a short TTL.
+ */
+export const VOICE_TOKEN_TTL_SECONDS = 60 * 60;
 
 export function voiceRoomName(channelId: string) {
   return `voice:${channelId}`;

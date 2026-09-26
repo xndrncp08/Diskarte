@@ -2,7 +2,19 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"] as const;
 export const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
-export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+
+/** The only attachment types Diskarte accepts (mirrored by the DB trigger and bucket config). */
+export const ATTACHMENT_TYPES = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "audio/mpeg": "mp3",
+  "video/mp4": "mp4",
+} as const;
+export type AttachmentMime = keyof typeof ATTACHMENT_TYPES;
+export const ATTACHMENT_ACCEPT = Object.keys(ATTACHMENT_TYPES).join(",");
 
 const EXT: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" };
 
@@ -47,27 +59,66 @@ export async function imageSize(file: File): Promise<{ width: number; height: nu
   }
 }
 
-export const BLOCKED_ATTACHMENT_TYPES = ["text/html", "image/svg+xml", "application/xhtml+xml", "application/javascript", "text/javascript"];
+export function isAllowedAttachmentType(type: string): type is AttachmentMime {
+  return Object.prototype.hasOwnProperty.call(ATTACHMENT_TYPES, type);
+}
 
 export function validateAttachment(file: File): string | null {
   if (file.size === 0) return `${file.name}: walang laman ang file.`;
-  if (file.size > MAX_ATTACHMENT_BYTES) return `${file.name}: hanggang 25 MB lang bawat file.`;
-  if (BLOCKED_ATTACHMENT_TYPES.includes(file.type)) return `${file.name}: hindi pwedeng i-upload ang ganitong file.`;
+  if (file.size > MAX_ATTACHMENT_BYTES) return `${file.name}: hanggang 10 MB lang bawat file.`;
+  if (!isAllowedAttachmentType(file.type)) return `${file.name}: JPG, PNG, WEBP, GIF, MP3 o MP4 lang ang pwede.`;
   return null;
 }
 
-/** Upload a chat attachment into `<server>/<channel>/<user>/<uuid>-<name>` in the private bucket. */
+/** Check the file's magic bytes match its declared MIME type (catches renamed executables/HTML). */
+export function sniffMatches(type: AttachmentMime, head: Uint8Array): boolean {
+  const at = (offset: number, ...bytes: number[]) => bytes.every((b, i) => head[offset + i] === b);
+  const ascii = (offset: number, text: string) => at(offset, ...Array.from(text, (c) => c.charCodeAt(0)));
+  switch (type) {
+    case "image/jpeg":
+      return at(0, 0xff, 0xd8, 0xff);
+    case "image/png":
+      return at(0, 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a);
+    case "image/gif":
+      return ascii(0, "GIF87a") || ascii(0, "GIF89a");
+    case "image/webp":
+      return ascii(0, "RIFF") && ascii(8, "WEBP");
+    case "audio/mpeg":
+      return ascii(0, "ID3") || (head[0] === 0xff && (head[1] & 0xe0) === 0xe0);
+    case "video/mp4":
+      return ascii(4, "ftyp");
+  }
+}
+
+async function readHead(file: File, bytes = 16): Promise<Uint8Array> {
+  const blob = file.slice(0, bytes);
+  if (typeof blob.arrayBuffer === "function") return new Uint8Array(await blob.arrayBuffer());
+  return new Uint8Array(
+    await new Promise<ArrayBuffer>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsArrayBuffer(blob);
+    }),
+  );
+}
+
+/**
+ * Upload a chat attachment to the private bucket as `<server>/<channel>/<user>/<uuid>.<ext>`.
+ * The object name is fully random (the user's filename is only kept as display metadata), so
+ * path traversal and "double extension" tricks are impossible.
+ */
 export async function uploadAttachment(
   supabase: SupabaseClient,
   opts: { serverId: string; channelId: string; userId: string; file: File },
-): Promise<{ path: string; name: string; size: number; type: string; width?: number; height?: number }> {
+): Promise<{ path: string; name: string; size: number; type: AttachmentMime; width?: number; height?: number }> {
   const problem = validateAttachment(opts.file);
   if (problem) throw new Error(problem);
-  const name = safeFileName(opts.file.name);
-  const path = `${opts.serverId}/${opts.channelId}/${opts.userId}/${crypto.randomUUID()}-${name}`;
-  const type = opts.file.type || "application/octet-stream";
-  const { error } = await supabase.storage.from("attachments").upload(path, opts.file, { contentType: type, upsert: false });
+  const type = opts.file.type as AttachmentMime;
+  if (!sniffMatches(type, await readHead(opts.file))) throw new Error(`${opts.file.name}: hindi tugma ang laman sa file type.`);
+  const path = `${opts.serverId}/${opts.channelId}/${opts.userId}/${crypto.randomUUID()}.${ATTACHMENT_TYPES[type]}`;
+  const { error } = await supabase.storage.from("attachments").upload(path, opts.file, { contentType: type, upsert: false, cacheControl: "3600" });
   if (error) throw new Error(`${opts.file.name}: hindi na-upload.`);
   const size = await imageSize(opts.file);
-  return { path, name: opts.file.name.slice(0, 120), size: opts.file.size, type, ...(size ?? {}) };
+  return { path, name: safeFileName(opts.file.name).slice(0, 120), size: opts.file.size, type, ...(size ?? {}) };
 }

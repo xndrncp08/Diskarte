@@ -22,7 +22,7 @@ All configuration is read **at runtime**, so the same Docker image works locally
 
 1. Create a project at [supabase.com](https://supabase.com) → **New project**. Pick the **Southeast Asia (Singapore)** region for the lowest latency from the Philippines.
 2. **Apply the schema.** Either:
-   - **SQL editor:** open `supabase/migrations/20260926000000_schema.sql`, paste it into *SQL Editor → New query* and run it once; or
+   - **SQL editor:** run each file in `supabase/migrations/` **in filename order** (`…_schema.sql`, then `…_security_hardening.sql`) via *SQL Editor → New query*; or
    - **CLI:** `npx supabase link --project-ref <your-ref>` then `npx supabase db push`.
 
    This creates every table (`profiles`, `servers`, `members`, `channels`, `messages`, `reactions`), all RLS policies, guard triggers, RPCs, the Realtime publication, private-channel authorisation and the `avatars` / `attachments` Storage buckets.
@@ -31,6 +31,7 @@ All configuration is read **at runtime**, so the same Docker image works locally
    - *Redirect URLs*: `https://diskarte.onrender.com/auth/callback` (add `http://localhost:3000/auth/callback` for local dev)
 4. **Auth → Providers**
    - *Email*: keep **Confirm email** on for production.
+   - *Password security* (Auth → Providers → Email): minimum length **10** and require **lowercase, uppercase, digits and symbols** — the same policy the app enforces.
    - *GitHub / Google / Discord* (optional): create an OAuth app with the callback `https://<project-ref>.supabase.co/auth/v1/callback`, paste the client id/secret into Supabase, and list the enabled providers in `AUTH_OAUTH_PROVIDERS`.
 5. **Realtime → Settings**: turn **off** “Allow public access” so only the private, RLS-authorised channels (`server:<id>` presence, `channel:<id>` typing) are allowed.
 6. *(Optional)* **Auth → Email Templates → Confirm signup**: to use the token-hash flow, set the link to
@@ -72,7 +73,10 @@ All configuration is read **at runtime**, so the same Docker image works locally
 | `LIVEKIT_API_SECRET` | ✅ | server only | token signing; never exposed |
 | `SITE_URL` | — | server | public base URL; defaults to `RENDER_EXTERNAL_URL`, then `http://localhost:3000` |
 | `AUTH_OAUTH_PROVIDERS` | — | server | e.g. `github,google,discord`; empty hides OAuth buttons |
-| `ALLOWED_ORIGINS` | — | proxy | extra origins allowed to POST to `/api/*` |
+| `ALLOWED_ORIGINS` | — | proxy | extra origins allowed to call `/api/*` cross-origin (CORS + CSRF) |
+| `RATE_LIMIT_AUTH_PER_MINUTE` | — | proxy | per-IP auth attempts per minute (default **5**) |
+| `RATE_LIMIT_API_PER_MINUTE` | — | proxy | per-IP `/api/*` requests per minute (default 120) |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | — | proxy | share rate-limit counters across instances (free Upstash tier) |
 | `PORT` / `HOSTNAME` | — | container | set by the Dockerfile (Render injects `PORT`) |
 
 ## Local development
@@ -97,7 +101,7 @@ docker run --rm -p 3000:3000 --env-file .env.local diskarte
 docker compose up --build
 ```
 
-The multi-stage `Dockerfile` builds Next.js in `standalone` mode, drops npm/yarn/corepack from the runtime layer, excludes the unused image-optimiser binaries and runs as an unprivileged user with a `HEALTHCHECK` on `/api/health`. CI prints the final image size and fails the build if it grows past 150 MB.
+The multi-stage `Dockerfile` builds Next.js in `standalone` mode on `node:22-alpine`, then runs it on plain `alpine` with Alpine's own `nodejs` package (shared system libraries instead of the ~110 MB bundled binary), without the unused image-optimiser binaries, as an unprivileged user with a `HEALTHCHECK` on `/api/health`. CI prints the final image size and fails the build if it grows past 150 MB.
 
 ## CI/CD
 
@@ -105,6 +109,9 @@ The multi-stage `Dockerfile` builds Next.js in `standalone` mode, drops npm/yarn
 lint → type-check → unit/DB tests → Docker build (size check + container health smoke test) → Playwright E2E against a throwaway local Supabase stack and a LiveKit dev server. No repository secrets are required. Render auto-deploys `main` once it's green.
 
 ## Security checklist
+
+See **[SECURITY.md](SECURITY.md)** for the full threat model and controls. Highlights:
+
 
 - ✅ RLS on every table; SECURITY DEFINER helpers pin `search_path`; guard triggers stop privilege escalation (role changes, pins, edits, kicks).
 - ✅ DB-level message rate limiting (8 messages / 10 s) plus per-user and per-IP limits in the app.

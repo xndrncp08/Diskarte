@@ -107,3 +107,46 @@ export function safeRedirectPath(next: string | null | undefined, fallback = "/t
     return fallback;
   }
 }
+
+// ---------------------------------------------------------------------------------------
+// CORS: only the site's own origin (plus an explicit allow-list) may call /api/* cross-origin.
+// ---------------------------------------------------------------------------------------
+
+export function allowedOriginSet(siteUrl: string | null | undefined, extra: readonly string[] = []): Set<string> {
+  const set = new Set<string>();
+  for (const candidate of [siteUrl, ...extra]) {
+    const o = origin(candidate);
+    if (o) set.add(o);
+  }
+  return set;
+}
+
+/** CORS response headers for an allowed Origin, or null when the origin must be refused. */
+export function corsHeadersFor(requestOrigin: string | null, allowed: Set<string>): Record<string, string> | null {
+  if (!requestOrigin) return {};
+  const o = origin(requestOrigin);
+  if (!o || !allowed.has(o)) return null;
+  return {
+    "Access-Control-Allow-Origin": o,
+    "Access-Control-Allow-Credentials": "true",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Max-Age": "600",
+    Vary: "Origin",
+  };
+}
+
+/**
+ * Pad an operation to a minimum wall-clock duration so auth responses take the same time whether
+ * validation failed early, the account exists or not, or the provider answered quickly. This blunts
+ * timing-based account enumeration on top of Supabase's own constant-time credential checks.
+ */
+export async function withMinimumDuration<T>(minMs: number, work: () => Promise<T>): Promise<T> {
+  const started = Date.now();
+  try {
+    return await work();
+  } finally {
+    const remaining = minMs - (Date.now() - started);
+    if (remaining > 0) await new Promise((resolve) => setTimeout(resolve, remaining));
+  }
+}

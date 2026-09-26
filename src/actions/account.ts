@@ -4,8 +4,9 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { friendlyAuthError } from "@/lib/auth-errors";
 import { getSessionUser } from "@/lib/auth";
-import { fieldErrors } from "@/lib/profile";
-import { limiters } from "@/lib/rate-limit";
+import { fieldErrors, passwordSchema } from "@/lib/profile";
+import { checkLimit } from "@/lib/rate-limit";
+import { safeRedirectPath } from "@/lib/security";
 import { createClient } from "@/lib/supabase/server";
 
 export interface AccountFormState {
@@ -14,23 +15,25 @@ export interface AccountFormState {
   fieldErrors?: Record<string, string>;
 }
 
-const passwordSchema = z
-  .object({
-    password: z.string().min(8, "Minimum 8 characters").max(72, "Hanggang 72 characters lang"),
-    confirm: z.string(),
-  })
+const newPasswordSchema = z
+  .object({ password: passwordSchema, confirm: z.string() })
   .refine((v) => v.password === v.confirm, { path: ["confirm"], message: "Hindi magkapareho ang passwords" });
 
+/** Change password (settings) or finish a reset (recovery session from the email link). */
 export async function changePasswordAction(_prev: AccountFormState, form: FormData): Promise<AccountFormState> {
   const user = await getSessionUser();
   if (!user) redirect("/login");
-  if (!limiters.auth.check(`password:${user.id}`).ok) return { error: "Masyadong maraming attempts. Pahinga muna." };
+  // Per-account budget on top of proxy.ts's per-IP limit.
+  if (!(await checkLimit("auth", `password:${user.id}`)).ok) return { error: "Masyadong maraming attempts. Pahinga muna." };
 
-  const parsed = passwordSchema.safeParse({ password: form.get("password"), confirm: form.get("confirm") });
+  const parsed = newPasswordSchema.safeParse({ password: form.get("password"), confirm: form.get("confirm") });
   if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error) };
 
   const supabase = await createClient();
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
   if (error) return { error: friendlyAuthError(error.message) };
+
+  const next = form.get("redirectTo");
+  if (typeof next === "string" && next) redirect(safeRedirectPath(next));
   return { ok: true };
 }

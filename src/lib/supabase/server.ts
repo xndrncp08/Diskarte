@@ -2,6 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { getPublicEnv } from "@/lib/env";
+import { authCookieOptions, isSecureUrl } from "./cookies";
 import type { Database } from "./database.types";
 
 /**
@@ -13,6 +14,7 @@ export async function createClient() {
   const cookieStore = await cookies();
 
   return createServerClient<Database>(env.supabaseUrl, env.supabaseAnonKey, {
+    cookieOptions: authCookieOptions(isSecureUrl(env.siteUrl)),
     cookies: {
       getAll() {
         return cookieStore.getAll();

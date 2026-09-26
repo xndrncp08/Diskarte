@@ -20,7 +20,7 @@ const message: ChatMessage = {
   server_id: "s",
   author_id: MEMBER_ID,
   content: "Tara **ranked**",
-  attachments: [{ path: "s/c/u/1-notes.txt", name: "notes.txt", size: 2048, type: "text/plain" }],
+  attachments: [{ path: "11111111-2222-4333-8444-555555555555/11111111-2222-4333-8444-555555555555/11111111-2222-4333-8444-555555555555/11111111-2222-4333-8444-555555555555.mp3", name: "kanta.mp3", size: 2048, type: "audio/mpeg" }],
   reply_to_id: null,
   pinned: false,
   pinned_at: null,
@@ -56,13 +56,13 @@ function renderItem(props: Partial<Parameters<typeof MessageItem>[0]> = {}) {
 }
 
 describe("MessageItem", () => {
-  it("renders markdown, edited marker and file attachments", async () => {
+  it("renders markdown, edited marker and audio attachments from signed URLs", async () => {
     renderItem();
     const article = screen.getByTestId("message");
     expect(within(article).getByText("ranked").tagName).toBe("STRONG");
     expect(within(article).getByText("(edited)")).toBeInTheDocument();
-    expect(within(article).getByText("notes.txt")).toBeInTheDocument();
-    expect(await within(article).findByRole("link", { name: "Download notes.txt" })).toHaveAttribute("href", "https://signed.test/s/c/u/1-notes.txt");
+    expect(within(article).getByText("kanta.mp3")).toBeInTheDocument();
+    await vi.waitFor(() => expect(article.querySelector("audio")).toHaveAttribute("src", "https://signed.test/11111111-2222-4333-8444-555555555555/11111111-2222-4333-8444-555555555555/11111111-2222-4333-8444-555555555555/11111111-2222-4333-8444-555555555555.mp3"));
   });
 
   it("only offers edit to the author and pin/delete to moderators", () => {
@@ -113,6 +113,9 @@ describe("MessageItem", () => {
 });
 
 describe("Composer", () => {
+  // jsdom has no object-URL support for image previews.
+  URL.createObjectURL = vi.fn(() => "blob:preview");
+  URL.revokeObjectURL = vi.fn();
   function renderComposer(overrides: Record<string, unknown> = {}) {
     const props = {
       channelName: "general",
@@ -161,13 +164,23 @@ describe("Composer", () => {
     expect(props.onCancelReply).toHaveBeenCalled();
   });
 
-  it("uploads attachments into the user's channel folder before sending", async () => {
+  it("uploads attachments under a random UUID name in the user's channel folder", async () => {
     const props = renderComposer();
-    const file = new File(["hello"], "notes.txt", { type: "text/plain" });
-    fireEvent.change(screen.getByLabelText("Attach files", { selector: "input" }), { target: { files: [file] } });
-    await vi.waitFor(() => expect(fake.uploads.at(-1)?.path).toMatch(new RegExp(`^s/c/${OWNER_ID}/[0-9a-f-]+-notes\\.txt$`)));
+    const png = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0])], "../../My Meme.png", { type: "image/png" });
+    fireEvent.change(screen.getByLabelText("Attach files", { selector: "input" }), { target: { files: [png] } });
+    await vi.waitFor(() => expect(fake.uploads.at(-1)?.path).toMatch(new RegExp(`^s/c/${OWNER_ID}/[0-9a-f-]{36}\\.png$`)));
     await vi.waitFor(() => expect(screen.getByRole("button", { name: "Send message" })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
-    await vi.waitFor(() => expect(props.onSend).toHaveBeenCalledWith("", [expect.objectContaining({ name: "notes.txt", type: "text/plain", size: 5 })], null));
+    await vi.waitFor(() => expect(props.onSend).toHaveBeenCalledWith("", [expect.objectContaining({ name: "My-Meme.png", type: "image/png", size: 12 })], null));
+  });
+
+  it("refuses disallowed types and files whose bytes don't match their type", async () => {
+    renderComposer();
+    const before = fake.uploads.length;
+    const html = new File(["<script>alert(1)</script>"], "x.html", { type: "text/html" });
+    const fakePng = new File(["<svg onload=alert(1)>"], "x.png", { type: "image/png" });
+    fireEvent.change(screen.getByLabelText("Attach files", { selector: "input" }), { target: { files: [html, fakePng] } });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(fake.uploads.length).toBe(before);
   });
 });

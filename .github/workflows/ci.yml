@@ -57,6 +57,7 @@ jobs:
           GZ=$(( $(docker save diskarte:ci | gzip -c | wc -c) / 1000 / 1000 ))
           echo "### Docker image: ${MB} MB (${GZ} MB compressed)" >> "$GITHUB_STEP_SUMMARY"
           echo "Image size: ${MB} MB (${GZ} MB gzipped)"
+          echo "::notice title=Docker image size::${MB} MB uncompressed, ${GZ} MB gzipped"
           test "$MB" -lt 150
       - name: Container smoke test
         run: |
@@ -75,6 +76,7 @@ jobs:
           curl -fsS http://localhost:3000/api/health | tee /dev/stderr | grep -q '"status":"ok"'
           curl -fsS -o /dev/null -w '%{http_code}\n' http://localhost:3000/ | grep -q 200
           test "$(docker exec diskarte id -u)" = "1001"
+          docker exec diskarte node -e "const v=process.versions.node.split('.')[0]; if (+v < 20) process.exit(1); console.log('node', process.versions.node, new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',dateStyle:'long',timeStyle:'short'}).format(new Date()))"
       - name: Container logs
         if: always()
         run: docker logs diskarte || true

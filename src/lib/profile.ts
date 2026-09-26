@@ -125,12 +125,35 @@ export const profileUpdateSchema = z.object({
 export type ProfileUpdateInput = z.input<typeof profileUpdateSchema>;
 export type ProfileUpdate = z.output<typeof profileUpdateSchema>;
 
+export const emailSchema = z.string().trim().toLowerCase().pipe(z.email("Mukhang mali ang email"));
+
+export const PASSWORD_RULES = [
+  { test: (v: string) => v.length >= 10, label: "10+ characters" },
+  { test: (v: string) => /[a-z]/.test(v), label: "lowercase letter" },
+  { test: (v: string) => /[A-Z]/.test(v), label: "uppercase letter" },
+  { test: (v: string) => /[0-9]/.test(v), label: "number" },
+  { test: (v: string) => /[^A-Za-z0-9]/.test(v), label: "special character" },
+] as const;
+
+/** Strong password policy for new/changed passwords (bcrypt only reads the first 72 bytes). */
+export const passwordSchema = z
+  .string()
+  .max(72, "Hanggang 72 characters lang")
+  .refine((v) => new TextEncoder().encode(v).length <= 72, "Masyadong mahaba ang password")
+  .superRefine((value, ctx) => {
+    const missing = PASSWORD_RULES.filter((r) => !r.test(value)).map((r) => r.label);
+    if (missing.length) ctx.addIssue({ code: "custom", message: `Kulang ang password: ${missing.join(", ")}.` });
+  });
+
+/** Sign-in only checks shape — policy is enforced when passwords are set, never revealed on login. */
 export const credentialsSchema = z.object({
-  email: z.string().trim().toLowerCase().pipe(z.email("Mukhang mali ang email")),
-  password: z.string().min(8, "Minimum 8 characters ang password").max(72, "Hanggang 72 characters lang"),
+  email: emailSchema,
+  password: z.string().min(1, "Ilagay ang password").max(72, "Hanggang 72 characters lang"),
 });
 
-export const signUpSchema = credentialsSchema.extend({
+export const signUpSchema = z.object({
+  email: emailSchema,
+  password: passwordSchema,
   username: usernameSchema,
   displayName: z
     .string()

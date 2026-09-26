@@ -8,7 +8,7 @@ import { useSupabase } from "@/components/providers/RuntimeConfig";
 import type { ChatMessage } from "@/hooks/useChannelChat";
 import { typingLabel } from "@/hooks/useTyping";
 import { MAX_ATTACHMENTS, MESSAGE_MAX, type Attachment } from "@/lib/messages";
-import { uploadAttachment } from "@/lib/uploads";
+import { ATTACHMENT_ACCEPT, uploadAttachment } from "@/lib/uploads";
 import { cn, formatBytes } from "@/lib/utils";
 import { EmojiPicker } from "./EmojiPicker";
 
@@ -230,6 +230,7 @@ export function Composer({
             ref={fileInput}
             type="file"
             multiple
+            accept={ATTACHMENT_ACCEPT}
             className="sr-only"
             aria-label="Attach files"
             onChange={(e) => {

@@ -113,8 +113,10 @@ describe("servers & membership", () => {
     expect(preview).toMatchObject({ name: "Barkada HQ", already_member: false });
     expect(Number(preview.member_count)).toBe(3);
     expect(await failure(db, "select public.join_server($1)", [inviteCode])).toMatch(/permission denied/);
-    expect(await rows(db, "select * from public.servers")).toHaveLength(0);
-    expect(await rows(db, "select * from public.messages")).toHaveLength(0);
+    // anon has no table privileges at all (security hardening migration).
+    for (const table of ["profiles", "servers", "members", "channels", "messages", "reactions"]) {
+      expect(await failure(db, `select * from public.${table}`)).toMatch(/permission denied/);
+    }
   });
 
   it("rejects unknown invite codes", async () => {
@@ -270,8 +272,8 @@ describe("messages", () => {
 
   it("only accepts attachments stored under the uploader's own folder", async () => {
     await ageMessages(member);
-    const good = { path: `${serverId}/${general}/${member}/abc-photo.png`, name: "photo.png", size: 1200, type: "image/png" };
-    const bad = { ...good, path: `${serverId}/${general}/${owner}/abc-photo.png` };
+    const good = { path: `${serverId}/${general}/${member}/11111111-2222-4333-8444-555555555555.png`, name: "photo.png", size: 1200, type: "image/png" };
+    const bad = { ...good, path: `${serverId}/${general}/${owner}/11111111-2222-4333-8444-555555555555.png` };
     await send(member, "", { attachments: [good] });
     await asUser(db, member);
     expect(
@@ -304,24 +306,24 @@ describe("reactions", () => {
 describe("storage policies", () => {
   it("lets members upload attachments only into their own folder of a real channel", async () => {
     await asUser(db, member);
-    await db.query("insert into storage.objects (bucket_id, name) values ('attachments', $1)", [`${serverId}/${general}/${member}/meme.png`]);
+    await db.query("insert into storage.objects (bucket_id, name) values ('attachments', $1)", [`${serverId}/${general}/${member}/11111111-2222-4333-8444-555555555555.png`]);
     expect(
-      await failure(db, "insert into storage.objects (bucket_id, name) values ('attachments', $1)", [`${serverId}/${general}/${owner}/meme.png`]),
+      await failure(db, "insert into storage.objects (bucket_id, name) values ('attachments', $1)", [`${serverId}/${general}/${owner}/11111111-2222-4333-8444-555555555555.png`]),
     ).toMatch(/row-level security/);
     await asUser(db, outsider);
     expect(
-      await failure(db, "insert into storage.objects (bucket_id, name) values ('attachments', $1)", [`${serverId}/${general}/${outsider}/x.png`]),
+      await failure(db, "insert into storage.objects (bucket_id, name) values ('attachments', $1)", [`${serverId}/${general}/${outsider}/11111111-2222-4333-8444-555555555555.png`]),
     ).toMatch(/row-level security/);
     expect(await rows(db, "select * from storage.objects where bucket_id = 'attachments'")).toHaveLength(0);
   });
 
   it("scopes avatar uploads to the user's folder or admin-managed server icons", async () => {
     await asUser(db, member);
-    await db.query("insert into storage.objects (bucket_id, name) values ('avatars', $1)", [`${member}/avatar.png`]);
-    expect(await failure(db, "insert into storage.objects (bucket_id, name) values ('avatars', $1)", [`${owner}/avatar.png`])).toMatch(/row-level security/);
-    expect(await failure(db, "insert into storage.objects (bucket_id, name) values ('avatars', $1)", [`servers/${serverId}/icon.png`])).toMatch(/row-level security/);
+    await db.query("insert into storage.objects (bucket_id, name) values ('avatars', $1)", [`${member}/avatar-11111111-2222-4333-8444-555555555555.png`]);
+    expect(await failure(db, "insert into storage.objects (bucket_id, name) values ('avatars', $1)", [`${owner}/avatar-11111111-2222-4333-8444-555555555555.png`])).toMatch(/row-level security/);
+    expect(await failure(db, "insert into storage.objects (bucket_id, name) values ('avatars', $1)", [`servers/${serverId}/icon-11111111-2222-4333-8444-555555555555.png`])).toMatch(/row-level security/);
     await asUser(db, owner);
-    await db.query("insert into storage.objects (bucket_id, name) values ('avatars', $1)", [`servers/${serverId}/icon.png`]);
+    await db.query("insert into storage.objects (bucket_id, name) values ('avatars', $1)", [`servers/${serverId}/icon-11111111-2222-4333-8444-555555555555.png`]);
   });
 });
 
