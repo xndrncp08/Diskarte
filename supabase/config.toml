@@ -43,6 +43,11 @@ enable_signup = true
 enable_anonymous_sign_ins = false
 minimum_password_length = 8
 
+[auth.rate_limit]
+# Local/CI: E2E suites create many users from one IP.
+sign_in_sign_ups = 300
+email_sent = 100
+
 [auth.email]
 enable_signup = true
 double_confirm_changes = true

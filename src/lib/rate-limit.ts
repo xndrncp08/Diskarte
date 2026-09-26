@@ -54,9 +54,15 @@ export function createRateLimiter({ limit, windowMs, maxKeys = 10_000 }: { limit
   };
 }
 
+/** Per-minute budget overridable via env (e.g. RATE_LIMIT_AUTH_PER_MINUTE=200 for E2E runs from one IP). */
+function envLimit(name: string, fallback: number) {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback;
+}
+
 /** Shared limiters, keyed per user id or client IP. */
 export const limiters = {
-  auth: createRateLimiter({ limit: 10, windowMs: 60_000 }),
+  auth: createRateLimiter({ limit: envLimit("RATE_LIMIT_AUTH_PER_MINUTE", 10), windowMs: 60_000 }),
   mutation: createRateLimiter({ limit: 60, windowMs: 60_000 }),
   message: createRateLimiter({ limit: 20, windowMs: 10_000 }),
   voiceToken: createRateLimiter({ limit: 20, windowMs: 60_000 }),
