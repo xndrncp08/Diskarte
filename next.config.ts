@@ -3,6 +3,22 @@ import { imageHosts, serializeImageHosts } from "./src/lib/image-hosts";
 
 const IMAGE_HOSTS = imageHosts(process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL);
 
+/**
+ * The Docker build (Alpine/musl) sets DISKARTE_SHARP_TARGET=linuxmusl: npm installs sharp's glibc
+ * binaries alongside the musl ones and the tracer would copy both (~19 MB of dead weight).
+ */
+const SHARP_EXCLUDES =
+  process.env.DISKARTE_SHARP_TARGET === "linuxmusl"
+    ? [
+        "node_modules/@img/sharp-linux-*/**",
+        "node_modules/@img/sharp-libvips-linux-*/**",
+        "node_modules/@img/sharp-darwin-*/**",
+        "node_modules/@img/sharp-libvips-darwin-*/**",
+        "node_modules/@img/sharp-win32-*/**",
+        "node_modules/@img/sharp-wasm32/**",
+      ]
+    : [];
+
 /** Static security headers; the per-request CSP (with a script nonce) is set in src/proxy.ts. */
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -29,6 +45,7 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 3600,
     dangerouslyAllowSVG: false,
   },
+  outputFileTracingExcludes: { "*": SHARP_EXCLUDES },
   // Lets <SmartImage> know at runtime which hosts the optimiser accepts (falls back to <img> otherwise).
   env: { NEXT_PUBLIC_IMAGE_HOSTS: serializeImageHosts(IMAGE_HOSTS) },
   async headers() {
