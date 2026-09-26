@@ -496,7 +496,8 @@ begin
   end if;
   if old.user_id <> caller then
     caller_role := public.server_role(old.server_id);
-    if caller_role is null or caller_role < 'moderator' or old.role >= caller_role then
+    if caller_role is null or caller_role < 'moderator'
+       or (old.role >= caller_role and not public.is_server_owner(old.server_id)) then
       raise exception 'CANNOT_KICK_MEMBER' using errcode = '42501';
     end if;
   end if;

@@ -26,5 +26,6 @@ describe("SignalBars", () => {
     const { container } = render(<SignalBars level={0} showLabel />);
     expect(container.querySelector("svg")).toHaveClass("animate-blink");
     expect(screen.getByText("Offline")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Connection: Offline" })).toBeInTheDocument();
   });
 });

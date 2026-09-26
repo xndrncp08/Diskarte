@@ -166,6 +166,23 @@ describe("role-based access control", () => {
     expect(await rows(db, "select 1 from public.members where server_id = $1 and user_id = $2", [serverId, temp])).toHaveLength(0);
   });
 
+  it("lets the owner kick another admin, but not admins each other", async () => {
+    const admin2 = await signUp(db, "admin2@diskarte.ph");
+    const admin3 = await signUp(db, "admin3@diskarte.ph");
+    for (const uid of [admin2, admin3]) {
+      await asUser(db, uid);
+      await db.query("select public.join_server($1)", [inviteCode]);
+      await asUser(db, owner);
+      await db.query("update public.members set role = 'admin' where server_id = $1 and user_id = $2", [serverId, uid]);
+    }
+    await asUser(db, admin2);
+    expect(await failure(db, "delete from public.members where server_id = $1 and user_id = $2", [serverId, admin3])).toMatch(/CANNOT_KICK_MEMBER/);
+    await asUser(db, owner);
+    await db.query("delete from public.members where server_id = $1 and user_id in ($2, $3)", [serverId, admin2, admin3]);
+    await asService(db);
+    expect(await rows(db, "select 1 from public.members where server_id = $1 and user_id in ($2, $3)", [serverId, admin2, admin3])).toHaveLength(0);
+  });
+
   it("does not let members kick each other", async () => {
     await asUser(db, member);
     // RLS filters the target row out, so the delete is a silent no-op.
