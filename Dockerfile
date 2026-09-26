@@ -23,20 +23,31 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
-# 3) Minimal runtime ------------------------------------------------------------------------
-FROM ${NODE_IMAGE} AS runner
+# 3) Slim runtime base: strip the node binary (~15 MB of symbols) and delete npm/yarn/corepack
+#    and headers. Deleting files in a later layer does not shrink an image, so stage 4 copies
+#    this filesystem into `scratch` to flatten it.
+FROM ${NODE_IMAGE} AS runtime-base
+RUN apk add --no-cache --virtual .strip binutils \
+    && strip --strip-all /usr/local/bin/node \
+    && apk del .strip \
+    && rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+              /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-* /usr/local/include /usr/local/share/doc \
+              /usr/local/share/man /usr/local/share/systemtap /root/.npm /tmp/* /var/cache/apk/* \
+    && addgroup -S -g 1001 nodejs \
+    && adduser -S -u 1001 -G nodejs nextjs \
+    && mkdir -p /app/.next/cache \
+    && chown -R nextjs:nodejs /app \
+    && node --version
+
+# 4) Final image: one flattened base layer + the app ------------------------------------------
+FROM scratch AS runner
+COPY --from=runtime-base / /
 WORKDIR /app
-ENV NODE_ENV=production \
+ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
     HOSTNAME=0.0.0.0
-
-# The standalone server only needs the node binary: drop npm/yarn/corepack and headers
-# (~30 MB) and run as an unprivileged user.
-RUN rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
-           /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-* /usr/local/include /usr/local/share/doc /usr/local/share/man \
-    && addgroup -S -g 1001 nodejs \
-    && adduser -S -u 1001 -G nodejs nextjs
 
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
