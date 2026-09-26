@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { MeProvider } from "@/components/providers/MeProvider";
 import { PresenceProvider } from "@/components/providers/PresenceProvider";
+import { CallProvider } from "@/components/voice/CallProvider";
+import { FloatingCallHUD } from "@/components/voice/FloatingCallHUD";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
 import type { Server } from "@/lib/servers";
 import type { Tables } from "@/lib/supabase/database.types";
@@ -39,6 +41,7 @@ function Frame({ servers, children }: { servers: Server[]; children: ReactNode }
         <ServerRail servers={servers} />
       </div>
       <div className="relative z-10 flex min-w-0 flex-1">{children}</div>
+      <FloatingCallHUD />
     </div>
   );
 }
@@ -47,10 +50,12 @@ export function AppShell({ profile, servers, children }: { profile: Tables<"prof
   return (
     <MeProvider profile={profile}>
       <PresenceProvider>
-        <ShellUIProvider>
-          <MembershipWatcher userId={profile.id} />
-          <Frame servers={servers}>{children}</Frame>
-        </ShellUIProvider>
+        <CallProvider>
+          <ShellUIProvider>
+            <MembershipWatcher userId={profile.id} />
+            <Frame servers={servers}>{children}</Frame>
+          </ShellUIProvider>
+        </CallProvider>
       </PresenceProvider>
     </MeProvider>
   );

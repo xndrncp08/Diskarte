@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronDown, Hash, HeadphoneOff, LogOut, MicOff, Pencil, Plus, Settings, UserPlus, Video, Volume2 } from "lucide-react";
-import { useState, useTransition, type ReactNode } from "react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { leaveServerAction } from "@/actions/servers";
 import { useMe } from "@/components/providers/MeProvider";
@@ -13,6 +13,9 @@ import { SignalBars } from "@/components/retro/SignalBars";
 import { UserPanel } from "@/components/shell/UserPanel";
 import { useShellUI } from "@/components/shell/ShellUI";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { CallDock } from "@/components/voice/CallDock";
+import { useCall } from "@/components/voice/CallProvider";
+import { useSpeakingParticipants } from "@livekit/components-react";
 import { Menu } from "@/components/ui/Menu";
 import { useOnline } from "@/hooks/useOnline";
 import { signalLevel } from "@/lib/presence";
@@ -29,7 +32,19 @@ type DialogState =
   | { kind: "channel"; channel?: Channel; type?: "text" | "voice"; category?: string }
   | null;
 
+/** Speaking identities for the call you're in (LiveKit active-speaker detection). */
+function SpeakingSet({ children }: { children: (speaking: Set<string>) => React.ReactNode }) {
+  const speakers = useSpeakingParticipants();
+  return <>{children(new Set(speakers.map((p) => p.identity)))}</>;
+}
+
 function VoiceOccupants({ channelId }: { channelId: string }) {
+  const call = useCall();
+  const live = call.room && call.status === "connected" && call.target?.channelId === channelId;
+  return live ? <SpeakingSet>{(speaking) => <OccupantList channelId={channelId} speaking={speaking} />}</SpeakingSet> : <OccupantList channelId={channelId} speaking={null} />;
+}
+
+function OccupantList({ channelId, speaking }: { channelId: string; speaking: Set<string> | null }) {
   const { presence, members } = useServer();
   const inRoom = members.filter((m) => presence.get(m.user_id)?.voice_channel_id === channelId);
   if (inRoom.length === 0) return null;
@@ -39,7 +54,7 @@ function VoiceOccupants({ channelId }: { channelId: string }) {
         const p = presence.get(m.user_id);
         return (
           <li key={m.user_id} className="flex items-center gap-2 rounded px-1.5 py-0.5 text-[13px] text-slate-300">
-            <UserAvatar profile={m.profile} size={20} />
+            <UserAvatar profile={m.profile} size={20} speaking={speaking?.has(m.user_id) ?? false} />
             <span className="truncate">{m.nickname ?? m.profile.display_name}</span>
             <span className="ml-auto flex items-center gap-1 text-slate-500">
               {p?.screen && <span className="rounded bg-red-500/80 px-1 font-silk text-[9px] text-white">LIVE</span>}
@@ -53,7 +68,7 @@ function VoiceOccupants({ channelId }: { channelId: string }) {
   );
 }
 
-export function ChannelSidebar({ voiceDock }: { voiceDock?: ReactNode }) {
+export function ChannelSidebar() {
   const { server, channels, myRole, health } = useServer();
   const { me } = useMe();
   const { setNavOpen } = useShellUI();
@@ -173,7 +188,7 @@ export function ChannelSidebar({ voiceDock }: { voiceDock?: ReactNode }) {
         ))}
       </nav>
 
-      {voiceDock}
+      <CallDock />
       <div className="flex items-center justify-between border-t border-white/5 px-3 py-1.5">
         <span className="font-silk text-[10px] uppercase tracking-wider text-slate-500">Realtime</span>
         <SignalBars level={signalLevel(health, online)} showLabel />

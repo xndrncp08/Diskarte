@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Settings } from "lucide-react";
-import { useTransition, type ReactNode } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { toast } from "sonner";
 import { setStatusAction } from "@/actions/profile";
 import { useMe } from "@/components/providers/MeProvider";
@@ -12,6 +12,7 @@ import { PixelStatus } from "@/components/retro/PixelStatus";
 import { Menu } from "@/components/ui/Menu";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { PRESENCE_OPTIONS, STATUS_TRIGGERS } from "@/lib/profile";
+import { playSfx, setSfxEnabled, sfxEnabled } from "@/lib/sfx";
 import type { PresenceStatus } from "@/lib/supabase/database.types";
 
 /** Bottom-left identity panel with the quick status switcher; `controls` slot hosts voice buttons. */
@@ -19,6 +20,7 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
   const { me, setMe } = useMe();
   const router = useRouter();
   const [, startTransition] = useTransition();
+  const [sounds, setSounds] = useState(sfxEnabled);
 
   function apply(next: { status?: PresenceStatus; customStatus?: string | null; customStatusEmoji?: string | null }) {
     const previous = me;
@@ -48,6 +50,14 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
       onSelect: () => apply({ customStatus: t.text, customStatusEmoji: t.emoji }),
     })),
     { label: "Clear custom status", onSelect: () => apply({ customStatus: null, customStatusEmoji: null }), hidden: !me.custom_status && !me.custom_status_emoji },
+    {
+      label: sounds ? "🔊 8-bit sounds: ON" : "🔇 8-bit sounds: OFF",
+      onSelect: () => {
+        setSfxEnabled(!sounds);
+        setSounds(!sounds);
+        if (!sounds) playSfx("start");
+      },
+    },
   ];
 
   return (
