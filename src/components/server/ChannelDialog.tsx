@@ -9,6 +9,8 @@ import { useServer } from "@/components/providers/ServerProvider";
 import { Button } from "@/components/ui/Button";
 import { InputField } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
+import { Switch } from "@/components/ui/Switch";
+import { SLOWMODE_OPTIONS } from "@/lib/community";
 import { slugifyChannelName, type Channel } from "@/lib/servers";
 import type { ChannelType } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
@@ -36,6 +38,8 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
   const editing = Boolean(channel);
   const [type, setType] = useState<ChannelType>(channel?.type ?? defaultType);
   const [name, setName] = useState(channel?.name ?? "");
+  const [slowmode, setSlowmode] = useState(channel?.slowmode_seconds ?? 0);
+  const [verifiedOnly, setVerifiedOnly] = useState(channel?.requires_verification ?? false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
 
@@ -45,7 +49,14 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const payload = { name, type, category: String(form.get("category") ?? ""), topic: String(form.get("topic") ?? "") };
+    const payload = {
+      name,
+      type,
+      category: String(form.get("category") ?? ""),
+      topic: String(form.get("topic") ?? ""),
+      slowmodeSeconds: type === "text" ? slowmode : 0,
+      requiresVerification: type === "text" && verifiedOnly,
+    };
     startTransition(async () => {
       const result = channel
         ? await updateChannelAction({ channelId: channel.id, ...payload })
@@ -143,6 +154,40 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
           error={errors.topic}
           placeholder="Anong pag-uusapan dito?"
         />
+      )}
+      {type === "text" && (
+        <fieldset className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-3">
+          <legend className="px-1 font-silk text-[11px] uppercase tracking-wider text-sun">Bantay-Bayan</legend>
+          <div>
+            <p id="slowmode-label" className="text-sm font-semibold text-white">
+              Slow mode
+            </p>
+            <p className="mb-2 text-xs text-slate-400">Ilang segundo bago makapag-send ulit ang members (moderators exempt).</p>
+            <div role="radiogroup" aria-labelledby="slowmode-label" className="flex flex-wrap gap-1">
+              {SLOWMODE_OPTIONS.map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={slowmode === o.value}
+                  onClick={() => setSlowmode(o.value)}
+                  className={cn(
+                    "rounded-md border px-2 py-1 text-xs font-semibold transition-colors pointer-coarse:px-3 pointer-coarse:py-2",
+                    slowmode === o.value ? "border-sun bg-sun text-abyss" : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10",
+                  )}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <Switch
+            checked={verifiedOnly}
+            onChange={setVerifiedOnly}
+            label="Verified accounts lang"
+            hint="Kailangan confirmed ang email o phone number bago makapag-chat dito."
+          />
+        </fieldset>
       )}
       <div className="flex items-center justify-between gap-2 pt-1">
         {editing ? (

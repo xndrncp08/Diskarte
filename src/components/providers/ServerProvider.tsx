@@ -6,15 +6,18 @@ import { toast } from "sonner";
 import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { useServerPresence } from "@/components/providers/PresenceProvider";
+import type { ServerBadge } from "@/lib/community";
 import type { PresencePayload, RealtimeHealth } from "@/lib/presence";
 import type { Channel, MemberWithProfile, Server } from "@/lib/servers";
-import type { MemberRole, Tables } from "@/lib/supabase/database.types";
+import type { BadgeKind, MemberRole, Tables } from "@/lib/supabase/database.types";
 
 export interface ServerContextValue {
   server: Server;
   channels: Channel[];
   members: MemberWithProfile[];
   myRole: MemberRole;
+  /** Supporter badges per user id. */
+  badges: Map<string, BadgeKind[]>;
   presence: Map<string, PresencePayload>;
   health: RealtimeHealth;
   upsertChannel: (channel: Channel) => void;
@@ -28,15 +31,24 @@ export interface ServerProviderProps {
   server: Server;
   channels: Channel[];
   members: MemberWithProfile[];
+  badges?: ServerBadge[];
   myRole: MemberRole;
   children: ReactNode;
+}
+
+const NO_BADGES: ServerBadge[] = [];
+
+function badgeMap(rows: ServerBadge[]) {
+  const map = new Map<string, BadgeKind[]>();
+  for (const row of rows) map.set(row.user_id, [...(map.get(row.user_id) ?? []), row.badge]);
+  return map;
 }
 
 /**
  * Live state for one Tambayan: channels, members and presence are seeded from the server render
  * and then kept current with Supabase Realtime postgres_changes; presence comes from PresenceProvider.
  */
-export function ServerProvider({ server: initialServer, channels: initialChannels, members: initialMembers, myRole: initialRole, children }: ServerProviderProps) {
+export function ServerProvider({ server: initialServer, channels: initialChannels, members: initialMembers, badges: initialBadges = NO_BADGES, myRole: initialRole, children }: ServerProviderProps) {
   const supabase = useSupabase();
   const router = useRouter();
   const { me } = useMe();
@@ -44,16 +56,19 @@ export function ServerProvider({ server: initialServer, channels: initialChannel
   const [server, setServer] = useState(initialServer);
   const [channels, setChannels] = useState(initialChannels);
   const [members, setMembers] = useState(initialMembers);
+  const [badgeRows, setBadgeRows] = useState(initialBadges);
   const [health, setHealth] = useState<RealtimeHealth>("connecting");
 
   // Re-seed whenever the server component re-renders with fresh data.
-  const [seed, setSeed] = useState({ initialServer, initialChannels, initialMembers });
-  if (seed.initialServer !== initialServer || seed.initialChannels !== initialChannels || seed.initialMembers !== initialMembers) {
-    setSeed({ initialServer, initialChannels, initialMembers });
+  const [seed, setSeed] = useState({ initialServer, initialChannels, initialMembers, initialBadges });
+  if (seed.initialServer !== initialServer || seed.initialChannels !== initialChannels || seed.initialMembers !== initialMembers || seed.initialBadges !== initialBadges) {
+    setSeed({ initialServer, initialChannels, initialMembers, initialBadges });
     setServer(initialServer);
     setChannels(initialChannels);
     setMembers(initialMembers);
+    setBadgeRows(initialBadges);
   }
+  const badges = useMemo(() => badgeMap(badgeRows), [badgeRows]);
 
   const myRole = members.find((m) => m.user_id === me.id)?.role ?? initialRole;
   const serverId = server.id;
@@ -98,6 +113,15 @@ export function ServerProvider({ server: initialServer, channels: initialChannel
         }
         setMembers((prev) => prev.filter((m) => m.user_id !== key.user_id));
       })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "server_badges", filter: `server_id=eq.${serverId}` }, ({ new: row }) => {
+        const badge = row as ServerBadge;
+        setBadgeRows((prev) => (prev.some((b) => b.user_id === badge.user_id && b.badge === badge.badge) ? prev : [...prev, badge]));
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "server_badges" }, ({ old }) => {
+        const key = old as Partial<ServerBadge>;
+        if (key.server_id !== serverId) return;
+        setBadgeRows((prev) => prev.filter((b) => !(b.user_id === key.user_id && b.badge === key.badge)));
+      })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "servers", filter: `id=eq.${serverId}` }, ({ new: row }) => {
         setServer(row as Server);
       })
@@ -127,8 +151,8 @@ export function ServerProvider({ server: initialServer, channels: initialChannel
   const removeChannel = useCallback((id: string) => setChannels((prev) => prev.filter((c) => c.id !== id)), []);
 
   const value = useMemo<ServerContextValue>(
-    () => ({ server, channels, members, myRole, presence, health, upsertChannel, removeChannel }),
-    [server, channels, members, myRole, presence, health, upsertChannel, removeChannel],
+    () => ({ server, channels, members, myRole, badges, presence, health, upsertChannel, removeChannel }),
+    [server, channels, members, myRole, badges, presence, health, upsertChannel, removeChannel],
   );
 
   return <ServerContext.Provider value={value}>{children}</ServerContext.Provider>;

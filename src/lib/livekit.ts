@@ -11,6 +11,11 @@ export function voiceRoomName(channelId: string) {
   return `voice:${channelId}`;
 }
 
+/** 1:1 and group DM calls. */
+export function dmRoomName(conversationId: string) {
+  return `dm:${conversationId}`;
+}
+
 export interface VoiceIdentity {
   userId: string;
   displayName: string;
@@ -24,7 +29,7 @@ export interface VoiceIdentity {
  * so other clients can map participants back to Tambayan members. Only mic/camera/screen may be
  * published and participants cannot rewrite their own metadata.
  */
-export async function mintVoiceToken(opts: { apiKey: string; apiSecret: string; channelId: string; identity: VoiceIdentity }) {
+export async function mintVoiceToken(opts: { apiKey: string; apiSecret: string; room: string; identity: VoiceIdentity }) {
   const token = new AccessToken(opts.apiKey, opts.apiSecret, {
     identity: opts.identity.userId,
     name: opts.identity.displayName,
@@ -36,7 +41,7 @@ export async function mintVoiceToken(opts: { apiKey: string; apiSecret: string; 
     }),
   });
   token.addGrant({
-    room: voiceRoomName(opts.channelId),
+    room: opts.room,
     roomJoin: true,
     canSubscribe: true,
     canPublish: true,

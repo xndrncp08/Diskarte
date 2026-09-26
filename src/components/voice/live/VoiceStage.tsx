@@ -2,9 +2,14 @@
 
 import { RoomContext, useTracks, type TrackReferenceOrPlaceholder } from "@livekit/components-react";
 import { Track } from "livekit-client";
-import { useEffect, useRef, useState } from "react";
+import { Maximize, Minimize } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { bestGrid } from "@/lib/voice-layout";
+import { cn } from "@/lib/utils";
+import { ActivitiesMenu, ActivityStage } from "./activities/ActivityStage";
+import { useActivity } from "./activities/useActivity";
 import { ParticipantTile } from "./ParticipantTile";
+import { SoundboardPanel } from "./SoundboardPanel";
 import { useCall } from "../CallProvider";
 import { VoiceControls } from "../VoiceControls";
 
@@ -22,6 +27,61 @@ function useSize<T extends HTMLElement>() {
 }
 
 const trackKey = (t: TrackReferenceOrPlaceholder) => `${t.participant.identity}:${t.source}`;
+
+/**
+ * Screen share "focus mode": true fullscreen where the Fullscreen API exists, otherwise (iOS
+ * Safari) a fixed full-viewport overlay. Escape leaves either.
+ */
+function FocusableScreen({ trackRef }: { trackRef: TrackReferenceOrPlaceholder }) {
+  const box = useRef<HTMLDivElement>(null);
+  const [overlay, setOverlay] = useState(false);
+  const [native, setNative] = useState(false);
+
+  useEffect(() => {
+    const onChange = () => setNative(document.fullscreenElement === box.current);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  useEffect(() => {
+    if (!overlay) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOverlay(false);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [overlay]);
+
+  const toggle = useCallback(async () => {
+    const el = box.current;
+    if (!el) return;
+    if (document.fullscreenElement) return void (await document.exitFullscreen().catch(() => undefined));
+    if (overlay) return setOverlay(false);
+    if (typeof el.requestFullscreen === "function") {
+      try {
+        await el.requestFullscreen({ navigationUI: "hide" });
+        return;
+      } catch {
+        // Fall through to the overlay.
+      }
+    }
+    setOverlay(true);
+  }, [overlay]);
+
+  const focused = native || overlay;
+  return (
+    <div ref={box} className={cn("group/screen relative min-h-0 flex-1 bg-black", overlay && "fixed inset-0 z-50", focused && "flex")} data-testid="screen-focus" data-focused={focused || undefined}>
+      <ParticipantTile trackRef={trackRef} className={cn("size-full", focused && "rounded-none border-0")} />
+      <button
+        type="button"
+        onClick={() => void toggle()}
+        aria-label={focused ? "Exit focus mode" : "Focus mode (fullscreen)"}
+        className="absolute right-3 top-3 flex items-center gap-1.5 rounded-lg bg-black/70 px-2.5 py-1.5 text-xs font-semibold text-white opacity-0 backdrop-blur transition-opacity hover:bg-black/90 focus:opacity-100 group-hover/screen:opacity-100 pointer-coarse:opacity-100"
+      >
+        {focused ? <Minimize className="size-4" aria-hidden /> : <Maximize className="size-4" aria-hidden />}
+        {focused ? "Exit" : "Focus"}
+      </button>
+    </div>
+  );
+}
 
 /** Lazily loaded with LiveKit's React bindings; scopes them to the active room. */
 export function VoiceStage() {
@@ -50,12 +110,14 @@ function Stage() {
 
   const focused = screens.find((s) => trackKey(s) === focusKey) ?? screens[0];
   const grid = bestGrid(cameras.length, size.width, size.height);
+  const activity = useActivity();
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 p-4" data-testid="voice-stage">
+    <div className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4" data-testid="voice-stage">
+      <ActivityStage controls={activity} />
       {focused ? (
         <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
-          <ParticipantTile trackRef={focused} className="min-h-0 flex-1" />
+          <FocusableScreen key={trackKey(focused)} trackRef={focused} />
           <div className="scrollbar-thin flex shrink-0 gap-3 overflow-auto lg:w-56 lg:flex-col">
             {[...screens.filter((s) => s !== focused), ...cameras].map((t) => (
               <button key={trackKey(t)} type="button" onClick={() => t.source === Track.Source.ScreenShare && setFocusKey(trackKey(t))} className="aspect-video w-48 shrink-0 lg:w-full">
@@ -74,8 +136,12 @@ function Stage() {
         </div>
       )}
       <div className="flex justify-center">
-        <div className="glass pb-safe max-w-full rounded-3xl px-2 pt-3 sm:px-4">
+        <div className="glass pb-safe flex max-w-full flex-wrap items-start justify-center gap-1.5 rounded-3xl px-2 pt-3 sm:gap-3 sm:px-4">
           <VoiceControls />
+          <div className="flex gap-1.5 sm:gap-3" role="toolbar" aria-label="Call extras">
+            <SoundboardPanel />
+            <ActivitiesMenu controls={activity} />
+          </div>
         </div>
       </div>
     </div>

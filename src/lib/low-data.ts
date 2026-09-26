@@ -38,7 +38,9 @@ export function setLowDataMode(enabled: boolean) {
 
 export function subscribeLowDataMode(listener: () => void) {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 /** Test helper. */

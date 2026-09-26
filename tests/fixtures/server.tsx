@@ -99,6 +99,7 @@ export function ServerFixture({
     channels,
     members,
     myRole,
+    badges: new Map(),
     presence,
     health: "connected",
     upsertChannel: () => undefined,

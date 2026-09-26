@@ -42,7 +42,8 @@ export function buildCsp(nonce: string, sources: CspSources, isDev: boolean, upg
     "font-src": ["'self'", "data:"],
     "connect-src": ["'self'", ...supabase, ...livekit, ...(isDev ? ["ws://localhost:*", "http://localhost:*"] : [])],
     "worker-src": ["'self'", "blob:"],
-    "frame-src": ["'none'"],
+    // Watch parties embed YouTube's privacy-enhanced (no-cookie) player only.
+    "frame-src": ["https://www.youtube-nocookie.com"],
     "object-src": ["'none'"],
     "base-uri": ["'self'"],
     "form-action": ["'self'", ...supabaseHttp],

@@ -24,6 +24,7 @@ const DB_ERRORS: Record<string, string> = {
   SERVER_LIMIT_REACHED: "Umabot ka na sa limit na 25 tambayan na pagmamay-ari mo.",
   SERVER_JOIN_LIMIT: "Nasa 100 tambayan ka na — mag-leave muna sa iba.",
   INVITE_NOT_FOUND: "Walang tambayan na may ganyang invite code.",
+  BANNED: "Naka-ban ka sa tambayan na 'to.",
   OWNER_CANNOT_LEAVE: "Ikaw ang owner — i-delete o i-transfer muna ang tambayan.",
   CANNOT_KICK_MEMBER: "Hindi mo pwedeng i-kick ang member na 'yan.",
   ONLY_ADMINS_CAN_CHANGE_ROLES: "Admins lang ang pwedeng magpalit ng roles.",
@@ -137,34 +138,71 @@ export async function regenerateInviteAction(input: { serverId: string }): Promi
 // Channels
 // ---------------------------------------------------------------------------------------
 
-export async function createChannelAction(input: { serverId: string; name: string; type: "text" | "voice"; category: string; topic?: string }): Promise<ActionResult<{ channelId: string }>> {
+export async function createChannelAction(input: {
+  serverId: string;
+  name: string;
+  type: "text" | "voice";
+  category: string;
+  topic?: string;
+  slowmodeSeconds?: number;
+  requiresVerification?: boolean;
+}): Promise<ActionResult<{ channelId: string }>> {
   const { limited } = await authed();
   if (limited) return RATE_LIMITED;
   if (!uuidSchema.safeParse(input.serverId).success) return { ok: false, error: "Invalid server" };
   const parsed = channelSchema.safeParse({ name: input.name, type: input.type, category: input.category, topic: input.topic ?? "" });
   if (!parsed.success) return { ok: false, fieldErrors: fieldErrors(parsed.error) };
+  const moderation = channelModerationSchema.safeParse(input);
+  if (!moderation.success) return { ok: false, fieldErrors: { slowmodeSeconds: "Invalid slow mode" } };
 
   const supabase = await createClient();
   const { data: last } = await supabase.from("channels").select("position").eq("server_id", input.serverId).order("position", { ascending: false }).limit(1).maybeSingle();
   const { data, error } = await supabase
     .from("channels")
-    .insert({ server_id: input.serverId, ...parsed.data, position: (last?.position ?? -1) + 1 })
+    .insert({
+      server_id: input.serverId,
+      ...parsed.data,
+      position: (last?.position ?? -1) + 1,
+      slowmode_seconds: moderation.data.slowmodeSeconds,
+      requires_verification: moderation.data.requiresVerification,
+    })
     .select("id")
     .single();
   if (error || !data) return { ok: false, error: dbError(error?.message, "Hindi nagawa ang channel.") };
   return { ok: true, data: { channelId: data.id } };
 }
 
-export async function updateChannelAction(input: { channelId: string; name: string; type: "text" | "voice"; category: string; topic: string }): Promise<ActionResult> {
+const channelModerationSchema = z.object({
+  slowmodeSeconds: z.number().int().min(0).max(21600).default(0),
+  requiresVerification: z.boolean().default(false),
+});
+
+export async function updateChannelAction(input: {
+  channelId: string;
+  name: string;
+  type: "text" | "voice";
+  category: string;
+  topic: string;
+  slowmodeSeconds?: number;
+  requiresVerification?: boolean;
+}): Promise<ActionResult> {
   const { limited } = await authed();
   if (limited) return RATE_LIMITED;
   if (!uuidSchema.safeParse(input.channelId).success) return { ok: false, error: "Invalid channel" };
   const parsed = channelSchema.safeParse(input);
   if (!parsed.success) return { ok: false, fieldErrors: fieldErrors(parsed.error) };
+  const moderation = channelModerationSchema.safeParse(input);
+  if (!moderation.success) return { ok: false, fieldErrors: { slowmodeSeconds: "Invalid slow mode" } };
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("channels")
-    .update({ name: parsed.data.name, category: parsed.data.category, topic: parsed.data.topic })
+    .update({
+      name: parsed.data.name,
+      category: parsed.data.category,
+      topic: parsed.data.topic,
+      slowmode_seconds: moderation.data.slowmodeSeconds,
+      requires_verification: moderation.data.requiresVerification,
+    })
     .eq("id", input.channelId)
     .select("id");
   if (error || !data?.length) return { ok: false, error: dbError(error?.message, "Moderators lang ang pwedeng mag-edit ng channel.") };

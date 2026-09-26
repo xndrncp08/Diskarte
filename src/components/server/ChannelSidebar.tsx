@@ -2,11 +2,12 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { ChevronDown, Hash, HeadphoneOff, LogOut, MicOff, Pencil, Plus, Settings, UserPlus, Video, Volume2 } from "lucide-react";
+import { useParams, usePathname, useRouter } from "next/navigation";
+import { ChevronDown, Hash, HeadphoneOff, Heart, LogOut, MicOff, Pencil, Plus, Radio, Settings, ShieldCheck, UserPlus, Video, Volume2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { leaveServerAction } from "@/actions/servers";
+import { SupportDialog } from "@/components/community/SupportDialog";
 import { useMe } from "@/components/providers/MeProvider";
 import { useServer } from "@/components/providers/ServerProvider";
 import { UserAvatar } from "@/components/profile/UserAvatar";
@@ -18,15 +19,21 @@ import { CallDock } from "@/components/voice/CallDock";
 import { useCall } from "@/components/voice/CallProvider";
 import { Menu } from "@/components/ui/Menu";
 import { useOnline } from "@/hooks/useOnline";
+import { boostLevel } from "@/lib/community";
 import { signalLevel } from "@/lib/presence";
 import { groupChannels, hasRole, type Channel } from "@/lib/servers";
 import { cn } from "@/lib/utils";
 import { ChannelDialog } from "./ChannelDialog";
 import { InviteDialog } from "./InviteDialog";
-import { ServerSettingsDialog } from "./ServerSettingsDialog";
+import { ServerSettingsDialog, type SettingsTab } from "./ServerSettingsDialog";
 
 type DialogState =
-  { kind: "invite" } | { kind: "settings" } | { kind: "leave" } | { kind: "channel"; channel?: Channel; type?: "text" | "voice"; category?: string } | null;
+  | { kind: "invite" }
+  | { kind: "settings"; tab?: SettingsTab }
+  | { kind: "support" }
+  | { kind: "leave" }
+  | { kind: "channel"; channel?: Channel; type?: "text" | "voice"; category?: string }
+  | null;
 
 function VoiceOccupants({ channelId }: { channelId: string }) {
   const call = useCall();
@@ -64,10 +71,13 @@ function OccupantList({ channelId, speaking }: { channelId: string; speaking: Se
 }
 
 export function ChannelSidebar() {
-  const { server, channels, myRole, health } = useServer();
+  const { server, channels, myRole, health, members, badges } = useServer();
   const { me } = useMe();
   const { setNavOpen } = useShellUI();
   const params = useParams<{ channelId?: string }>();
+  const pathname = usePathname();
+  const onLfg = pathname === `/tambayan/${server.id}/lfg`;
+  const boost = boostLevel(members.filter((m) => badges.get(m.user_id)?.includes("booster")).length).level;
   const router = useRouter();
   const online = useOnline();
   const [dialog, setDialog] = useState<DialogState>(null);
@@ -103,6 +113,13 @@ export function ChannelSidebar() {
             hidden: myRole !== "admin",
           },
           {
+            label: "Bantay-Bayan",
+            icon: <ShieldCheck className="size-4" aria-hidden />,
+            onSelect: () => setDialog({ kind: "settings", tab: "audit" }),
+            hidden: !canManageChannels,
+          },
+          { label: "Suportahan ang tambayan", icon: <Heart className="size-4" aria-hidden />, onSelect: () => setDialog({ kind: "support" }) },
+          {
             label: "Create channel",
             icon: <Plus className="size-4" aria-hidden />,
             onSelect: () => setDialog({ kind: "channel" }),
@@ -126,13 +143,31 @@ export function ChannelSidebar() {
             className="flex h-12 w-full items-center justify-between border-b border-white/5 px-4 text-left font-bold text-white transition-colors hover:bg-white/5"
             data-testid="server-menu"
           >
-            <span className="truncate">{server.name}</span>
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className="truncate">{server.name}</span>
+              {boost > 0 && (
+                <span className="shrink-0 rounded bg-fuchsia-500/20 px-1 font-pixel text-[8px] text-fuchsia-200" title={`Boost level ${boost}`}>
+                  🚀{boost}
+                </span>
+              )}
+            </span>
             <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} aria-hidden />
           </button>
         )}
       />
 
       <nav aria-label="Channels" className="scrollbar-thin flex-1 overflow-y-auto px-2 py-3">
+        <Link
+          href={`/tambayan/${server.id}/lfg`}
+          onClick={() => setNavOpen(false)}
+          aria-current={onLfg ? "page" : undefined}
+          className={cn(
+            "mb-3 flex items-center gap-2 rounded-lg border px-2 py-1.5 text-sm font-semibold transition-colors pointer-coarse:py-2.5",
+            onLfg ? "border-sun/60 bg-sun/15 text-sun" : "border-white/10 bg-white/5 text-slate-300 hover:border-sun/40 hover:text-white",
+          )}
+        >
+          <Radio className="size-4" aria-hidden /> LFG Board
+        </Link>
         {groupChannels(channels).map(({ category, channels: list }) => (
           <section key={category} className="mb-4">
             <div className="group mb-1 flex items-center justify-between pr-1">
@@ -216,7 +251,8 @@ export function ChannelSidebar() {
       <UserPanel />
 
       <InviteDialog open={dialog?.kind === "invite"} onClose={() => setDialog(null)} />
-      <ServerSettingsDialog open={dialog?.kind === "settings"} onClose={() => setDialog(null)} />
+      <ServerSettingsDialog open={dialog?.kind === "settings"} onClose={() => setDialog(null)} initialTab={dialog?.kind === "settings" ? (dialog.tab ?? (myRole === "admin" ? "overview" : "audit")) : "overview"} />
+      <SupportDialog open={dialog?.kind === "support"} onClose={() => setDialog(null)} />
       <ChannelDialog
         open={dialog?.kind === "channel"}
         onClose={() => setDialog(null)}
