@@ -423,6 +423,46 @@ describe("floating call widgets", () => {
 });
 
 // =============================================================================================
+describe("mobile drawer stacking", () => {
+  it("drawer panels are never trapped under the drawer backdrop by an ancestor stacking context", async () => {
+    const user = userEvent.setup();
+    const { AppShell, DrawerPanel } = await import("@/components/shell/AppShell");
+    const { useShellUI } = await import("@/components/shell/ShellUI");
+    const { RuntimeConfigProvider } = await import("@/components/providers/RuntimeConfig");
+    const { server } = await import("../fixtures/server");
+    function OpenNav() {
+      const { setNavOpen } = useShellUI();
+      return (
+        <DrawerPanel>
+          <aside aria-label="Test channels">
+            <button type="button" onClick={() => setNavOpen(true)}>
+              Open navigation
+            </button>
+          </aside>
+        </DrawerPanel>
+      );
+    }
+    render(
+      <RuntimeConfigProvider value={RUNTIME}>
+        <AppShell profile={MEMBERS[0].profile} servers={[server]}>
+          <OpenNav />
+        </AppShell>
+      </RuntimeConfigProvider>,
+    );
+    await user.click(screen.getByRole("button", { name: "Open navigation" }));
+    const backdrop = screen.getByRole("button", { name: "Close navigation" });
+    const drawer = screen.getByRole("complementary", { name: "Test channels" }).parentElement!;
+    const zOf = (el: Element) => Number(/(?:^|\s)z-(\d+)/.exec(el.className)?.[1] ?? NaN);
+    expect(zOf(drawer)).toBeGreaterThan(zOf(backdrop));
+    // Every ancestor between the drawer and the shell root must not set a z-index (stacking context).
+    const shellRoot = backdrop.parentElement!;
+    for (let el = drawer.parentElement; el && el !== shellRoot; el = el.parentElement) {
+      expect(el.className, "ancestor creates a stacking context").not.toMatch(/(^|\s)z-\d+/);
+    }
+  });
+});
+
+// =============================================================================================
 describe("resilience", () => {
   beforeEach(() => navigation.set(channelUrl(GENERAL.id)));
 
