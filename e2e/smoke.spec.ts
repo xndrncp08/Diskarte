@@ -42,10 +42,34 @@ test.describe("smoke (no backend required)", () => {
     await page.getByLabel("Display name").fill("Juan");
     await page.getByLabel("Username").fill("x");
     await page.getByLabel("Email").fill("not-an-email");
-    await page.getByLabel("Password").fill("short");
+    await page.getByLabel("Password", { exact: true }).fill("short");
     await page.getByRole("button", { name: "Sali na!" }).click();
     await expect(page.getByText("3–32 characters: letters, numbers, underscore o tuldok lang.")).toBeVisible();
     await expect(page.getByText("Mukhang mali ang email")).toBeVisible();
-    await expect(page.getByText("Minimum 8 characters ang password")).toBeVisible();
+    await expect(page.getByText(/Kulang ang password: 10\+ characters/)).toBeVisible();
+    await expect(page.getByTestId("password-rules")).toContainText("uppercase letter");
+  });
+});
+
+test.describe("security smoke", () => {
+  test("auth endpoints answer brute force with 429 + Retry-After", async ({ request }) => {
+    const ip = `203.0.113.${Math.floor(Math.random() * 200) + 20}`;
+    const attempt = () => request.post("/login", { headers: { "x-forwarded-for": ip, origin: "http://localhost" }, form: { email: "x@y.z", password: "nope" }, maxRedirects: 0 });
+    const budget = Number(process.env.RATE_LIMIT_AUTH_PER_MINUTE ?? 5);
+    test.skip(budget > 20, "auth rate limit raised for this run");
+    for (let i = 0; i < budget; i++) await attempt();
+    const blocked = await attempt();
+    expect(blocked.status()).toBe(429);
+    expect(Number(blocked.headers()["retry-after"])).toBeGreaterThan(0);
+  });
+
+  test("API rejects foreign-origin preflights", async ({ request }) => {
+    const res = await request.fetch("/api/livekit/token", { method: "OPTIONS", headers: { origin: "https://evil.example" } });
+    expect(res.status()).toBe(403);
+  });
+
+  test("protected API requires a session", async ({ request, baseURL }) => {
+    const res = await request.post("/api/livekit/token", { headers: { origin: new URL(baseURL!).origin }, data: { channelId: "00000000-0000-4000-8000-000000000000" } });
+    expect(res.status()).toBe(401);
   });
 });
