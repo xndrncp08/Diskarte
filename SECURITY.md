@@ -58,7 +58,7 @@ Rate limits live in process memory by default (Diskarte runs as one container). 
 - **SQL injection:** every query goes through supabase-js/PostgREST (parameterised) or `plpgsql` with bound parameters. There is no dynamic SQL, and tests call the RPCs with injection payloads.
 - **XSS:** chat content is stored as plain text/Markdown and **encoded on output**:
   - React escapes all text.
-  - Markdown renders with `skipHtml`, so raw HTML is dropped.
+  - Raw HTML in Markdown is converted to literal text (and `skipHtml` stays on as a backstop), so `<script>` shows up as visible characters and is never parsed.
   - `<img>`, `<iframe>`, `<script>` and `<style>` are unwrapped.
   - Links are limited to `http(s):`/`mailto:` and get `rel="noopener noreferrer nofollow ugc"`.
   - Control and zero-width characters are stripped before storage.
