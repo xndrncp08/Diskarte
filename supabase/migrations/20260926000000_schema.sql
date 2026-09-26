@@ -72,9 +72,9 @@ create table public.profiles (
   username text not null unique check (username ~ '^[a-z0-9_.]{3,32}$'),
   display_name text not null check (char_length(btrim(display_name)) between 1 and 32),
   avatar_preset text not null default 'araw' check (avatar_preset ~ '^[a-z0-9-]{2,24}$'),
-  avatar_url text check (avatar_url is null or char_length(avatar_url) <= 1024),
+  avatar_url text check (avatar_url is null or (char_length(avatar_url) <= 1024 and avatar_url ~ '^https://[^[:space:]"''()<>]+$')),
   banner_preset text not null default 'paglubog' check (banner_preset ~ '^[a-z0-9-]{2,24}$'),
-  banner_url text check (banner_url is null or char_length(banner_url) <= 1024),
+  banner_url text check (banner_url is null or (char_length(banner_url) <= 1024 and banner_url ~ '^https://[^[:space:]"''()<>]+$')),
   bio text not null default '' check (char_length(bio) <= 190),
   status public.presence_status not null default 'online',
   custom_status text check (custom_status is null or char_length(custom_status) <= 64),
@@ -174,7 +174,7 @@ begin
     new.id,
     uname,
     dname,
-    case when (meta ->> 'avatar_url') ~ '^https://' then left(meta ->> 'avatar_url', 1024) else null end
+    case when (meta ->> 'avatar_url') ~ '^https://[^[:space:]"''()<>]+$' and char_length(meta ->> 'avatar_url') <= 1024 then meta ->> 'avatar_url' else null end
   );
   return new;
 end;
@@ -191,7 +191,7 @@ create table public.servers (
   id uuid primary key default gen_random_uuid(),
   name text not null check (char_length(btrim(name)) between 2 and 64),
   description text not null default '' check (char_length(description) <= 280),
-  icon_url text check (icon_url is null or char_length(icon_url) <= 1024),
+  icon_url text check (icon_url is null or (char_length(icon_url) <= 1024 and icon_url ~ '^https://[^[:space:]"''()<>]+$')),
   owner_id uuid not null references public.profiles (id) on delete cascade,
   invite_code text not null unique default public.generate_invite_code(),
   created_at timestamptz not null default now(),
@@ -706,7 +706,7 @@ begin
   if owned >= 25 then
     raise exception 'SERVER_LIMIT_REACHED' using errcode = '53400';
   end if;
-  if p_icon_url is not null and p_icon_url !~ '^https://' then
+  if p_icon_url is not null and p_icon_url !~ '^https://[^[:space:]"''()<>]+$' then
     raise exception 'INVALID_ICON_URL' using errcode = '23514';
   end if;
 
@@ -781,6 +781,18 @@ begin
 end;
 $$;
 
+-- Lets the sign-up form check a handle without exposing the profiles table to anon.
+create or replace function public.username_available(p_username text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select lower(btrim(p_username)) ~ '^[a-z0-9_.]{3,32}$'
+     and not exists (select 1 from public.profiles p where p.username = lower(btrim(p_username)));
+$$;
+
 -- Lock down function execution: helpers are callable by signed-in users only.
 revoke execute on all functions in schema public from public, anon;
 grant execute on function
@@ -793,10 +805,11 @@ grant execute on function
   public.create_server(text, text, text),
   public.get_invite(text),
   public.join_server(text),
-  public.regenerate_invite(uuid)
+  public.regenerate_invite(uuid),
+  public.username_available(text)
 to authenticated;
 -- Invite previews are visible before signing in.
-grant execute on function public.get_invite(text) to anon;
+grant execute on function public.get_invite(text), public.username_available(text) to anon;
 
 -- =====================================================================================
 -- Row-Level Security
