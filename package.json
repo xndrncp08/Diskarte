@@ -1,0 +1,23 @@
+{
+  "name": "diskarte-monorepo",
+  "private": true,
+  "description": "Diskarte — open-source Discord alternative for the Philippines (app + Early Access portal)",
+  "workspaces": [
+    "diskarte",
+    "early-access-portal"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w diskarte",
+    "dev:portal": "npm run dev -w early-access-portal",
+    "build": "npm run build -w diskarte && npm run build -w early-access-portal",
+    "lint": "npm run lint --workspaces",
+    "typecheck": "npm run typecheck --workspaces",
+    "test": "npm run test --workspaces",
+    "test:e2e": "npm run test:e2e -w diskarte",
+    "brand:assets": "npm run brand:assets -w diskarte",
+    "admin:grant": "npm run admin:grant -w early-access-portal --"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  }
+}
