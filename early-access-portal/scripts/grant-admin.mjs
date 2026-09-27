@@ -5,7 +5,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 const [email, flag] = process.argv.slice(2);
-const url = process.env.SUPABASE_URL;
+const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!email || !url || !key) {
   console.error("Usage: SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… npm run admin:grant -- <email> [--revoke]");

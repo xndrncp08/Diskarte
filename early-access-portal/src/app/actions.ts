@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { checkFormToken, hashIp, honeypotTripped, HONEYPOT_FIELD } from "@/lib/antispam";
 import { getPortalEnv } from "@/lib/env";
-import { clientIp, limiter } from "@/lib/rate-limit";
+import { checkRate, clientIp } from "@/lib/rate-limit";
 import { applicationSchema, fieldErrors } from "@/lib/schema";
 import { createClient } from "@/lib/supabase/server";
 import { TURNSTILE_FIELD, verifyTurnstile } from "@/lib/turnstile";
@@ -34,7 +34,7 @@ export async function submitApplicationAction(_prev: ApplyState, form: FormData)
   const ip = clientIp(h);
   const values = Object.fromEntries(KEEP.map((k) => [k, text(form, k)]));
 
-  if (!limiter("apply", env.limits.applyPerHour, 60 * 60 * 1000).check(ip).ok) {
+  if (!(await checkRate("apply", ip, env.limits.applyPerHour, 60 * 60 * 1000, env.upstash)).ok) {
     return { status: "error", error: "Ang dami nang applications mula sa network mo. Subukan ulit mamaya.", values };
   }
 

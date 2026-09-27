@@ -2,9 +2,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { PORTAL_BRAND_DIR, portalBrandSvgs } from "@/components/brand/portal-export";
+import { PORTAL_BRAND_DIR, PORTAL_PUBLIC_DIR, portalBrandSvgs } from "@/components/brand/portal-export";
 
-const root = path.resolve(__dirname, "../..");
+/** Repository root: diskarte/ and early-access-portal/ are siblings. */
+const root = path.resolve(__dirname, "../../..");
 
 describe("Early Access portal brand assets", () => {
   it("match the main app's logo components (run `npm run brand:assets` after changing them)", () => {
@@ -13,6 +14,6 @@ describe("Early Access portal brand assets", () => {
       expect(shipped, `${PORTAL_BRAND_DIR}/${file} is stale`).toBe(markup);
       expect(shipped).toContain('xmlns="http://www.w3.org/2000/svg"');
     }
-    expect(fs.statSync(path.join(root, "early-access-portal/public/email/salakot.png")).size).toBeGreaterThan(1000);
+    expect(fs.statSync(path.join(root, PORTAL_PUBLIC_DIR, "email/salakot.png")).size).toBeGreaterThan(1000);
   });
 });

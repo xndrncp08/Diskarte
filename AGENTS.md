@@ -1,9 +1,13 @@
-<!-- BEGIN:nextjs-agent-rules -->
+# Diskarte monorepo
+
+npm workspace with two Next.js 16 apps and shared Supabase migrations:
+
+- `diskarte/` — the main app (Render/Docker). Its own AGENTS.md applies inside it.
+- `early-access-portal/` — waitlist + admin approvals (Vercel). Its own AGENTS.md applies inside it.
+- `supabase/` — migrations shared by both apps; PGlite RLS tests live in `diskarte/tests/db/`.
+
+Install once from the root (`npm install`); run app scripts with `-w diskarte` / `-w early-access-portal`.
 
 # This is NOT the Next.js you know
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
-
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
-
-<!-- END:nextjs-agent-rules -->
+Both apps use a Next.js version with breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.

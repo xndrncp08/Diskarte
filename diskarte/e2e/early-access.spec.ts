@@ -50,11 +50,11 @@ test.describe("early access portal", () => {
     const page = await visitor.newPage();
     await page.goto(PORTAL_URL);
     await page.getByLabel("Buong pangalan").fill(applicant.displayName);
-    await page.getByLabel("Email").fill(applicant.email);
+    await page.getByLabel("Email", { exact: true }).fill(applicant.email);
     await page.getByLabel("Gustong @username").fill(applicant.username);
     await page.getByText("Gaming squad / guild").click();
     await page.getByLabel("Bakit mo gustong sumali?").fill("Lilipat na ang Valorant squad namin mula Discord — sana makasali kami!");
-    await page.getByRole("checkbox").check();
+    await page.getByRole("checkbox", { name: /Pumapayag/ }).check();
     await page.waitForTimeout(3_200); // the signed form token rejects sub-3-second submissions
     await page.getByRole("button", { name: /Sumali sa waitlist/ }).click();
     await expect(page.getByTestId("apply-success")).toContainText(`Nasa pila ka na, ${applicant.displayName.split(" ")[0]}!`);
@@ -67,8 +67,8 @@ test.describe("early access portal", () => {
     const staff = await browser.newContext();
     const adminPage = await staff.newPage();
     await adminPage.goto(`${PORTAL_URL}/admin`);
-    await adminPage.getByLabel("Email").fill(admin.email);
-    await adminPage.getByLabel("Password").fill(admin.password);
+    await adminPage.getByLabel("Email", { exact: true }).fill(admin.email);
+    await adminPage.getByLabel("Password", { exact: true }).fill(admin.password);
     await adminPage.getByRole("button", { name: "Pumasok bilang admin" }).click();
     await expect(adminPage.getByRole("heading", { name: "Review queue" })).toBeVisible();
     await adminPage.getByLabel("Search applications").fill(applicant.email);

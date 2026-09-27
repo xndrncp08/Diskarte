@@ -1,7 +1,7 @@
 # Local container orchestration.
 #   docker compose up --build                 # web app only (uses your hosted Supabase/LiveKit from .env)
 #   docker compose --profile livekit up       # + a local LiveKit server in dev mode for voice/video
-#   docker compose --profile early-access up  # + the Early Access portal on :3100 (early-access-portal/.env)
+#   docker compose --profile early-access up  # + the Early Access portal on :3100 (self-hosted; production uses Vercel)
 # For a local database run `npx supabase start` (see DEPLOYMENT.md) and point SUPABASE_URL at it.
 name: diskarte
 
@@ -9,12 +9,12 @@ services:
   web:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: diskarte/Dockerfile
     image: diskarte:local
     ports:
       - "3000:3000"
     env_file:
-      - path: .env
+      - path: diskarte/.env
         required: false
     environment:
       SITE_URL: ${SITE_URL:-http://localhost:3000}
@@ -29,7 +29,7 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-      - /app/.next/cache:uid=1001,gid=1001
+      - /app/diskarte/.next/cache:uid=1001,gid=1001
     security_opt:
       - no-new-privileges:true
     healthcheck:
@@ -42,7 +42,8 @@ services:
   early-access:
     profiles: ["early-access"]
     build:
-      context: early-access-portal
+      context: .
+      dockerfile: early-access-portal/Dockerfile
     image: diskarte-early-access:local
     ports:
       - "3100:3100"
@@ -59,7 +60,7 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-      - /app/.next/cache:uid=1001,gid=1001
+      - /app/early-access-portal/.next/cache:uid=1001,gid=1001
     security_opt:
       - no-new-privileges:true
 

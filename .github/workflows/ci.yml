@@ -27,13 +27,14 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      # npm workspace: one install for diskarte/ and early-access-portal/
       - run: npm ci
       - name: Lint
-        run: npm run lint
+        run: npm run lint -w diskarte
       - name: Type-check
-        run: npm run typecheck
+        run: npm run typecheck -w diskarte
       - name: Unit, component & database (RLS) tests
-        run: npm test
+        run: npm test -w diskarte
 
   docker:
     name: Docker image
@@ -46,6 +47,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: diskarte/Dockerfile
           load: true
           tags: diskarte:ci
           cache-from: type=gha
@@ -85,28 +87,28 @@ jobs:
     name: Early access portal
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    defaults:
-      run:
-        working-directory: early-access-portal
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: early-access-portal/package-lock.json
       - run: npm ci
       - name: Lint
-        run: npm run lint
+        run: npm run lint -w early-access-portal
       - name: Type-check
-        run: npm run typecheck
+        run: npm run typecheck -w early-access-portal
       - name: Unit, guard & component tests
-        run: npm test
+        run: npm test -w early-access-portal
+      # What Vercel runs (vercel.json buildCommand), with placeholder config.
+      - name: Production build (Vercel)
+        run: npm run build -w early-access-portal
       - uses: docker/setup-buildx-action@v3
       - name: Build image
         uses: docker/build-push-action@v6
         with:
-          context: early-access-portal
+          context: .
+          file: early-access-portal/Dockerfile
           load: true
           tags: diskarte-early-access:ci
           cache-from: type=gha,scope=portal
@@ -129,7 +131,6 @@ jobs:
           test "$(docker exec portal id -u)" = "1001"
       - name: Container logs
         if: always()
-        working-directory: .
         run: docker logs portal || true
 
   e2e:
@@ -151,9 +152,6 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            early-access-portal/package-lock.json
       - run: npm ci
       # The CLI comes from npm (its binary downloads from release assets), which avoids the
       # unauthenticated GitHub API lookups that `setup-cli` with `version: latest` gets rate-limited on.
@@ -174,21 +172,18 @@ jobs:
         run: docker run -d --name livekit --network host livekit/livekit-server:latest --dev --bind 0.0.0.0 --node-ip 127.0.0.1
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
-      - name: Build
+      - name: Build both apps
         run: npm run build
-      - name: Build the Early Access portal
-        run: |
-          npm ci --prefix early-access-portal
-          npm --prefix early-access-portal run build
       - name: Run E2E suite
+        working-directory: diskarte
         run: npx playwright test
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: playwright-report
           path: |
-            playwright-report
-            test-results
+            diskarte/playwright-report
+            diskarte/test-results
           retention-days: 7
       - name: Service logs
         if: failure()

@@ -31,16 +31,16 @@ Maintainers aim to acknowledge reports within 3 days, share a remediation plan w
 
 | Control | Where |
 | --- | --- |
-| Every request refreshes and **verifies** the session server-side with `getClaims()` (JWT signature check), not `getSession()` | `src/lib/supabase/proxy.ts`, `src/proxy.ts` |
-| Protected pages (`/tambayan/*`, `/settings/*`, `/onboarding`, `/reset-password`) redirect signed-out users; server components re-check with `auth.getUser()` | `src/proxy.ts`, `src/lib/auth.ts` |
-| Protected API routes (every `/api/*` except `/api/health`) return `401` without a session, and each handler re-verifies | `src/proxy.ts`, `src/app/api/livekit/token/route.ts` |
-| **PKCE** for OAuth and email links: `@supabase/ssr` forces `flowType: "pkce"` and keeps the verifier in a cookie; `/auth/callback` exchanges the one-time code, `/auth/confirm` verifies token hashes | `src/app/auth/*` |
-| Open-redirect protection on every `?next=` | `safeRedirectPath` in `src/lib/security.ts` |
-| Cookies are host-only (no `Domain`), `Path=/`, `SameSite=Lax`, and `Secure` on HTTPS | `src/lib/supabase/cookies.ts` |
-| Password policy: 10–72 bytes with upper, lower, digit and symbol (Zod, mirrored in Supabase Auth config) | `passwordSchema` in `src/lib/profile.ts`, `supabase/config.toml` |
-| Sign-in never reveals the policy or whether an account exists; sign-up and reset use vague, uniform messages | `src/lib/auth-errors.ts`, `src/app/(auth)/actions.ts` |
+| Every request refreshes and **verifies** the session server-side with `getClaims()` (JWT signature check), not `getSession()` | `diskarte/src/lib/supabase/proxy.ts`, `diskarte/src/proxy.ts` |
+| Protected pages (`/tambayan/*`, `/settings/*`, `/onboarding`, `/reset-password`) redirect signed-out users; server components re-check with `auth.getUser()` | `diskarte/src/proxy.ts`, `diskarte/src/lib/auth.ts` |
+| Protected API routes (every `/api/*` except `/api/health`) return `401` without a session, and each handler re-verifies | `diskarte/src/proxy.ts`, `diskarte/src/app/api/livekit/token/route.ts` |
+| **PKCE** for OAuth and email links: `@supabase/ssr` forces `flowType: "pkce"` and keeps the verifier in a cookie; `/auth/callback` exchanges the one-time code, `/auth/confirm` verifies token hashes | `diskarte/src/app/auth/*` |
+| Open-redirect protection on every `?next=` | `safeRedirectPath` in `diskarte/src/lib/security.ts` |
+| Cookies are host-only (no `Domain`), `Path=/`, `SameSite=Lax`, and `Secure` on HTTPS | `diskarte/src/lib/supabase/cookies.ts` |
+| Password policy: 10–72 bytes with upper, lower, digit and symbol (Zod, mirrored in Supabase Auth config) | `passwordSchema` in `diskarte/src/lib/profile.ts`, `supabase/config.toml` |
+| Sign-in never reveals the policy or whether an account exists; sign-up and reset use vague, uniform messages | `diskarte/src/lib/auth-errors.ts`, `diskarte/src/app/(auth)/actions.ts` |
 | Timing floor (450 ms) on sign-in, sign-up and reset, so fast-fail and slow paths look the same; Supabase compares bcrypt hashes in constant time | `withMinimumDuration` |
-| **Rate limiting**: 5 auth attempts/min/IP (login, sign-up, forgot/reset/change password) and 20 auth callbacks/min/IP. Excess requests get **`429 Too Many Requests` + `Retry-After`**. Also a per-account limit on password changes | `src/proxy.ts`, `src/lib/rate-limit.ts` |
+| **Rate limiting**: 5 auth attempts/min/IP (login, sign-up, forgot/reset/change password) and 20 auth callbacks/min/IP. Excess requests get **`429 Too Many Requests` + `Retry-After`**. Also a per-account limit on password changes | `diskarte/src/proxy.ts`, `diskarte/src/lib/rate-limit.ts` |
 | "Log out everywhere" revokes all refresh tokens | `/settings/account` |
 
 Rate limits live in process memory by default (Diskarte runs as one container). Set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to share counters across instances. If Redis is unreachable, the limiter falls back to memory.
@@ -64,7 +64,7 @@ Rate limits live in process memory by default (Diskarte runs as one container). 
   - Control and zero-width characters are stripped before storage.
   - Image URLs in profiles and server icons must be `https://` without quote or paren characters, checked by both a DB constraint and Zod.
 
-> **Why no DOMPurify/sanitize-html before storage?** Messages are Markdown, not HTML. Stripping "HTML" before storage mangles legitimate content, such as developers sharing `<div>` or `<script>` snippets inside code blocks. It also gives a false sense of safety, because any future renderer would still need output encoding. Diskarte never renders stored text as HTML, and the tests in `src/components/chat/__tests__/markdown.test.tsx` and `tests/db/security.test.ts` pin that behaviour.
+> **Why no DOMPurify/sanitize-html before storage?** Messages are Markdown, not HTML. Stripping "HTML" before storage mangles legitimate content, such as developers sharing `<div>` or `<script>` snippets inside code blocks. It also gives a false sense of safety, because any future renderer would still need output encoding. Diskarte never renders stored text as HTML, and the tests in `diskarte/src/components/chat/__tests__/markdown.test.tsx` and `diskarte/tests/db/security.test.ts` pin that behaviour.
 
 #### Community tables (`20260927000000_community.sql`)
 
@@ -106,7 +106,7 @@ Rate limits live in process memory by default (Diskarte runs as one container). 
 
 ### 3. WebRTC & LiveKit
 
-- `LIVEKIT_API_SECRET` exists only on the server. `src/lib/livekit.ts` and `src/lib/supabase/server.ts` import `server-only`, and a test fails CI if any `"use client"` module imports server-only modules or references server secrets / `NEXT_PUBLIC_*SECRET`.
+- `LIVEKIT_API_SECRET` exists only on the server. `diskarte/src/lib/livekit.ts` and `diskarte/src/lib/supabase/server.ts` import `server-only`, and a test fails CI if any `"use client"` module imports server-only modules or references server secrets / `NEXT_PUBLIC_*SECRET`.
 - `POST /api/livekit/token` requires a verified session and a CSRF-safe origin. It checks that the channel exists and is a voice channel (read under RLS) **and** that an explicit `members` row exists. Only then does it mint a token that:
   - is valid for **1 hour** (connected participants are refreshed by LiveKit itself);
   - is scoped to a single room: `voice:<channelId>`, or `dm:<conversationId>` for DM calls (checked against `dm_participants`); the identity is the Supabase user id;
@@ -130,7 +130,7 @@ Rate limits live in process memory by default (Diskarte runs as one container). 
 ### 5. HTTP, CORS & CSRF
 
 - A **per-request CSP** with a script nonce and `'strict-dynamic'`. `connect-src` allows only `'self'`, your Supabase URL (https/wss) and your LiveKit URL (https/wss). The policy also sets `frame-ancestors 'none'`, `object-src 'none'`, `base-uri 'self'` and `form-action 'self'`, plus `upgrade-insecure-requests` on HTTPS. `frame-src` allows only `https://www.youtube-nocookie.com` for watch parties. The embed is sandboxed and driven by `postMessage`, so no YouTube script runs on Diskarte's origin.
-- Static headers (`next.config.ts`): `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`, `Cross-Origin-Opener-Policy: same-origin`, a restrictive `Permissions-Policy`, and no `X-Powered-By`.
+- Static headers (`diskarte/next.config.ts`): `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`, `Cross-Origin-Opener-Policy: same-origin`, a restrictive `Permissions-Policy`, and no `X-Powered-By`.
 - **CORS:** `/api/*` answers preflights only for `SITE_URL` (plus any `ALLOWED_ORIGINS`). Every other origin gets `403`, and responses carry `Vary: Origin`.
 - **CSRF:** state-changing `/api/*` requests must carry a same-origin `Origin`/`Referer`. Server Actions get Next.js's built-in Origin check, and session cookies are `SameSite=Lax`.
 
@@ -144,14 +144,14 @@ Rate limits live in process memory by default (Diskarte runs as one container). 
 
 ## Security testing
 
-Run `npm test`. It includes:
+Run `npm test` from the repository root (both workspaces). It includes:
 
-- `tests/db/schema.test.ts` and `tests/db/security.test.ts`: the real migrations inside PGlite, attacked as different users (RLS bypass, role escalation, forged authors, injection payloads, hostile attachments and storage paths).
-- `tests/db/early-access.test.ts`: public insert limits, super-admin-only reads, the review state machine and flood caps. `early-access-portal/tests/`: anti-spam, admin guards on the proxy and every action, credential generation and the approval workflow.
-- `tests/db/community.test.ts`: audit logging, bans, auto-mod, slow mode, verification gates, threads, badges, LFG, the soundboard, friendships, blocks and DM privacy.
-- `tests/security/proxy.test.ts`: rate limits (429 + `Retry-After`), CORS, CSRF, the API session guard, route guards and CSP.
-- `tests/security/hardening.test.ts`: password policy, timing floor, cookie flags, the Upstash limiter, secret isolation and static headers.
-- `src/app/api/livekit/token/__tests__/route.test.ts`: session, membership, channel type, TTL, grants, signature verification and rate limiting.
-- `e2e/smoke.spec.ts` (Playwright): 429 on auth brute force, foreign-origin preflights, the API session gate and security headers.
+- `diskarte/tests/db/schema.test.ts` and `diskarte/tests/db/security.test.ts`: the real migrations inside PGlite, attacked as different users (RLS bypass, role escalation, forged authors, injection payloads, hostile attachments and storage paths).
+- `diskarte/tests/db/early-access.test.ts`: public insert limits, super-admin-only reads, the review state machine and flood caps. `early-access-portal/tests/`: anti-spam, admin guards on the proxy and every action, credential generation and the approval workflow.
+- `diskarte/tests/db/community.test.ts`: audit logging, bans, auto-mod, slow mode, verification gates, threads, badges, LFG, the soundboard, friendships, blocks and DM privacy.
+- `diskarte/tests/security/proxy.test.ts`: rate limits (429 + `Retry-After`), CORS, CSRF, the API session guard, route guards and CSP.
+- `diskarte/tests/security/hardening.test.ts`: password policy, timing floor, cookie flags, the Upstash limiter, secret isolation and static headers.
+- `diskarte/src/app/api/livekit/token/__tests__/route.test.ts`: session, membership, channel type, TTL, grants, signature verification and rate limiting.
+- `diskarte/e2e/smoke.spec.ts` (Playwright): 429 on auth brute force, foreign-origin preflights, the API session gate and security headers.
 
 CI runs all of these on every pull request.
