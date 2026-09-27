@@ -6,8 +6,11 @@ import { signInAction, type AuthFormState } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/Button";
 import { InputField } from "@/components/ui/Field";
 
-export function LoginForm({ next, initialError }: { next: string; initialError?: string | null }) {
-  const [state, action, pending] = useActionState<AuthFormState, FormData>(signInAction, { error: initialError ?? undefined });
+export function LoginForm({ next, initialError, initialEmail }: { next: string; initialError?: string | null; initialEmail?: string | null }) {
+  const [state, action, pending] = useActionState<AuthFormState, FormData>(signInAction, {
+    error: initialError ?? undefined,
+    values: initialEmail ? { email: initialEmail } : undefined,
+  });
 
   return (
     <form action={action} className="space-y-4" noValidate>

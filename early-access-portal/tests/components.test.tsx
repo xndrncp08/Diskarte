@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WaitlistRow } from "@/lib/approvals";
+import { setViewport } from "./setup";
 
 const submit = vi.fn();
 vi.mock("@/app/actions", () => ({ submitApplicationAction: (...args: unknown[]) => submit(...args) }));
@@ -23,43 +24,89 @@ const { AdminDashboard } = await import("@/components/admin/AdminDashboard");
 
 beforeEach(() => {
   vi.clearAllMocks();
-  window.matchMedia = vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })) as unknown as typeof window.matchMedia;
 });
 
 describe("application form", () => {
-  it("submits the whole form, then celebrates with retro confetti", async () => {
+  async function fillStepOne(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(screen.getByLabelText("Buong pangalan"), "Juan Dela Cruz");
+    await user.type(screen.getByLabelText("Email"), "juan@example.ph");
+    await user.click(screen.getByRole("button", { name: /Susunod/ }));
+  }
+
+  it("walks through three validated steps, submits everything, then celebrates with retro confetti", async () => {
     const user = userEvent.setup();
     submit.mockResolvedValue({ status: "success", firstName: "Juan" });
     render(<ApplicationForm formToken="t.sig" turnstileSiteKey={null} />);
-    await user.type(screen.getByLabelText("Buong pangalan"), "Juan Dela Cruz");
-    await user.type(screen.getByLabelText("Email"), "juan@example.ph");
+
+    // Step 1 won't advance until it's valid.
+    expect(screen.getByText("HAKBANG 1 NG 3")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Susunod/ }));
+    expect(await screen.findByText("Pakilagay ang buong pangalan mo")).toBeInTheDocument();
+    expect(screen.getByLabelText("Buong pangalan")).toHaveAttribute("aria-invalid", "true");
+    await fillStepOne(user);
+
+    // Step 2: community.
+    expect(await screen.findByRole("heading", { name: "Ang komunidad mo" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Susunod/ }));
+    expect(await screen.findByText("Pumili ng uri ng komunidad")).toBeInTheDocument();
     await user.click(screen.getByRole("radio", { name: /Gaming squad/ }));
-    await user.type(screen.getByLabelText("Bakit mo gustong sumali?"), "Lilipat na kami mula Discord para sa squad!");
-    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("radio", { name: "11–50" }));
+    await user.click(screen.getByRole("button", { name: /Susunod/ }));
+
+    // Step 3: reason + consent, with a way back that keeps what was typed.
+    expect(await screen.findByRole("heading", { name: "Kwento mo" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Bumalik/ }));
+    expect(await screen.findByRole("radio", { name: /Gaming squad/ })).toHaveAttribute("aria-checked", "true");
+    await user.click(screen.getByRole("button", { name: /Susunod/ }));
+    await user.type(await screen.findByLabelText("Bakit mo gustong sumali?"), "Lilipat na kami mula Discord para sa squad!");
+    await user.click(screen.getByRole("checkbox", { name: /Pumapayag/ }));
     await user.click(screen.getByRole("button", { name: /Sumali sa waitlist/ }));
 
     await screen.findByText("Nasa pila ka na, Juan! 🎉");
-    expect(screen.getByTestId("confetti")).toBeInTheDocument();
+    expect(await screen.findByTestId("confetti")).toBeInTheDocument();
     const data = submit.mock.calls[0][1] as FormData;
-    expect(Object.fromEntries(data)).toMatchObject({ formToken: "t.sig", fullName: "Juan Dela Cruz", communityType: "gaming", communitySize: "2-10", consent: "on", website: "" });
+    expect(Object.fromEntries(data)).toMatchObject({
+      formToken: "t.sig",
+      fullName: "Juan Dela Cruz",
+      email: "juan@example.ph",
+      communityType: "gaming",
+      communitySize: "11-50",
+      reason: "Lilipat na kami mula Discord para sa squad!",
+      consent: "on",
+      website: "",
+    });
   });
 
-  it("shows server-side field errors next to the fields and keeps the input", async () => {
+  it("jumps back to the step with a server-side error and keeps every answer", async () => {
     const user = userEvent.setup();
-    submit.mockResolvedValue({ status: "error", fieldErrors: { reason: "Kwentuhan mo pa kami" }, values: { fullName: "Maria", email: "m@x.ph", reason: "maikli" } });
+    submit.mockResolvedValue({ status: "error", fieldErrors: { email: "Mukhang mali ang email" }, values: { fullName: "Maria", email: "m@x" } });
     render(<ApplicationForm formToken="t.sig" turnstileSiteKey={null} />);
+    await fillStepOne(user);
+    await user.click(await screen.findByRole("radio", { name: /Study group/ }));
+    await user.click(screen.getByRole("button", { name: /Susunod/ }));
+    await user.type(await screen.findByLabelText("Bakit mo gustong sumali?"), "Para sa org namin na kailangan ng voice.");
+    await user.click(screen.getByRole("checkbox", { name: /Pumapayag/ }));
     await user.click(screen.getByRole("button", { name: /Sumali sa waitlist/ }));
-    expect(await screen.findByText("Kwentuhan mo pa kami")).toBeInTheDocument();
-    expect(screen.getByLabelText("Bakit mo gustong sumali?")).toHaveAttribute("aria-invalid", "true");
+
+    expect(await screen.findByText("Mukhang mali ang email")).toBeInTheDocument();
+    expect(screen.getByText("HAKBANG 1 NG 3")).toBeInTheDocument();
+    expect(screen.getByLabelText("Email")).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByLabelText("Buong pangalan")).toHaveValue("Maria");
   });
 
-  it("hides the honeypot from people and assistive tech and renders Turnstile when configured", () => {
+  it("uses floating labels, a hidden honeypot and Turnstile on the last step", async () => {
+    const user = userEvent.setup();
     const { container } = render(<ApplicationForm formToken="t.sig" turnstileSiteKey="0x4AAA" />);
+    const name = screen.getByLabelText("Buong pangalan");
+    expect(name).toHaveAttribute("placeholder", " "); // drives the :placeholder-shown label float
     const honeypot = container.querySelector('input[name="website"]')!;
     expect(honeypot.closest("[aria-hidden]")).not.toBeNull();
     expect(honeypot).toHaveAttribute("tabindex", "-1");
-    expect(container.querySelector(".cf-turnstile")).toHaveAttribute("data-sitekey", "0x4AAA");
+    expect(screen.queryByTestId("turnstile")).toBeNull();
+    await fillStepOne(user);
+    await user.click(await screen.findByRole("radio", { name: /Barkada/ }));
+    await user.click(screen.getByRole("button", { name: /Susunod/ }));
+    expect(await screen.findByTestId("turnstile")).toBeInTheDocument();
   });
 });
 
@@ -139,5 +186,20 @@ describe("admin dashboard", () => {
     await waitFor(() => expect(review.resendAction).toHaveBeenCalledWith("c"));
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+});
+
+describe("admin dashboard on phones", () => {
+  it("switches to cards, a thumb-reach bulk bar and bottom-sheet details", async () => {
+    setViewport("mobile");
+    const user = userEvent.setup();
+    render(<AdminDashboard data={data} query={query} adminEmail="boss@diskarte.ph" />);
+    expect(screen.getByRole("list", { name: "Applications list" })).toBeInTheDocument();
+    expect(screen.queryByRole("table")).toBeNull();
+    await user.click(screen.getByRole("checkbox", { name: "Select Applicant a" }));
+    expect(await screen.findByTestId("bulk-bar")).toHaveClass("fixed", "bottom-0");
+    await user.click(screen.getAllByRole("button", { name: "Details" })[0]);
+    const sheet = await screen.findByRole("dialog", { name: "Applicant a" });
+    expect(sheet).toHaveAttribute("data-sheet", "true");
   });
 });

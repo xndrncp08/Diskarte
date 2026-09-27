@@ -144,7 +144,7 @@ Rate limits live in process memory by default (Diskarte runs as one container). 
 
 ## Security testing
 
-Run `npm test` from the repository root (both workspaces). It includes:
+Run `npm test` from the repository root (it runs both apps' suites). It includes:
 
 - `diskarte/tests/db/schema.test.ts` and `diskarte/tests/db/security.test.ts`: the real migrations inside PGlite, attacked as different users (RLS bypass, role escalation, forged authors, injection payloads, hostile attachments and storage paths).
 - `diskarte/tests/db/early-access.test.ts`: public insert limits, super-admin-only reads, the review state machine and flood caps. `early-access-portal/tests/`: anti-spam, admin guards on the proxy and every action, credential generation and the approval workflow.

@@ -6,10 +6,10 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 
 const root = path.resolve(import.meta.dirname, "..");
-// Traced from the npm workspace root, so the server sits at .next/standalone/<app folder>/server.js.
 const standalone = path.join(root, ".next/standalone");
-const appDir = path.join(standalone, path.basename(root));
-if (!existsSync(path.join(appDir, "server.js"))) {
+// Normally .next/standalone/server.js; nested under the folder name when traced from a parent.
+const appDir = [standalone, path.join(standalone, path.basename(root))].find((dir) => existsSync(path.join(dir, "server.js")));
+if (!appDir) {
   console.error("No standalone build found. Run `npm run build` first.");
   process.exit(1);
 }

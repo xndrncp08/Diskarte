@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { Inter, JetBrains_Mono, Press_Start_2P, Silkscreen } from "next/font/google";
+import { MotionRoot } from "@/components/motion/MotionRoot";
 import { tryGetPortalEnv } from "@/lib/env";
 import "./globals.css";
 
@@ -33,7 +34,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   await headers();
   return (
     <html lang="en" className={`${inter.variable} ${pressStart.variable} ${silkscreen.variable} ${jetbrains.variable} h-full`}>
-      <body className="min-h-full bg-abyss text-slate-100 antialiased">{children}</body>
+      <body className="min-h-full overflow-x-hidden bg-abyss text-slate-100 antialiased">
+        <MotionRoot>{children}</MotionRoot>
+      </body>
     </html>
   );
 }

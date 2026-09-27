@@ -1,13 +1,20 @@
 /** Per-request Content-Security-Policy for the portal (nonce-based, no inline scripts). */
-export function buildCsp(nonce: string, opts: { turnstile: boolean; isDev: boolean; upgradeInsecure: boolean }): string {
+export function buildCsp(nonce: string, opts: { turnstile: boolean; isDev: boolean; upgradeInsecure: boolean; appUrl?: string | null }): string {
   const cf = opts.turnstile ? ["https://challenges.cloudflare.com"] : [];
+  // The landing page reads the Diskarte app's /api/health (CORS-allowed there) for a live badge.
+  let app: string[] = [];
+  try {
+    app = opts.appUrl ? [new URL(opts.appUrl).origin] : [];
+  } catch {
+    app = [];
+  }
   const directives: Record<string, string[]> = {
     "default-src": ["'self'"],
     "script-src": ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", ...(opts.isDev ? ["'unsafe-eval'"] : [])],
     "style-src": ["'self'", "'unsafe-inline'"],
     "img-src": ["'self'", "data:", "blob:"],
     "font-src": ["'self'", "data:"],
-    "connect-src": ["'self'", ...cf, ...(opts.isDev ? ["ws://localhost:*"] : [])],
+    "connect-src": ["'self'", ...cf, ...app, ...(opts.isDev ? ["ws://localhost:*"] : [])],
     "frame-src": cf.length ? cf : ["'none'"],
     "worker-src": ["'self'", "blob:"],
     "object-src": ["'none'"],

@@ -1,0 +1,38 @@
+# Dependencies & build output (rebuilt inside the image)
+node_modules
+.next
+out
+build
+coverage
+*.tsbuildinfo
+next-env.d.ts
+
+# Version control & editors
+.git
+.gitignore
+.github
+.vscode
+.idea
+.claude
+.DS_Store
+
+# Environment files (never bake secrets into images)
+.env
+.env.*
+!.env.example
+
+# E2E specs, reports and docs are not needed to build the app
+# (unit tests stay: `next build` type-checks them)
+e2e
+playwright-report
+test-results
+blob-report
+playwright
+supabase/.temp
+supabase/.branches
+assets/brand
+*.md
+!README.md
+Dockerfile
+docker-compose.yml
+render.yaml

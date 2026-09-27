@@ -17,6 +17,29 @@
 
   --animate-float: float 6s ease-in-out infinite;
   --animate-blink: blink 1s steps(2, start) infinite;
+  --animate-pixel-hop: pixel-hop 0.9s steps(3, end) infinite;
+  --animate-mesh: mesh-drift 18s ease-in-out infinite alternate;
+
+  @keyframes pixel-hop {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    33% {
+      transform: translateY(-4px);
+    }
+  }
+  @keyframes mesh-drift {
+    0% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+      transform: translate3d(6%, -4%, 0) scale(1.12);
+    }
+    100% {
+      transform: translate3d(-4%, 5%, 0) scale(0.95);
+    }
+  }
 
   @keyframes float {
     50% {
@@ -34,6 +57,12 @@
   color-scheme: dark;
 }
 
+/* Fluid scale: 16px on phones and laptops, growing gently to 22px on 4K so layouts don't look tiny. */
+html {
+  font-size: clamp(16px, 0.3vw + 11.5px, 22px);
+  -webkit-text-size-adjust: 100%;
+}
+
 html,
 body {
   background: #020617;
@@ -43,6 +72,8 @@ body {
 body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
 }
 
 :focus-visible {

@@ -1,8 +1,10 @@
-import path from "node:path";
 import type { NextConfig } from "next";
 
-/** npm workspace root (diskarte/ + early-access-portal/ share one lockfile). */
-const REPO_ROOT = path.join(import.meta.dirname, "..");
+/**
+ * Self-contained app (own lockfile and node_modules): it builds from `early-access-portal/` alone,
+ * which is Vercel's Root Directory. Pin the root so Next never reaches above it.
+ */
+const APP_ROOT = import.meta.dirname;
 
 /** Static security headers; the nonce-based CSP is set per request in src/proxy.ts. */
 const securityHeaders = [
@@ -18,15 +20,10 @@ const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
   reactStrictMode: true,
-  // npm workspaces hoist dependencies to the repo root, so trace from there. On Vercel this is
-  // the default "include files outside the root directory" behaviour; in Docker the server lands
-  // at .next/standalone/early-access-portal/server.js.
-  turbopack: { root: REPO_ROOT },
-  outputFileTracingRoot: REPO_ROOT,
-  // No next/image here (brand art is static SVG), so skip the optimiser and keep sharp — hoisted
-  // into the workspace by the Diskarte app — out of the traced output.
+  turbopack: { root: APP_ROOT },
+  outputFileTracingRoot: APP_ROOT,
+  // No next/image here (brand art is static SVG), so skip the image optimiser entirely.
   images: { unoptimized: true },
-  outputFileTracingExcludes: { "*": ["../node_modules/sharp/**", "../node_modules/@img/**", "node_modules/sharp/**", "node_modules/@img/**"] },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

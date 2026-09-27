@@ -8,14 +8,12 @@ services:
     runtime: docker
     plan: free
     region: singapore # closest Render region to the Philippines
-    # npm workspace: build from the repository root with the app's Dockerfile.
-    dockerfilePath: ./diskarte/Dockerfile
+    # Monorepo: the app lives in diskarte/ and is self-contained (own lockfile). With a root
+    # directory set, Render resolves the Dockerfile and build context inside it, and only
+    # changes under diskarte/ trigger a deploy.
+    rootDir: diskarte
+    dockerfilePath: ./Dockerfile
     dockerContext: .
-    buildFilter:
-      paths:
-        - diskarte/**
-        - package.json
-        - package-lock.json
     healthCheckPath: /api/health
     autoDeploy: true
     envVars:

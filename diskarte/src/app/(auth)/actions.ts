@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { FIRST_LOGIN_PATH, mustChangePassword } from "@/lib/auth";
 import { friendlyAuthError } from "@/lib/auth-errors";
 import { getPublicEnv } from "@/lib/env";
 import { credentialsSchema, emailSchema, enabledOAuthProviders, fieldErrors, signUpSchema, type OAuthProvider } from "@/lib/profile";
@@ -27,15 +28,16 @@ const text = (form: FormData, key: string) => {
 
 export async function signInAction(_prev: AuthFormState, form: FormData): Promise<AuthFormState> {
   const values = { email: text(form, "email") };
-  const result = await withMinimumDuration(AUTH_MIN_DURATION_MS, async (): Promise<AuthFormState | null> => {
+  const result = await withMinimumDuration(AUTH_MIN_DURATION_MS, async (): Promise<AuthFormState | "first-login" | null> => {
     const parsed = credentialsSchema.safeParse({ email: text(form, "email"), password: text(form, "password") });
     if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error), values };
     const supabase = await createClient();
-    const { error } = await supabase.auth.signInWithPassword(parsed.data);
+    const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
     // One message for "no such user" and "wrong password" (no account enumeration).
     if (error) return { error: friendlyAuthError(error.message), values };
-    return null;
+    return mustChangePassword(data.user) ? "first-login" : null;
   });
+  if (result === "first-login") redirect(FIRST_LOGIN_PATH);
   if (result) return result;
   redirect(safeRedirectPath(text(form, "next")));
 }

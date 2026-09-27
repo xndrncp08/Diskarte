@@ -53,9 +53,9 @@ Next.js 16 (App Router, React 19.2, Turbopack) · TypeScript · Tailwind CSS 4 �
 ## Quick start
 
 ```bash
-# from the repository root (npm workspace)
-npm install
-cp diskarte/.env.example diskarte/.env.local   # add Supabase + LiveKit credentials
+cd diskarte                                     # self-contained: own package-lock.json
+npm ci
+cp .env.example .env.local                      # add Supabase + LiveKit credentials
 npm run dev                                     # http://localhost:3000
 ```
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { loadDashboard } from "@/lib/data";
+import { getPortalEnv } from "@/lib/env";
 import { listQuerySchema } from "@/lib/schema";
 import { createClient, getSuperAdmin } from "@/lib/supabase/server";
 
@@ -15,5 +16,5 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
   const params = await searchParams;
   const query = listQuerySchema.parse({ status: params.status, q: params.q ?? "", page: params.page });
   const data = await loadDashboard(supabase, query);
-  return <AdminDashboard data={data} query={query} adminEmail={admin.email ?? ""} />;
+  return <AdminDashboard data={data} query={query} adminEmail={admin.email ?? ""} appUrl={getPortalEnv().appUrl} />;
 }

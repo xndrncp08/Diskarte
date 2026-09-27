@@ -51,7 +51,7 @@ All configuration is read **at runtime**, so the same Docker image works locally
 ## 3. Render (web container)
 
 1. Fork `https://github.com/xndrncp08/Diskorte` (or push your copy to GitHub).
-2. Render dashboard → **New → Blueprint** → select the repo. Render reads the root `render.yaml` and creates a free Docker web service in Singapore with `/api/health` as its health check. It builds `diskarte/Dockerfile` with the repository root as the context (npm workspace), and only redeploys when `diskarte/` or the lockfile changes.
+2. Render dashboard → **New → Blueprint** → select the repo. Render reads the root `render.yaml` and creates a free Docker web service in Singapore with `/api/health` as its health check. The service uses **Root Directory `diskarte`**: Render builds `./Dockerfile` with the `diskarte/` folder as the Docker context (the app has its own `package-lock.json`), and only redeploys when files under `diskarte/` change. If you create the service by hand instead, set Runtime *Docker*, Root Directory `diskarte`, Dockerfile path `./Dockerfile`, and health check path `/api/health`.
 3. Fill in the prompted variables: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`.
 4. Deploy. When it's live, open `https://<service>.onrender.com/api/health?deep=1`; it should report `"status":"ok"` with `"supabase":"ok"`.
 5. Go back to Supabase **Auth → URL Configuration** and make sure the Render URL is the Site URL and is in the redirect list.
@@ -70,7 +70,8 @@ What it needs from this app:
 
 - **Database:** nothing extra. `…_early_access.sql` is part of `supabase/migrations` (the `waitlist_applications` and `platform_admins` tables, RLS and the review state machine).
 - **Close public sign-up:** the Render service ships with `SIGNUP_MODE=invite`, which turns `/signup` into a link to the portal. Set `EARLY_ACCESS_URL` to the portal's URL. Also turn off **Auth → Providers → Allow new users to sign up** in Supabase: the portal's admin API still creates accounts, but OAuth and direct Auth API calls can no longer create accounts on their own. Remove `SIGNUP_MODE` (and turn that setting back on) on launch day.
-- **First login:** accounts the portal creates carry `must_change_password`, and this app sends them to `/reset-password?first=1` until they choose their own password.
+- **Cross-app routing:** set `EARLY_ACCESS_URL` to the portal's exact origin (e.g. `https://early.diskarte.ph`). Besides the `/signup` link, it is added to the CORS/CSRF allow-list for `/api/*`, so the portal can check `/api/health`. Approval emails link to `/login?from=early-access&email=…`, which shows a welcome banner and prefills the email.
+- **First login:** accounts the portal creates carry `must_change_password`, and this app sends them to `/reset-password?first=1` until they choose their own password. The login action, the proxy and every protected page enforce it.
 
 ## Environment variables
 
@@ -88,16 +89,17 @@ What it needs from this app:
 | `RATE_LIMIT_API_PER_MINUTE` | — | proxy | per-IP `/api/*` requests per minute (default 120) |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | — | proxy | share rate-limit counters across instances (free Upstash tier) |
 | `SIGNUP_MODE` | — | server | `invite` closes public sign-up during Early Access |
-| `EARLY_ACCESS_URL` | — | server | waitlist portal URL shown on `/signup` in invite mode |
+| `EARLY_ACCESS_URL` | — | server + proxy | waitlist portal URL: linked from `/signup` in invite mode and trusted for CORS/CSRF on `/api/*` |
 | `PORT` / `HOSTNAME` | — | container | set by the Dockerfile (Render injects `PORT`) |
 
 ## Local development
 
 ```bash
-# repository root: one npm workspace for diskarte/ and early-access-portal/
-npm install
-cp diskarte/.env.example diskarte/.env.local   # fill in values (hosted or local services)
-npm run dev                                     # http://localhost:3000   (npm run dev:portal → :3100)
+cd diskarte                  # self-contained app with its own package-lock.json
+npm ci
+cp .env.example .env.local   # fill in values (hosted or local services)
+npm run dev                  # http://localhost:3000
+# or, from the repository root: npm install && npm run dev   (npm run dev:portal → :3100)
 ```
 
 **Local Supabase** (needs Docker): `npx supabase start` (from the repository root) applies `supabase/migrations` automatically and prints a local URL (`http://127.0.0.1:54321`) and anon key. Email confirmation is disabled locally (`supabase/config.toml`), so sign-ups log straight in.
@@ -108,14 +110,14 @@ npm run dev                                     # http://localhost:3000   (npm r
 ## Docker
 
 ```bash
-# from the repository root — the build context is the whole npm workspace
-docker build -f diskarte/Dockerfile -t diskarte .
-docker run --rm -p 3000:3000 --env-file diskarte/.env.local diskarte
+# from diskarte/ — the same context Render uses (Root Directory: diskarte)
+docker build -t diskarte .
+docker run --rm -p 3000:3000 --env-file .env.local diskarte
 # or everything with compose (root docker-compose.yml)
 docker compose up --build
 ```
 
-The multi-stage `diskarte/Dockerfile` installs only this workspace's dependencies (`npm ci --workspace diskarte`) and builds Next.js in `standalone` mode on `node:22-alpine`, then runs it on plain `alpine` with Alpine's own `nodejs` package (shared system libraries instead of the ~110 MB bundled binary) and English-only ICU data (all time zones included), leaving room for sharp so `next/image` can serve AVIF/WebP, as an unprivileged user with a `HEALTHCHECK` on `/api/health`. CI prints the final image size and fails the build if it grows past 150 MB.
+The multi-stage `diskarte/Dockerfile` installs from the app's own lockfile (`npm ci`) and builds Next.js in `standalone` mode on `node:22-alpine`, then runs it on plain `alpine` with Alpine's own `nodejs` package (shared system libraries instead of the ~110 MB bundled binary) and English-only ICU data (all time zones included), leaving room for sharp so `next/image` can serve AVIF/WebP, as an unprivileged user with a `HEALTHCHECK` on `/api/health`. CI prints the final image size and fails the build if it grows past 150 MB.
 
 ## CI/CD
 

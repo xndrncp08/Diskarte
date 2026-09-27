@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { expect, test } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+import { devices, expect, test } from "@playwright/test";
 import { EMAIL_OUTBOX, PORTAL_URL } from "./portal";
 import { FULL, FULL_REASON, makeUser } from "./helpers";
 
@@ -49,13 +50,20 @@ test.describe("early access portal", () => {
     const visitor = await browser.newContext();
     const page = await visitor.newPage();
     await page.goto(PORTAL_URL);
+    const loadedAt = Date.now();
+    // Step 1 · Tungkol sa'yo
     await page.getByLabel("Buong pangalan").fill(applicant.displayName);
     await page.getByLabel("Email", { exact: true }).fill(applicant.email);
-    await page.getByLabel("Gustong @username").fill(applicant.username);
-    await page.getByText("Gaming squad / guild").click();
+    await page.getByLabel(/Gustong @username/).fill(applicant.username);
+    await page.getByRole("button", { name: /Susunod/ }).click();
+    // Step 2 · Ang komunidad mo
+    await page.getByRole("radio", { name: /Gaming squad/ }).click();
+    await page.getByRole("button", { name: /Susunod/ }).click();
+    // Step 3 · Kwento mo
     await page.getByLabel("Bakit mo gustong sumali?").fill("Lilipat na ang Valorant squad namin mula Discord — sana makasali kami!");
     await page.getByRole("checkbox", { name: /Pumapayag/ }).check();
-    await page.waitForTimeout(3_200); // the signed form token rejects sub-3-second submissions
+    // The signed form token rejects submissions within 3 seconds of the page loading.
+    await page.waitForTimeout(Math.max(0, 3_300 - (Date.now() - loadedAt)));
     await page.getByRole("button", { name: /Sumali sa waitlist/ }).click();
     await expect(page.getByTestId("apply-success")).toContainText(`Nasa pila ka na, ${applicant.displayName.split(" ")[0]}!`);
 
@@ -82,11 +90,14 @@ test.describe("early access portal", () => {
     await expect.poll(() => credentialsFor(applicant.email)?.password ?? null, { timeout: 15_000 }).not.toBeNull();
     const { mail, password } = credentialsFor(applicant.email)!;
     expect(mail.subject).toContain("Maligayang Pagdating sa Diskarte");
-    expect(mail.html).toContain("/login");
+    const loginLink = mail.html.match(/href="([^"]*\/login\?[^"]*)"/)?.[1]?.replaceAll("&amp;", "&");
+    expect(loginLink).toBeTruthy();
 
-    // 5) First login on Diskarte: straight to "change your temporary password", then onboarding.
-    await page.goto("/login");
-    await page.getByLabel("Email").fill(applicant.email);
+    // 5) The email's button lands on the Diskarte app's login, greeting them with the email pre-filled;
+    //    the first login goes straight to "change your temporary password", then onboarding.
+    await page.goto(loginLink!);
+    await expect(page.getByTestId("early-access-welcome")).toContainText("Maligayang pagdating sa Diskarte!");
+    await expect(page.getByLabel("Email")).toHaveValue(applicant.email);
     await page.getByLabel("Password", { exact: true }).fill(password!);
     await page.getByRole("button", { name: "Pasok!" }).click();
     await expect(page).toHaveURL(/\/reset-password\?first=1$/);
@@ -105,5 +116,25 @@ test.describe("early access portal", () => {
 
     await visitor.close();
     await staff.close();
+  });
+
+  test("portal is phone-friendly and accessible", async ({ browser }) => {
+    const phone = await browser.newContext({ ...devices["Pixel 7"] });
+    const page = await phone.newPage();
+    await page.goto(PORTAL_URL);
+    await expect(page.getByRole("heading", { name: /Mauna sa bagong/ })).toBeVisible();
+    // No sideways scrolling on a 412 px screen, even with the floating mesh and chips.
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+    const next = (await page.getByRole("button", { name: /Susunod/ }).boundingBox())!;
+    const login = (await page.getByRole("link", { name: "Mag-login", exact: true }).boundingBox())!;
+    expect(next.height).toBeGreaterThanOrEqual(44);
+    expect(login.height).toBeGreaterThanOrEqual(44);
+    const landing = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
+    expect(landing.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+    await page.goto(`${PORTAL_URL}/admin/login`);
+    await page.getByTestId("admin-login").waitFor();
+    const adminLogin = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+    expect(adminLogin.violations.map((v) => v.id)).toEqual([]);
+    await phone.close();
   });
 });
