@@ -24,6 +24,9 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: APP_ROOT,
   // No next/image here (brand art is static SVG), so skip the image optimiser entirely.
   images: { unoptimized: true },
+  // ...which means sharp and its native libvips builds are never loaded: keep them out of the
+  // standalone trace (~30 MB of the Docker image and the Vercel function bundle).
+  outputFileTracingExcludes: { "*": ["node_modules/sharp/**", "node_modules/@img/**"] },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
