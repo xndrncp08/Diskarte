@@ -35,7 +35,8 @@ function ToolbarButton({ label, onClick, children, danger = false }: { label: st
       title={label}
       onClick={onClick}
       className={cn(
-        "touch-target relative rounded-md p-1.5 transition-colors hover:bg-white/10 pointer-coarse:p-2.5",
+        // Real 44 px on touch: neighbouring buttons' pseudo hit-areas would otherwise overlap.
+        "touch-target relative rounded-md p-1.5 transition-colors hover:bg-white/10 pointer-coarse:p-3.5",
         danger ? "text-red-300 hover:text-red-200" : "text-slate-400 hover:text-white",
       )}
     >
@@ -249,7 +250,7 @@ export const MessageItem = memo(function MessageItem({
             "motion-reduce:transition-none",
           )}
         >
-          {actions.onReact && <EmojiPicker onPick={(emoji) => actions.onReact?.(message.id, emoji)} placement="bottom" />}
+          {actions.onReact && <EmojiPicker onPick={(emoji) => actions.onReact?.(message.id, emoji)} placement="bottom" triggerClassName="pointer-coarse:p-3.5" />}
           <ToolbarButton label="Reply" onClick={() => actions.onReply(message)}>
             <CornerUpLeft className="size-4" aria-hidden />
           </ToolbarButton>

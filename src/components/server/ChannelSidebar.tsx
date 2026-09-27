@@ -217,7 +217,7 @@ export function ChannelSidebar() {
                           href={`/tambayan/${server.id}/${channel.id}`}
                           onClick={() => setNavOpen(false)}
                           aria-current={active ? "page" : undefined}
-                          className="flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1.5 text-[15px] pointer-coarse:py-2.5"
+                          className="flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1.5 text-[15px] pointer-coarse:min-h-11 pointer-coarse:py-2.5"
                           data-channel-type={channel.type}
                         >
                           <Icon className="size-4 shrink-0 opacity-70" aria-hidden />
