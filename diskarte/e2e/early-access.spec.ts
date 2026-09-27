@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import AxeBuilder from "@axe-core/playwright";
-import { devices, expect, test } from "@playwright/test";
+import { devices, expect, test, type Page } from "@playwright/test";
 import { EMAIL_OUTBOX, PORTAL_URL } from "./portal";
 import { FULL, FULL_REASON, makeUser } from "./helpers";
 
@@ -12,6 +12,14 @@ import { FULL, FULL_REASON, makeUser } from "./helpers";
  */
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+
+/** Wait for entrance fades to finish: axe measures a half-faded button against a blended background. */
+async function settled(page: Page) {
+  await page.waitForFunction(() =>
+    document.getAnimations().every((a) => a.playState !== "running" || a.effect?.getTiming().iterations === Infinity),
+  );
+  await page.waitForTimeout(250);
+}
 
 async function createSuperAdmin() {
   const admin = makeUser("Boss");
@@ -129,12 +137,14 @@ test.describe("early access portal", () => {
     const login = (await page.getByRole("link", { name: "Mag-login", exact: true }).boundingBox())!;
     expect(next.height).toBeGreaterThanOrEqual(44);
     expect(login.height).toBeGreaterThanOrEqual(44);
+    await settled(page);
     const landing = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
     expect(landing.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
     await page.goto(`${PORTAL_URL}/admin/login`);
     await page.getByTestId("admin-login").waitFor();
+    await settled(page);
     const adminLogin = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
-    expect(adminLogin.violations.map((v) => v.id)).toEqual([]);
+    expect(adminLogin.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
     await phone.close();
   });
 });
