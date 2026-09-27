@@ -1,8 +1,13 @@
+import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
-import { EMAIL_OUTBOX, PORTAL_PORT, PORTAL_URL } from "./e2e/portal";
 
 const PORT = Number(process.env.E2E_PORT ?? 3000);
 const baseURL = process.env.E2E_BASE_URL || `http://localhost:${PORT}`;
+// Early Access portal wiring. Mirrored in e2e/portal.ts for the spec: this file can't import from
+// e2e/, which is excluded from the Docker build context (where `next build` type-checks this file).
+const PORTAL_PORT = Number(process.env.E2E_PORTAL_PORT ?? 3100);
+const PORTAL_URL = `http://localhost:${PORTAL_PORT}`;
+const EMAIL_OUTBOX = path.resolve(__dirname, ".e2e-email-outbox");
 
 /**
  * E2E suite.

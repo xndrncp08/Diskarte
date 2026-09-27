@@ -1,6 +1,6 @@
 import path from "node:path";
 
-/** Early Access portal wiring shared by playwright.config.ts and e2e/early-access.spec.ts. */
+/** Early Access portal wiring for e2e/early-access.spec.ts — keep in sync with playwright.config.ts. */
 export const PORTAL_PORT = Number(process.env.E2E_PORTAL_PORT ?? 3100);
 export const PORTAL_URL = `http://localhost:${PORTAL_PORT}`;
 /** The portal's "file" mail transport writes here; the spec reads the credentials back. */
