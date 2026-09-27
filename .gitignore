@@ -53,3 +53,6 @@ next-env.d.ts
 # supabase local
 supabase/.branches
 supabase/.temp
+
+# Early Access E2E: credentials emails written by the portal's file transport
+.e2e-email-outbox

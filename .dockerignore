@@ -21,6 +21,9 @@ next-env.d.ts
 .env.*
 !.env.example
 
+# The early access portal is its own app and image (early-access-portal/Dockerfile)
+early-access-portal
+
 # E2E specs, reports and docs are not needed to build the app
 # (unit tests stay: `next build` type-checks them)
 e2e

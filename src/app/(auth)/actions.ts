@@ -5,6 +5,7 @@ import { friendlyAuthError } from "@/lib/auth-errors";
 import { getPublicEnv } from "@/lib/env";
 import { credentialsSchema, emailSchema, enabledOAuthProviders, fieldErrors, signUpSchema, type OAuthProvider } from "@/lib/profile";
 import { safeRedirectPath, withMinimumDuration } from "@/lib/security";
+import { signupPolicy } from "@/lib/signup-mode";
 import { createClient } from "@/lib/supabase/server";
 
 // Brute-force protection: proxy.ts rate-limits every POST to the auth pages per client IP
@@ -41,6 +42,7 @@ export async function signInAction(_prev: AuthFormState, form: FormData): Promis
 
 export async function signUpAction(_prev: AuthFormState, form: FormData): Promise<AuthFormState> {
   const values = { email: text(form, "email"), username: text(form, "username"), displayName: text(form, "displayName") };
+  if (signupPolicy().inviteOnly) return { error: "Early Access pa lang ang Diskarte — mag-apply muna sa waitlist.", values };
   const result = await withMinimumDuration(AUTH_MIN_DURATION_MS, async (): Promise<AuthFormState | "session"> => {
     const parsed = signUpSchema.safeParse({
       email: text(form, "email"),

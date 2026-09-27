@@ -17,6 +17,8 @@ const eslintConfig = defineConfig([
     "coverage/**",
     "playwright-report/**",
     "test-results/**",
+    // Separate Next.js app with its own lint config.
+    "early-access-portal/**",
   ]),
 ]);
 

@@ -13,7 +13,7 @@ export async function refreshSession(
   request: NextRequest,
   env: PublicEnv,
   makeResponse: () => NextResponse,
-): Promise<{ response: NextResponse; userId: string | null }> {
+): Promise<{ response: NextResponse; userId: string | null; mustChangePassword: boolean }> {
   let response = makeResponse();
 
   const secure = request.nextUrl.protocol === "https:" || request.headers.get("x-forwarded-proto") === "https";
@@ -35,5 +35,7 @@ export async function refreshSession(
   // getClaims() verifies the JWT signature (via JWKS when available) — never trust getSession() here.
   const { data } = await supabase.auth.getClaims();
   const userId = typeof data?.claims?.sub === "string" ? data.claims.sub : null;
-  return { response, userId };
+  // Set by the Early Access portal on accounts it creates with a temporary password.
+  const metadata = data?.claims?.user_metadata as Record<string, unknown> | undefined;
+  return { response, userId, mustChangePassword: Boolean(userId) && metadata?.must_change_password === true };
 }

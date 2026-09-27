@@ -1,6 +1,7 @@
 # Local container orchestration.
 #   docker compose up --build                 # web app only (uses your hosted Supabase/LiveKit from .env)
 #   docker compose --profile livekit up       # + a local LiveKit server in dev mode for voice/video
+#   docker compose --profile early-access up  # + the Early Access portal on :3100 (early-access-portal/.env)
 # For a local database run `npx supabase start` (see DEPLOYMENT.md) and point SUPABASE_URL at it.
 name: diskarte
 
@@ -37,6 +38,30 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
+
+  early-access:
+    profiles: ["early-access"]
+    build:
+      context: early-access-portal
+    image: diskarte-early-access:local
+    ports:
+      - "3100:3100"
+    env_file:
+      - path: early-access-portal/.env
+        required: false
+    environment:
+      SITE_URL: ${EARLY_ACCESS_URL:-http://localhost:3100}
+      APP_URL: ${SITE_URL:-http://localhost:3000}
+      SUPABASE_URL: ${SUPABASE_URL:-http://host.docker.internal:54321}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.next/cache:uid=1001,gid=1001
+    security_opt:
+      - no-new-privileges:true
 
   livekit:
     profiles: ["livekit"]
