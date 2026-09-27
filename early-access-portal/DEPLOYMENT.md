@@ -19,12 +19,12 @@ github.com/xndrncp08/Diskorte
 
 1. Vercel dashboard → **Add New… → Project** → import `xndrncp08/Diskorte`.
 2. **Root Directory:** click *Edit* and choose **`early-access-portal`**.
-3. Keep **"Include files outside of the Root Directory in the Build Step"** enabled (the default). The repo is an npm workspace, so the lockfile and `node_modules` live at the repository root.
+3. The portal is self-contained: its `package.json`, `package-lock.json` and config all live in `early-access-portal/`, so the build needs nothing outside the Root Directory.
 4. **Framework preset:** Next.js. `vercel.json` already pins it, along with:
-   - `installCommand`: `cd .. && npm ci --workspace early-access-portal` (installs from the workspace lockfile);
+   - `installCommand`: `npm ci --no-audit --no-fund` (from the portal's own lockfile);
    - `buildCommand`: `npm run build`;
    - `regions`: `sin1` (Singapore, the closest to the Philippines);
-   - `ignoreCommand`: skips a rebuild when nothing in the portal, `supabase/` or the lockfile changed (e.g. a Diskarte-only commit).
+   - `ignoreCommand`: skips a rebuild when nothing in the portal or `supabase/` changed (e.g. a Diskarte-only commit).
 5. **Node.js version** (Settings → Build & Deployment): **22.x**.
 
 Don't deploy yet. Add the environment variables first.
@@ -41,7 +41,7 @@ Settings → **Environment Variables**. Add these to **Production**, and see the
 | `RESEND_API_KEY` | ✅ | `re_…` |
 | `EMAIL_FROM` | ✅ | e.g. `Diskarte <early-access@diskarte.ph>` (must be on your verified Resend domain) |
 | `PORTAL_SECRET` | ✅ | 32+ random characters: `openssl rand -base64 48` |
-| `APP_URL` | ✅ | the Diskarte app, e.g. `https://diskarte.onrender.com`. The welcome email links to `APP_URL/login`. |
+| `APP_URL` | ✅ | the Diskarte app on Render, e.g. `https://diskarte.onrender.com`. Emails link to `APP_URL/login?from=early-access&email=…`; the landing page's "Mag-login" button and live status badge also use it (it's added to the CSP `connect-src`). |
 | `SITE_URL` | — | the portal's public URL. Defaults to Vercel's production URL; set it once you add a custom domain (step 4). |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | recommended | shares rate-limit counters across Vercel's serverless instances ([free Upstash database](https://upstash.com); the Vercel Marketplace integration sets these for you). Without them, limits apply per instance; the database's own flood caps still apply. |
 | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | — | Cloudflare Turnstile CAPTCHA on the form (set both or neither; add your domain to the Turnstile site) |
@@ -60,7 +60,7 @@ Then **Deploy**. When it's live, `https://<project>.vercel.app/api/health` shoul
 On the Diskarte service (Render → Environment):
 
 - `SIGNUP_MODE=invite` closes public sign-up. `/signup` then shows "Invite-only muna" with a button to the portal.
-- `EARLY_ACCESS_URL=https://early.diskarte.ph` (or your `*.vercel.app` URL).
+- `EARLY_ACCESS_URL=https://early.diskarte.ph` (or your `*.vercel.app` URL). Use the exact origin, with no trailing path: the app also trusts it for CORS on `/api/*`, which the portal's status badge relies on.
 
 In Supabase, turn off **Authentication → Sign In / Providers → "Allow new users to sign up"**. Accounts are then only created by the portal's admin API, and OAuth or direct Auth API calls can't create new users on their own. Existing users can still log in.
 
@@ -85,7 +85,7 @@ The portal needs no Supabase redirect URLs. Admins sign in with email + password
 There's intentionally no UI for this. `platform_admins` can only be written with the service role. From your machine:
 
 ```bash
-npm install                                   # repo root (npm workspace)
+cd early-access-portal && npm ci               # the script reads .env.local if present
 SUPABASE_URL=https://<ref>.supabase.co \
 SUPABASE_SERVICE_ROLE_KEY=<service-role-key> \
 npm run admin:grant -- you@example.com        # add --revoke to remove
@@ -104,5 +104,5 @@ If the email fails (unverified domain, bad key), the application still becomes *
 
 ## Other ways to run it
 
-- **Local:** `cp early-access-portal/.env.example early-access-portal/.env`, then `npm run dev:portal` from the repo root → http://localhost:3100. `EMAIL_TRANSPORT=log` prints a one-line summary instead of sending (it never logs the password).
-- **Docker (self-hosting):** `docker build -f early-access-portal/Dockerfile -t diskarte-early-access .` (from the repo root), or `docker compose --profile early-access up`.
+- **Local:** in `early-access-portal/`, `npm ci`, `cp .env.example .env`, then `npm run dev` → http://localhost:3100 (or `npm install && npm run dev:portal` from the repo root). `EMAIL_TRANSPORT=log` prints a one-line summary instead of sending (it never logs the password).
+- **Docker (self-hosting):** `docker build -t diskarte-early-access .` from `early-access-portal/`, or `docker compose --profile early-access up` from the repo root.

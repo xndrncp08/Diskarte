@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from "vitest";
-import { approveApplications, declineApplications, newAccountMetadata, resendCredentials, type ApprovalDeps, type WaitlistRow } from "@/lib/approvals";
+import { appLoginUrl, approveApplications, declineApplications, newAccountMetadata, resendCredentials, type ApprovalDeps, type WaitlistRow } from "@/lib/approvals";
 import type { EmailMessage } from "@/lib/email/template";
 import { meetsPasswordPolicy } from "@/lib/password";
 
@@ -129,6 +129,13 @@ describe("approving applications", () => {
     expect(h.store.get("a")!.approved_user_id).toBeNull();
     expect(h.mails[0].text).toMatch(/May account ka na/);
     expect(h.mails[0].text).not.toMatch(/Temporary password/);
+  });
+
+  it("links the email to the Diskarte app's login, flagged and pre-filled for the applicant", async () => {
+    expect(appLoginUrl("https://diskarte.onrender.com/login", "juan+test@example.ph")).toBe("https://diskarte.onrender.com/login?from=early-access&email=juan%2Btest%40example.ph");
+    const h = harness([row("a")]);
+    await approveApplications(["a"], h.deps);
+    expect(h.mails[0].html).toContain("https://diskarte.ph/login?from=early-access&amp;email=a%40example.ph");
   });
 
   it("omits the username when the applicant didn't ask for one", () => {

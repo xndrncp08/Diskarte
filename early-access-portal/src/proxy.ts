@@ -40,7 +40,7 @@ export async function proxy(request: NextRequest) {
 
   const nonce = createNonce();
   const secure = request.nextUrl.protocol === "https:" || request.headers.get("x-forwarded-proto") === "https";
-  const csp = buildCsp(nonce, { turnstile: Boolean(env?.turnstile), isDev: process.env.NODE_ENV === "development", upgradeInsecure: secure });
+  const csp = buildCsp(nonce, { turnstile: Boolean(env?.turnstile), isDev: process.env.NODE_ENV === "development", upgradeInsecure: secure, appUrl: env?.appUrl });
 
   const makeResponse = () => {
     const headers = new Headers(request.headers);

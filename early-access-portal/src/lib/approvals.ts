@@ -55,6 +55,17 @@ export type ApprovalOutcome =
   | { id: string; result: "skipped"; reason: "already_approved" | "not_found" }
   | { id: string; result: "failed"; error: string };
 
+/**
+ * The Diskarte app's login page, flagged so it greets Early Access users and pre-fills the email
+ * the credentials were sent to (see diskarte/src/app/(auth)/login/page.tsx).
+ */
+export function appLoginUrl(base: string, email: string) {
+  const url = new URL(base);
+  url.searchParams.set("from", "early-access");
+  url.searchParams.set("email", email);
+  return url.toString();
+}
+
 function describe(err: unknown) {
   return (err instanceof Error ? err.message : String(err)).slice(0, 480);
 }
@@ -121,7 +132,7 @@ export async function approveApplications(ids: string[], deps: ApprovalDeps): Pr
       continue;
     }
 
-    const message = welcomeEmail({ name: row.full_name, email: row.email, tempPassword: password, loginUrl: deps.urls.login, assetBaseUrl: deps.urls.assets, existingAccount });
+    const message = welcomeEmail({ name: row.full_name, email: row.email, tempPassword: password, loginUrl: appLoginUrl(deps.urls.login, row.email), assetBaseUrl: deps.urls.assets, existingAccount });
     const sent = await deliver(row, message, deps, row.email_attempts + 1);
     outcomes.push({ id, result: "approved", existingAccount, ...sent });
   }
@@ -158,7 +169,7 @@ export async function resendCredentials(id: string, deps: ApprovalDeps): Promise
     name: row.full_name,
     email: row.email,
     tempPassword: password,
-    loginUrl: deps.urls.login,
+    loginUrl: appLoginUrl(deps.urls.login, row.email),
     assetBaseUrl: deps.urls.assets,
     existingAccount: !row.approved_user_id,
   });

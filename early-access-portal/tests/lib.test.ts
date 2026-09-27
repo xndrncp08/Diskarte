@@ -165,6 +165,8 @@ describe("configuration & headers", () => {
     expect(off).toContain("frame-ancestors 'none'");
     expect(off).toContain("upgrade-insecure-requests");
     expect(buildCsp("abc", { turnstile: true, isDev: false, upgradeInsecure: false })).toContain("frame-src https://challenges.cloudflare.com");
+    // The landing page may read the Diskarte app's health endpoint (its CORS allows the portal).
+    expect(buildCsp("abc", { turnstile: false, isDev: false, upgradeInsecure: false, appUrl: "https://diskarte.onrender.com/login" })).toContain("connect-src 'self' https://diskarte.onrender.com");
     expect(safeRedirectPath("//evil.example")).toBe("/admin");
     expect(safeRedirectPath("/admin?status=all")).toBe("/admin?status=all");
   });

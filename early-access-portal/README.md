@@ -12,12 +12,12 @@ Applicant ──► Diskarte /login ──► forced /reset-password ──► o
 ## Develop
 
 ```bash
-# from the repository root (npm workspace: one install for both apps)
-npm install
-cp early-access-portal/.env.example early-access-portal/.env   # EMAIL_TRANSPORT=log for local
-npm run dev:portal                                              # http://localhost:3100  (admin: /admin)
-npm test -w early-access-portal                                 # Vitest: anti-spam, guards, approvals, components
-npm run admin:grant -- you@example.com                          # needs SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
+cd early-access-portal                  # self-contained: own package-lock.json (Vercel Root Directory)
+npm ci
+cp .env.example .env                   # EMAIL_TRANSPORT=log for local
+npm run dev                            # http://localhost:3100  (admin: /admin)
+npm test                               # Vitest: anti-spam, guards, approvals, components
+npm run admin:grant -- you@example.com # needs SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
 ```
 
 The database lives in `../supabase/migrations/20260928000000_early_access.sql`, with RLS tests in `../diskarte/tests/db/early-access.test.ts`. The brand art in `public/brand` and `public/email` is exported from the Diskarte app's logo components by `npm run brand:assets` (repo root), and a test there fails if they drift.
