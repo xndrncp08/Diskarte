@@ -101,13 +101,15 @@ function setOnline(online: boolean) {
   window.dispatchEvent(new Event(online ? "online" : "offline"));
 }
 
-const wrap =
-  (meId = OWNER_ID, myRole: "admin" | "moderator" | "member" = "admin") =>
-  ({ children }: { children: ReactNode }) => (
-    <ServerFixture members={members} meId={meId} myRole={myRole}>
-      {children}
-    </ServerFixture>
-  );
+function wrap(meId = OWNER_ID, myRole: "admin" | "moderator" | "member" = "admin") {
+  return function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <ServerFixture members={members} meId={meId} myRole={myRole}>
+        {children}
+      </ServerFixture>
+    );
+  };
+}
 
 beforeEach(() => {
   for (const key of Object.keys(tables)) delete tables[key];
