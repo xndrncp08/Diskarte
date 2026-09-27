@@ -122,6 +122,22 @@ describe("first login with a temporary password", () => {
   });
 });
 
+describe("inter-app routing", () => {
+  it("lets the Early Access portal (and only it) read /api/health cross-origin", async () => {
+    vi.stubEnv("EARLY_ACCESS_URL", "https://early.diskarte.ph/");
+    const from = (origin: string) =>
+      proxy(new NextRequest(`${SITE}/api/health`, { headers: { host: "diskarte.onrender.com", "x-forwarded-proto": "https", origin } }));
+    const allowed = await from("https://early.diskarte.ph");
+    expect(allowed.status).toBe(200);
+    expect(allowed.headers.get("access-control-allow-origin")).toBe("https://early.diskarte.ph");
+    expect((await from("https://evil.example")).headers.get("access-control-allow-origin")).toBeNull();
+    const preflight = await proxy(
+      new NextRequest(`${SITE}/api/health`, { method: "OPTIONS", headers: { host: "diskarte.onrender.com", origin: "https://evil.example" } }),
+    );
+    expect(preflight.status).toBe(403);
+  });
+});
+
 describe("invite-only sign-up", () => {
   it("parses SIGNUP_MODE and EARLY_ACCESS_URL safely", () => {
     expect(signupPolicy({})).toEqual({ inviteOnly: false, earlyAccessUrl: null });

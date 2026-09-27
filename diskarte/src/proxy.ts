@@ -14,11 +14,9 @@ const FIRST_LOGIN_PATH = "/reset-password";
 /** API routes reachable without a session. */
 const PUBLIC_API = ["/api/health"];
 
+/** Extra CORS origins: ALLOWED_ORIGINS plus the Early Access portal (it reads /api/health). */
 function extraOrigins() {
-  return (process.env.ALLOWED_ORIGINS ?? "")
-    .split(",")
-    .map((o) => o.trim())
-    .filter(Boolean);
+  return [...(process.env.ALLOWED_ORIGINS ?? "").split(","), process.env.EARLY_ACCESS_URL ?? ""].map((o) => o.trim()).filter(Boolean);
 }
 
 function matches(pathname: string, prefixes: readonly string[]) {
