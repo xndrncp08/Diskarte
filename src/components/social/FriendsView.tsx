@@ -115,11 +115,11 @@ export function FriendsView({ servers }: { servers: Server[] }) {
                 onClick={() => setTab(t.id)}
                 className={cn(
                   "flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-semibold transition-colors pointer-coarse:py-2",
-                  t.id === "add" ? (tab === t.id ? "bg-transparent text-emerald-300" : "bg-emerald-500 text-white hover:bg-emerald-400") : tab === t.id ? "bg-white/15 text-white" : "text-slate-400 hover:bg-white/5 hover:text-slate-200",
+                  t.id === "add" ? (tab === t.id ? "bg-transparent text-emerald-300" : "bg-emerald-700 text-white hover:bg-emerald-800") : tab === t.id ? "bg-white/15 text-white" : "text-slate-400 hover:bg-white/5 hover:text-slate-200",
                 )}
               >
                 {t.label}
-                {t.count ? <span className="rounded-full bg-red-500 px-1.5 text-[10px] text-white">{t.count}</span> : null}
+                {t.count ? <span className="rounded-full bg-red-600 px-1.5 text-[10px] text-white">{t.count}</span> : null}
               </button>
             ))}
           </div>

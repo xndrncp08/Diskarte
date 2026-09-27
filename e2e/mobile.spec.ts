@@ -109,6 +109,8 @@ test.describe("mobile — app shell", () => {
     const message = page.getByTestId("message").filter({ hasText: "Tap me" });
     await message.locator("p").first().tap();
     await expect(message).toHaveAttribute("data-active", "true");
+    // The toolbar scales in from 95 %; probe once it has settled at full size.
+    await expect(message.getByRole("toolbar", { name: "Message actions" })).toHaveCSS("transform", /^(none|matrix\(1, 0, 0, 1, 0, 0\))$/);
     await expectTouchTarget(message.getByRole("button", { name: "Reply" }));
   });
 

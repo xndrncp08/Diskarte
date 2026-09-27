@@ -40,7 +40,7 @@ export function ServerRail({ servers }: { servers: Server[] }) {
             <DiskarteLogo size={40} title="Diskarte home" />
           </span>
           {attention > 0 && (
-            <span className="absolute -bottom-0.5 -right-0.5 flex min-w-5 items-center justify-center rounded-full border-2 border-abyss bg-red-500 px-1 font-silk text-[10px] font-bold text-white" aria-hidden data-testid="home-badge">
+            <span className="absolute -bottom-0.5 -right-0.5 flex min-w-5 items-center justify-center rounded-full border-2 border-abyss bg-red-600 px-1 font-silk text-[10px] font-bold text-white" aria-hidden data-testid="home-badge">
               {attention > 9 ? "9+" : attention}
             </span>
           )}

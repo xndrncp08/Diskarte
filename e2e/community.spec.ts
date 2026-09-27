@@ -42,15 +42,17 @@ test.describe("community features", () => {
     await expect(settings.getByTestId("audit-log")).toContainText(`${member.user.displayName} joined the tambayan`);
     await owner.page.keyboard.press("Escape");
 
-    // Slow mode: members wait between messages; the composer counts down.
+    // Slow mode: members wait between messages; the composer counts down. (10 s, and we let the
+    // window pass first: the member's sticker above would otherwise count as their last message.)
     await member.page.getByTestId("composer").fill("");
     const general = owner.page.getByRole("navigation", { name: "Channels" }).getByRole("link", { name: "general" });
     await general.hover();
     await owner.page.getByRole("button", { name: "Edit general" }).click();
     const dialog = owner.page.getByRole("dialog", { name: "I-edit ang channel" });
-    await dialog.getByRole("radio", { name: "30s" }).click();
+    await dialog.getByRole("radio", { name: "10s" }).click();
     await dialog.getByRole("button", { name: "I-save" }).click();
-    await expect(member.page.getByTestId("slowmode-indicator")).toHaveText(/Slow mode 30s/);
+    await expect(member.page.getByTestId("slowmode-indicator")).toHaveText(/Slow mode 10s/);
+    await member.page.waitForTimeout(10_500);
     await sendMessage(member.page, "una!");
     await expect(messageItem(owner.page, "una!")).toBeVisible();
     await expect(member.page.getByTestId("slowmode-indicator")).toHaveText(/Slow mode: \d+s/);

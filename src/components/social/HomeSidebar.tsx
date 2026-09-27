@@ -65,7 +65,7 @@ export function HomeSidebar({ servers = [] }: { servers?: Server[] }) {
             <Users className="size-5" aria-hidden />
             Friends
             {incoming > 0 && (
-              <span className="ml-auto rounded-full bg-red-500 px-1.5 font-silk text-[10px] text-white">
+              <span className="ml-auto rounded-full bg-red-600 px-1.5 font-silk text-[10px] text-white">
                 {incoming}
                 <span className="sr-only"> pending requests</span>
               </span>
