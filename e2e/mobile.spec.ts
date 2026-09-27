@@ -87,6 +87,8 @@ test.describe("mobile — app shell", () => {
     }, { h: viewport.height });
     const channels = page.getByRole("navigation", { name: "Channels" });
     await expect(channels.getByRole("link", { name: "general" })).toBeInViewport();
+    // Let the drawer finish sliding in: mid-transition, probe points can sit off-screen (x < 0).
+    await expect.poll(async () => (await channels.boundingBox())?.x ?? -1).toBeGreaterThanOrEqual(72);
     await expectTouchTarget(channels.getByRole("link", { name: "chika" }));
     await expectTouchTarget(page.getByTestId("server-menu"));
     await expectTouchTarget(page.getByRole("button", { name: "Sound settings" }));

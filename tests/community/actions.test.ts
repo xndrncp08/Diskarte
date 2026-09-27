@@ -159,8 +159,8 @@ describe("channel message actions (community additions)", () => {
   const send = (extra: Record<string, unknown> = {}) => messages.sendMessageAction({ id: MSG, channelId: CHANNEL, content: "hello", ...extra });
 
   it("passes thread and sticker through", async () => {
-    db.tableResult = () => ({ data: { id: MSG }, error: null });
-    await send({ content: "", sticker: "sana-all", threadId: MSG.replace("1", "2") });
+    db.tableResult = () => ({ data: [{ id: MSG }], error: null });
+    expect((await send({ content: "", sticker: "sana-all", threadId: MSG.replace("1", "2") })).ok).toBe(true);
     expect(tableCall("messages", "insert")).toMatchObject({ content: "", sticker: "sana-all", thread_id: MSG.replace("1", "2") });
     expect((await send({ content: "", sticker: "unknown" })).ok).toBe(false);
   });
@@ -171,8 +171,10 @@ describe("channel message actions (community additions)", () => {
   });
 
   it("detects auto-mod drops (insert returned no row) and verification gates", async () => {
-    db.tableResult = () => ({ data: null, error: { message: "JSON object requested, multiple (or no) rows returned", code: "PGRST116" } });
+    // The trigger returns NULL: the insert commits (keeping the audit entry) and yields no rows.
+    db.tableResult = () => ({ data: [], error: null });
     expect(await send()).toMatchObject({ ok: false, code: "AUTOMOD_BLOCKED", error: expect.stringMatching(/Bantay-Bayan/) });
+    expect(db.calls.some((c) => c.table === "messages" && c.op === "insert")).toBe(true);
     db.tableResult = () => ({ data: null, error: { message: "VERIFICATION_REQUIRED" } });
     expect(await send()).toMatchObject({ ok: false, code: "VERIFICATION_REQUIRED" });
   });

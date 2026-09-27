@@ -56,20 +56,23 @@ export async function sendMessageAction(input: z.input<typeof sendSchema>): Prom
     if (attachments.some((a) => !a.path.startsWith(prefix))) return { ok: false, error: messageError("INVALID_ATTACHMENT") };
   }
 
-  const { data, error } = await supabase
+  // No .single(): PostgREST rolls back the whole transaction when a singular response doesn't get
+  // exactly one row, which would also undo auto-mod's audit entry for a dropped message.
+  const { data: rows, error } = await supabase
     .from("messages")
     .insert({ id, channel_id: channelId, author_id: user.id, content, reply_to_id: replyToId ?? null, thread_id: threadId ?? null, sticker: sticker ?? null, attachments })
-    .select(MESSAGE_SELECT)
-    .single();
+    .select(MESSAGE_SELECT);
+  const data = rows?.[0];
   if (data) return { ok: true, data: { message: data as unknown as MessageWithAuthor } };
+  // Auto-mod drops the row (so its audit entry survives): the insert succeeds with no row.
+  if (!error) return { ok: false, error: communityError("AUTOMOD_BLOCKED"), code: "AUTOMOD_BLOCKED" };
 
   // A retried send (offline queue, flaky network) whose first attempt already landed.
   if (error?.code === "23505") {
     const { data: existing } = await supabase.from("messages").select(MESSAGE_SELECT).eq("id", id).eq("author_id", user.id).maybeSingle();
     if (existing) return { ok: true, data: { message: existing as unknown as MessageWithAuthor } };
   }
-  // Auto-mod drops the row (so its audit entry survives): the insert "succeeds" with no row.
-  if (error?.code === "PGRST116") return { ok: false, error: communityError("AUTOMOD_BLOCKED"), code: "AUTOMOD_BLOCKED" };
+  if (error.code === "PGRST116") return { ok: false, error: communityError("AUTOMOD_BLOCKED"), code: "AUTOMOD_BLOCKED" };
   if (error?.message?.includes("SLOWMODE")) {
     const retryAfter = Math.max(1, Number.parseInt(error.details ?? "", 10) || 5);
     return { ok: false, error: `Slow mode — makakapag-send ulit in ${retryAfter}s.`, code: "SLOWMODE", retryAfter };

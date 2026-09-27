@@ -2,7 +2,8 @@ import { SmartImage } from "@/components/ui/SmartImage";
 import { serverInitials } from "@/lib/servers";
 import { cn } from "@/lib/utils";
 
-const PALETTE = ["#FFB800", "#0038A8", "#CE1126", "#7C3AED", "#0EA5E9", "#16A34A", "#EC4899", "#F97316"];
+// Every colour clears WCAG AA (4.5:1) for its initials: dark text on gold, white on the rest.
+const PALETTE = ["#FFB800", "#0038A8", "#CE1126", "#7C3AED", "#0369A1", "#15803D", "#BE185D", "#C2410C"];
 
 function colorFor(id: string) {
   let hash = 0;
