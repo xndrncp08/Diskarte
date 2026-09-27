@@ -22,7 +22,11 @@ export function createFakeSupabase(tables: Record<string, unknown[]> = {}) {
     const api = {
       select: () => api,
       eq: (col: string, val: unknown) => ((rows = rows.filter((r) => r[col] === val)), api),
+      neq: (col: string, val: unknown) => ((rows = rows.filter((r) => r[col] !== val)), api),
+      is: (col: string, val: unknown) => ((rows = rows.filter((r) => (r[col] ?? null) === val)), api),
+      like: (col: string, pattern: string) => ((rows = rows.filter((r) => String(r[col]).startsWith(pattern.replace(/%$/, "")))), api),
       lt: (col: string, val: string) => ((rows = rows.filter((r) => String(r[col]) < val)), api),
+      gt: (col: string, val: string) => ((rows = rows.filter((r) => String(r[col]) > val)), api),
       in: (col: string, vals: unknown[]) => ((rows = rows.filter((r) => vals.includes(r[col]))), api),
       order: () => api,
       limit: (n: number) => ((rows = rows.slice(0, n)), api),
@@ -58,6 +62,7 @@ export function createFakeSupabase(tables: Record<string, unknown[]> = {}) {
     removeChannel: vi.fn(async () => "ok"),
     realtime: { setAuth: vi.fn(async () => undefined) },
     from: vi.fn((table: string) => builder(table)),
+    rpc: vi.fn(async () => ({ data: null, error: null })),
     storage: {
       from: (bucket: string) => ({
         upload: vi.fn(async (path: string) => {
@@ -68,6 +73,7 @@ export function createFakeSupabase(tables: Record<string, unknown[]> = {}) {
           removed.push(...paths);
           return { data: [], error: null };
         }),
+        createSignedUrl: vi.fn(async (path: string) => ({ data: { signedUrl: `https://signed.test/${path}` }, error: null })),
         createSignedUrls: vi.fn(async (paths: string[]) => ({ data: paths.map((p) => ({ path: p, signedUrl: `https://signed.test/${p}` })), error: null })),
         getPublicUrl: (path: string) => ({ data: { publicUrl: `https://abc.supabase.co/storage/v1/object/public/${bucket}/${path}` } }),
       }),
