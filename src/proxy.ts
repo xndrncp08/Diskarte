@@ -10,6 +10,7 @@ const GUEST_ONLY = ["/login", "/signup", "/forgot-password"];
 /** Pages whose POSTs are auth attempts (Server Actions post to the page URL). */
 const AUTH_POST_PATHS = ["/login", "/signup", "/forgot-password", "/reset-password", "/settings/account"];
 const AUTH_CALLBACK_PATHS = ["/auth/callback", "/auth/confirm"];
+const FIRST_LOGIN_PATH = "/reset-password";
 /** API routes reachable without a session. */
 const PUBLIC_API = ["/api/health"];
 
@@ -86,7 +87,7 @@ export async function proxy(request: NextRequest) {
   if (!env || matches(pathname, PUBLIC_API)) return makeResponse();
 
   // --- session refresh + route guards ------------------------------------------------------
-  const { response, userId } = await refreshSession(request, env, makeResponse);
+  const { response, userId, mustChangePassword } = await refreshSession(request, env, makeResponse);
 
   const withCookies = (target: NextResponse) => {
     for (const cookie of response.cookies.getAll()) target.cookies.set(cookie);
@@ -102,6 +103,14 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = `?next=${encodeURIComponent(pathname + search)}`;
+    return withCookies(NextResponse.redirect(url));
+  }
+
+  // Early Access accounts start with an emailed temporary password: nothing else until it's changed.
+  if (mustChangePassword && matches(pathname, PROTECTED_PREFIXES) && pathname !== FIRST_LOGIN_PATH) {
+    const url = request.nextUrl.clone();
+    url.pathname = FIRST_LOGIN_PATH;
+    url.search = "?first=1";
     return withCookies(NextResponse.redirect(url));
   }
 

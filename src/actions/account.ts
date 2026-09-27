@@ -30,8 +30,12 @@ export async function changePasswordAction(_prev: AccountFormState, form: FormDa
   if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error) };
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
+  // Also clears the Early Access "change your temporary password" flag, then refreshes the
+  // session so the new JWT (read by proxy.ts) no longer carries it.
+  const firstLogin = user.user_metadata?.must_change_password === true;
+  const { error } = await supabase.auth.updateUser({ password: parsed.data.password, ...(firstLogin ? { data: { must_change_password: false } } : {}) });
   if (error) return { error: friendlyAuthError(error.message) };
+  if (firstLogin) await supabase.auth.refreshSession();
 
   const next = form.get("redirectTo");
   if (typeof next === "string" && next) redirect(safeRedirectPath(next));
