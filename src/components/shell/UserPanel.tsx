@@ -81,7 +81,7 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
       {controls}
       <SoundSettingsPopover />
       <Tooltip label="User settings" side="top">
-        <Link href="/settings/profile" aria-label="User settings" className="touch-target relative rounded-md p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-white">
+        <Link href="/settings/profile" aria-label="User settings" className="touch-target relative rounded-md p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-white pointer-coarse:p-3.5">
           <Settings className="size-4" aria-hidden />
         </Link>
       </Tooltip>

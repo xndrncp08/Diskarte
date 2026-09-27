@@ -22,10 +22,10 @@ All configuration is read **at runtime**, so the same Docker image works locally
 
 1. Create a project at [supabase.com](https://supabase.com) → **New project**. Pick the **Southeast Asia (Singapore)** region for the lowest latency from the Philippines.
 2. **Apply the schema.** Either:
-   - **SQL editor:** run each file in `supabase/migrations/` **in filename order** (`…_schema.sql`, then `…_security_hardening.sql`) via *SQL Editor → New query*; or
+   - **SQL editor:** run each file in `supabase/migrations/` **in filename order** (`…_schema.sql`, `…_security_hardening.sql`, then `…_community.sql`) via *SQL Editor → New query*; or
    - **CLI:** `npx supabase link --project-ref <your-ref>` then `npx supabase db push`.
 
-   This creates every table (`profiles`, `servers`, `members`, `channels`, `messages`, `reactions`), all RLS policies, guard triggers, RPCs, the Realtime publication, private-channel authorisation and the `avatars` / `attachments` Storage buckets.
+   This creates every table, including the community ones (`audit_logs`, `server_bans`, `server_badges`, `lfg_beacons`, `soundboard_clips`, `friendships`, `user_blocks`, `dm_conversations`, `direct_messages`…). It also sets up all RLS policies, guard triggers, RPCs, the Realtime publication, private-channel authorisation and the `avatars` / `attachments` / `soundboard` Storage buckets. No new environment variables are needed.
 3. **Auth → URL Configuration**
    - *Site URL*: your Render URL, e.g. `https://diskarte.onrender.com`
    - *Redirect URLs*: `https://diskarte.onrender.com/auth/callback` (add `http://localhost:3000/auth/callback` for local dev)

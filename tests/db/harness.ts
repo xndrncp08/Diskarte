@@ -22,11 +22,16 @@ export async function createDb(): Promise<Db> {
 let counter = 0;
 
 /** Inserts an auth.users row (firing the profile trigger) and returns its id. */
-export async function signUp(db: Db, email: string, meta: Record<string, unknown> = {}) {
+export async function signUp(db: Db, email: string, meta: Record<string, unknown> = {}, opts: { verified?: boolean } = {}) {
   counter += 1;
   const id = `00000000-0000-4000-8000-${String(counter).padStart(12, "0")}`;
   await asService(db);
-  await db.query("insert into auth.users (id, email, raw_user_meta_data) values ($1, $2, $3)", [id, email, JSON.stringify(meta)]);
+  await db.query("insert into auth.users (id, email, raw_user_meta_data, email_confirmed_at) values ($1, $2, $3, $4)", [
+    id,
+    email,
+    JSON.stringify(meta),
+    opts.verified === false ? null : new Date().toISOString(),
+  ]);
   return id;
 }
 

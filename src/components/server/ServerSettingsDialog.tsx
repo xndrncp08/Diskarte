@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { ImagePlus, Trash2 } from "lucide-react";
-import { useRef, useState, useTransition, type ChangeEvent, type FormEvent } from "react";
+import { useId, useRef, useState, useTransition, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 import { deleteServerAction, updateServerAction } from "@/actions/servers";
 import { useMe } from "@/components/providers/MeProvider";
@@ -12,13 +12,88 @@ import { ServerIcon } from "@/components/shell/ServerIcon";
 import { Button } from "@/components/ui/Button";
 import { InputField, TextareaField } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
+import { hasRole } from "@/lib/servers";
 import { uploadPublicImage } from "@/lib/uploads";
+import { cn } from "@/lib/utils";
+import { AuditLogPanel } from "./settings/AuditLogPanel";
+import { AutomodSettings } from "./settings/AutomodSettings";
+import { BansPanel } from "./settings/BansPanel";
+import { SoundboardSettings } from "./settings/SoundboardSettings";
+import { SupportSettings } from "./settings/SupportSettings";
 
-export function ServerSettingsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export type SettingsTab = "overview" | "automod" | "audit" | "bans" | "soundboard" | "support";
+
+const TABS: { id: SettingsTab; label: string; adminOnly: boolean }[] = [
+  { id: "overview", label: "Overview", adminOnly: true },
+  { id: "automod", label: "Bantay-Bayan", adminOnly: true },
+  { id: "audit", label: "Audit log", adminOnly: false },
+  { id: "bans", label: "Bans", adminOnly: false },
+  { id: "soundboard", label: "Soundboard", adminOnly: true },
+  { id: "support", label: "Suporta", adminOnly: true },
+];
+
+/** Tambayan settings. Admins see every tab; moderators get the audit log and bans. */
+export function ServerSettingsDialog({ open, onClose, initialTab = "overview" }: { open: boolean; onClose: () => void; initialTab?: SettingsTab }) {
   return (
-    <Modal open={open} onClose={onClose} title="Tambayan settings" className="max-w-lg">
-      <ServerSettingsForm onClose={onClose} />
+    <Modal open={open} onClose={onClose} title="Tambayan settings" className="max-w-2xl">
+      <SettingsTabs key={initialTab} initialTab={initialTab} onClose={onClose} />
     </Modal>
+  );
+}
+
+function SettingsTabs({ initialTab, onClose }: { initialTab: SettingsTab; onClose: () => void }) {
+  const { myRole } = useServer();
+  const isAdmin = myRole === "admin";
+  const tabs = TABS.filter((t) => (t.adminOnly ? isAdmin : hasRole(myRole, "moderator")));
+  const [tab, setTab] = useState<SettingsTab>(tabs.some((t) => t.id === initialTab) ? initialTab : (tabs[0]?.id ?? "audit"));
+  const baseId = useId();
+
+  const panels: Record<SettingsTab, ReactNode> = {
+    overview: <ServerSettingsForm onClose={onClose} />,
+    automod: <AutomodSettings />,
+    audit: <AuditLogPanel />,
+    bans: <BansPanel />,
+    soundboard: <SoundboardSettings />,
+    support: <SupportSettings />,
+  };
+
+  return (
+    <>
+      <div
+        role="tablist"
+        aria-label="Settings sections"
+        className="scrollbar-thin -mx-1 mb-4 flex gap-1 overflow-x-auto px-1 pb-1"
+        onKeyDown={(e) => {
+          if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+          const i = tabs.findIndex((t) => t.id === tab);
+          const next = tabs[(i + (e.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length];
+          setTab(next.id);
+          document.getElementById(`${baseId}-tab-${next.id}`)?.focus();
+        }}
+      >
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            id={`${baseId}-tab-${t.id}`}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            aria-controls={`${baseId}-panel`}
+            tabIndex={tab === t.id ? 0 : -1}
+            onClick={() => setTab(t.id)}
+            className={cn(
+              "shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors pointer-coarse:py-2.5",
+              tab === t.id ? "bg-sun text-abyss" : "text-slate-300 hover:bg-white/10",
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <div id={`${baseId}-panel`} role="tabpanel" aria-labelledby={`${baseId}-tab-${tab}`}>
+        {panels[tab]}
+      </div>
+    </>
   );
 }
 

@@ -7,6 +7,7 @@ import { FloatingPortal, useFloating } from "@/components/ui/floating";
 import { InertWhenExiting } from "@/components/ui/InertWhenExiting";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { useSfxSettings } from "@/hooks/useSfxSettings";
+import { LowDataToggle } from "./LowDataToggle";
 import { SoundSettings } from "./SoundSettings";
 
 /** Speaker button in the user panel that opens the sound settings. */
@@ -49,7 +50,7 @@ export function SoundSettingsPopover() {
           aria-expanded={open}
           aria-controls={id}
           onClick={() => setOpen((o) => !o)}
-          className="touch-target relative rounded-md p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+          className="touch-target relative rounded-md p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-white pointer-coarse:p-3.5"
         >
           <Icon className="size-4" aria-hidden />
         </button>
@@ -72,6 +73,7 @@ export function SoundSettingsPopover() {
               className="glass-strong z-50 w-72 max-w-[calc(100vw-1rem)] rounded-2xl p-4 shadow-2xl shadow-black/60"
             >
               <SoundSettings />
+              <LowDataToggle className="mt-4 border-t border-white/10 pt-4" />
             </InertWhenExiting>
           )}
         </AnimatePresence>

@@ -1,16 +1,30 @@
 "use client";
 
-import { FileText, Loader2, Paperclip, SendHorizontal, X } from "lucide-react";
+import { FileText, Loader2, Paperclip, SendHorizontal, ShieldAlert, Turtle, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent } from "react";
 import { toast } from "sonner";
 import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
-import type { ChatMessage } from "@/hooks/useChannelChat";
+import type { ChatMessage, SendResult } from "@/hooks/useChannelChat";
 import { typingLabel } from "@/hooks/useTyping";
+import { formatDuration } from "@/lib/community";
 import { MAX_ATTACHMENTS, MESSAGE_MAX, type Attachment } from "@/lib/messages";
 import { ATTACHMENT_ACCEPT, uploadAttachment } from "@/lib/uploads";
 import { cn, formatBytes } from "@/lib/utils";
 import { EmojiPicker } from "./EmojiPicker";
+import { StickerPicker } from "./StickerPicker";
+
+/** Seconds left until `until` (a Date.now() timestamp), ticking while it's in the future. */
+function useCountdown(until: number | null | undefined) {
+  const [now, setNow] = useState(() => Date.now());
+  const active = until != null && until > now;
+  useEffect(() => {
+    if (!active) return;
+    const timer = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(timer);
+  }, [active, until]);
+  return until ? Math.max(0, Math.ceil((until - now) / 1000)) : 0;
+}
 
 interface PendingUpload {
   key: string;
@@ -27,21 +41,34 @@ export function Composer({
   replyTo,
   onCancelReply,
   onSend,
+  onSticker,
   onEditLast,
   typingNames,
   onTyping,
   onStopTyping,
+  placeholder,
+  cooldownUntil,
+  slowmodeSeconds = 0,
+  locked,
 }: {
   channelName: string;
-  serverId: string;
+  /** Attachments upload under this server/channel; omit it (DMs) to hide the attach button. */
+  serverId?: string;
   channelId: string;
   replyTo: ChatMessage | null;
   onCancelReply: () => void;
-  onSend: (content: string, attachments: Attachment[], replyToId: string | null) => Promise<boolean>;
+  onSend: (content: string, attachments: Attachment[], replyToId: string | null) => Promise<SendResult>;
+  onSticker?: (id: string) => void;
   onEditLast: () => void;
   typingNames: string[];
   onTyping: () => void;
   onStopTyping: () => void;
+  placeholder?: string;
+  /** Slow mode: sending is paused until this Date.now() timestamp. */
+  cooldownUntil?: number | null;
+  slowmodeSeconds?: number;
+  /** Replaces the input with a notice (e.g. verification required). */
+  locked?: string | null;
 }) {
   const supabase = useSupabase();
   const { me } = useMe();
@@ -50,6 +77,7 @@ export function Composer({
   const [dragging, setDragging] = useState(false);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const cooldown = useCountdown(cooldownUntil);
 
   // Autosize the textarea up to ~10 lines.
   useEffect(() => {
@@ -72,6 +100,7 @@ export function Composer({
 
   const addFiles = useCallback(
     (files: File[]) => {
+      if (!serverId) return;
       const room = MAX_ATTACHMENTS - uploads.length;
       if (files.length > room) toast.error(`Hanggang ${MAX_ATTACHMENTS} files lang bawat message.`);
       for (const file of files.slice(0, Math.max(0, room))) {
@@ -101,7 +130,7 @@ export function Composer({
 
   async function submit() {
     const content = draft.trim();
-    if ((!content && ready.length === 0) || busy) return;
+    if ((!content && ready.length === 0) || busy || cooldown > 0) return;
     if (content.length > MESSAGE_MAX) {
       toast.error(`Hanggang ${MESSAGE_MAX} characters lang.`);
       return;
@@ -111,9 +140,15 @@ export function Composer({
     setUploads([]);
     onCancelReply();
     onStopTyping();
-    const ok = await onSend(content, ready, previous.replyTo?.id ?? null);
+    const result = await onSend(content, ready, previous.replyTo?.id ?? null);
+    if (result === "rejected") {
+      // Slow mode / auto-mod / verification: nothing was posted, so hand the draft back.
+      setDraft((d) => d || previous.draft);
+      setUploads(previous.uploads);
+      return;
+    }
     // A failed text message stays in the list with Retry; a failed files-only send restores the tray.
-    if (!ok && !content) setUploads(previous.uploads);
+    if (result === "failed" && !content) setUploads(previous.uploads);
     else previous.uploads.forEach((u) => u.preview && URL.revokeObjectURL(u.preview));
   }
 
@@ -158,11 +193,22 @@ export function Composer({
 
   const typing = typingLabel(typingNames);
 
+  if (locked) {
+    return (
+      <div className="px-4 pb-safe">
+        <p className="glass mb-6 flex items-center gap-3 rounded-xl px-4 py-3 text-sm text-slate-300" role="status" data-testid="composer-locked">
+          <ShieldAlert className="size-5 shrink-0 text-sun" aria-hidden />
+          {locked}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div
       className="relative px-4 pb-safe"
       onDragOver={(e) => {
-        if (e.dataTransfer.types.includes("Files")) {
+        if (serverId && e.dataTransfer.types.includes("Files")) {
           e.preventDefault();
           setDragging(true);
         }
@@ -226,24 +272,28 @@ export function Composer({
             void submit();
           }}
         >
-          <input
-            ref={fileInput}
-            type="file"
-            multiple
-            accept={ATTACHMENT_ACCEPT}
-            className="sr-only"
-            aria-label="Attach files"
-            // Triggered by the visible button below; keep it out of the tab order / a11y tree.
-            aria-hidden
-            tabIndex={-1}
-            onChange={(e) => {
-              addFiles(Array.from(e.target.files ?? []));
-              e.target.value = "";
-            }}
-          />
-          <button type="button" aria-label="Attach files" onClick={() => fileInput.current?.click()} className="touch-target relative rounded-md p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white pointer-coarse:p-3">
-            <Paperclip className="size-5" aria-hidden />
-          </button>
+          {serverId && (
+            <>
+              <input
+                ref={fileInput}
+                type="file"
+                multiple
+                accept={ATTACHMENT_ACCEPT}
+                className="sr-only"
+                aria-label="Attach files"
+                // Triggered by the visible button below; keep it out of the tab order / a11y tree.
+                aria-hidden
+                tabIndex={-1}
+                onChange={(e) => {
+                  addFiles(Array.from(e.target.files ?? []));
+                  e.target.value = "";
+                }}
+              />
+              <button type="button" aria-label="Attach files" onClick={() => fileInput.current?.click()} className="touch-target relative rounded-md p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white pointer-coarse:p-3">
+                <Paperclip className="size-5" aria-hidden />
+              </button>
+            </>
+          )}
           <label htmlFor={`composer-${channelId}`} className="sr-only">
             Message #{channelName}
           </label>
@@ -260,14 +310,15 @@ export function Composer({
             onPaste={onPaste}
             rows={1}
             maxLength={MESSAGE_MAX + 100}
-            placeholder={`Message #${channelName}`}
+            placeholder={placeholder ?? `Message #${channelName}`}
             className="max-h-60 min-h-6 flex-1 resize-none bg-transparent px-1 py-1.5 text-[15px] text-slate-100 outline-none placeholder:text-slate-500"
             data-testid="composer"
           />
           <EmojiPicker onPick={(value) => insert(value.startsWith(":") ? `${value} ` : value)} label="Insert emoji" triggerClassName="pointer-coarse:p-3.5" />
+          {onSticker && <StickerPicker onPick={onSticker} disabled={cooldown > 0} />}
           <button
             type="submit"
-            disabled={(!draft.trim() && ready.length === 0) || busy}
+            disabled={(!draft.trim() && ready.length === 0) || busy || cooldown > 0}
             aria-label="Send message"
             className="touch-target relative rounded-md p-1.5 text-sun transition-opacity hover:bg-white/10 disabled:opacity-30 pointer-coarse:p-3"
           >
@@ -288,7 +339,15 @@ export function Composer({
             </>
           )}
         </span>
-        {draft.length > MESSAGE_MAX - 200 && <span className={cn("font-silk tabular-nums", draft.length > MESSAGE_MAX ? "text-red-300" : "text-slate-500")}>{MESSAGE_MAX - draft.length}</span>}
+        <span className="flex shrink-0 items-center gap-2">
+          {slowmodeSeconds > 0 && (
+            <span className={cn("flex items-center gap-1 font-silk", cooldown > 0 ? "text-sun" : "text-slate-500")} data-testid="slowmode-indicator">
+              <Turtle className="size-3.5" aria-hidden />
+              {cooldown > 0 ? `Slow mode: ${cooldown}s` : `Slow mode ${formatDuration(slowmodeSeconds)}`}
+            </span>
+          )}
+          {draft.length > MESSAGE_MAX - 200 && <span className={cn("font-silk tabular-nums", draft.length > MESSAGE_MAX ? "text-red-300" : "text-slate-500")}>{MESSAGE_MAX - draft.length}</span>}
+        </span>
       </div>
     </div>
   );

@@ -28,6 +28,12 @@ export function useOptionalRuntimeConfig(): RuntimeConfig | null {
   return useContext(RuntimeConfigContext);
 }
 
+/** Like useSupabase, but null when there's no runtime config (isolated component tests). */
+export function useOptionalSupabase(): BrowserSupabase | null {
+  const config = useOptionalRuntimeConfig();
+  return useMemo(() => (config ? getBrowserClient(config.supabaseUrl, config.supabaseAnonKey) : null), [config]);
+}
+
 /** Browser Supabase client bound to the runtime config (singleton). */
 export function useSupabase(): BrowserSupabase {
   const { supabaseUrl, supabaseAnonKey } = useRuntimeConfig();

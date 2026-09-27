@@ -1,21 +1,31 @@
 "use client";
 
-import type { ConnectionQuality, DisconnectReason, LocalTrackPublication, Participant, Room } from "livekit-client";
+import type { ConnectionQuality, DisconnectReason, LocalTrackPublication, Participant, RemoteParticipant, RemoteTrackPublication, Room } from "livekit-client";
 import dynamic from "next/dynamic";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useServerPresence, useVoicePresence } from "@/components/providers/PresenceProvider";
 import type { SignalLevel } from "@/components/retro/SignalBars";
+import { getLowDataMode, subscribeLowDataMode } from "@/lib/low-data";
 import { playSfx } from "@/lib/sfx";
 
 export type CallStatus = "idle" | "connecting" | "connected" | "reconnecting";
 
 export interface CallTarget {
+  /** "dm": a 1:1 / group DM call — channelId is the conversation id and serverId is empty. */
+  kind?: "channel" | "dm";
   serverId: string;
   serverName: string;
   channelId: string;
   channelName: string;
 }
+
+/** Where the "back to call" links go. */
+export function callHref(target: CallTarget) {
+  return target.kind === "dm" ? `/tambayan/dm/${target.channelId}` : `/tambayan/${target.serverId}/${target.channelId}`;
+}
+
+export type DataHandler = (payload: unknown, fromIdentity: string | null) => void;
 
 export interface CallState {
   status: CallStatus;
@@ -39,6 +49,10 @@ export interface CallContextValue extends CallState {
   toggleCamera: () => Promise<void>;
   toggleScreen: () => Promise<void>;
   toggleNoiseSuppression: () => Promise<void>;
+  /** Broadcast a small JSON message to everyone in the call (soundboard, activities). */
+  sendData: (topic: string, payload: unknown) => Promise<void>;
+  /** Subscribe to a data topic; returns an unsubscribe function. */
+  onData: (topic: string, handler: DataHandler) => () => void;
 }
 
 /**
@@ -52,6 +66,7 @@ export function loadLivekit() {
 }
 
 const CallAudio = dynamic(() => import("./live/CallAudio").then((m) => m.CallAudio), { ssr: false });
+const SoundboardReceiver = dynamic(() => import("./SoundboardReceiver").then((m) => m.SoundboardReceiver), { ssr: false });
 
 /** Exported for tests; app code uses <CallProvider> / useCall(). */
 export const CallContext = createContext<CallContextValue | null>(null);
@@ -89,6 +104,15 @@ function readNoiseSuppression() {
   }
 }
 
+/** Remote video at low simulcast layers when low-data mode is on. */
+function applySubscribeQuality(room: Room, lk: typeof import("livekit-client"), low: boolean) {
+  room.remoteParticipants.forEach((p: RemoteParticipant) =>
+    p.trackPublications.forEach((pub: RemoteTrackPublication) => {
+      if (pub.kind === lk.Track.Kind.Video) pub.setVideoQuality(low ? lk.VideoQuality.LOW : lk.VideoQuality.HIGH);
+    }),
+  );
+}
+
 const IDLE: CallState = { status: "idle", target: null, muted: false, deafened: false, camera: false, screen: false, noiseSuppression: true, quality: 4 };
 
 /**
@@ -103,14 +127,16 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const roomRef = useRef<Room | null>(null);
   const leaving = useRef(false);
   const mutedBeforeDeafen = useRef(false);
+  const dataHandlers = useRef(new Map<string, Set<DataHandler>>());
   const setVoice = useVoicePresence();
+  const isDm = state.target?.kind === "dm";
 
   // Keep the presence channel for the call's server open even while browsing other servers.
-  useServerPresence(state.target?.serverId);
+  useServerPresence(isDm ? undefined : state.target?.serverId);
 
   // Mirror call state into presence so sidebars show who is in which voice channel.
   useEffect(() => {
-    if ((state.status === "connected" || state.status === "reconnecting") && state.target) {
+    if ((state.status === "connected" || state.status === "reconnecting") && state.target && state.target.kind !== "dm") {
       setVoice({ serverId: state.target.serverId, channelId: state.target.channelId, muted: state.muted, deafened: state.deafened, video: state.camera, screen: state.screen });
     } else {
       setVoice(null);
@@ -144,7 +170,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
       const res = await fetch("/api/livekit/token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ channelId: target.channelId }),
+        body: JSON.stringify(target.kind === "dm" ? { conversationId: target.channelId } : { channelId: target.channelId }),
       }).catch(() => null);
       const body = (await res?.json().catch(() => null)) as { token?: string; url?: string; error?: string } | null;
       if (!res?.ok || !body?.token || !body.url) {
@@ -156,19 +182,40 @@ export function CallProvider({ children }: { children: ReactNode }) {
 
       const lk = await loadLivekit();
       const ns = readNoiseSuppression();
+      // Low-data mode: 360p camera, 720p/5fps screen share, and low simulcast layers for others.
+      const lowData = getLowDataMode();
       const next = new lk.Room({
         adaptiveStream: true,
         dynacast: true,
         disconnectOnPageLeave: true,
         audioCaptureDefaults: { echoCancellation: true, noiseSuppression: ns, autoGainControl: true },
-        videoCaptureDefaults: { resolution: lk.VideoPresets.h720.resolution },
-        publishDefaults: { simulcast: true, screenShareEncoding: lk.ScreenSharePresets.h1080fps15.encoding, dtx: true, red: true },
+        videoCaptureDefaults: { resolution: (lowData ? lk.VideoPresets.h360 : lk.VideoPresets.h720).resolution },
+        publishDefaults: {
+          simulcast: true,
+          screenShareEncoding: (lowData ? lk.ScreenSharePresets.h720fps5 : lk.ScreenSharePresets.h1080fps15).encoding,
+          dtx: true,
+          red: !lowData,
+        },
       });
 
       next
         .on(lk.RoomEvent.ParticipantConnected, () => playSfx("join"))
         .on(lk.RoomEvent.ParticipantDisconnected, () => playSfx("leave"))
         .on(lk.RoomEvent.ActiveSpeakersChanged, (speakers: Participant[]) => setSpeaking(speakers.map((p) => p.identity)))
+        .on(lk.RoomEvent.TrackSubscribed, (_track: unknown, publication: RemoteTrackPublication) => {
+          if (getLowDataMode() && publication.kind === lk.Track.Kind.Video) publication.setVideoQuality(lk.VideoQuality.LOW);
+        })
+        .on(lk.RoomEvent.DataReceived, (payload: Uint8Array, participant?: RemoteParticipant, _kind?: unknown, topic?: string) => {
+          const handlers = topic ? dataHandlers.current.get(topic) : undefined;
+          if (!handlers?.size) return;
+          let parsed: unknown;
+          try {
+            parsed = JSON.parse(new TextDecoder().decode(payload));
+          } catch {
+            return;
+          }
+          handlers.forEach((h) => h(parsed, participant?.identity ?? null));
+        })
         .on(lk.RoomEvent.Reconnecting, () => setState((s) => ({ ...s, status: "reconnecting", quality: 1 })))
         .on(lk.RoomEvent.Reconnected, () => setState((s) => ({ ...s, status: "connected" })))
         .on(lk.RoomEvent.ConnectionQualityChanged, (quality: ConnectionQuality, participant: Participant) => {
@@ -282,17 +329,43 @@ export function CallProvider({ children }: { children: ReactNode }) {
     toast(enabled ? "Noise suppression: ON 🎧" : "Noise suppression: OFF");
   }, [state.noiseSuppression]);
 
+  // Toggling low-data mode mid-call re-requests remote video at the matching quality.
+  useEffect(
+    () =>
+      subscribeLowDataMode(() => {
+        const current = roomRef.current;
+        if (current) void loadLivekit().then((lk) => applySubscribeQuality(current, lk, getLowDataMode()));
+      }),
+    [],
+  );
+
+  const sendData = useCallback(async (topic: string, payload: unknown) => {
+    const current = roomRef.current;
+    if (!current) return;
+    await current.localParticipant.publishData(new TextEncoder().encode(JSON.stringify(payload)), { reliable: true, topic });
+  }, []);
+
+  const onData = useCallback((topic: string, handler: DataHandler) => {
+    const map = dataHandlers.current;
+    if (!map.has(topic)) map.set(topic, new Set());
+    map.get(topic)!.add(handler);
+    return () => {
+      map.get(topic)?.delete(handler);
+    };
+  }, []);
+
   useEffect(() => () => void roomRef.current?.disconnect(), []);
 
   const value = useMemo<CallContextValue>(
-    () => ({ ...state, room, speaking, join, leave, toggleMute, toggleDeafen, toggleCamera, toggleScreen, toggleNoiseSuppression }),
-    [state, room, speaking, join, leave, toggleMute, toggleDeafen, toggleCamera, toggleScreen, toggleNoiseSuppression],
+    () => ({ ...state, room, speaking, join, leave, toggleMute, toggleDeafen, toggleCamera, toggleScreen, toggleNoiseSuppression, sendData, onData }),
+    [state, room, speaking, join, leave, toggleMute, toggleDeafen, toggleCamera, toggleScreen, toggleNoiseSuppression, sendData, onData],
   );
 
   return (
     <CallContext.Provider value={value}>
       {children}
       {room && state.status !== "idle" && <CallAudio room={room} muted={state.deafened} />}
+      {room && state.status === "connected" && <SoundboardReceiver />}
     </CallContext.Provider>
   );
 }

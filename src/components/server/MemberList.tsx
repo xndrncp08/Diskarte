@@ -1,10 +1,12 @@
 "use client";
 
 import { AnimatePresence } from "framer-motion";
-import { Crown, Shield, ShieldCheck, UserMinus } from "lucide-react";
+import { Ban, Crown, Shield, ShieldCheck, UserMinus } from "lucide-react";
 import { useEffect, useRef, useState, useTransition, type RefObject } from "react";
 import { toast } from "sonner";
+import { banMemberAction, setBadgeAction } from "@/actions/moderation";
 import { kickMemberAction, setMemberRoleAction } from "@/actions/servers";
+import { Badges } from "@/components/community/Badges";
 import { useMe } from "@/components/providers/MeProvider";
 import { useServer } from "@/components/providers/ServerProvider";
 import { ProfileCard } from "@/components/profile/ProfileCard";
@@ -12,9 +14,10 @@ import { UserAvatar } from "@/components/profile/UserAvatar";
 import { Button } from "@/components/ui/Button";
 import { FloatingPortal, useFloating } from "@/components/ui/floating";
 import { InertWhenExiting } from "@/components/ui/InertWhenExiting";
+import { BADGES, BADGE_KINDS } from "@/lib/community";
 import { visibleStatus, type PresencePayload } from "@/lib/presence";
 import { canManageMember, ROLE_LABEL, ROLE_RANK, type MemberWithProfile } from "@/lib/servers";
-import type { MemberRole } from "@/lib/supabase/database.types";
+import type { BadgeKind, MemberRole } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
 
 function RoleIcon({ role, owner }: { role: MemberRole; owner: boolean }) {
@@ -35,9 +38,12 @@ function MemberPopover({
   onClose: () => void;
   anchor: RefObject<HTMLButtonElement | null>;
 }) {
-  const { server, myRole } = useServer();
+  const { server, myRole, badges } = useServer();
   const { me } = useMe();
   const [pending, startTransition] = useTransition();
+  const [banning, setBanning] = useState(false);
+  const [reason, setReason] = useState("");
+  const memberBadges = badges.get(member.user_id) ?? [];
   const ref = useRef<HTMLDivElement>(null);
   const { style, side } = useFloating(true, anchor, ref, { side: "left", align: "start", offset: 12 });
   const perms = canManageMember({ actorRole: myRole, actorId: me.id, target: member, ownerId: server.owner_id });
@@ -62,6 +68,25 @@ function MemberPopover({
       const result = await setMemberRoleAction({ serverId: server.id, userId: member.user_id, role });
       if (result.ok) toast.success(`${member.profile.display_name} is now ${ROLE_LABEL[role]}.`);
       else toast.error(result.error ?? "Hindi napalitan ang role.");
+    });
+  }
+
+  function toggleBadge(badge: BadgeKind) {
+    const on = !memberBadges.includes(badge);
+    startTransition(async () => {
+      const result = await setBadgeAction({ serverId: server.id, userId: member.user_id, badge, on });
+      if (result.ok) toast.success(on ? `${BADGES[badge].emoji} ${BADGES[badge].label} para kay ${member.profile.display_name}!` : `Inalis ang ${BADGES[badge].label}.`);
+      else toast.error(result.error ?? "Hindi na-update ang badge.");
+    });
+  }
+
+  function ban() {
+    startTransition(async () => {
+      const result = await banMemberAction({ serverId: server.id, userId: member.user_id, reason });
+      if (result.ok) {
+        toast.success(`Na-ban si ${member.profile.display_name}.`);
+        onClose();
+      } else toast.error(result.error ?? "Hindi na-ban.");
     });
   }
 
@@ -101,33 +126,86 @@ function MemberPopover({
         profile={profile}
         role={member.user_id === server.owner_id ? "Owner" : ROLE_LABEL[member.role]}
         footer={
-          (perms.changeRole || perms.kick) && (
-            <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
-              {perms.changeRole && (
-                <div className="flex flex-wrap gap-1" role="group" aria-label="Set role">
-                  {(["member", "moderator", "admin"] as const).map((role) => (
+          <>
+            <Badges badges={memberBadges} className="mt-3" />
+            {myRole === "admin" && (
+              <div className="mt-3 border-t border-white/10 pt-3">
+                <p className="mb-1.5 font-silk text-[10px] uppercase tracking-wider text-slate-400">Supporter badges</p>
+                <div className="flex flex-wrap gap-1" role="group" aria-label="Supporter badges">
+                  {BADGE_KINDS.map((b) => (
                     <button
-                      key={role}
+                      key={b}
                       type="button"
-                      disabled={pending || member.role === role}
-                      onClick={() => setRole(role)}
+                      aria-pressed={memberBadges.includes(b)}
+                      disabled={pending}
+                      onClick={() => toggleBadge(b)}
                       className={cn(
-                        "rounded-md border px-2 py-1 text-xs font-semibold transition-colors disabled:cursor-default",
-                        member.role === role ? "border-sun bg-sun text-abyss" : "border-white/10 bg-white/5 text-slate-200 hover:bg-white/10",
+                        "rounded-md border px-2 py-1 text-xs font-semibold transition-colors",
+                        memberBadges.includes(b) ? BADGES[b].className : "border-white/10 bg-white/5 text-slate-400 hover:bg-white/10",
                       )}
                     >
-                      {ROLE_LABEL[role]}
+                      {BADGES[b].emoji} {BADGES[b].label}
                     </button>
                   ))}
                 </div>
-              )}
-              {perms.kick && (
-                <Button variant="danger" size="sm" onClick={kick} loading={pending} className="w-full">
-                  <UserMinus className="size-4" aria-hidden /> Kick from tambayan
-                </Button>
-              )}
-            </div>
-          )
+              </div>
+            )}
+            {(perms.changeRole || perms.kick) && (
+              <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
+                {perms.changeRole && (
+                  <div className="flex flex-wrap gap-1" role="group" aria-label="Set role">
+                    {(["member", "moderator", "admin"] as const).map((role) => (
+                      <button
+                        key={role}
+                        type="button"
+                        disabled={pending || member.role === role}
+                        onClick={() => setRole(role)}
+                        className={cn(
+                          "rounded-md border px-2 py-1 text-xs font-semibold transition-colors disabled:cursor-default",
+                          member.role === role ? "border-sun bg-sun text-abyss" : "border-white/10 bg-white/5 text-slate-200 hover:bg-white/10",
+                        )}
+                      >
+                        {ROLE_LABEL[role]}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {perms.kick && (
+                  <Button variant="danger" size="sm" onClick={kick} loading={pending} className="w-full">
+                    <UserMinus className="size-4" aria-hidden /> Kick from tambayan
+                  </Button>
+                )}
+                {perms.kick &&
+                  (banning ? (
+                    <div className="space-y-1.5 rounded-lg border border-red-500/30 bg-red-500/5 p-2">
+                      <label className="block text-xs text-slate-300">
+                        Reason (optional)
+                        <input
+                          value={reason}
+                          onChange={(e) => setReason(e.target.value)}
+                          maxLength={200}
+                          data-autofocus
+                          className="mt-1 w-full rounded-md border border-white/10 bg-black/40 px-2 py-1 text-sm text-white outline-none focus:border-red-400/60"
+                          placeholder="Spam, toxic, scam links…"
+                        />
+                      </label>
+                      <div className="flex gap-1.5">
+                        <Button variant="ghost" size="sm" className="flex-1" onClick={() => setBanning(false)}>
+                          Cancel
+                        </Button>
+                        <Button variant="danger" size="sm" className="flex-1" onClick={ban} loading={pending}>
+                          Confirm ban
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button variant="ghost" size="sm" onClick={() => setBanning(true)} className="w-full text-red-300 hover:text-red-200">
+                      <Ban className="size-4" aria-hidden /> Ban from tambayan
+                    </Button>
+                  ))}
+              </div>
+            )}
+          </>
         }
       />
     </InertWhenExiting>
@@ -135,7 +213,7 @@ function MemberPopover({
 }
 
 function MemberRow({ member, presence, dim }: { member: MemberWithProfile; presence: PresencePayload | undefined; dim: boolean }) {
-  const { server } = useServer();
+  const { server, badges } = useServer();
   const [open, setOpen] = useState(false);
   const row = useRef<HTMLButtonElement>(null);
   const status = visibleStatus(presence);
@@ -160,6 +238,7 @@ function MemberRow({ member, presence, dim }: { member: MemberWithProfile; prese
               {member.nickname ?? member.profile.display_name}
             </span>
             <RoleIcon role={member.role} owner={member.user_id === server.owner_id} />
+            <Badges badges={badges.get(member.user_id)} compact />
           </span>
           {status !== "offline" && (customStatus || customEmoji) && (
             <span className="block truncate text-[11px] text-slate-400">

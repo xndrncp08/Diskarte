@@ -20,6 +20,11 @@ export const getCurrentProfile = cache(async (): Promise<Tables<"profiles"> | nu
   return data;
 });
 
+/** Mirrors public.is_verified_user(): a confirmed email or phone number. */
+export function isVerified(user: { email_confirmed_at?: string | null; phone_confirmed_at?: string | null }) {
+  return Boolean(user.email_confirmed_at || user.phone_confirmed_at);
+}
+
 /** Redirects to /login when signed out, returns the user + profile otherwise. */
 export async function requireProfile(nextPath = "/tambayan") {
   const user = await getSessionUser();

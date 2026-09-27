@@ -15,6 +15,8 @@ create table auth.users (
   id uuid primary key,
   email text,
   raw_user_meta_data jsonb default '{}'::jsonb,
+  email_confirmed_at timestamptz default now(),
+  phone_confirmed_at timestamptz,
   created_at timestamptz default now()
 );
 

@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Track } from "livekit-client";
 import { Maximize2 } from "lucide-react";
 import Link from "next/link";
-import { useCall } from "../CallProvider";
+import { callHref, useCall } from "../CallProvider";
 import { ParticipantTile } from "./ParticipantTile";
 
 function HudContent() {
@@ -25,7 +25,7 @@ function HudContent() {
       <ParticipantTile trackRef={featured} compact className="aspect-video w-full" />
       <div className="flex items-center justify-between px-1.5 pt-1.5">
         <span className="truncate text-xs text-slate-300">🔊 {call.target.channelName}</span>
-        <Link href={`/tambayan/${call.target.serverId}/${call.target.channelId}`} aria-label="Bumalik sa call" className="touch-target relative rounded p-1 text-slate-300 hover:bg-white/10 hover:text-white">
+        <Link href={callHref(call.target)} aria-label="Bumalik sa call" className="touch-target relative rounded p-1 text-slate-300 hover:bg-white/10 hover:text-white">
           <Maximize2 className="size-3.5" aria-hidden />
         </Link>
       </div>

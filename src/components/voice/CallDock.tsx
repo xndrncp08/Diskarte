@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { useCall } from "./CallProvider";
+import { callHref, useCall } from "./CallProvider";
 import { ConnectionMeter } from "./ConnectionMeter";
 import { VoiceControls } from "./VoiceControls";
 
@@ -29,7 +29,7 @@ export function CallDock() {
               <p className={`text-sm font-bold ${call.status === "connected" ? "text-signal-green" : "text-signal-idle"}`} role="status">
                 {STATUS_TEXT[call.status]}
               </p>
-              <Link href={`/tambayan/${call.target!.serverId}/${call.target!.channelId}`} className="block truncate text-xs text-slate-400 hover:text-white hover:underline">
+              <Link href={callHref(call.target!)} className="block truncate text-xs text-slate-400 hover:text-white hover:underline">
                 {call.target!.channelName} / {call.target!.serverName}
               </Link>
             </div>

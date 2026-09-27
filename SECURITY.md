@@ -66,12 +66,29 @@ Rate limits live in process memory by default (Diskarte runs as one container). 
 
 > **Why no DOMPurify/sanitize-html before storage?** Messages are Markdown, not HTML. Stripping "HTML" before storage mangles legitimate content, such as developers sharing `<div>` or `<script>` snippets inside code blocks. It also gives a false sense of safety, because any future renderer would still need output encoding. Diskarte never renders stored text as HTML, and the tests in `src/components/chat/__tests__/markdown.test.tsx` and `tests/db/security.test.ts` pin that behaviour.
 
+#### Community tables (`20260927000000_community.sql`)
+
+| Table | Read | Write |
+| --- | --- | --- |
+| `audit_logs` | moderators+ of the server | **nobody directly**: written by `SECURITY DEFINER` triggers/RPCs through an internal `log_audit()` that clients can't execute |
+| `server_bans` | moderators+ | `ban_member` / `unban_member` RPCs only (same role hierarchy as kicks; `join_server` refuses banned users) |
+| `server_badges` | members | admins (RLS); foreign key to `members`, so badges disappear when someone leaves |
+| `lfg_beacons`, `lfg_party_members` | members | `create_lfg` / `join_lfg` / `leave_lfg` / `close_lfg` RPCs only (row-locked capacity checks) |
+| `soundboard_clips` | members | admins; a trigger pins the object path to `<server>/<uuid>.mp3` and caps each server at 24 clips |
+| `friendships`, `user_blocks` | the two people involved (blocks: the blocker only) | RPCs only. Blocks look like "user not found" to the blocked person |
+| `dm_conversations`, `dm_participants`, `direct_messages` | participants only | Messages are inserted as yourself. 1:1 DMs require an accepted friendship and no block (checked on every insert), with 8 per 10 s. Only the author edits or deletes |
+
+- **Auto-mod runs in the database** (`messages_before_insert_community`), so it can't be bypassed by calling PostgREST directly. A blocked message is dropped rather than rejected, so its `automod.block` audit entry survives the transaction. Phishing links are also refused in DMs.
+- **Slow mode, verification gates and thread validation** are enforced by the same trigger. `thread_id`, stickers and the reply counters are immutable for clients.
+- Helpers that could reveal relationships between arbitrary users (`are_friends`, `is_blocked_between`, `automod_match`) are **not executable** by `anon` or `authenticated`.
+- Realtime `dm:<conversation>` broadcast topics are authorised by `can_access_realtime_topic` (participants only).
+
 ### 3. WebRTC & LiveKit
 
 - `LIVEKIT_API_SECRET` exists only on the server. `src/lib/livekit.ts` and `src/lib/supabase/server.ts` import `server-only`, and a test fails CI if any `"use client"` module imports server-only modules or references server secrets / `NEXT_PUBLIC_*SECRET`.
 - `POST /api/livekit/token` requires a verified session and a CSRF-safe origin. It checks that the channel exists and is a voice channel (read under RLS) **and** that an explicit `members` row exists. Only then does it mint a token that:
   - is valid for **1 hour** (connected participants are refreshed by LiveKit itself);
-  - is scoped to a single room `voice:<channelId>`, with identity set to the Supabase user id;
+  - is scoped to a single room: `voice:<channelId>`, or `dm:<conversationId>` for DM calls (checked against `dm_participants`); the identity is the Supabase user id;
   - allows publishing only microphone, camera and screen share, and forbids `canUpdateOwnMetadata`.
 - Tokens are rate-limited per user and returned with `Cache-Control: no-store`.
 - **Encryption:** WebRTC requires DTLS-SRTP for all media and SCTP-over-DTLS for data channels. LiveKit signalling runs over `wss://`.
@@ -85,12 +102,13 @@ Rate limits live in process memory by default (Diskarte runs as one container). 
 | Server action | Zod schema: same allow-list, path regex, size cap, uploader-prefix check |
 | Database trigger | Rejects any attachment outside the uploader's folder, non-UUID names, disallowed types, `..`, non-numeric or oversized sizes |
 | Storage bucket | `attachments` is **private** with `file_size_limit = 10 MB` and `allowed_mime_types` set to the same list; `avatars` is public-read, images only, ≤ 5 MB |
+| Soundboard | Private `soundboard` bucket: `audio/mpeg` only, ≤ 1 MB, admins upload to `<server>/<uuid>.mp3`, members read via signed URLs. Clips are also sniffed for MP3 magic bytes client-side and cut off after 6 s on playback |
 | Storage RLS | Attachments are readable only by members of the server in the path. Uploads must come from a member, into their own folder of a real channel, with a UUID name. Deletes are limited to the uploader or moderators. Avatar uploads are limited to `<uid>/(avatar\|banner)-<uuid>.<ext>` or, for admins, `servers/<id>/icon-<uuid>.<ext>` |
 | Delivery | Short-lived signed URLs from Supabase's own origin, so uploaded content never executes on Diskarte's origin. Images may be re-encoded by the Next.js optimiser (`/_next/image`), which only fetches from `remotePatterns` (Supabase Storage paths and OAuth avatar CDNs) and never serves SVG |
 
 ### 5. HTTP, CORS & CSRF
 
-- A **per-request CSP** with a script nonce and `'strict-dynamic'`. `connect-src` allows only `'self'`, your Supabase URL (https/wss) and your LiveKit URL (https/wss). The policy also sets `frame-ancestors 'none'`, `object-src 'none'`, `base-uri 'self'` and `form-action 'self'`, plus `upgrade-insecure-requests` on HTTPS.
+- A **per-request CSP** with a script nonce and `'strict-dynamic'`. `connect-src` allows only `'self'`, your Supabase URL (https/wss) and your LiveKit URL (https/wss). The policy also sets `frame-ancestors 'none'`, `object-src 'none'`, `base-uri 'self'` and `form-action 'self'`, plus `upgrade-insecure-requests` on HTTPS. `frame-src` allows only `https://www.youtube-nocookie.com` for watch parties. The embed is sandboxed and driven by `postMessage`, so no YouTube script runs on Diskarte's origin.
 - Static headers (`next.config.ts`): `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`, `Cross-Origin-Opener-Policy: same-origin`, a restrictive `Permissions-Policy`, and no `X-Powered-By`.
 - **CORS:** `/api/*` answers preflights only for `SITE_URL` (plus any `ALLOWED_ORIGINS`). Every other origin gets `403`, and responses carry `Vary: Origin`.
 - **CSRF:** state-changing `/api/*` requests must carry a same-origin `Origin`/`Referer`. Server Actions get Next.js's built-in Origin check, and session cookies are `SameSite=Lax`.
@@ -108,6 +126,7 @@ Rate limits live in process memory by default (Diskarte runs as one container). 
 Run `npm test`. It includes:
 
 - `tests/db/schema.test.ts` and `tests/db/security.test.ts`: the real migrations inside PGlite, attacked as different users (RLS bypass, role escalation, forged authors, injection payloads, hostile attachments and storage paths).
+- `tests/db/community.test.ts`: audit logging, bans, auto-mod, slow mode, verification gates, threads, badges, LFG, the soundboard, friendships, blocks and DM privacy.
 - `tests/security/proxy.test.ts`: rate limits (429 + `Retry-After`), CORS, CSRF, the API session guard, route guards and CSP.
 - `tests/security/hardening.test.ts`: password policy, timing floor, cookie flags, the Upstash limiter, secret isolation and static headers.
 - `src/app/api/livekit/token/__tests__/route.test.ts`: session, membership, channel type, TTL, grants, signature verification and rate limiting.

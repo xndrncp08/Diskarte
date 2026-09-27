@@ -5,7 +5,7 @@
  */
 export type SfxName = "join" | "leave" | "mute" | "unmute" | "deafen" | "message" | "mention" | "send" | "error" | "start";
 
-interface Note {
+export interface Note {
   freq: number;
   dur: number;
   /** Start offset from the beginning of the cue, in seconds. */
@@ -16,10 +16,12 @@ interface Note {
   gain?: number;
 }
 
-interface Cue {
+export interface Cue {
   notes: Note[];
   /** A short filtered noise burst — the "switch" in toggle sounds. */
   click?: { at: number; dur: number; gain?: number };
+  /** Longer noise bursts (snares, cymbals, explosions) for soundboard clips. */
+  noise?: { at: number; dur: number; gain?: number }[];
   /** Overall loudness of the cue relative to others. */
   level?: number;
 }
@@ -189,11 +191,31 @@ function noise(ctx: AudioContext): AudioBuffer | null {
 export function playSfx(name: SfxName, volume?: number) {
   const settings = getSfxSettings();
   if (!settings.enabled && volume === undefined) return;
-  const master = clampVolume(volume ?? settings.volume);
+  playCue(CUES[name], volume ?? settings.volume);
+}
+
+const noiseBuffers = new Map<number, AudioBuffer>();
+
+/** White noise of a given length (cached per length), decaying linearly. */
+function longNoise(ctx: AudioContext, dur: number): AudioBuffer | null {
+  if (typeof ctx.createBuffer !== "function") return null;
+  const rate = ctx.sampleRate || 44100;
+  const length = Math.max(1, Math.floor(rate * dur));
+  const cached = noiseBuffers.get(length);
+  if (cached) return cached;
+  const buffer = ctx.createBuffer(1, length, rate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / length);
+  noiseBuffers.set(length, buffer);
+  return buffer;
+}
+
+/** Synthesises any cue at `volume` (0–1). Used by the UI sounds and the soundboard. */
+export function playCue(cue: Cue, volume: number) {
+  const master = clampVolume(volume);
   if (master === 0) return;
   const ctx = audio();
   if (!ctx) return;
-  const cue = CUES[name];
   const level = master * (cue.level ?? 1) * PEAK_GAIN;
   const t0 = ctx.currentTime + 0.01;
 
@@ -227,8 +249,25 @@ export function playSfx(name: SfxName, volume?: number) {
       src.stop(start + cue.click.dur + 0.01);
     }
   }
+
+  for (const burst of cue.noise ?? []) {
+    const buffer = longNoise(ctx, burst.dur);
+    if (!buffer || typeof ctx.createBufferSource !== "function") continue;
+    const src = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    src.buffer = buffer;
+    const start = t0 + burst.at;
+    gain.gain.setValueAtTime(Math.max(0.0002, level * (burst.gain ?? 0.6)), start);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + burst.dur);
+    src.connect(gain).connect(ctx.destination);
+    src.start(start);
+    src.stop(start + burst.dur + 0.01);
+  }
 }
 
-export function cueDuration(name: SfxName) {
-  return CUES[name].notes.reduce((end, n) => Math.max(end, n.at + n.dur), 0);
+export function cueDuration(name: SfxName | Cue) {
+  const cue = typeof name === "string" ? CUES[name] : name;
+  const notesEnd = cue.notes.reduce((end, n) => Math.max(end, n.at + n.dur), 0);
+  const noiseEnd = (cue.noise ?? []).reduce((end, n) => Math.max(end, n.at + n.dur), 0);
+  return Math.max(notesEnd, noiseEnd, cue.click ? cue.click.at + cue.click.dur : 0);
 }

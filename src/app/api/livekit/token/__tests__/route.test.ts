@@ -8,8 +8,11 @@ const USER = "00000000-0000-4000-8000-000000000001";
 const VOICE = "20000000-0000-4000-8000-000000000003";
 const TEXT = "20000000-0000-4000-8000-000000000001";
 
+const DM = "40000000-0000-4000-8000-000000000001";
+
 let currentUser: { id: string } | null = { id: USER };
 let isMember = true;
+let isParticipant = true;
 const channels: Record<string, { id: string; type: string; server_id: string }> = {
   [VOICE]: { id: VOICE, type: "voice", server_id: "s1" },
   [TEXT]: { id: TEXT, type: "text", server_id: "s1" },
@@ -24,7 +27,22 @@ vi.mock("@/lib/supabase/server", () => ({
         select: () => api,
         eq: (_c: string, v: string) => ((id = v), api),
         maybeSingle: async () => ({
-          data: table === "channels" ? (channels[id] ?? null) : table === "members" ? (isMember ? { role: "member" } : null) : null,
+          data:
+            table === "channels"
+              ? (channels[id] ?? null)
+              : table === "members"
+                ? isMember
+                  ? { role: "member" }
+                  : null
+                : table === "dm_conversations"
+                  ? id === DM && isParticipant
+                    ? { id: DM }
+                    : null
+                  : table === "dm_participants"
+                    ? isParticipant
+                      ? { user_id: USER }
+                      : null
+                    : null,
         }),
         single: async () => ({ data: { display_name: "Juan", username: "juan", avatar_url: null, avatar_preset: "ube" } }),
       };
@@ -42,6 +60,7 @@ function request(body: unknown) {
 beforeEach(() => {
   currentUser = { id: USER };
   isMember = true;
+  isParticipant = true;
   limiters.voiceToken.reset();
   vi.stubEnv("SUPABASE_URL", "https://proj.supabase.co");
   vi.stubEnv("SUPABASE_ANON_KEY", "anon-key-that-is-long-enough");
@@ -99,6 +118,24 @@ describe("POST /api/livekit/token", () => {
     const res = await POST(request({ channelId: VOICE }));
     expect(res.status).toBe(429);
     expect(res.headers.get("retry-after")).toBeTruthy();
+  });
+
+  it("mints DM call tokens for conversation participants only", async () => {
+    const res = await POST(request({ conversationId: DM }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.room).toBe(`dm:${DM}`);
+    const claims = await new TokenVerifier("APIdiskarte", "a-very-long-livekit-secret-for-tests-123456").verify(body.token);
+    expect(claims.video).toMatchObject({ room: `dm:${DM}`, roomJoin: true });
+
+    isParticipant = false;
+    const denied = await POST(request({ conversationId: DM }));
+    expect(denied.status).toBe(404);
+    expect(await denied.json()).not.toHaveProperty("token");
+  });
+
+  it("rejects ambiguous bodies that name both a channel and a conversation", async () => {
+    expect((await POST(request({ channelId: VOICE, conversationId: DM }))).status).toBe(400);
   });
 
   it("reports missing LiveKit secrets as 503", async () => {

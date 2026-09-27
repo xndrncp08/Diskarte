@@ -20,7 +20,7 @@ export default async function ServerLayout({ children, params }: LayoutProps<"/t
   if (!bundle) notFound();
 
   return (
-    <ServerProvider server={bundle.server} channels={bundle.channels} members={bundle.members} myRole={bundle.myRole}>
+    <ServerProvider server={bundle.server} channels={bundle.channels} members={bundle.members} badges={bundle.badges} myRole={bundle.myRole}>
       <DrawerPanel>
         <ChannelSidebar />
       </DrawerPanel>

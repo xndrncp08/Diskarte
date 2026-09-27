@@ -37,6 +37,10 @@ function msg(id: string, author: string, content: string, at: string): MessageWi
     pinned_at: null,
     pinned_by: null,
     edited_at: null,
+    thread_id: null,
+    sticker: null,
+    thread_reply_count: 0,
+    thread_last_reply_at: null,
     created_at: at,
     author: members.find((m) => m.user_id === author)!.profile,
   };
@@ -98,11 +102,11 @@ describe("useChannelChat mutations", () => {
       data: { message: { ...msg(input.id as string, OWNER_ID, input.content as string, "2026-09-26T01:10:00Z") } },
     }));
     const { result } = setup();
-    let ok = false;
+    let outcome = "";
     await act(async () => {
-      ok = await result.current.send("mabuhay!");
+      outcome = await result.current.send("mabuhay!");
     });
-    expect(ok).toBe(true);
+    expect(outcome).toBe("sent");
     const sent = result.current.messages.at(-1)!;
     expect(sent).toMatchObject({ content: "mabuhay!", author_id: OWNER_ID });
     expect(sent.pending).toBeUndefined();

@@ -26,6 +26,26 @@
 - **Accessible**: keyboard navigation with visible focus, ARIA roles on menus, dialogs and tabs, a skip link, reduced-motion support, and axe-core audits in the test suite.
 - **8-bit sound**: synthesised cues for joining, leaving, messages and mute toggles, with a volume control in the user panel.
 
+### Community (Tambayan specials)
+
+- **Soundboard**: 12 built-in 8-bit meme sounds (airhorn, ba dum tss, sad trombone…) plus up to 24 MP3 clips per tambayan uploaded by admins. Clips are broadcast over the LiveKit data channel, with per-sender cooldowns and a personal mute.
+- **Support & boosts**: GCash / Maya numbers with copy buttons, boost levels, and admin-granted **Server Booster 🚀**, **Lodi Supporter 🏆** and **Gcash Contributor 💙** badges shown in the member list.
+- **Pinoy sticker packs**: *Salitang Kanto* ("Sana All", "Charot!", "Petmalu"…) and *Tambayan Classics* (jeepney, halo-halo, kape, tsinelas).
+- **LFG Board**: post a beacon ("Valorant, need 2, Gold+") with a party size, voice channel and expiry. **Join Party** takes one click and drops you straight into the voice channel.
+- **Bantay-Bayan moderation**:
+  - Auto-mod filters for spam and flooding, phishing (fake GCash/bank/Discord/Steam domains, IP loggers, punycode), hate speech and explicit content, plus custom words with leetspeak normalisation. Moderators are exempt.
+  - Bans, and an audit log of joins/leaves, kicks, bans, role changes, deleted messages (with excerpts), channel edits, pins and auto-mod blocks.
+  - Per-channel **slow mode** and **verified-accounts-only** channels.
+- **Threads & reply chains**: move a discussion into a side-panel thread, with "N replies" chips on the root message.
+- **Voice activities**:
+  - A YouTube **watch party** (privacy-enhanced embed, synced play/pause/seek).
+  - 8-bit **Tic-Tac-Toe** and **Pinoy Trivia** (timed rounds and a leaderboard).
+  - Full-screen **focus mode** for screen shares.
+- **Friends & DMs**: friend requests by `@username`, blocking, 1:1 and group DMs (up to 10) with voice calls. Only friends can start a DM, and blocking ends it.
+- **Built for PH data**:
+  - **Low-data mode** gives smaller images, tap-to-play GIFs and 360p/low-layer video.
+  - An **offline outbox** keeps messages written without signal (surviving reloads) and sends them when you reconnect, under an 8-bit banner.
+
 ## Stack
 
 Next.js 16 (App Router, React 19.2, Turbopack) · TypeScript · Tailwind CSS 4 · Framer Motion · Lucide · Supabase (Postgres, Auth, Realtime, Storage) · LiveKit (`livekit-client`, `@livekit/components-react`, `livekit-server-sdk`) · Zod · Vitest + Testing Library + PGlite · Playwright · Docker · Render · GitHub Actions

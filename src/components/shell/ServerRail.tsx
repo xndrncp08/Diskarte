@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { DiskarteLogo } from "@/components/brand/DiskarteLogo";
+import { useOptionalSocial } from "@/components/providers/SocialProvider";
 import { Tooltip } from "@/components/ui/Tooltip";
 import type { Server } from "@/lib/servers";
 import { cn } from "@/lib/utils";
@@ -28,15 +29,21 @@ export function ServerRail({ servers }: { servers: Server[] }) {
   const params = useParams<{ serverId?: string }>();
   const activeId = params.serverId;
   const [adding, setAdding] = useState(false);
+  const attention = useOptionalSocial()?.attention ?? 0;
 
   return (
     <nav aria-label="Servers" className="pt-safe flex h-full w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto bg-abyss pb-3 scrollbar-none">
       <Tooltip label="Home">
-        <Link href="/tambayan" aria-label="Home" aria-current={!activeId ? "page" : undefined} className="group relative flex">
+        <Link href="/tambayan" aria-label={attention ? `Home (${attention} new)` : "Home"} aria-current={!activeId ? "page" : undefined} className="group relative flex">
           <Pill active={!activeId} />
           <span className={cn("flex size-12 items-center justify-center bg-midnight transition-[border-radius,background-color] duration-200", !activeId ? "rounded-2xl bg-sun/15" : "rounded-[50%] group-hover:rounded-2xl")}>
             <DiskarteLogo size={40} title="Diskarte home" />
           </span>
+          {attention > 0 && (
+            <span className="absolute -bottom-0.5 -right-0.5 flex min-w-5 items-center justify-center rounded-full border-2 border-abyss bg-red-500 px-1 font-silk text-[10px] font-bold text-white" aria-hidden data-testid="home-badge">
+              {attention > 9 ? "9+" : attention}
+            </span>
+          )}
         </Link>
       </Tooltip>
       <div className="mx-auto h-0.5 w-8 rounded bg-white/10" />

@@ -6,8 +6,10 @@ import { useSupabase } from "@/components/providers/RuntimeConfig";
 const TTL_SECONDS = 60 * 60;
 const cache = new Map<string, { url: string; expires: number }>();
 
-/** Batched, cached signed URLs for private `attachments` bucket objects. */
-export function useSignedUrls(paths: string[]): Record<string, string> {
+export type PrivateBucket = "attachments" | "soundboard";
+
+/** Batched, cached signed URLs for objects in a private bucket (`attachments` by default). */
+export function useSignedUrls(paths: string[], bucket: PrivateBucket = "attachments"): Record<string, string> {
   const supabase = useSupabase();
   const key = paths.join("|");
   // Bumped when a batch resolves so the render below re-reads the module cache.
@@ -16,30 +18,30 @@ export function useSignedUrls(paths: string[]): Record<string, string> {
   useEffect(() => {
     const list = key ? key.split("|") : [];
     const now = Date.now();
-    const missing = list.filter((p) => (cache.get(p)?.expires ?? 0) < now + 60_000);
+    const missing = list.filter((p) => (cache.get(`${bucket}:${p}`)?.expires ?? 0) < now + 60_000);
     if (missing.length === 0) return;
     let cancelled = false;
     void supabase.storage
-      .from("attachments")
+      .from(bucket)
       .createSignedUrls(missing, TTL_SECONDS)
       .then(({ data }) => {
         for (const item of data ?? []) {
-          if (item.signedUrl && item.path) cache.set(item.path, { url: item.signedUrl, expires: Date.now() + TTL_SECONDS * 1000 });
+          if (item.signedUrl && item.path) cache.set(`${bucket}:${item.path}`, { url: item.signedUrl, expires: Date.now() + TTL_SECONDS * 1000 });
         }
         if (!cancelled) setVersion((v) => v + 1);
       });
     return () => {
       cancelled = true;
     };
-  }, [supabase, key]);
+  }, [supabase, key, bucket]);
 
-  return fromCache(paths);
+  return fromCache(paths, bucket);
 }
 
-function fromCache(paths: string[]) {
+function fromCache(paths: string[], bucket: PrivateBucket) {
   const out: Record<string, string> = {};
   for (const p of paths) {
-    const hit = cache.get(p);
+    const hit = cache.get(`${bucket}:${p}`);
     if (hit) out[p] = hit.url;
   }
   return out;

@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
-import { useCall } from "./CallProvider";
+import { callHref, useCall } from "./CallProvider";
 
 const CallHud = dynamic(() => import("./live/CallHud").then((m) => m.CallHud), { ssr: false });
 
@@ -11,6 +11,6 @@ export function FloatingCallHUD() {
   const call = useCall();
   const pathname = usePathname();
   if (call.status !== "connected" || !call.target || !call.room) return null;
-  if (pathname === `/tambayan/${call.target.serverId}/${call.target.channelId}`) return null;
+  if (pathname === callHref(call.target)) return null;
   return <CallHud />;
 }

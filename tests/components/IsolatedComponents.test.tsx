@@ -139,7 +139,7 @@ describe("server options dropdown", () => {
     const before = columnsSignature();
     await user.click(screen.getByTestId("server-menu"));
     const menu = await screen.findByRole("menu", { name: "Server menu" });
-    expect(within(menu).getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Invite people", "Tambayan settings", "Create channel"]);
+    expect(within(menu).getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Invite people", "Tambayan settings", "Bantay-Bayan", "Suportahan ang tambayan", "Create channel"]);
     expect(menu.parentElement).toBe(document.body); // escapes every overflow boundary
     expect(menu).toHaveClass("z-50");
     expect(menu.style.position).toBe("fixed");
@@ -154,17 +154,18 @@ describe("server options dropdown", () => {
     const trigger = screen.getByTestId("server-menu");
     await user.click(trigger);
     const items = within(await screen.findByRole("menu")).getAllByRole("menuitem");
+    const last = items.length - 1;
     await waitFor(() => expect(items[0]).toHaveFocus());
     await user.keyboard("{ArrowDown}");
     expect(items[1]).toHaveFocus();
-    await user.keyboard("{ArrowDown}{ArrowDown}");
+    await user.keyboard("{ArrowDown}".repeat(last));
     expect(items[0]).toHaveFocus(); // wraps
     await user.keyboard("{ArrowUp}");
-    expect(items[2]).toHaveFocus();
+    expect(items[last]).toHaveFocus();
     await user.keyboard("{Home}");
     expect(items[0]).toHaveFocus();
     await user.keyboard("{End}");
-    expect(items[2]).toHaveFocus();
+    expect(items[last]).toHaveFocus();
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
     expect(trigger).toHaveFocus();
