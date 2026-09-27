@@ -58,6 +58,15 @@ cp .env.example .env.local   # add Supabase + LiveKit credentials
 npm run dev                   # http://localhost:3000
 ```
 
+### Early Access portal
+
+Before the public launch, sign-ups go through **[`early-access-portal/`](early-access-portal/README.md)**, a separate Next.js app in this repo:
+- **Waitlist:** a public, bot-resistant form with retro confetti.
+- **`/admin` dashboard:** for `super_admin`s. It has stats, search, filters, detail views and bulk approve/decline.
+- **Approval:** creates the Diskarte account and emails a branded "Maligayang Pagdating sa Diskarte!" message with temporary credentials. The app then makes the user pick a new password on first login.
+
+Set `SIGNUP_MODE=invite` on the main app to close public sign-up in the meantime.
+
 For a free production deploy (Supabase + LiveKit Cloud + Render) and local Supabase/LiveKit, see **[DEPLOYMENT.md](DEPLOYMENT.md)**. The threat model, security controls and vulnerability reporting are in **[SECURITY.md](SECURITY.md)**.
 
 ## Scripts

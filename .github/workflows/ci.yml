@@ -81,6 +81,57 @@ jobs:
         if: always()
         run: docker logs diskarte || true
 
+  portal:
+    name: Early access portal
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: early-access-portal
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: early-access-portal/package-lock.json
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Type-check
+        run: npm run typecheck
+      - name: Unit, guard & component tests
+        run: npm test
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: early-access-portal
+          load: true
+          tags: diskarte-early-access:ci
+          cache-from: type=gha,scope=portal
+          cache-to: type=gha,mode=max,scope=portal
+      - name: Image size budget (< 150 MB) and container smoke test
+        run: |
+          MB=$(( $(docker image inspect diskarte-early-access:ci --format '{{.Size}}') / 1000 / 1000 ))
+          echo "::notice title=Early access image size::${MB} MB"
+          test "$MB" -lt 150
+          docker run -d --name portal -p 3100:3100 \
+            -e SUPABASE_URL=https://example.supabase.co \
+            -e SUPABASE_ANON_KEY=anon-key-that-is-long-enough \
+            -e PORTAL_SECRET=ci-portal-secret-0123456789abcdef0123456789 \
+            diskarte-early-access:ci
+          for i in $(seq 1 30); do [ "$(docker inspect --format '{{.State.Health.Status}}' portal)" = "healthy" ] && break; sleep 2; done
+          docker inspect --format '{{.State.Health.Status}}' portal | grep -q healthy
+          curl -fsS http://localhost:3100/api/health | grep -q '"configured":true'
+          curl -fsS http://localhost:3100/ | grep -q "Early Access"
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3100/admin)" = "307"
+          test "$(docker exec portal id -u)" = "1001"
+      - name: Container logs
+        if: always()
+        working-directory: .
+        run: docker logs portal || true
+
   e2e:
     name: Playwright E2E
     runs-on: ubuntu-latest
@@ -100,6 +151,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            early-access-portal/package-lock.json
       - run: npm ci
       # The CLI comes from npm (its binary downloads from release assets), which avoids the
       # unauthenticated GitHub API lookups that `setup-cli` with `version: latest` gets rate-limited on.
@@ -110,14 +164,22 @@ jobs:
           npx --yes supabase@latest status -o env > supabase.env
           get() { grep -E "^$1=" supabase.env | head -n1 | cut -d= -f2- | tr -d '"'; }
           KEY=$(get ANON_KEY); [ -n "$KEY" ] || KEY=$(get PUBLISHABLE_KEY)
+          SERVICE=$(get SERVICE_ROLE_KEY); [ -n "$SERVICE" ] || SERVICE=$(get SECRET_KEY)
           echo "SUPABASE_URL=$(get API_URL)" >> "$GITHUB_ENV"
           echo "SUPABASE_ANON_KEY=$KEY" >> "$GITHUB_ENV"
+          # Only the Early Access portal (approvals) uses it — never the main app.
+          echo "::add-mask::$SERVICE"
+          echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE" >> "$GITHUB_ENV"
       - name: Start LiveKit (dev mode)
         run: docker run -d --name livekit --network host livekit/livekit-server:latest --dev --bind 0.0.0.0 --node-ip 127.0.0.1
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
       - name: Build
         run: npm run build
+      - name: Build the Early Access portal
+        run: |
+          npm ci --prefix early-access-portal
+          npm --prefix early-access-portal run build
       - name: Run E2E suite
         run: npx playwright test
       - uses: actions/upload-artifact@v4
