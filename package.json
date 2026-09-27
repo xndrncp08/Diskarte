@@ -1,21 +1,19 @@
 {
   "name": "diskarte-monorepo",
   "private": true,
-  "description": "Diskarte — open-source Discord alternative for the Philippines (app + Early Access portal)",
-  "workspaces": [
-    "diskarte",
-    "early-access-portal"
-  ],
+  "description": "Diskarte monorepo — two independently deployed Next.js apps (diskarte/ on Render, early-access-portal/ on Vercel) sharing supabase/",
   "scripts": {
-    "dev": "npm run dev -w diskarte",
-    "dev:portal": "npm run dev -w early-access-portal",
-    "build": "npm run build -w diskarte && npm run build -w early-access-portal",
-    "lint": "npm run lint --workspaces",
-    "typecheck": "npm run typecheck --workspaces",
-    "test": "npm run test --workspaces",
-    "test:e2e": "npm run test:e2e -w diskarte",
-    "brand:assets": "npm run brand:assets -w diskarte",
-    "admin:grant": "npm run admin:grant -w early-access-portal --"
+    "install:all": "npm ci --prefix diskarte && npm ci --prefix early-access-portal",
+    "postinstall": "npm run install:all",
+    "dev": "npm run dev --prefix diskarte",
+    "dev:portal": "npm run dev --prefix early-access-portal",
+    "build": "npm run build --prefix diskarte && npm run build --prefix early-access-portal",
+    "lint": "npm run lint --prefix diskarte && npm run lint --prefix early-access-portal",
+    "typecheck": "npm run typecheck --prefix diskarte && npm run typecheck --prefix early-access-portal",
+    "test": "npm test --prefix diskarte && npm test --prefix early-access-portal",
+    "test:e2e": "npm run test:e2e --prefix diskarte",
+    "brand:assets": "npm run brand:assets --prefix diskarte",
+    "admin:grant": "npm run admin:grant --prefix early-access-portal --"
   },
   "engines": {
     "node": ">=20.9.0"

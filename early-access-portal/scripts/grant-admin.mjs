@@ -3,6 +3,9 @@
 //   … npm run admin:grant -- someone@example.com --revoke
 // There is deliberately no UI for this: platform_admins can only be written with the service role.
 import { createClient } from "@supabase/supabase-js";
+import dotenv from 'dotenv';
+
+dotenv.config({ path: '.env.local' });
 
 const [email, flag] = process.argv.slice(2);
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;

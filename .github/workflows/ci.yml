@@ -21,20 +21,25 @@ jobs:
     name: Lint, type-check & unit tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Each app is self-contained (own lockfile), exactly as Render (Root Directory: diskarte)
+    # and Vercel (Root Directory: early-access-portal) build them.
+    defaults:
+      run:
+        working-directory: diskarte
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
-      # npm workspace: one install for diskarte/ and early-access-portal/
+          cache-dependency-path: diskarte/package-lock.json
       - run: npm ci
       - name: Lint
-        run: npm run lint -w diskarte
+        run: npm run lint
       - name: Type-check
-        run: npm run typecheck -w diskarte
+        run: npm run typecheck
       - name: Unit, component & database (RLS) tests
-        run: npm test -w diskarte
+        run: npm test
 
   docker:
     name: Docker image
@@ -46,8 +51,7 @@ jobs:
       - name: Build image
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: diskarte/Dockerfile
+          context: diskarte
           load: true
           tags: diskarte:ci
           cache-from: type=gha
@@ -87,28 +91,31 @@ jobs:
     name: Early access portal
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: early-access-portal
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: early-access-portal/package-lock.json
       - run: npm ci
       - name: Lint
-        run: npm run lint -w early-access-portal
+        run: npm run lint
       - name: Type-check
-        run: npm run typecheck -w early-access-portal
+        run: npm run typecheck
       - name: Unit, guard & component tests
-        run: npm test -w early-access-portal
-      # What Vercel runs (vercel.json buildCommand), with placeholder config.
+        run: npm test
+      # What Vercel runs (vercel.json: npm ci + npm run build in the root directory).
       - name: Production build (Vercel)
-        run: npm run build -w early-access-portal
+        run: npm run build
       - uses: docker/setup-buildx-action@v3
       - name: Build image
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: early-access-portal/Dockerfile
+          context: early-access-portal
           load: true
           tags: diskarte-early-access:ci
           cache-from: type=gha,scope=portal
@@ -131,6 +138,7 @@ jobs:
           test "$(docker exec portal id -u)" = "1001"
       - name: Container logs
         if: always()
+        working-directory: .
         run: docker logs portal || true
 
   e2e:
@@ -152,7 +160,13 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+          cache-dependency-path: |
+            diskarte/package-lock.json
+            early-access-portal/package-lock.json
+      - name: Install both apps
+        run: |
+          npm ci --prefix diskarte
+          npm ci --prefix early-access-portal
       # The CLI comes from npm (its binary downloads from release assets), which avoids the
       # unauthenticated GitHub API lookups that `setup-cli` with `version: latest` gets rate-limited on.
       - name: Start Supabase (applies supabase/migrations)
@@ -173,7 +187,9 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
       - name: Build both apps
-        run: npm run build
+        run: |
+          npm run build --prefix diskarte
+          npm run build --prefix early-access-portal
       - name: Run E2E suite
         working-directory: diskarte
         run: npx playwright test

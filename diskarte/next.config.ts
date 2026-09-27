@@ -1,4 +1,3 @@
-import path from "node:path";
 import type { NextConfig } from "next";
 import { imageHosts, serializeImageHosts } from "./src/lib/image-hosts";
 
@@ -9,14 +8,13 @@ const IMAGE_HOSTS = imageHosts(process.env.SUPABASE_URL ?? process.env.NEXT_PUBL
  * binaries alongside the musl ones and the tracer would copy both (~19 MB of dead weight).
  */
 const SHARP_VARIANTS = ["sharp-linux-*", "sharp-libvips-linux-*", "sharp-darwin-*", "sharp-libvips-darwin-*", "sharp-win32-*", "sharp-wasm32"];
-// Globs resolve from this app's folder; npm workspaces hoist dependencies to the repo root.
-const SHARP_EXCLUDES =
-  process.env.DISKARTE_SHARP_TARGET === "linuxmusl"
-    ? SHARP_VARIANTS.flatMap((v) => [`node_modules/@img/${v}/**`, `../node_modules/@img/${v}/**`])
-    : [];
+const SHARP_EXCLUDES = process.env.DISKARTE_SHARP_TARGET === "linuxmusl" ? SHARP_VARIANTS.map((v) => `node_modules/@img/${v}/**`) : [];
 
-/** npm workspace root (diskarte/ and early-access-portal/ share one lockfile and node_modules). */
-const REPO_ROOT = path.join(import.meta.dirname, "..");
+/**
+ * This app is self-contained (own lockfile and node_modules) so it builds from `diskarte/` alone —
+ * Render's Root Directory. Pin the root so Next doesn't reach for anything above it.
+ */
+const APP_ROOT = import.meta.dirname;
 
 /** Static security headers; the per-request CSP (with a script nonce) is set in src/proxy.ts. */
 const securityHeaders = [
@@ -33,10 +31,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  // Trace hoisted dependencies from the workspace root; the standalone server then lives at
-  // .next/standalone/diskarte/server.js (see Dockerfile and scripts/start-standalone.mjs).
-  outputFileTracingRoot: REPO_ROOT,
-  turbopack: { root: REPO_ROOT },
+  outputFileTracingRoot: APP_ROOT,
+  turbopack: { root: APP_ROOT },
   poweredByHeader: false,
   reactStrictMode: true,
   // Avatars, server icons and image attachments are resized per device and served as AVIF/WebP.

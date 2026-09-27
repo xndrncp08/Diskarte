@@ -8,8 +8,7 @@ name: diskarte
 services:
   web:
     build:
-      context: .
-      dockerfile: diskarte/Dockerfile
+      context: diskarte
     image: diskarte:local
     ports:
       - "3000:3000"
@@ -29,7 +28,7 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-      - /app/diskarte/.next/cache:uid=1001,gid=1001
+      - /app/.next/cache:uid=1001,gid=1001
     security_opt:
       - no-new-privileges:true
     healthcheck:
@@ -42,8 +41,7 @@ services:
   early-access:
     profiles: ["early-access"]
     build:
-      context: .
-      dockerfile: early-access-portal/Dockerfile
+      context: early-access-portal
     image: diskarte-early-access:local
     ports:
       - "3100:3100"
@@ -60,7 +58,7 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-      - /app/early-access-portal/.next/cache:uid=1001,gid=1001
+      - /app/.next/cache:uid=1001,gid=1001
     security_opt:
       - no-new-privileges:true
 
