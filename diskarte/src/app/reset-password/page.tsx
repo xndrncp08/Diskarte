@@ -34,7 +34,8 @@ export default async function ResetPasswordPage({ searchParams }: PageProps<"/re
             </>
           )}
         </div>
-        <ChangePasswordForm redirectTo="/tambayan" />
+        {/* First login: straight to onboarding (a Server Action redirect renders its target directly). */}
+        <ChangePasswordForm redirectTo={first ? "/onboarding" : "/tambayan"} />
       </div>
     </main>
   );

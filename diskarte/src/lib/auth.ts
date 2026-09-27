@@ -25,10 +25,22 @@ export function isVerified(user: { email_confirmed_at?: string | null; phone_con
   return Boolean(user.email_confirmed_at || user.phone_confirmed_at);
 }
 
-/** Redirects to /login when signed out, returns the user + profile otherwise. */
+/** Early Access accounts must replace their emailed temporary password before anything else. */
+export function mustChangePassword(user: { user_metadata?: Record<string, unknown> | null } | null | undefined) {
+  return user?.user_metadata?.must_change_password === true;
+}
+
+export const FIRST_LOGIN_PATH = "/reset-password?first=1";
+
+/**
+ * Redirects to /login when signed out, returns the user + profile otherwise. Accounts still on a
+ * temporary password go to the first-login page from every protected render — proxy.ts can't be
+ * the only guard, because a Server Action's redirect renders its target without re-entering it.
+ */
 export async function requireProfile(nextPath = "/tambayan") {
   const user = await getSessionUser();
   if (!user) redirect(`/login?next=${encodeURIComponent(nextPath)}`);
+  if (mustChangePassword(user) && nextPath !== "/reset-password") redirect(FIRST_LOGIN_PATH);
   const profile = await getCurrentProfile();
   if (!profile) {
     // The on_auth_user_created trigger should always create one; recover by signing out.

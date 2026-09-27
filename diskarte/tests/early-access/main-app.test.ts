@@ -18,10 +18,21 @@ const auth = {
   updateUser: vi.fn(async () => ({ data: {}, error: null })),
   refreshSession: vi.fn(async () => ({ data: {}, error: null })),
   signUp: vi.fn(async () => ({ data: { session: null }, error: null })),
+  signInWithPassword: vi.fn(async () => ({ data: { user: auth.user }, error: null })),
 };
-vi.mock("@/lib/auth", () => ({ getSessionUser: async () => auth.user }));
+vi.mock("@/lib/auth", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/auth")>()), getSessionUser: async () => auth.user }));
 vi.mock("@/lib/supabase/server", () => ({
-  createClient: async () => ({ auth: { updateUser: auth.updateUser, refreshSession: auth.refreshSession, signUp: auth.signUp }, rpc: async () => ({ data: true }) }),
+  createClient: async () => ({
+    auth: {
+      getUser: async () => ({ data: { user: auth.user }, error: null }),
+      updateUser: auth.updateUser,
+      refreshSession: auth.refreshSession,
+      signUp: auth.signUp,
+      signInWithPassword: auth.signInWithPassword,
+    },
+    rpc: async () => ({ data: true }),
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id: "u1", onboarded: false } }) }) }) }),
+  }),
 }));
 vi.mock("next/navigation", () => ({
   redirect: (url: string) => {
@@ -31,7 +42,8 @@ vi.mock("next/navigation", () => ({
 
 const { proxy } = await import("@/proxy");
 const { changePasswordAction } = await import("@/actions/account");
-const { signUpAction } = await import("@/app/(auth)/actions");
+const { signInAction, signUpAction } = await import("@/app/(auth)/actions");
+const { requireProfile } = await import("@/lib/auth");
 
 const SITE = "https://diskarte.onrender.com";
 const req = (path: string) => new NextRequest(`${SITE}${path}`, { headers: { host: "diskarte.onrender.com", "x-forwarded-proto": "https", "x-forwarded-for": "203.0.113.50" } });
@@ -64,6 +76,22 @@ describe("first login with a temporary password", () => {
     expect((await proxy(req("/tambayan"))).status).toBe(200);
   });
 
+  it("logs straight into the first-login page (a Server Action redirect skips the proxy)", async () => {
+    auth.user = { id: "u1", user_metadata: { must_change_password: true } };
+    const form = new FormData();
+    form.set("email", "new@diskarte.ph");
+    form.set("password", "Temp#Pass2026xyz");
+    form.set("next", "/tambayan");
+    await expect(signInAction({}, form)).rejects.toMatchObject({ url: "/reset-password?first=1" });
+  });
+
+  it("enforces the first-login page on every protected server render too", async () => {
+    auth.user = { id: "u1", user_metadata: { must_change_password: true } };
+    await expect(requireProfile("/tambayan")).rejects.toMatchObject({ url: "/reset-password?first=1" });
+    await expect(requireProfile("/onboarding")).rejects.toMatchObject({ url: "/reset-password?first=1" });
+    await expect(requireProfile("/reset-password")).resolves.toMatchObject({ user: { id: "u1" } });
+  });
+
   it("clears the flag with the new password and refreshes the session JWT", async () => {
     const form = new FormData();
     form.set("password", "Bagong!Password2026");
@@ -72,6 +100,15 @@ describe("first login with a temporary password", () => {
     await expect(changePasswordAction({}, form)).rejects.toMatchObject({ url: "/tambayan" });
     expect(auth.updateUser).toHaveBeenCalledWith({ password: "Bagong!Password2026", data: { must_change_password: false } });
     expect(auth.refreshSession).toHaveBeenCalled();
+  });
+
+  it("lets regular accounts log in to where they were going", async () => {
+    auth.user = { id: "u3", user_metadata: {} };
+    const form = new FormData();
+    form.set("email", "old@diskarte.ph");
+    form.set("password", "Whatever#2026x");
+    form.set("next", "/tambayan/abc");
+    await expect(signInAction({}, form)).rejects.toMatchObject({ url: "/tambayan/abc" });
   });
 
   it("doesn't touch metadata for regular password changes", async () => {
