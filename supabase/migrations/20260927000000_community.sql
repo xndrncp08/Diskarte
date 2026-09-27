@@ -1414,7 +1414,10 @@ revoke execute on function
   public.soundboard_clips_audit(),
   public.direct_messages_before_insert(),
   public.direct_messages_before_update(),
-  public.direct_messages_after_insert()
+  public.direct_messages_after_insert(),
+  -- Would reveal friendships / blocks between arbitrary users; only definer RPCs use them.
+  public.is_blocked_between(uuid, uuid),
+  public.are_friends(uuid, uuid)
 from public, anon, authenticated;
 
 revoke execute on function
@@ -1426,8 +1429,6 @@ revoke execute on function
   public.join_lfg(uuid),
   public.leave_lfg(uuid),
   public.close_lfg(uuid),
-  public.is_blocked_between(uuid, uuid),
-  public.are_friends(uuid, uuid),
   public.send_friend_request(text),
   public.respond_friend_request(uuid, boolean),
   public.remove_friend(uuid),
@@ -1451,8 +1452,6 @@ grant execute on function
   public.join_lfg(uuid),
   public.leave_lfg(uuid),
   public.close_lfg(uuid),
-  public.is_blocked_between(uuid, uuid),
-  public.are_friends(uuid, uuid),
   public.send_friend_request(text),
   public.respond_friend_request(uuid, boolean),
   public.remove_friend(uuid),

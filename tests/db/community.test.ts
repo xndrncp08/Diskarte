@@ -513,4 +513,11 @@ describe("anonymous access", () => {
     }
     expect(await failure(db, "select public.send_friend_request('juan')")).toMatch(/permission denied/);
   });
+
+  it("doesn't let signed-in users probe other people's friendships or blocks", async () => {
+    await asUser(db, owner);
+    expect(await failure(db, "select public.are_friends($1, $2)", [member, outsider])).toMatch(/permission denied/);
+    expect(await failure(db, "select public.is_blocked_between($1, $2)", [member, outsider])).toMatch(/permission denied/);
+    expect(await failure(db, "select public.automod_match('x', array['spam'])")).toMatch(/permission denied/);
+  });
 });

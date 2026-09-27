@@ -152,7 +152,8 @@ describe("8-bit sound settings", () => {
     await user.click(button);
     const dialog = await screen.findByRole("dialog", { name: "Sound settings" });
     expect(dialog.parentElement).toBe(document.body);
-    expect(within(dialog).getByRole("switch")).toBeInTheDocument();
+    expect(within(dialog).getByRole("switch", { name: "8-bit sound effects" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("switch", { name: /Low-data mode/ })).toHaveAttribute("aria-checked", "false");
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Sound settings" })).toBeNull());
     expect(button).toHaveFocus();

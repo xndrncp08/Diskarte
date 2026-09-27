@@ -6,6 +6,7 @@ import { useEffect, type ReactNode } from "react";
 import { useSwipeDrawer } from "@/hooks/useSwipeDrawer";
 import { MeProvider } from "@/components/providers/MeProvider";
 import { PresenceProvider } from "@/components/providers/PresenceProvider";
+import { SocialProvider } from "@/components/providers/SocialProvider";
 import { CallProvider } from "@/components/voice/CallProvider";
 import { FloatingCallHUD } from "@/components/voice/FloatingCallHUD";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
@@ -83,12 +84,14 @@ export function AppShell({ profile, verified = true, servers, children }: { prof
       {/* Honour the OS "reduce motion" setting for every framer-motion animation in the app. */}
       <MotionConfig reducedMotion="user">
         <PresenceProvider>
-          <CallProvider>
-            <ShellUIProvider>
-              <MembershipWatcher userId={profile.id} />
-              <Frame servers={servers}>{children}</Frame>
-            </ShellUIProvider>
-          </CallProvider>
+          <SocialProvider>
+            <CallProvider>
+              <ShellUIProvider>
+                <MembershipWatcher userId={profile.id} />
+                <Frame servers={servers}>{children}</Frame>
+              </ShellUIProvider>
+            </CallProvider>
+          </SocialProvider>
         </PresenceProvider>
       </MotionConfig>
     </MeProvider>

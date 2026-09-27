@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { LogOut, ShieldAlert } from "lucide-react";
 import { signOutAction } from "@/app/(auth)/actions";
 import { ChangePasswordForm } from "@/components/profile/ChangePasswordForm";
+import { LowDataToggle } from "@/components/profile/LowDataToggle";
 import { SoundSettings } from "@/components/profile/SoundSettings";
 import { requireProfile } from "@/lib/auth";
 
@@ -48,6 +49,11 @@ export default async function AccountSettingsPage() {
       <section className="glass rounded-2xl p-5">
         <h2 className="mb-3 font-pixel text-[10px] text-sun">8-BIT SOUNDS</h2>
         <SoundSettings className="max-w-md" />
+      </section>
+
+      <section className="glass rounded-2xl p-5">
+        <h2 className="mb-3 font-pixel text-[10px] text-sun">DATA SAVER</h2>
+        <LowDataToggle className="max-w-md" />
       </section>
 
       <section className="glass rounded-2xl p-5">

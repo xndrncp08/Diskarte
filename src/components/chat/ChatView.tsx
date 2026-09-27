@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowDown, CloudOff, Hash, Loader2, Pin } from "lucide-react";
+import { ArrowDown, Hash, Loader2, Pin } from "lucide-react";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useMe } from "@/components/providers/MeProvider";
@@ -12,7 +12,6 @@ import { useShellUI } from "@/components/shell/ShellUI";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { mentionsUser, useChannelChat, type ChatMessage } from "@/hooks/useChannelChat";
-import { useOnline } from "@/hooks/useOnline";
 import { useTyping } from "@/hooks/useTyping";
 import { isGroupedWithPrevious, sameDay } from "@/lib/chat-format";
 import type { MessageWithAuthor, Reaction } from "@/lib/messages";
@@ -21,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { Composer } from "./Composer";
 import { VirtualMessageList, type VirtualMessageListHandle } from "./VirtualMessageList";
 import { MessageItem, type MessageActions } from "./MessageItem";
+import { OfflineBanner } from "./OfflineBanner";
 import { PinsDrawer } from "./PinsDrawer";
 import { ThreadPanel } from "./ThreadPanel";
 import { Timestamp } from "./Timestamp";
@@ -28,22 +28,6 @@ import { Timestamp } from "./Timestamp";
 const NO_REACTIONS: Reaction[] = [];
 
 export const VERIFY_NOTICE = "Verified accounts lang ang pwedeng mag-chat dito. I-confirm muna ang email o phone number mo.";
-
-/** 8-bit strip shown while offline or while queued messages wait to be sent. */
-export function OfflineBanner({ queued }: { queued: number }) {
-  const online = useOnline();
-  if (online && queued === 0) return null;
-  return (
-    <div role="status" className="mx-4 mb-2 flex items-center gap-2 rounded-lg border-2 border-sun/70 bg-sun/10 px-3 py-2 font-pixel text-[9px] leading-relaxed text-sun" data-testid="offline-banner">
-      <CloudOff className="size-4 shrink-0" aria-hidden />
-      {online
-        ? `SYNCING ${queued} MESSAGE${queued === 1 ? "" : "S"}…`
-        : queued > 0
-          ? `OFFLINE — ${queued} MESSAGE${queued === 1 ? "" : "S"} NAKA-QUEUE. ISE-SEND PAGBALIK NG SIGNAL.`
-          : "OFFLINE — NAKA-QUEUE ANG MGA ISESEND MO HANGGANG BUMALIK ANG SIGNAL."}
-    </div>
-  );
-}
 
 export function ChatView({ channel: initialChannel, initial }: { channel: Channel; initial: { messages: MessageWithAuthor[]; reactions: Reaction[]; hasMore: boolean } }) {
   const { me, verified } = useMe();

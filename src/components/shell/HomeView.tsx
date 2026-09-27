@@ -1,17 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { Compass, Menu as MenuIcon, Sparkles } from "lucide-react";
+import { Compass, Menu as MenuIcon, Sparkles, Users } from "lucide-react";
 import { useState } from "react";
 import { DiskarteLogo } from "@/components/brand/DiskarteLogo";
-import { CallDock } from "@/components/voice/CallDock";
 import { useMe } from "@/components/providers/MeProvider";
+import { HomeSidebar } from "@/components/social/HomeSidebar";
 import type { Server } from "@/lib/servers";
 import { AddServerDialog } from "./AddServerDialog";
-import { DrawerPanel } from "./AppShell";
 import { ServerIcon } from "./ServerIcon";
 import { useShellUI } from "./ShellUI";
-import { UserPanel } from "./UserPanel";
 
 export function HomeView({ servers }: { servers: Server[] }) {
   const { me } = useMe();
@@ -20,27 +18,7 @@ export function HomeView({ servers }: { servers: Server[] }) {
 
   return (
     <>
-      <DrawerPanel>
-        <aside aria-label="Home" className="glass flex h-full w-60 flex-col border-y-0 border-l-0">
-          <div className="flex h-12 items-center border-b border-white/5 px-4 font-bold text-white">Home</div>
-          <nav className="scrollbar-thin flex-1 overflow-y-auto px-2 py-3">
-            <p className="mb-1 px-2 font-silk text-[11px] uppercase tracking-wider text-slate-400">Mga tambayan mo</p>
-            <ul className="space-y-0.5">
-              {servers.map((s) => (
-                <li key={s.id}>
-                  <Link href={`/tambayan/${s.id}`} onClick={() => setNavOpen(false)} className="group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-slate-300 hover:bg-white/5 hover:text-white">
-                    <ServerIcon server={s} size={28} />
-                    <span className="truncate">{s.name}</span>
-                  </Link>
-                </li>
-              ))}
-              {servers.length === 0 && <li className="px-2 text-sm text-slate-500">Wala pa. Gumawa o sumali!</li>}
-            </ul>
-          </nav>
-          <CallDock />
-          <UserPanel />
-        </aside>
-      </DrawerPanel>
+      <HomeSidebar servers={servers} />
 
       <main className="flex min-w-0 flex-1 flex-col overflow-y-auto">
         <header className="flex h-12 shrink-0 items-center gap-2 border-b border-white/5 px-3 md:hidden">
@@ -59,7 +37,7 @@ export function HomeView({ servers }: { servers: Server[] }) {
             </div>
           </div>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+          <div className="mt-8 grid gap-4 sm:grid-cols-3">
             <button type="button" onClick={() => setDialog("create")} className="glass group rounded-2xl p-5 text-left transition-colors hover:border-sun/40">
               <Sparkles className="mb-3 size-6 text-sun" aria-hidden />
               <p className="font-bold text-white">Gumawa ng Tambayan</p>
@@ -70,6 +48,11 @@ export function HomeView({ servers }: { servers: Server[] }) {
               <p className="font-bold text-white">Sumali gamit ang invite</p>
               <p className="text-sm text-slate-400">May link ka galing sa tropa? I-paste mo dito.</p>
             </button>
+            <Link href="/tambayan/friends" className="glass group rounded-2xl p-5 text-left transition-colors hover:border-sun/40">
+              <Users className="mb-3 size-6 text-emerald-300" aria-hidden />
+              <p className="font-bold text-white">Mag-add ng friends</p>
+              <p className="text-sm text-slate-400">Hanapin ang tropa gamit ang @username at mag-DM.</p>
+            </Link>
           </div>
 
           {servers.length > 0 && (
