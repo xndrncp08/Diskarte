@@ -21,6 +21,8 @@ const baseSchema = z.object({
   SUPABASE_ANON_KEY: z.string().min(20),
   SITE_URL: url.optional(),
   RENDER_EXTERNAL_URL: url.optional(),
+  UPSTASH_REDIS_REST_URL: url.optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
   APP_URL: url.default("http://localhost:3000"),
   PORTAL_SECRET: z.string().min(32, "PORTAL_SECRET must be at least 32 characters"),
   TURNSTILE_SITE_KEY: z.string().min(1).optional(),
@@ -37,10 +39,28 @@ export interface PortalEnv {
   secret: string;
   turnstile: { siteKey: string; secretKey: string } | null;
   limits: { applyPerHour: number; loginPerMinute: number };
+  /** Shared rate-limit counters (recommended on Vercel, where instances don't share memory). */
+  upstash: { url: string; token: string } | null;
+}
+
+/**
+ * Accept the names Vercel's Supabase integration sets (NEXT_PUBLIC_SUPABASE_URL,
+ * NEXT_PUBLIC_SUPABASE_ANON_KEY / publishable key) and derive the site URL from Vercel's system
+ * variables, so a fresh Vercel project works with the minimum configuration.
+ */
+function normalise(source: EnvSource): EnvSource {
+  const vercelHost = source.VERCEL_PROJECT_PRODUCTION_URL ?? source.VERCEL_URL;
+  return {
+    ...source,
+    SUPABASE_URL: source.SUPABASE_URL || source.NEXT_PUBLIC_SUPABASE_URL,
+    SUPABASE_ANON_KEY:
+      source.SUPABASE_ANON_KEY || source.SUPABASE_PUBLISHABLE_KEY || source.NEXT_PUBLIC_SUPABASE_ANON_KEY || source.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    SITE_URL: source.SITE_URL || (vercelHost ? `https://${vercelHost}` : undefined),
+  };
 }
 
 function read(source: EnvSource) {
-  const cleaned = Object.fromEntries(Object.entries(source).filter(([, v]) => v !== ""));
+  const cleaned = Object.fromEntries(Object.entries(normalise(source)).filter(([, v]) => v !== "" && v !== undefined));
   return baseSchema.safeParse(cleaned);
 }
 
@@ -57,6 +77,7 @@ export function getPortalEnv(source: EnvSource = process.env): PortalEnv {
     secret: e.PORTAL_SECRET,
     turnstile: e.TURNSTILE_SITE_KEY && e.TURNSTILE_SECRET_KEY ? { siteKey: e.TURNSTILE_SITE_KEY, secretKey: e.TURNSTILE_SECRET_KEY } : null,
     limits: { applyPerHour: e.RATE_LIMIT_APPLY_PER_HOUR, loginPerMinute: e.RATE_LIMIT_LOGIN_PER_MINUTE },
+    upstash: e.UPSTASH_REDIS_REST_URL && e.UPSTASH_REDIS_REST_TOKEN ? { url: e.UPSTASH_REDIS_REST_URL, token: e.UPSTASH_REDIS_REST_TOKEN } : null,
   };
 }
 

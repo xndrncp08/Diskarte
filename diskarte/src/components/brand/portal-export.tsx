@@ -8,7 +8,9 @@ import { DiskarteWordmark } from "./DiskarteWordmark";
  * across package boundaries. `npm run brand:assets` writes them; tests/brand/portal-brand.test.tsx
  * fails if they drift from the components.
  */
-export const PORTAL_BRAND_DIR = "early-access-portal/public/brand";
+/** Relative to the repository root (the portal is diskarte/'s sibling in the npm workspace). */
+export const PORTAL_PUBLIC_DIR = "early-access-portal/public";
+export const PORTAL_BRAND_DIR = `${PORTAL_PUBLIC_DIR}/brand`;
 
 export function portalBrandSvgs(): Record<"logo.svg" | "mascot.svg" | "wordmark.svg", string> {
   return {

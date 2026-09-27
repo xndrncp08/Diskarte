@@ -50,7 +50,7 @@ export default defineConfig({
         ...(process.env.E2E_FULL === "1"
           ? [
               {
-                command: "npm --prefix early-access-portal run start:standalone",
+                command: "npm --prefix ../early-access-portal run start:standalone",
                 url: `${PORTAL_URL}/api/health`,
                 reuseExistingServer: !process.env.CI,
                 timeout: 120_000,

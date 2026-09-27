@@ -53,23 +53,26 @@ Next.js 16 (App Router, React 19.2, Turbopack) · TypeScript · Tailwind CSS 4 �
 ## Quick start
 
 ```bash
+# from the repository root (npm workspace)
 npm install
-cp .env.example .env.local   # add Supabase + LiveKit credentials
-npm run dev                   # http://localhost:3000
+cp diskarte/.env.example diskarte/.env.local   # add Supabase + LiveKit credentials
+npm run dev                                     # http://localhost:3000
 ```
 
 ### Early Access portal
 
-Before the public launch, sign-ups go through **[`early-access-portal/`](early-access-portal/README.md)**, a separate Next.js app in this repo:
+Before the public launch, sign-ups go through **[`early-access-portal/`](../early-access-portal/README.md)**, this app's sibling in the monorepo, deployed to Vercel:
 - **Waitlist:** a public, bot-resistant form with retro confetti.
 - **`/admin` dashboard:** for `super_admin`s. It has stats, search, filters, detail views and bulk approve/decline.
 - **Approval:** creates the Diskarte account and emails a branded "Maligayang Pagdating sa Diskarte!" message with temporary credentials. The app then makes the user pick a new password on first login.
 
 Set `SIGNUP_MODE=invite` on the main app to close public sign-up in the meantime.
 
-For a free production deploy (Supabase + LiveKit Cloud + Render) and local Supabase/LiveKit, see **[DEPLOYMENT.md](DEPLOYMENT.md)**. The threat model, security controls and vulnerability reporting are in **[SECURITY.md](SECURITY.md)**.
+For a free production deploy (Supabase + LiveKit Cloud + Render) and local Supabase/LiveKit, see **[DEPLOYMENT.md](DEPLOYMENT.md)**. The threat model, security controls and vulnerability reporting are in **[SECURITY.md](../SECURITY.md)**.
 
 ## Scripts
+
+Run these inside `diskarte/`, or from the repo root with `-w diskarte` (e.g. `npm run test -w diskarte`).
 
 | Command | What it does |
 | --- | --- |
@@ -96,7 +99,7 @@ src/
   hooks/               useChannelChat, useTyping, useSignedUrls…
   lib/                 env, security (CSP/CSRF), rate limiting, validation, sfx, supabase clients
   proxy.ts             CSP nonce, session refresh, auth redirects, CSRF for /api
-supabase/migrations/   complete schema (tables, RLS, triggers, RPCs, realtime + storage policies)
+../supabase/migrations/  complete schema, shared with the portal (tables, RLS, triggers, RPCs, realtime + storage policies)
 tests/                 PGlite database tests, fixtures
 e2e/                   Playwright specs
 ```

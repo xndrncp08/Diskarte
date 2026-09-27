@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { tryGetPortalEnv } from "@/lib/env";
-import { clientIp, limiter } from "@/lib/rate-limit";
+import { checkRate, clientIp } from "@/lib/rate-limit";
 import { buildCsp, createNonce } from "@/lib/security";
 import { checkAdminSession } from "@/lib/supabase/proxy";
 
@@ -30,16 +30,12 @@ export async function proxy(request: NextRequest) {
   const ip = clientIp(request.headers);
 
   if (request.method === "POST") {
-    const bucket =
-      pathname === ADMIN_LOGIN
-        ? limiter("login", env?.limits.loginPerMinute ?? 5, 60_000)
-        : pathname === "/"
-          ? limiter("apply-burst", 10, 60_000)
-          : isAdminPath(pathname)
-            ? limiter("admin-actions", 120, 60_000)
-            : null;
-    const result = bucket?.check(ip);
-    if (result && !result.ok) return tooMany(result.retryAfterMs);
+    const bucket: [string, number] | null =
+      pathname === ADMIN_LOGIN ? ["login", env?.limits.loginPerMinute ?? 5] : pathname === "/" ? ["apply-burst", 10] : isAdminPath(pathname) ? ["admin-actions", 120] : null;
+    if (bucket) {
+      const result = await checkRate(bucket[0], ip, bucket[1], 60_000, env?.upstash ?? null);
+      if (!result.ok) return tooMany(result.retryAfterMs);
+    }
   }
 
   const nonce = createNonce();

@@ -1,6 +1,6 @@
 # Diskarte Early Access portal
 
-The public waitlist and the admin review dashboard for Diskarte's early access. It's a separate Next.js 16 app that lives in the main Diskarte repository and uses the same Supabase project.
+The public waitlist and the admin review dashboard for Diskarte's early access. It's a Next.js 16 app in the Diskarte monorepo, a sibling of `../diskarte`. It uses the same Supabase project (`../supabase`) and **deploys to Vercel**: see **[DEPLOYMENT.md](DEPLOYMENT.md)**.
 
 ```
 Applicant ──► / (waitlist form) ──► waitlist_applications (RLS: insert-only for the public)
@@ -12,14 +12,15 @@ Applicant ──► Diskarte /login ──► forced /reset-password ──► o
 ## Develop
 
 ```bash
-cp .env.example .env    # same SUPABASE_URL / keys as the app; EMAIL_TRANSPORT=log
+# from the repository root (npm workspace: one install for both apps)
 npm install
-npm run dev             # http://localhost:3100  (admin: /admin)
-npm test                # Vitest: anti-spam, guards, approvals, components
-npm run admin:grant -- you@example.com   # needs SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
+cp early-access-portal/.env.example early-access-portal/.env   # EMAIL_TRANSPORT=log for local
+npm run dev:portal                                              # http://localhost:3100  (admin: /admin)
+npm test -w early-access-portal                                 # Vitest: anti-spam, guards, approvals, components
+npm run admin:grant -- you@example.com                          # needs SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
 ```
 
-The database lives in `../supabase/migrations/20260928000000_early_access.sql`, with RLS tests in `../tests/db/early-access.test.ts`. The brand art in `public/brand` and `public/email` is exported from the main app's logo components by `npm run brand:assets` (repo root), and a test there fails if they drift.
+The database lives in `../supabase/migrations/20260928000000_early_access.sql`, with RLS tests in `../diskarte/tests/db/early-access.test.ts`. The brand art in `public/brand` and `public/email` is exported from the Diskarte app's logo components by `npm run brand:assets` (repo root), and a test there fails if they drift.
 
 ## Layout
 
@@ -33,4 +34,4 @@ src/lib/password.ts              CSPRNG temporary passwords matching Diskarte's 
 src/lib/email/                   branded HTML + text template, Resend / file / log transports
 ```
 
-Deployment, environment variables and the admin bootstrap are covered in [../DEPLOYMENT.md](../DEPLOYMENT.md#4-early-access-portal-waitlist--admin-approvals), and the security model in [../SECURITY.md](../SECURITY.md).
+Vercel deployment, environment variables, domain routing and the admin bootstrap are covered in [DEPLOYMENT.md](DEPLOYMENT.md), and the security model in [../SECURITY.md](../SECURITY.md).

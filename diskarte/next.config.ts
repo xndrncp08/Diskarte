@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 import { imageHosts, serializeImageHosts } from "./src/lib/image-hosts";
 
@@ -7,17 +8,15 @@ const IMAGE_HOSTS = imageHosts(process.env.SUPABASE_URL ?? process.env.NEXT_PUBL
  * The Docker build (Alpine/musl) sets DISKARTE_SHARP_TARGET=linuxmusl: npm installs sharp's glibc
  * binaries alongside the musl ones and the tracer would copy both (~19 MB of dead weight).
  */
+const SHARP_VARIANTS = ["sharp-linux-*", "sharp-libvips-linux-*", "sharp-darwin-*", "sharp-libvips-darwin-*", "sharp-win32-*", "sharp-wasm32"];
+// Globs resolve from this app's folder; npm workspaces hoist dependencies to the repo root.
 const SHARP_EXCLUDES =
   process.env.DISKARTE_SHARP_TARGET === "linuxmusl"
-    ? [
-        "node_modules/@img/sharp-linux-*/**",
-        "node_modules/@img/sharp-libvips-linux-*/**",
-        "node_modules/@img/sharp-darwin-*/**",
-        "node_modules/@img/sharp-libvips-darwin-*/**",
-        "node_modules/@img/sharp-win32-*/**",
-        "node_modules/@img/sharp-wasm32/**",
-      ]
+    ? SHARP_VARIANTS.flatMap((v) => [`node_modules/@img/${v}/**`, `../node_modules/@img/${v}/**`])
     : [];
+
+/** npm workspace root (diskarte/ and early-access-portal/ share one lockfile and node_modules). */
+const REPO_ROOT = path.join(import.meta.dirname, "..");
 
 /** Static security headers; the per-request CSP (with a script nonce) is set in src/proxy.ts. */
 const securityHeaders = [
@@ -34,6 +33,10 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Trace hoisted dependencies from the workspace root; the standalone server then lives at
+  // .next/standalone/diskarte/server.js (see Dockerfile and scripts/start-standalone.mjs).
+  outputFileTracingRoot: REPO_ROOT,
+  turbopack: { root: REPO_ROOT },
   poweredByHeader: false,
   reactStrictMode: true,
   // Avatars, server icons and image attachments are resized per device and served as AVIF/WebP.

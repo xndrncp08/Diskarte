@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -11,14 +11,14 @@
 !.yarn/versions
 
 # testing
-/coverage
+coverage/
 
 # next.js
-/.next/
-/out/
+.next/
+out/
 
 # production
-/build
+build/
 
 # misc
 .DS_Store
@@ -44,11 +44,11 @@ next-env.d.ts
 !.env.example
 
 # playwright
-/test-results/
-/playwright-report/
-/blob-report/
-/playwright/.cache/
-/e2e/.auth/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+diskarte/e2e/.auth/
 
 # supabase local
 supabase/.branches

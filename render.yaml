@@ -1,5 +1,6 @@
-# Render Blueprint — 1-click free deployment of the Diskarte web container and its
-# Early Access portal (waitlist + admin review), both from this repository.
+# Render Blueprint — 1-click free deployment of the Diskarte app (diskarte/) as a Docker web
+# service. The Early Access portal (early-access-portal/) deploys to Vercel instead — see
+# early-access-portal/DEPLOYMENT.md.
 # Dashboard → New → Blueprint → pick this repo. You'll be prompted for the secret values below.
 services:
   - type: web
@@ -7,8 +8,14 @@ services:
     runtime: docker
     plan: free
     region: singapore # closest Render region to the Philippines
-    dockerfilePath: ./Dockerfile
+    # npm workspace: build from the repository root with the app's Dockerfile.
+    dockerfilePath: ./diskarte/Dockerfile
     dockerContext: .
+    buildFilter:
+      paths:
+        - diskarte/**
+        - package.json
+        - package-lock.json
     healthCheckPath: /api/health
     autoDeploy: true
     envVars:
@@ -33,49 +40,6 @@ services:
       # Early Access: `invite` closes public sign-up and links /signup to the portal below.
       - key: SIGNUP_MODE
         value: invite
+      # The Vercel URL of the Early Access portal (e.g. https://early.diskarte.ph)
       - key: EARLY_ACCESS_URL
-        fromService:
-          name: diskarte-early-access
-          type: web
-          envVarKey: RENDER_EXTERNAL_URL
-
-  - type: web
-    name: diskarte-early-access
-    runtime: docker
-    plan: free
-    region: singapore
-    dockerfilePath: ./early-access-portal/Dockerfile
-    dockerContext: ./early-access-portal
-    healthCheckPath: /api/health
-    autoDeploy: true
-    buildFilter:
-      paths:
-        - early-access-portal/**
-    envVars:
-      - key: SUPABASE_URL
         sync: false
-      - key: SUPABASE_ANON_KEY
-        sync: false
-      # Server-only; used exclusively to create accounts for approved applicants.
-      - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false
-      - key: APP_URL
-        fromService:
-          name: diskarte
-          type: web
-          envVarKey: RENDER_EXTERNAL_URL
-      - key: PORTAL_SECRET
-        generateValue: true
-      - key: EMAIL_TRANSPORT
-        value: resend
-      - key: RESEND_API_KEY
-        sync: false
-      - key: EMAIL_FROM
-        sync: false
-      # Optional Cloudflare Turnstile
-      - key: TURNSTILE_SITE_KEY
-        sync: false
-      - key: TURNSTILE_SECRET_KEY
-        sync: false
-      - key: NODE_OPTIONS
-        value: --max-old-space-size=256

@@ -8,7 +8,7 @@ import { createMailer, EmailDeliveryError } from "@/lib/email/send";
 import { escapeHtml, welcomeEmail } from "@/lib/email/template";
 import { getApprovalEnv, getPortalEnv, MissingEnvError } from "@/lib/env";
 import { CHARSETS, generateTempPassword, meetsPasswordPolicy } from "@/lib/password";
-import { clientIp, createRateLimiter } from "@/lib/rate-limit";
+import { checkRate, clientIp, createRateLimiter, resetAllLimiters } from "@/lib/rate-limit";
 import { applicationSchema, listQuerySchema } from "@/lib/schema";
 import { buildCsp, safeRedirectPath } from "@/lib/security";
 import { verifyTurnstile } from "@/lib/turnstile";
@@ -73,6 +73,25 @@ describe("anti-spam", () => {
     expect(clientIp(new Headers())).toBe("unknown");
   });
 
+  it("shares counters through Upstash on serverless, falling back to memory if Redis is down", async () => {
+    resetAllLimiters();
+    const upstash = { url: "https://redis.example", token: "tok" };
+    let count = 0;
+    const redis = vi.fn(async (_url: string, init: RequestInit) => {
+      const commands = JSON.parse(init.body as string) as string[][];
+      expect(commands.map((c) => c[0])).toEqual(["INCR", "PEXPIRE", "PTTL"]);
+      return new Response(JSON.stringify([{ result: ++count }, { result: 1 }, { result: 42_000 }]));
+    });
+    expect(await checkRate("t", "ip", 2, 60_000, upstash, redis as unknown as typeof fetch)).toMatchObject({ ok: true, remaining: 1 });
+    expect((await checkRate("t", "ip", 2, 60_000, upstash, redis as unknown as typeof fetch)).ok).toBe(true);
+    expect(await checkRate("t", "ip", 2, 60_000, upstash, redis as unknown as typeof fetch)).toEqual({ ok: false, remaining: 0, retryAfterMs: 42_000 });
+    expect((redis.mock.calls[0] as unknown as [string, RequestInit])[0]).toBe("https://redis.example/pipeline");
+
+    const down = async () => Promise.reject(new Error("ECONNREFUSED"));
+    expect((await checkRate("t2", "ip", 1, 60_000, upstash, down)).ok).toBe(true);
+    expect((await checkRate("t2", "ip", 1, 60_000, upstash, down)).ok).toBe(false); // local limiter still applies
+  });
+
   it("verifies Turnstile server-side and fails closed", async () => {
     const ok = vi.fn(async () => new Response(JSON.stringify({ success: true })));
     expect(await verifyTurnstile("token", { secretKey: "s", ip: "1.2.3.4", fetchImpl: ok })).toBe(true);
@@ -121,6 +140,14 @@ describe("configuration & headers", () => {
     expect(getPortalEnv(base)).toMatchObject({ supabaseUrl: "https://proj.supabase.co", appUrl: "https://diskarte.ph", turnstile: null });
     expect(() => getPortalEnv({ ...base, PORTAL_SECRET: "short" })).toThrow(MissingEnvError);
     expect(() => getPortalEnv({ ...base, TURNSTILE_SITE_KEY: "x" })).toThrow(/TURNSTILE/);
+  });
+
+  it("accepts Vercel + Supabase-integration variable names and Vercel's URL", () => {
+    const vercel = { NEXT_PUBLIC_SUPABASE_URL: "https://proj.supabase.co", NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon-key-that-is-long-enough", PORTAL_SECRET: SECRET, VERCEL_PROJECT_PRODUCTION_URL: "early.diskarte.ph" };
+    expect(getPortalEnv(vercel)).toMatchObject({ supabaseUrl: "https://proj.supabase.co", supabaseAnonKey: "anon-key-that-is-long-enough", siteUrl: "https://early.diskarte.ph" });
+    expect(getPortalEnv({ ...vercel, SITE_URL: "https://custom.example" }).siteUrl).toBe("https://custom.example");
+    expect(getPortalEnv({ ...vercel, VERCEL_PROJECT_PRODUCTION_URL: undefined, VERCEL_URL: "ea-abc.vercel.app" }).siteUrl).toBe("https://ea-abc.vercel.app");
+    expect(getPortalEnv({ ...base, UPSTASH_REDIS_REST_URL: "https://eu1.upstash.io", UPSTASH_REDIS_REST_TOKEN: "t" }).upstash).toEqual({ url: "https://eu1.upstash.io", token: "t" });
   });
 
   it("requires a real email provider in production", () => {
