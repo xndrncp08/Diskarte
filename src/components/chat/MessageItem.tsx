@@ -241,7 +241,7 @@ export const MessageItem = memo(function MessageItem({
           role="toolbar"
           aria-label="Message actions"
           className={cn(
-            "glass-strong absolute -top-4 right-3 z-10 flex items-center rounded-lg p-0.5 shadow-lg",
+            "glass-strong absolute -top-4 right-3 z-10 flex items-center rounded-lg p-0.5 shadow-lg pointer-coarse:gap-1",
             // Slides in on hover (mouse), focus (keyboard) or tap (touch: no hover on phones).
             "pointer-events-none translate-y-1 scale-95 opacity-0 transition-[opacity,transform] duration-150 ease-out",
             "group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100",
