@@ -65,8 +65,9 @@ export function HomeSidebar({ servers = [] }: { servers?: Server[] }) {
             <Users className="size-5" aria-hidden />
             Friends
             {incoming > 0 && (
-              <span className="ml-auto rounded-full bg-red-500 px-1.5 font-silk text-[10px] text-white" aria-label={`${incoming} pending requests`}>
+              <span className="ml-auto rounded-full bg-red-500 px-1.5 font-silk text-[10px] text-white">
                 {incoming}
+                <span className="sr-only"> pending requests</span>
               </span>
             )}
           </Link>
@@ -108,7 +109,11 @@ export function HomeSidebar({ servers = [] }: { servers?: Server[] }) {
                         <span className="block truncate">{conversationTitle(c)}</span>
                         {c.kind === "group" && <span className="block text-[11px] font-normal text-slate-500">{c.others.length + 1} members</span>}
                       </span>
-                      {unread && <span className="size-2 shrink-0 rounded-full bg-sun" aria-label="Unread" />}
+                      {unread && (
+                        <span className="size-2 shrink-0 rounded-full bg-sun">
+                          <span className="sr-only">Unread</span>
+                        </span>
+                      )}
                     </Link>
                   </li>
                 );

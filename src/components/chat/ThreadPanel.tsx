@@ -121,7 +121,7 @@ function ThreadBody({ channel, root, initial, locked }: { channel: Channel; root
 
   return (
     <>
-      <div className="scrollbar-thin flex-1 overflow-y-auto py-3" aria-label="Thread replies">
+      <div className="scrollbar-thin flex-1 overflow-y-auto py-3" role="log" aria-label="Thread replies">
         <p className="px-4 pb-2 font-silk text-[11px] uppercase tracking-wider text-slate-500">
           {chat.messages.length} {chat.messages.length === 1 ? "reply" : "replies"}
         </p>

@@ -45,4 +45,20 @@ test.describe("accessibility audit — app shell", () => {
     await page.keyboard.press("Enter");
     await expect(page.locator("#main-content")).toBeFocused();
   });
+
+  test("friends, LFG board and Bantay-Bayan settings have no WCAG 2.1 AA violations", async ({ page }) => {
+    await signUpAndOnboard(page, makeUser("A11yComm"));
+    const serverUrl = await createServer(page, `A11yC ${Date.now().toString(36)}`);
+    await page.goto(`${serverUrl}/lfg`);
+    await page.getByTestId("new-beacon").waitFor();
+    expect(await audit(page)).toEqual([]);
+    await page.getByTestId("server-menu").click();
+    await page.getByRole("menuitem", { name: "Bantay-Bayan" }).click();
+    await page.getByRole("tab", { name: "Bantay-Bayan" }).click();
+    await page.getByTestId("automod-settings").waitFor();
+    expect(await audit(page)).toEqual([]);
+    await page.goto("/tambayan/friends");
+    await page.getByRole("tab", { name: "Add Friend" }).waitFor();
+    expect(await audit(page)).toEqual([]);
+  });
 });

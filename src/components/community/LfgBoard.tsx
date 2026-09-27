@@ -186,7 +186,7 @@ export function LfgBoard() {
                     )}
                   </div>
                   <div className="mt-3 flex items-center gap-2">
-                    <div className="flex -space-x-2" aria-label={`${roster.length} of ${beacon.party_size} in party`}>
+                    <div className="flex -space-x-2" role="img" aria-label={`${roster.length} of ${beacon.party_size} in party`}>
                       {roster.map((p) => {
                         const m = profiles.get(p.user_id);
                         return m ? <UserAvatar key={p.user_id} profile={m.profile} size={28} ring="#0b1020" /> : null;
