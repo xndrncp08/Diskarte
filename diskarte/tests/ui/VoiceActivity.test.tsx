@@ -73,9 +73,12 @@ describe("voice activity over Realtime Broadcast", () => {
     function Join() {
       const call = useCall();
       return (
-        <button type="button" onClick={() => void call.join({ serverId: SERVER_ID, serverName: server.name, channelId: TAMBAYAN.id, channelName: TAMBAYAN.name })}>
-          Join
-        </button>
+        <>
+          <button type="button" onClick={() => void call.join({ serverId: SERVER_ID, serverName: server.name, channelId: TAMBAYAN.id, channelName: TAMBAYAN.name })}>
+            Join
+          </button>
+          <output data-testid="call-status">{call.status}</output>
+        </>
       );
     }
     const user = userEvent.setup();
@@ -93,6 +96,8 @@ describe("voice activity over Realtime Broadcast", () => {
     const room = livekitMock.rooms[0];
     room.localParticipant.identity = ME.id;
     await waitFor(() => expect(room.handlers.get("activeSpeakersChanged")).toBeDefined());
+    // Only a connected call announces voice activity.
+    await waitFor(() => expect(screen.getByTestId("call-status")).toHaveTextContent("connected"));
     const sent = () => fake.channels.filter((c) => c.name === TOPIC).flatMap((c) => c.sent) as { event: string; payload: unknown }[];
     const queriesBefore = vi.mocked(fake.client.from).mock.calls.length;
 
