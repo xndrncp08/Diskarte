@@ -20,7 +20,7 @@ export function HomeView({ servers }: { servers: Server[] }) {
     <>
       <HomeSidebar servers={servers} />
 
-      <main className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+      <main className="flex min-w-0 flex-1 flex-col overflow-y-auto md:float-card">
         <header className="flex h-12 shrink-0 items-center gap-2 border-b border-white/5 px-3 md:hidden">
           <button type="button" onClick={() => setNavOpen(true)} aria-label="Open navigation" className="rounded-md p-1.5 text-slate-300 hover:bg-white/10">
             <MenuIcon className="size-5" aria-hidden />

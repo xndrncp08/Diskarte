@@ -100,7 +100,7 @@ export function DmView({
   return (
     <>
       <HomeSidebar servers={servers} />
-      <main className="flex min-w-0 flex-1 flex-col" aria-label={title}>
+      <main className="flex min-w-0 flex-1 flex-col md:overflow-hidden md:float-card" aria-label={title}>
         <header className="flex h-12 shrink-0 items-center gap-2 border-b border-white/5 bg-black/20 px-3 backdrop-blur-md">
           <button type="button" onClick={() => setNavOpen(true)} aria-label="Open navigation" className="touch-target relative rounded-md p-1.5 text-slate-300 hover:bg-white/10 md:hidden">
             <MenuIcon className="size-5" aria-hidden />

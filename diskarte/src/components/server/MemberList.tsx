@@ -358,7 +358,7 @@ export function MemberList() {
   if (offline.length) groups.push({ label: `Offline — ${offline.length}`, list: offline, dim: true });
 
   return (
-    <aside aria-label="Members" className="glass scrollbar-thin h-full w-60 shrink-0 overflow-y-auto border-y-0 border-r-0 px-2 py-4" data-testid="member-list">
+    <aside aria-label="Members" className="glass scrollbar-thin h-full w-60 shrink-0 overflow-y-auto px-2 py-4 max-lg:border-y-0 max-lg:border-r-0 lg:float-card" data-testid="member-list">
       {groups.map((group) => (
         <section key={group.label} className="mb-4">
           <h3 className="mb-1 px-2 font-silk text-[11px] uppercase tracking-wider text-slate-400">{group.label}</h3>

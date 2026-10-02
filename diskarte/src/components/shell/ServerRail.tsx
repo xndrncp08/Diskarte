@@ -32,7 +32,11 @@ export function ServerRail({ servers }: { servers: Server[] }) {
   const attention = useOptionalSocial()?.attention ?? 0;
 
   return (
-    <nav aria-label="Servers" className="pt-safe flex h-full w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto bg-abyss pb-3 scrollbar-none">
+    <nav
+      aria-label="Servers"
+      className="pt-safe flex h-full w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto pb-3 scrollbar-none max-md:bg-abyss md:h-auto md:max-h-full md:rounded-[2rem] md:py-3 md:float-card"
+      data-testid="micro-dock"
+    >
       <Tooltip label="Home">
         <Link href="/tambayan" aria-label={attention ? `Home (${attention} new)` : "Home"} aria-current={!activeId ? "page" : undefined} className="group relative flex">
           <Pill active={!activeId} />

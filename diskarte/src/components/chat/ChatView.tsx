@@ -138,9 +138,9 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
   }
 
   return (
-    <div className="flex min-w-0 flex-1">
+    <div className="flex min-w-0 flex-1 md:gap-3">
       <motion.section
-        className="relative flex min-w-0 flex-1 flex-col"
+        className="relative flex min-w-0 flex-1 flex-col md:overflow-hidden md:float-card"
         aria-label={`#${channel.name}`}
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}

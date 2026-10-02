@@ -253,19 +253,19 @@ function IncomingCallCard({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -16, scale: 0.96 }}
       transition={{ type: "spring", stiffness: 420, damping: 30 }}
-      className="pt-safe fixed inset-x-0 top-3 z-[55] mx-auto w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-3xl border border-white/10 bg-slate-900/80 p-5 text-center shadow-2xl shadow-black/60 backdrop-blur-xl"
+      className="fixed inset-x-0 top-[calc(env(safe-area-inset-top)+0.75rem)] z-[55] mx-auto w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-3xl border border-white/10 bg-slate-900/80 px-5 pb-5 pt-7 text-center shadow-2xl shadow-black/60 backdrop-blur-xl"
     >
       <p className="sr-only" role="alert">
         {headline}. {detail}.
       </p>
-      <div className="relative mx-auto mb-3 flex size-24 items-center justify-center">
+      <div className="relative mx-auto mb-4 flex size-24 items-center justify-center">
         {[0, 1, 2].map((i) => (
           <motion.span
             key={i}
             aria-hidden
             className="absolute inset-0 rounded-full border-2 border-signal-green/60"
             initial={{ scale: 0.9, opacity: 0.7 }}
-            animate={{ scale: 1.6, opacity: 0 }}
+            animate={{ scale: 1.45, opacity: 0 }}
             transition={{ duration: 1.8, repeat: Infinity, delay: i * 0.6, ease: "easeOut" }}
           />
         ))}

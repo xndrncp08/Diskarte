@@ -61,11 +61,11 @@ describe("chat formatting", () => {
 
   it("formats relative day labels in a fixed timezone", () => {
     const now = new Date("2026-09-26T04:00:00Z"); // 12:00 in Manila
-    expect(formatTimestamp("2026-09-26T01:30:00Z", now, "Asia/Manila")).toBe("Ngayong araw 9:30 AM");
-    expect(formatTimestamp("2026-09-25T01:30:00Z", now, "Asia/Manila")).toMatch(/^Kahapon 9:30/);
+    expect(formatTimestamp("2026-09-26T01:30:00Z", now, "Asia/Manila")).toBe("Today 9:30 AM");
+    expect(formatTimestamp("2026-09-25T01:30:00Z", now, "Asia/Manila")).toMatch(/^Yesterday 9:30/);
     expect(formatTimestamp("2026-01-02T01:30:00Z", now, "Asia/Manila")).toMatch(/January 2, 2026/);
     // 23:30 UTC on the 25th is already the 26th in Manila.
-    expect(formatTimestamp("2026-09-25T23:30:00Z", now, "Asia/Manila")).toMatch(/^Ngayong araw 7:30/);
+    expect(formatTimestamp("2026-09-25T23:30:00Z", now, "Asia/Manila")).toMatch(/^Today 7:30/);
   });
 });
 

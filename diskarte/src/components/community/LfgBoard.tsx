@@ -126,7 +126,7 @@ export function LfgBoard() {
   }
 
   return (
-    <motion.section className="flex min-w-0 flex-1 flex-col" aria-label="LFG Board" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
+    <motion.section className="flex min-w-0 flex-1 flex-col md:overflow-hidden md:float-card" aria-label="LFG Board" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-white/5 bg-black/20 px-3 backdrop-blur-md">
         <button type="button" onClick={() => setNavOpen(true)} aria-label="Open navigation" className="touch-target relative rounded-md p-1.5 text-slate-300 hover:bg-white/10 md:hidden">
           <MenuIcon className="size-5" aria-hidden />

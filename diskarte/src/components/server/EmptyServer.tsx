@@ -14,7 +14,7 @@ export function EmptyServer() {
   const { setNavOpen } = useShellUI();
   const [open, setOpen] = useState(false);
   return (
-    <main className="flex flex-1 flex-col">
+    <main className="flex flex-1 flex-col md:overflow-hidden md:float-card">
       <header className="flex h-12 items-center border-b border-white/5 px-3 md:hidden">
         <button type="button" onClick={() => setNavOpen(true)} aria-label="Open navigation" className="rounded-md p-1.5 text-slate-300 hover:bg-white/10">
           <MenuIcon className="size-5" aria-hidden />

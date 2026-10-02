@@ -42,6 +42,7 @@ export function SettingsDialogProvider({ account, children }: { account: Account
         title="User settings"
         icon={<Settings aria-hidden />}
         className="h-[min(48rem,calc(100dvh-2rem))] w-[min(72rem,calc(100vw-2rem))]"
+        bodyClassName="md:overflow-hidden"
       >
         {tab && <SettingsPanels account={account} tab={tab} onTab={setTab} />}
       </FloatingWindow>
@@ -70,7 +71,7 @@ function SettingsPanels({ account, tab, onTab }: { account: AccountInfo; tab: Se
   }
 
   return (
-    <div className="flex min-h-full flex-col md:flex-row">
+    <div className="flex min-h-full flex-col md:h-full md:flex-row">
       <div className="flex shrink-0 flex-col border-b border-white/5 px-4 pb-3 pt-5 md:w-48 md:border-b-0 md:border-r md:bg-black/20 md:px-3 md:py-8">
         <div role="tablist" aria-label="User settings" onKeyDown={onKeyDown} className="flex gap-2 pr-10 md:flex-col md:gap-1 md:pr-0">
           {TABS.map((t, i) => (
@@ -100,7 +101,7 @@ function SettingsPanels({ account, tab, onTab }: { account: AccountInfo; tab: Se
           <SignOutButton className="w-full" />
         </div>
       </div>
-      <div role="tabpanel" id={`${id}-${tab}-panel`} aria-labelledby={`${id}-${tab}-tab`} className="min-w-0 flex-1 px-4 py-6 sm:px-8 md:py-8">
+      <div role="tabpanel" id={`${id}-${tab}-panel`} aria-labelledby={`${id}-${tab}-tab`} className="scrollbar-thin min-w-0 flex-1 px-4 py-6 sm:px-8 md:overflow-y-auto md:py-8">
         {tab === "profile" ? (
           <>
             <h2 className="mb-6 text-2xl font-extrabold text-white">My Profile</h2>

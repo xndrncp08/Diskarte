@@ -54,7 +54,10 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
   ];
 
   return (
-    <div className="pb-safe flex items-center gap-1 border-t border-white/5 bg-black/40 px-2 pt-2" data-testid="user-panel">
+    <div
+      className="pb-safe flex items-center gap-1 border-t border-white/5 bg-black/40 px-2 pt-2 md:m-2 md:rounded-2xl md:border md:border-white/10 md:pb-2 md:shadow-lg md:shadow-black/30"
+      data-testid="user-panel"
+    >
       <Menu
         label="Set status"
         side="top"

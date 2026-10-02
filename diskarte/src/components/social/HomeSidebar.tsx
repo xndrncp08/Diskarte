@@ -50,7 +50,7 @@ export function HomeSidebar({ servers = [] }: { servers?: Server[] }) {
 
   return (
     <DrawerPanel>
-      <aside aria-label="Home" className="glass flex h-full w-60 flex-col border-y-0 border-l-0">
+      <aside aria-label="Home" className="glass flex h-full w-60 flex-col max-md:border-y-0 max-md:border-l-0 md:overflow-hidden md:float-card">
         <div className="flex h-12 items-center border-b border-white/5 px-4 font-bold text-white">Home</div>
         <nav aria-label="Direct messages" className="scrollbar-thin flex-1 overflow-y-auto px-2 py-3">
           <Link

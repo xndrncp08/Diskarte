@@ -101,7 +101,7 @@ export function ChannelSidebar() {
   }
 
   return (
-    <aside aria-label={`${server.name} channels`} className="glass flex h-full w-60 shrink-0 flex-col border-y-0 border-l-0">
+    <aside aria-label={`${server.name} channels`} className="glass flex h-full w-60 shrink-0 flex-col max-md:border-y-0 max-md:border-l-0 md:overflow-hidden md:float-card">
       <Menu
         label="Server menu"
         items={[
