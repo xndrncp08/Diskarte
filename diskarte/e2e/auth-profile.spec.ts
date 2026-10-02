@@ -75,6 +75,6 @@ test.describe("registration and profile customisation", () => {
     await page.getByLabel("Email").fill(user.email);
     await page.getByLabel("Password", { exact: true }).fill(user.password);
     await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page.getByRole("alert")).toContainText("Incorrect email or password");
+    await expect(page.getByRole("alert").filter({ hasText: "Incorrect email or password" })).toBeVisible();
   });
 });
