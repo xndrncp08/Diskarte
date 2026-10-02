@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     // Defence in depth: an explicit membership row, not just the RLS-filtered channel read.
     const { data: membership } = await supabase.from("members").select("role").eq("server_id", channel.server_id).eq("user_id", user.id).maybeSingle();
-    if (!membership) return NextResponse.json({ error: "Not a member of this Tambayan" }, { status: 403, headers: noStore });
+    if (!membership) return NextResponse.json({ error: "Not a member of this server" }, { status: 403, headers: noStore });
     room = voiceRoomName(channel.id);
   }
 

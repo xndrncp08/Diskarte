@@ -5,7 +5,7 @@ test.describe("smoke (no backend required)", () => {
     await page.goto("/");
     await expect(page.getByRole("img", { name: "Diskarte" }).first()).toBeVisible();
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Walang Shutdown-Shutdown");
-    await expect(page.getByRole("link", { name: /Gumawa ng account/ })).toHaveAttribute("href", "/signup");
+    await expect(page.getByRole("link", { name: /Create an account/ })).toHaveAttribute("href", "/signup");
   });
 
   test("health endpoint reports liveness", async ({ request }) => {
@@ -29,7 +29,7 @@ test.describe("smoke (no backend required)", () => {
   test("the app area requires signing in", async ({ page }) => {
     await page.goto("/tambayan");
     await expect(page).toHaveURL(/\/login\?next=%2Ftambayan/);
-    await expect(page.getByRole("heading", { name: "Welcome back, kabayan!" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Welcome back!" })).toBeVisible();
   });
 
   test("cross-site POSTs to the API are rejected", async ({ request }) => {
@@ -43,22 +43,22 @@ test.describe("smoke (no backend required)", () => {
     await page.getByLabel("Username").fill("x");
     await page.getByLabel("Email").fill("not-an-email");
     await page.getByLabel("Password", { exact: true }).fill("short");
-    await page.getByRole("button", { name: "Sali na!" }).click();
-    await expect(page.getByText("3–32 characters: letters, numbers, underscore o tuldok lang.")).toBeVisible();
-    await expect(page.getByText("Mukhang mali ang email")).toBeVisible();
-    await expect(page.getByText(/Kulang ang password: 10\+ characters/)).toBeVisible();
+    await page.getByRole("button", { name: "Sign up" }).click();
+    await expect(page.getByText("3–32 characters: letters, numbers, underscores or periods only.")).toBeVisible();
+    await expect(page.getByText("That email doesn't look right")).toBeVisible();
+    await expect(page.getByText(/Password needs: 10\+ characters/)).toBeVisible();
     await expect(page.getByTestId("password-rules")).toContainText("uppercase letter");
-    await expect(page.getByText("Hindi magkapareho ang passwords")).toBeVisible();
+    await expect(page.getByText("Passwords don't match")).toBeVisible();
   });
 
   test("sign-up blocks a mismatched password confirmation", async ({ page }) => {
     await page.goto("/signup");
     await page.getByLabel("Password", { exact: true }).fill("Kape-Muna-2026");
     await page.getByLabel("Confirm password").fill("Kape-Muna-2025");
-    await expect(page.getByText("Hindi magkapareho ang passwords")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Sali na!" })).toBeDisabled();
+    await expect(page.getByText("Passwords don't match")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Sign up" })).toBeDisabled();
     await page.getByLabel("Confirm password").fill("Kape-Muna-2026");
-    await expect(page.getByRole("button", { name: "Sali na!" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Sign up" })).toBeEnabled();
   });
 
   test("sign-in password can be shown and hidden without losing focus or text", async ({ page }) => {

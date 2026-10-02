@@ -27,7 +27,7 @@ export function ChannelHeader({ channel, actions }: { channel: Channel; actions?
       )}
       <div className="ml-auto flex items-center gap-1">
         {actions}
-        <Tooltip label={membersOpen ? "Itago ang members" : "Ipakita ang members"} side="bottom">
+        <Tooltip label={membersOpen ? "Hide members" : "Show members"} side="bottom">
           <button
             type="button"
             onClick={() => setMembersOpen(!membersOpen)}

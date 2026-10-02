@@ -25,7 +25,7 @@ export function InviteDialog({ open, onClose }: { open: boolean; onClose: () => 
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      toast.error("Hindi ma-copy — i-select na lang ang link.");
+      toast.error("Couldn't copy — select the link instead.");
     }
   }
 
@@ -34,13 +34,13 @@ export function InviteDialog({ open, onClose }: { open: boolean; onClose: () => 
       const result = await regenerateInviteAction({ serverId: server.id });
       if (result.ok && result.data) {
         setCode(result.data.code);
-        toast.success("Bagong invite link! Hindi na gagana ang luma.");
-      } else toast.error(result.error ?? "Hindi na-reset.");
+        toast.success("New invite link created. The old one no longer works.");
+      } else toast.error(result.error ?? "Couldn't reset.");
     });
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={`I-invite ang barkada sa ${server.name}`} description="Ibahagi ang link na 'to para makasali sila.">
+    <Modal open={open} onClose={onClose} title={`Invite friends to ${server.name}`} description="Share this link so they can join.">
       <label htmlFor="invite-url" className="mb-1.5 block font-silk text-[11px] uppercase tracking-wider text-slate-300">
         Invite link
       </label>

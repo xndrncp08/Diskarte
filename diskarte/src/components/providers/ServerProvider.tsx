@@ -110,7 +110,7 @@ export function ServerProvider({ server: initialServer, channels: initialChannel
             const key = old as { server_id?: string; user_id?: string };
             if (key.server_id !== serverId || !key.user_id) return;
             if (key.user_id === me.id) {
-              toast.error("Na-remove ka sa tambayan na 'to.");
+              toast.error("You were removed from this server.");
               router.replace("/tambayan");
               router.refresh();
               return;
@@ -131,7 +131,7 @@ export function ServerProvider({ server: initialServer, channels: initialChannel
           })
           .on("postgres_changes", { event: "DELETE", schema: "public", table: "servers" }, ({ old }) => {
             if ((old as { id?: string }).id !== serverId) return;
-            toast("Na-delete ang tambayan na 'to.");
+            toast("This server was deleted.");
             router.replace("/tambayan");
             router.refresh();
           }),

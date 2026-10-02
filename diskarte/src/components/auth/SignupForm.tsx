@@ -21,7 +21,7 @@ export function SignupForm() {
         <MailCheck className="mx-auto size-10 text-sun" aria-hidden />
         <p className="text-slate-200">{state.notice}</p>
         <Link href="/login" className="inline-block font-semibold text-sun hover:underline">
-          Balik sa login
+          Back to sign in
         </Link>
       </div>
     );
@@ -47,7 +47,7 @@ export function SignupForm() {
         maxLength={32}
         defaultValue={state.values?.username}
         error={state.fieldErrors?.username}
-        hint="Lowercase letters, numbers, _ at . lang"
+        hint="Lowercase letters, numbers, _ and . only"
         placeholder="juan.tamad"
       />
       <InputField
@@ -84,7 +84,7 @@ export function SignupForm() {
         value={confirm}
         onChange={(e) => setConfirm(e.target.value)}
         error={mismatch ? PASSWORD_MISMATCH : state.fieldErrors?.confirmPassword}
-        hint={confirm && !mismatch ? "Magkapareho ✓" : undefined}
+        hint={confirm && !mismatch ? "Passwords match ✓" : undefined}
         placeholder="••••••••••"
       />
       {state.error && (
@@ -93,7 +93,7 @@ export function SignupForm() {
         </p>
       )}
       <Button type="submit" size="lg" className="w-full" loading={pending} disabled={mismatch}>
-        Sali na!
+        Sign up
       </Button>
       <p className="text-center text-sm text-slate-400">
         May account ka na?{" "}

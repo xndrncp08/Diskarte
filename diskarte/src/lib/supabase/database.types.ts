@@ -11,6 +11,8 @@ export type BadgeKind = "booster" | "lodi_supporter" | "gcash_contributor";
 export type LfgStatus = "open" | "full" | "closed";
 export type FriendshipStatus = "pending" | "accepted";
 export type DmKind = "direct" | "group";
+export type RingKind = "dm" | "voice";
+export type RingStatus = "ringing" | "accepted" | "declined" | "missed" | "cancelled";
 
 /** Row/Insert pair helper for the community tables (Update = Partial<Insert>). */
 interface TableDef<Row, Insert> {
@@ -278,6 +280,23 @@ export interface Database {
           created_at?: string;
         }
       >;
+      call_rings: TableDef<
+        {
+          id: string;
+          kind: RingKind;
+          caller_id: string;
+          callee_id: string;
+          conversation_id: string | null;
+          server_id: string | null;
+          channel_id: string | null;
+          video: boolean;
+          status: RingStatus;
+          created_at: string;
+          expires_at: string;
+          responded_at: string | null;
+        },
+        never
+      >;
     };
     Views: { [_ in never]: never };
     Functions: {
@@ -294,6 +313,11 @@ export interface Database {
       server_role: { Args: { p_server_id: string }; Returns: MemberRole };
       is_verified_user: { Args: Record<string, never>; Returns: boolean };
       ban_member: { Args: { p_server_id: string; p_user_id: string; p_reason?: string }; Returns: undefined };
+      account_deletion_files: { Args: Record<string, never>; Returns: { bucket: string; path: string }[] };
+      delete_my_account: { Args: { p_confirm: string }; Returns: undefined };
+      ring_call: { Args: { p_kind: RingKind; p_target: string; p_callee?: string | null; p_video?: boolean }; Returns: string[] };
+      respond_ring: { Args: { p_ring: string; p_accept: boolean }; Returns: RingStatus };
+      cancel_rings: { Args: { p_target: string }; Returns: undefined };
       unban_member: { Args: { p_server_id: string; p_user_id: string }; Returns: undefined };
       create_lfg: {
         Args: { p_server_id: string; p_game: string; p_description?: string; p_party_size?: number; p_voice_channel_id?: string | null; p_duration_minutes?: number };

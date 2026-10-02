@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ImagePlus, Trash2 } from "lucide-react";
+import { ImagePlus, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useId, useRef, useState, useTransition, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 import { deleteServerAction, updateServerAction } from "@/actions/servers";
@@ -11,7 +11,7 @@ import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { ServerIcon } from "@/components/shell/ServerIcon";
 import { Button } from "@/components/ui/Button";
 import { InputField, TextareaField } from "@/components/ui/Field";
-import { Modal } from "@/components/ui/Modal";
+import { FloatingWindow } from "@/components/ui/FloatingWindow";
 import { hasRole } from "@/lib/servers";
 import { uploadPublicImage } from "@/lib/uploads";
 import { cn } from "@/lib/utils";
@@ -29,15 +29,26 @@ const TABS: { id: SettingsTab; label: string; adminOnly: boolean }[] = [
   { id: "audit", label: "Audit log", adminOnly: false },
   { id: "bans", label: "Bans", adminOnly: false },
   { id: "soundboard", label: "Soundboard", adminOnly: true },
-  { id: "support", label: "Suporta", adminOnly: true },
+  { id: "support", label: "Support", adminOnly: true },
 ];
 
-/** Tambayan settings. Admins see every tab; moderators get the audit log and bans. */
+/**
+ * Server settings in a draggable floating window (admins see every tab; moderators get the audit log
+ * and bans). Non-modal, so moderators can keep an eye on chat while they work.
+ */
 export function ServerSettingsDialog({ open, onClose, initialTab = "overview" }: { open: boolean; onClose: () => void; initialTab?: SettingsTab }) {
   return (
-    <Modal open={open} onClose={onClose} title="Tambayan settings" className="max-w-2xl">
+    <FloatingWindow
+      id="server-settings"
+      open={open}
+      onClose={onClose}
+      title="Server settings"
+      icon={<SlidersHorizontal aria-hidden />}
+      className="max-h-[min(46rem,calc(100dvh-2rem))] w-[min(44rem,calc(100vw-2rem))]"
+      bodyClassName="p-5"
+    >
       <SettingsTabs key={initialTab} initialTab={initialTab} onClose={onClose} />
-    </Modal>
+    </FloatingWindow>
   );
 }
 
@@ -139,7 +150,7 @@ function ServerSettingsForm({ onClose }: { onClose: () => void }) {
         if (result.error) toast.error(result.error);
         return;
       }
-      toast.success("Na-save ang tambayan settings.");
+      toast.success("Server settings saved.");
       router.refresh();
       onClose();
     });
@@ -153,7 +164,7 @@ function ServerSettingsForm({ onClose }: { onClose: () => void }) {
         if (result.error) toast.error(result.error);
         return;
       }
-      toast.success(`Paalam, ${server.name}.`);
+      toast.success(`Deleted ${server.name}.`);
       onClose();
       router.replace("/tambayan");
       router.refresh();
@@ -184,10 +195,10 @@ function ServerSettingsForm({ onClose }: { onClose: () => void }) {
             )}
           </div>
         </div>
-        <InputField label="Pangalan" name="name" defaultValue={server.name} minLength={2} maxLength={64} required error={errors.name} />
+        <InputField label="Name" name="name" defaultValue={server.name} minLength={2} maxLength={64} required error={errors.name} />
         <TextareaField label="Description" name="description" defaultValue={server.description} maxLength={280} rows={3} error={errors.description} />
         <Button type="submit" loading={pending} disabled={uploading}>
-          I-save
+          Save
         </Button>
       </form>
 
@@ -195,7 +206,7 @@ function ServerSettingsForm({ onClose }: { onClose: () => void }) {
         <div className="mt-8 rounded-xl border border-red-500/30 bg-red-500/5 p-4">
           <p className="font-silk text-[11px] uppercase tracking-wider text-red-300">Danger zone</p>
           <p className="mt-1 text-sm text-slate-300">
-            Mabubura ang lahat ng channels at messages. I-type ang <strong className="text-white">{server.name}</strong> para kumpirmahin.
+            Every channel and message will be erased. Type <strong className="text-white">{server.name}</strong> to confirm.
           </p>
           <div className="mt-3 flex gap-2">
             <InputField

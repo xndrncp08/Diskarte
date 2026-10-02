@@ -24,7 +24,7 @@ export async function updateProfileAction(_prev: ProfileFormState, form: FormDat
   if (!user) redirect("/login");
 
   const limit = limiters.mutation.check(`profile:${user.id}`);
-  if (!limit.ok) return { error: "Dahan-dahan lang sa pag-edit. Subukan ulit mamaya." };
+  if (!limit.ok) return { error: "You're editing too fast. Try again in a moment." };
 
   const parsed = profileUpdateSchema.safeParse({
     username: text(form, "username"),
@@ -60,8 +60,8 @@ export async function updateProfileAction(_prev: ProfileFormState, form: FormDat
     .eq("id", user.id);
 
   if (error) {
-    if (error.code === "23505") return { fieldErrors: { username: "May gumagamit na ng username na 'yan." } };
-    return { error: "Hindi na-save ang profile. Subukan ulit." };
+    if (error.code === "23505") return { fieldErrors: { username: "That username is taken." } };
+    return { error: "Couldn't save your profile. Try again." };
   }
 
   revalidatePath("/", "layout");
@@ -75,7 +75,7 @@ export async function setStatusAction(input: { status: string; customStatus?: st
   const user = await getSessionUser();
   if (!user) return { error: "Not signed in" };
   const limit = limiters.mutation.check(`profile:${user.id}`);
-  if (!limit.ok) return { error: "Dahan-dahan lang." };
+  if (!limit.ok) return { error: "Slow down a little." };
 
   const schema = profileUpdateSchema.pick({ status: true, customStatus: true, customStatusEmoji: true });
   const parsed = schema.safeParse({
@@ -90,7 +90,7 @@ export async function setStatusAction(input: { status: string; customStatus?: st
     .from("profiles")
     .update({ status: parsed.data.status, custom_status: parsed.data.customStatus, custom_status_emoji: parsed.data.customStatusEmoji })
     .eq("id", user.id);
-  if (error) return { error: "Hindi na-update ang status." };
+  if (error) return { error: "Couldn't update your status." };
   revalidatePath("/", "layout");
   return { ok: true };
 }

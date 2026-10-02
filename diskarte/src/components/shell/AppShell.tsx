@@ -9,6 +9,9 @@ import { PresenceProvider } from "@/components/providers/PresenceProvider";
 import { SocialProvider } from "@/components/providers/SocialProvider";
 import type { AccountInfo } from "@/components/profile/AccountSettings";
 import { SettingsDialogProvider } from "@/components/profile/SettingsDialog";
+import { MediaViewerProvider } from "@/components/chat/MediaViewer";
+import { AudioMixerProvider } from "@/components/voice/AudioMixer";
+import { IncomingCallsProvider } from "@/components/voice/IncomingCalls";
 import { CallProvider } from "@/components/voice/CallProvider";
 import { FloatingCallHUD } from "@/components/voice/FloatingCallHUD";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
@@ -39,7 +42,7 @@ function Frame({ servers, children }: { servers: Server[]; children: ReactNode }
   const { navOpen, setNavOpen } = useShellUI();
   const swipe = useSwipeDrawer(navOpen, setNavOpen);
   return (
-    <div className="diskarte-backdrop relative flex h-dvh overflow-hidden" data-testid="shell" {...swipe}>
+    <div className="diskarte-backdrop relative flex h-dvh overflow-hidden md:gap-3 md:p-3" data-testid="shell" {...swipe}>
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-lg focus:bg-sun focus:px-4 focus:py-2 focus:font-semibold focus:text-abyss"
@@ -62,7 +65,7 @@ function Frame({ servers, children }: { servers: Server[]; children: ReactNode }
       </AnimatePresence>
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-40 transition-transform duration-200 ease-out md:static md:z-auto md:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 transition-transform duration-200 ease-out md:static md:z-auto md:flex md:max-h-full md:translate-x-0 md:flex-col md:justify-center",
           navOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -70,7 +73,7 @@ function Frame({ servers, children }: { servers: Server[]; children: ReactNode }
       </div>
       {/* No z-index here: a stacking context would trap the mobile drawer panels (z-40) beneath the
           drawer backdrop (z-30), making the channel sidebar untappable on phones. */}
-      <div id="main-content" tabIndex={-1} className="relative flex min-w-0 flex-1 outline-none">
+      <div id="main-content" tabIndex={-1} className="relative flex min-w-0 flex-1 outline-none md:gap-3">
         {children}
       </div>
       <FloatingCallHUD />
@@ -98,12 +101,19 @@ export function AppShell({
         <PresenceProvider>
           <SocialProvider>
             <CallProvider>
-              {/* Inside CallProvider: opening settings must never unmount (and so hang up) the call. */}
+              {/* Floating windows live inside CallProvider: opening or closing one never unmounts (and so
+                  never hangs up) the call. */}
               <SettingsDialogProvider account={account}>
-                <ShellUIProvider>
-                  <MembershipWatcher userId={profile.id} />
-                  <Frame servers={servers}>{children}</Frame>
-                </ShellUIProvider>
+                <AudioMixerProvider>
+                  <MediaViewerProvider>
+                    <IncomingCallsProvider>
+                      <ShellUIProvider>
+                        <MembershipWatcher userId={profile.id} />
+                        <Frame servers={servers}>{children}</Frame>
+                      </ShellUIProvider>
+                    </IncomingCallsProvider>
+                  </MediaViewerProvider>
+                </AudioMixerProvider>
               </SettingsDialogProvider>
             </CallProvider>
           </SocialProvider>

@@ -21,23 +21,23 @@ export interface ActionResult<T = undefined> {
 }
 
 const DB_ERRORS: Record<string, string> = {
-  SERVER_LIMIT_REACHED: "Umabot ka na sa limit na 25 tambayan na pagmamay-ari mo.",
-  SERVER_JOIN_LIMIT: "Nasa 100 tambayan ka na — mag-leave muna sa iba.",
-  INVITE_NOT_FOUND: "Walang tambayan na may ganyang invite code.",
-  BANNED: "Naka-ban ka sa tambayan na 'to.",
-  OWNER_CANNOT_LEAVE: "Ikaw ang owner — i-delete o i-transfer muna ang tambayan.",
-  CANNOT_KICK_MEMBER: "Hindi mo pwedeng i-kick ang member na 'yan.",
-  ONLY_ADMINS_CAN_CHANGE_ROLES: "Admins lang ang pwedeng magpalit ng roles.",
-  CANNOT_CHANGE_OWNER_ROLE: "Hindi pwedeng palitan ang role ng owner.",
-  ONLY_OWNER_CAN_DEMOTE_ADMINS: "Ang owner lang ang pwedeng mag-demote ng admin.",
-  ONLY_ADMINS_CAN_REGENERATE_INVITES: "Admins lang ang pwedeng mag-reset ng invite.",
+  SERVER_LIMIT_REACHED: "You've reached the limit of 25 servers you can own.",
+  SERVER_JOIN_LIMIT: "You're in 100 servers already — leave one first.",
+  INVITE_NOT_FOUND: "No server has that invite code.",
+  BANNED: "You're banned from this server.",
+  OWNER_CANNOT_LEAVE: "You own this server — delete it or transfer ownership first.",
+  CANNOT_KICK_MEMBER: "You can't kick that member.",
+  ONLY_ADMINS_CAN_CHANGE_ROLES: "Only admins can change roles.",
+  CANNOT_CHANGE_OWNER_ROLE: "The owner's role can't be changed.",
+  ONLY_OWNER_CAN_DEMOTE_ADMINS: "Only the owner can demote an admin.",
+  ONLY_ADMINS_CAN_REGENERATE_INVITES: "Only admins can reset the invite.",
 };
 
 function dbError(message: string | undefined, fallback: string) {
   if (!message) return fallback;
   const key = Object.keys(DB_ERRORS).find((k) => message.includes(k));
   if (key) return DB_ERRORS[key];
-  if (message.includes("row-level security")) return "Wala kang permiso para gawin 'yan.";
+  if (message.includes("row-level security")) return "You don't have permission to do that.";
   return fallback;
 }
 
@@ -48,7 +48,7 @@ async function authed(bucket: "mutation" = "mutation") {
   return { user, limited: !limit.ok };
 }
 
-const RATE_LIMITED: ActionResult<never> = { ok: false, error: "Dahan-dahan lang, kabayan. Subukan ulit mamaya." };
+const RATE_LIMITED: ActionResult<never> = { ok: false, error: "Slow down a little. Try again in a moment." };
 
 // ---------------------------------------------------------------------------------------
 // Servers
@@ -62,7 +62,7 @@ export async function createServerAction(input: { name: string; description?: st
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_server", { p_name: parsed.data.name, p_description: parsed.data.description });
-  if (error || !data) return { ok: false, error: dbError(error?.message, "Hindi nagawa ang tambayan. Subukan ulit.") };
+  if (error || !data) return { ok: false, error: dbError(error?.message, "Couldn't create the server. Try again.") };
   revalidatePath("/tambayan", "layout");
   return { ok: true, data: { serverId: data } };
 }
@@ -75,7 +75,7 @@ export async function joinServerAction(input: { invite: string }): Promise<Actio
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("join_server", { p_code: code });
-  if (error || !data) return { ok: false, error: dbError(error?.message, "Hindi naka-join. Subukan ulit.") };
+  if (error || !data) return { ok: false, error: dbError(error?.message, "Couldn't join. Try again.") };
   revalidatePath("/tambayan", "layout");
   return { ok: true, data: { serverId: data } };
 }
@@ -94,7 +94,7 @@ export async function updateServerAction(input: { serverId: string; name: string
     .update({ name: parsed.data.name, description: parsed.data.description, ...(input.iconUrl !== undefined ? { icon_url: input.iconUrl } : {}) })
     .eq("id", input.serverId)
     .select("id");
-  if (error || !data?.length) return { ok: false, error: dbError(error?.message, "Admins lang ang pwedeng mag-edit ng tambayan.") };
+  if (error || !data?.length) return { ok: false, error: dbError(error?.message, "Only admins can edit the server.") };
   revalidatePath("/tambayan", "layout");
   return { ok: true };
 }
@@ -105,10 +105,10 @@ export async function deleteServerAction(input: { serverId: string; confirmName:
   if (!uuidSchema.safeParse(input.serverId).success) return { ok: false, error: "Invalid server" };
   const supabase = await createClient();
   const { data: server } = await supabase.from("servers").select("name, owner_id").eq("id", input.serverId).maybeSingle();
-  if (!server || server.owner_id !== user.id) return { ok: false, error: "Ang owner lang ang pwedeng mag-delete." };
-  if (server.name.trim() !== input.confirmName.trim()) return { ok: false, fieldErrors: { confirmName: "Hindi tugma ang pangalan." } };
+  if (!server || server.owner_id !== user.id) return { ok: false, error: "Only the owner can delete the server." };
+  if (server.name.trim() !== input.confirmName.trim()) return { ok: false, fieldErrors: { confirmName: "The name doesn't match." } };
   const { error } = await supabase.from("servers").delete().eq("id", input.serverId);
-  if (error) return { ok: false, error: dbError(error.message, "Hindi na-delete ang tambayan.") };
+  if (error) return { ok: false, error: dbError(error.message, "Couldn't delete the server.") };
   revalidatePath("/tambayan", "layout");
   return { ok: true };
 }
@@ -119,7 +119,7 @@ export async function leaveServerAction(input: { serverId: string }): Promise<Ac
   if (!uuidSchema.safeParse(input.serverId).success) return { ok: false, error: "Invalid server" };
   const supabase = await createClient();
   const { error } = await supabase.from("members").delete().eq("server_id", input.serverId).eq("user_id", user.id);
-  if (error) return { ok: false, error: dbError(error.message, "Hindi naka-leave.") };
+  if (error) return { ok: false, error: dbError(error.message, "Couldn't leave.") };
   revalidatePath("/tambayan", "layout");
   return { ok: true };
 }
@@ -130,7 +130,7 @@ export async function regenerateInviteAction(input: { serverId: string }): Promi
   if (!uuidSchema.safeParse(input.serverId).success) return { ok: false, error: "Invalid server" };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("regenerate_invite", { p_server_id: input.serverId });
-  if (error || !data) return { ok: false, error: dbError(error?.message, "Hindi na-reset ang invite.") };
+  if (error || !data) return { ok: false, error: dbError(error?.message, "Couldn't reset the invite.") };
   return { ok: true, data: { code: data } };
 }
 
@@ -168,7 +168,7 @@ export async function createChannelAction(input: {
     })
     .select("id")
     .single();
-  if (error || !data) return { ok: false, error: dbError(error?.message, "Hindi nagawa ang channel.") };
+  if (error || !data) return { ok: false, error: dbError(error?.message, "Couldn't create the channel.") };
   return { ok: true, data: { channelId: data.id } };
 }
 
@@ -205,7 +205,7 @@ export async function updateChannelAction(input: {
     })
     .eq("id", input.channelId)
     .select("id");
-  if (error || !data?.length) return { ok: false, error: dbError(error?.message, "Moderators lang ang pwedeng mag-edit ng channel.") };
+  if (error || !data?.length) return { ok: false, error: dbError(error?.message, "Only moderators can edit channels.") };
   return { ok: true };
 }
 
@@ -215,7 +215,7 @@ export async function deleteChannelAction(input: { channelId: string }): Promise
   if (!uuidSchema.safeParse(input.channelId).success) return { ok: false, error: "Invalid channel" };
   const supabase = await createClient();
   const { data, error } = await supabase.from("channels").delete().eq("id", input.channelId).select("id");
-  if (error || !data?.length) return { ok: false, error: dbError(error?.message, "Moderators lang ang pwedeng mag-delete ng channel.") };
+  if (error || !data?.length) return { ok: false, error: dbError(error?.message, "Only moderators can delete channels.") };
   return { ok: true };
 }
 
@@ -239,7 +239,7 @@ export async function setMemberRoleAction(input: { serverId: string; userId: str
     .eq("server_id", input.serverId)
     .eq("user_id", input.userId)
     .select("user_id");
-  if (error || !data?.length) return { ok: false, error: dbError(error?.message, "Hindi napalitan ang role.") };
+  if (error || !data?.length) return { ok: false, error: dbError(error?.message, "Couldn't change the role.") };
   return { ok: true };
 }
 
@@ -249,7 +249,7 @@ export async function kickMemberAction(input: { serverId: string; userId: string
   if (!uuidSchema.safeParse(input.serverId).success || !uuidSchema.safeParse(input.userId).success) return { ok: false, error: "Invalid request" };
   const supabase = await createClient();
   const { data, error } = await supabase.from("members").delete().eq("server_id", input.serverId).eq("user_id", input.userId).select("user_id");
-  if (error || !data?.length) return { ok: false, error: dbError(error?.message, "Hindi mo pwedeng i-kick ang member na 'yan.") };
+  if (error || !data?.length) return { ok: false, error: dbError(error?.message, "You can't kick that member.") };
   return { ok: true };
 }
 
@@ -257,7 +257,7 @@ export async function setNicknameAction(input: { serverId: string; userId: strin
   const { limited } = await authed();
   if (limited) return RATE_LIMITED;
   const nickname = input.nickname.replace(/[\u0000-\u001F\u007F]/g, "").trim();
-  if (nickname.length > 32) return { ok: false, fieldErrors: { nickname: "Hanggang 32 characters lang" } };
+  if (nickname.length > 32) return { ok: false, fieldErrors: { nickname: "32 characters max" } };
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("members")
@@ -265,6 +265,6 @@ export async function setNicknameAction(input: { serverId: string; userId: strin
     .eq("server_id", input.serverId)
     .eq("user_id", input.userId)
     .select("user_id");
-  if (error || !data?.length) return { ok: false, error: dbError(error?.message, "Hindi napalitan ang nickname.") };
+  if (error || !data?.length) return { ok: false, error: dbError(error?.message, "Couldn't change the nickname.") };
   return { ok: true };
 }

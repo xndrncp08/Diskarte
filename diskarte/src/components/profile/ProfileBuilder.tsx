@@ -49,7 +49,7 @@ export function ProfileBuilder({ profile, mode }: { profile: Profile; mode: "onb
   const bannerInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (state.ok) toast.success("Na-save na ang profile mo! 🎉");
+    if (state.ok) toast.success("Profile saved! 🎉");
     else if (state.error) toast.error(state.error);
   }, [state]);
 
@@ -112,7 +112,7 @@ export function ProfileBuilder({ profile, mode }: { profile: Profile; mode: "onb
               maxLength={32}
               required
               error={state.fieldErrors?.username}
-              hint="Lowercase, numbers, _ at ."
+              hint="Lowercase, numbers, _ and ."
             />
           </div>
         </section>
@@ -148,7 +148,7 @@ export function ProfileBuilder({ profile, mode }: { profile: Profile; mode: "onb
             </Button>
             {avatarUrl && (
               <Button variant="ghost" size="sm" onClick={() => setAvatarUrl("")}>
-                <Trash2 className="size-4" aria-hidden /> Gamitin ang salakot avatar
+                <Trash2 className="size-4" aria-hidden /> Use a salakot avatar
               </Button>
             )}
           </div>
@@ -185,7 +185,7 @@ export function ProfileBuilder({ profile, mode }: { profile: Profile; mode: "onb
             </Button>
             {bannerUrl && (
               <Button variant="ghost" size="sm" onClick={() => setBannerUrl("")}>
-                <Trash2 className="size-4" aria-hidden /> Alisin ang custom banner
+                <Trash2 className="size-4" aria-hidden /> Remove custom banner
               </Button>
             )}
           </div>
@@ -250,7 +250,7 @@ export function ProfileBuilder({ profile, mode }: { profile: Profile; mode: "onb
               value={customStatus}
               onChange={(e) => setCustomStatus(e.target.value)}
               maxLength={64}
-              placeholder="Anong ganap?"
+              placeholder="What's happening?"
               error={state.fieldErrors?.customStatus}
             />
           </div>
@@ -267,13 +267,13 @@ export function ProfileBuilder({ profile, mode }: { profile: Profile; mode: "onb
             rows={3}
             hint={`${bio.length}/190`}
             error={state.fieldErrors?.bio}
-            placeholder="Main ko si Jett. Laging may baong Skyflakes."
+            placeholder="Jett main. Always packing Skyflakes."
           />
         </section>
 
         <div className="flex items-center gap-3">
           <Button type="submit" size="lg" loading={pending} disabled={uploading !== null}>
-            {mode === "onboarding" ? "Tara na sa tambayan!" : "I-save ang profile"}
+            {mode === "onboarding" ? "Let's go!" : "Save profile"}
           </Button>
           {state.error && (
             <p role="alert" className="text-sm text-red-300">

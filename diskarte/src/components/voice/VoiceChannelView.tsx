@@ -23,7 +23,7 @@ export function VoiceChannelView({ channel }: { channel: Channel }) {
 
   return (
     <motion.section
-      className="flex min-w-0 flex-1 flex-col"
+      className="flex min-w-0 flex-1 flex-col md:overflow-hidden md:float-card"
       aria-label={channel.name}
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
@@ -40,10 +40,10 @@ export function VoiceChannelView({ channel }: { channel: Channel }) {
           <div>
             <p className="font-pixel text-[9px] text-sun">VOICE CHANNEL</p>
             <h2 className="mt-2 text-2xl font-extrabold text-white">{channel.name}</h2>
-            <p className="text-slate-400">{inRoom.length === 0 ? "Walang tao pa. Ikaw na ang mauna!" : `${inRoom.length} ang nasa loob ngayon`}</p>
+            <p className="text-slate-400">{inRoom.length === 0 ? "Nobody's here yet. Be the first!" : `${inRoom.length} in voice now`}</p>
           </div>
           {inRoom.length > 0 && (
-            <ul className="flex flex-wrap justify-center gap-4" aria-label="Nasa voice channel">
+            <ul className="flex flex-wrap justify-center gap-4" aria-label="In voice">
               {inRoom.map((m) => (
                 <li key={m.user_id} className="flex flex-col items-center gap-1">
                   <UserAvatar profile={m.profile} size={56} />
@@ -60,16 +60,16 @@ export function VoiceChannelView({ channel }: { channel: Channel }) {
           >
             {here && call.status !== "idle" ? (
               <>
-                <Loader2 className="size-4 animate-spin" aria-hidden /> Kumokonekta…
+                <Loader2 className="size-4 animate-spin" aria-hidden /> Connecting…
               </>
             ) : call.target ? (
-              "Lumipat dito"
+              "Switch here"
             ) : (
               "Join Voice"
             )}
           </Button>
           <p className="max-w-sm text-xs text-slate-500">
-            Hihingi ang browser ng permiso para sa mikropono. Pwede kang mag-on ng camera at screen share pagpasok.
+            Your browser will ask for microphone access. You can turn on your camera and screen share once you&apos;re in.
           </p>
         </div>
       )}

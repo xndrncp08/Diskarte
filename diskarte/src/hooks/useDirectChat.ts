@@ -111,7 +111,7 @@ export function useDirectChat(conversationId: string, initial: { messages: Direc
         return "sent";
       }
       playSfx("error");
-      toast.error(result.error ?? "Hindi na-send.");
+      toast.error(result.error ?? "Couldn't send.");
       if (result.code === "AUTOMOD_BLOCKED" || result.code === "DM_NOT_ALLOWED") {
         setMessages((prev) => prev.filter((m) => m.id !== entry.id));
         return "rejected";
@@ -125,7 +125,7 @@ export function useDirectChat(conversationId: string, initial: { messages: Direc
   const send = useCallback(
     async (content: string, attachments: unknown[] = [], replyToId: string | null = null, extras: SendExtras = {}): Promise<SendResult> => {
       if (attachments.length) {
-        toast.error("Hindi pa pwede ang attachments sa DMs.");
+        toast.error("Attachments aren't supported in DMs yet.");
         return "rejected";
       }
       const entry: OutboxEntry = { id: crypto.randomUUID(), target: conversationId, content, replyToId, threadId: null, sticker: extras.sticker ?? null, createdAt: new Date().toISOString() };
@@ -177,7 +177,7 @@ export function useDirectChat(conversationId: string, initial: { messages: Direc
       const result = await editDirectMessageAction({ messageId: id, content });
       if (!result.ok) {
         setMessages((prev) => prev.map((m) => (m.id === id ? before : m)));
-        toast.error(result.error ?? "Hindi na-edit.");
+        toast.error(result.error ?? "Couldn't edit.");
         return false;
       }
       return true;
@@ -192,7 +192,7 @@ export function useDirectChat(conversationId: string, initial: { messages: Direc
       const result = await deleteDirectMessageAction({ messageId: id });
       if (!result.ok) {
         setMessages(before);
-        toast.error(result.error ?? "Hindi na-delete.");
+        toast.error(result.error ?? "Couldn't delete.");
       }
     },
     [messages],

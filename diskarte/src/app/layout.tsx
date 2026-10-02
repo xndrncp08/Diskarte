@@ -18,7 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     metadataBase: new URL(env?.siteUrl ?? "http://localhost:3000"),
     title: { default: "Diskarte — Ang Bagong Istambayan ng Bayan", template: "%s · Diskarte" },
-    description: `${TAGLINE} Open-source chat, voice, video at screen share para sa gamers, estudyante at buong komunidad.`,
+    description: `${TAGLINE} Open-source chat, voice, video and screen share for gamers, students and whole communities.`,
     applicationName: "Diskarte",
     keywords: ["Diskarte", "Discord alternative", "Philippines", "voice chat", "gaming", "community", "open source"],
     openGraph: { type: "website", siteName: "Diskarte", locale: "en_PH" },

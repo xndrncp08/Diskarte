@@ -44,7 +44,7 @@ export async function signInAction(_prev: AuthFormState, form: FormData): Promis
 
 export async function signUpAction(_prev: AuthFormState, form: FormData): Promise<AuthFormState> {
   const values = { email: text(form, "email"), username: text(form, "username"), displayName: text(form, "displayName") };
-  if (signupPolicy().inviteOnly) return { error: "Early Access pa lang ang Diskarte — mag-apply muna sa waitlist.", values };
+  if (signupPolicy().inviteOnly) return { error: "Diskarte is in Early Access — apply to the waitlist first.", values };
   const result = await withMinimumDuration(AUTH_MIN_DURATION_MS, async (): Promise<AuthFormState | "session"> => {
     const parsed = signUpSchema.safeParse({
       email: text(form, "email"),
@@ -57,7 +57,7 @@ export async function signUpAction(_prev: AuthFormState, form: FormData): Promis
 
     const supabase = await createClient();
     const { data: available } = await supabase.rpc("username_available", { p_username: parsed.data.username });
-    if (available === false) return { fieldErrors: { username: "May gumagamit na ng username na 'yan." }, values };
+    if (available === false) return { fieldErrors: { username: "That username is taken." }, values };
 
     const { siteUrl } = getPublicEnv();
     const { data, error } = await supabase.auth.signUp({
@@ -71,7 +71,7 @@ export async function signUpAction(_prev: AuthFormState, form: FormData): Promis
     if (error) return { error: friendlyAuthError(error.message), values };
     if (data.session) return "session";
     // With email confirmation on, Supabase answers identically for new and existing emails.
-    return { notice: `Check mo ang inbox ng ${parsed.data.email} — nag-send kami ng confirmation link para ma-activate ang account mo.`, values };
+    return { notice: `Check the inbox for ${parsed.data.email} — we sent a confirmation link to activate your account.`, values };
   });
   if (result === "session") redirect("/onboarding");
   return result;
@@ -81,7 +81,7 @@ export async function signInWithProviderAction(form: FormData): Promise<void> {
   const provider = text(form, "provider") as OAuthProvider;
   const next = safeRedirectPath(text(form, "next"));
   if (!enabledOAuthProviders().includes(provider)) {
-    redirect(`/login?error=${encodeURIComponent("Hindi naka-enable ang provider na 'yan.")}`);
+    redirect(`/login?error=${encodeURIComponent("That sign-in provider isn't enabled.")}`);
   }
   const { siteUrl } = getPublicEnv();
   const supabase = await createClient();
@@ -101,11 +101,11 @@ export async function requestPasswordResetAction(_prev: AuthFormState, form: For
   const values = { email: text(form, "email") };
   return withMinimumDuration(AUTH_MIN_DURATION_MS, async () => {
     const email = emailSchema.safeParse(text(form, "email"));
-    if (!email.success) return { fieldErrors: { email: email.error.issues[0]?.message ?? "Mukhang mali ang email" }, values };
+    if (!email.success) return { fieldErrors: { email: email.error.issues[0]?.message ?? "That email doesn't look right" }, values };
     const { siteUrl } = getPublicEnv();
     const supabase = await createClient();
     await supabase.auth.resetPasswordForEmail(email.data, { redirectTo: `${siteUrl}/auth/callback?next=/reset-password` });
-    return { notice: "Kung may account ang email na 'yan, nag-send kami ng link para mag-reset ng password.", values };
+    return { notice: "If an account exists for that email, we sent a password reset link.", values };
   });
 }
 
@@ -114,5 +114,5 @@ export async function signOutAction(form: FormData): Promise<void> {
   const scope = text(form, "scope") === "global" ? "global" : "local";
   const supabase = await createClient();
   await supabase.auth.signOut({ scope });
-  redirect("/login");
+  redirect("/auth");
 }

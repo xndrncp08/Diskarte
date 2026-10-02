@@ -28,32 +28,32 @@ export async function signUpAndOnboard(page: Page, user: TestUser, opts: { avata
   await page.getByLabel("Email").fill(user.email);
   await page.getByLabel("Password", { exact: true }).fill(user.password);
   await page.getByLabel("Confirm password").fill(user.password);
-  await page.getByRole("button", { name: "Sali na!" }).click();
+  await page.getByRole("button", { name: "Sign up" }).click();
   await expect(page).toHaveURL(/\/onboarding$/);
-  await expect(page.getByRole("heading", { name: new RegExp(`Buuin ang profile mo, ${user.displayName}`) })).toBeVisible();
+  await expect(page.getByRole("heading", { name: new RegExp(`Set up your profile, ${user.displayName}`) })).toBeVisible();
   if (opts.avatar) await page.getByRole("radio", { name: opts.avatar }).click();
   if (opts.status) await page.getByRole("button", { name: new RegExp(opts.status) }).click();
   if (opts.bio) await page.getByLabel("Bio").fill(opts.bio);
-  await page.getByRole("button", { name: "Tara na sa tambayan!" }).click();
+  await page.getByRole("button", { name: "Let's go!" }).click();
   await expect(page).toHaveURL(/\/tambayan$/);
-  await expect(page.getByRole("heading", { name: `Mabuhay, ${user.displayName}!` })).toBeVisible();
+  await expect(page.getByRole("heading", { name: `Welcome back, ${user.displayName}!` })).toBeVisible();
 }
 
 export async function logIn(page: Page, user: TestUser) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(user.email);
   await page.getByLabel("Password", { exact: true }).fill(user.password);
-  await page.getByRole("button", { name: "Pasok!" }).click();
+  await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/tambayan/);
 }
 
 /** Create a Tambayan from the home screen; resolves once #general is open. Returns the server URL. */
 export async function createServer(page: Page, name: string) {
   await page.goto("/tambayan");
-  await page.getByRole("button", { name: /Gumawa ng Tambayan/ }).click();
-  const dialog = page.getByRole("dialog", { name: "Gumawa ng Tambayan" });
-  await dialog.getByLabel("Pangalan ng tambayan").fill(name);
-  await dialog.getByRole("button", { name: "Gawin na!" }).click();
+  await page.getByRole("button", { name: /Create a server/ }).click();
+  const dialog = page.getByRole("dialog", { name: "Create a server" });
+  await dialog.getByLabel("Server name").fill(name);
+  await dialog.getByRole("button", { name: "Create server" }).click();
   await expect(page.getByTestId("channel-title")).toHaveText("general");
   return page.url().replace(/\/[^/]+$/, "");
 }

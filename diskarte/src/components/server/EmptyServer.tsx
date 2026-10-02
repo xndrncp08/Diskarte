@@ -14,7 +14,7 @@ export function EmptyServer() {
   const { setNavOpen } = useShellUI();
   const [open, setOpen] = useState(false);
   return (
-    <main className="flex flex-1 flex-col">
+    <main className="flex flex-1 flex-col md:overflow-hidden md:float-card">
       <header className="flex h-12 items-center border-b border-white/5 px-3 md:hidden">
         <button type="button" onClick={() => setNavOpen(true)} aria-label="Open navigation" className="rounded-md p-1.5 text-slate-300 hover:bg-white/10">
           <MenuIcon className="size-5" aria-hidden />
@@ -22,15 +22,15 @@ export function EmptyServer() {
       </header>
       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
         <Hash className="size-12 text-slate-600" aria-hidden />
-        <h1 className="text-xl font-bold text-white">Walang channels pa sa {server.name}</h1>
+        <h1 className="text-xl font-bold text-white">No channels in {server.name} yet</h1>
         {hasRole(myRole, "moderator") ? (
           <>
-            <p className="text-slate-400">Gumawa ng unang channel para magsimula ang kwentuhan.</p>
-            <Button onClick={() => setOpen(true)}>Gumawa ng channel</Button>
+            <p className="text-slate-400">Create the first channel to get the conversation going.</p>
+            <Button onClick={() => setOpen(true)}>Create channel</Button>
             <ChannelDialog open={open} onClose={() => setOpen(false)} />
           </>
         ) : (
-          <p className="text-slate-400">Hintayin ang admins na gumawa ng channel.</p>
+          <p className="text-slate-400">Waiting for an admin to create a channel.</p>
         )}
       </div>
     </main>

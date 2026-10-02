@@ -58,7 +58,7 @@ export function FriendsView({ servers }: { servers: Server[] }) {
   function run(action: () => Promise<{ ok: boolean; error?: string }>, success?: string) {
     startTransition(async () => {
       const result = await action();
-      if (!result.ok) return void toast.error(result.error ?? "May nangyaring mali.");
+      if (!result.ok) return void toast.error(result.error ?? "Something went wrong.");
       if (success) toast.success(success);
       await reload();
     });
@@ -67,7 +67,7 @@ export function FriendsView({ servers }: { servers: Server[] }) {
   function message(userId: string) {
     startTransition(async () => {
       const result = await openDmAction({ userId });
-      if (!result.ok || !result.data) return void toast.error(result.error ?? "Hindi mabuksan ang DM.");
+      if (!result.ok || !result.data) return void toast.error(result.error ?? "Couldn't open the DM.");
       await reloadConversations();
       router.push(`/tambayan/dm/${result.data.conversationId}`);
     });
@@ -83,13 +83,13 @@ export function FriendsView({ servers }: { servers: Server[] }) {
       }
       setError(undefined);
       setUsername("");
-      toast.success(result.data?.status === "accepted" ? "Friends na kayo! 🎉" : `Na-send ang friend request kay @${username.replace(/^@/, "")}.`);
+      toast.success(result.data?.status === "accepted" ? "You're now friends! 🎉" : `Friend request sent to @${username.replace(/^@/, "")}.`);
       await reload();
     });
   }
 
   const tabs: { id: Tab; label: string; count?: number }[] = [
-    { id: "all", label: "Lahat" },
+    { id: "all", label: "All" },
     { id: "pending", label: "Pending", count: incoming },
     { id: "blocked", label: "Blocked" },
     { id: "add", label: "Add Friend" },
@@ -98,7 +98,7 @@ export function FriendsView({ servers }: { servers: Server[] }) {
   return (
     <>
       <HomeSidebar servers={servers} />
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main className="flex min-w-0 flex-1 flex-col md:overflow-hidden md:float-card">
         <header className="flex h-12 shrink-0 items-center gap-2 overflow-x-auto border-b border-white/5 bg-black/20 px-3 scrollbar-none">
           <button type="button" onClick={() => setNavOpen(true)} aria-label="Open navigation" className="touch-target relative rounded-md p-1.5 text-slate-300 hover:bg-white/10 md:hidden">
             <MenuIcon className="size-5" aria-hidden />
@@ -128,8 +128,8 @@ export function FriendsView({ servers }: { servers: Server[] }) {
         <div className="scrollbar-thin flex-1 overflow-y-auto p-4" role="tabpanel">
           {tab === "add" && (
             <form onSubmit={add} className="max-w-xl space-y-2">
-              <h2 className="font-bold text-white">Mag-add ng friend</h2>
-              <p className="text-sm text-slate-400">I-type ang @username nila. Case-insensitive.</p>
+              <h2 className="font-bold text-white">Add a friend</h2>
+              <p className="text-sm text-slate-400">Type their @username. Not case-sensitive.</p>
               <div className="flex gap-2">
                 <InputField
                   label="Username"
@@ -153,9 +153,9 @@ export function FriendsView({ servers }: { servers: Server[] }) {
 
           {friends && tab === "all" && (
             <section aria-label="All friends">
-              <h2 className="mb-2 font-silk text-[11px] uppercase tracking-wider text-slate-400">Lahat ng friends — {accepted.length}</h2>
+              <h2 className="mb-2 font-silk text-[11px] uppercase tracking-wider text-slate-400">All friends — {accepted.length}</h2>
               {accepted.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-slate-400">Wala pang friends. Pindutin ang &quot;Add Friend&quot; para magsimula!</p>
+                <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-slate-400">No friends yet. Press &quot;Add Friend&quot; to get started!</p>
               ) : (
                 <ul>
                   {accepted.map((f) => (
@@ -167,8 +167,8 @@ export function FriendsView({ servers }: { servers: Server[] }) {
                         label="Friend options"
                         align="end"
                         items={[
-                          { label: "Unfriend", onSelect: () => run(() => removeFriendAction({ userId: f.userId }), "Na-unfriend.") },
-                          { label: "Block", danger: true, onSelect: () => run(() => blockUserAction({ userId: f.userId, block: true }), "Na-block.") },
+                          { label: "Unfriend", onSelect: () => run(() => removeFriendAction({ userId: f.userId }), "Removed friend.") },
+                          { label: "Block", danger: true, onSelect: () => run(() => blockUserAction({ userId: f.userId, block: true }), "Blocked.") },
                         ]}
                         trigger={({ toggle, open, id }) => (
                           <button type="button" onClick={toggle} aria-expanded={open} aria-controls={id} aria-haspopup="menu" aria-label="More options" className={iconButton}>
@@ -189,14 +189,14 @@ export function FriendsView({ servers }: { servers: Server[] }) {
             <section aria-label="Pending requests">
               <h2 className="mb-2 font-silk text-[11px] uppercase tracking-wider text-slate-400">Pending — {requests.length}</h2>
               {requests.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-slate-400">Walang pending na friend requests.</p>
+                <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-slate-400">No pending friend requests.</p>
               ) : (
                 <ul>
                   {requests.map((f) => (
                     <PersonRow key={f.userId} profile={profiles.get(f.userId)}>
                       <span className="mr-1 text-xs text-slate-500">{f.status === "incoming" ? "Incoming" : "Outgoing"}</span>
                       {f.status === "incoming" && (
-                        <button type="button" aria-label="Accept" onClick={() => run(() => respondFriendRequestAction({ userId: f.userId, accept: true }), "Friends na kayo! 🎉")} className={cn(iconButton, "hover:text-emerald-300")} disabled={pending}>
+                        <button type="button" aria-label="Accept" onClick={() => run(() => respondFriendRequestAction({ userId: f.userId, accept: true }), "You're now friends! 🎉")} className={cn(iconButton, "hover:text-emerald-300")} disabled={pending}>
                           <Check className="size-4" aria-hidden />
                         </button>
                       )}
@@ -220,12 +220,12 @@ export function FriendsView({ servers }: { servers: Server[] }) {
             <section aria-label="Blocked users">
               <h2 className="mb-2 font-silk text-[11px] uppercase tracking-wider text-slate-400">Blocked — {blocked.length}</h2>
               {blocked.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-slate-400">Walang naka-block.</p>
+                <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-slate-400">You haven&apos;t blocked anyone.</p>
               ) : (
                 <ul>
                   {blocked.map((id) => (
                     <PersonRow key={id} profile={profiles.get(id)}>
-                      <button type="button" aria-label="Unblock" onClick={() => run(() => blockUserAction({ userId: id, block: false }), "Na-unblock.")} className={iconButton} disabled={pending}>
+                      <button type="button" aria-label="Unblock" onClick={() => run(() => blockUserAction({ userId: id, block: false }), "Unblocked.")} className={iconButton} disabled={pending}>
                         <ShieldOff className="size-4" aria-hidden />
                       </button>
                     </PersonRow>

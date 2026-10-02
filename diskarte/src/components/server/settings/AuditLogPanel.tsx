@@ -76,7 +76,7 @@ export function AuditLogPanel() {
       </div>
 
       {entries.length === 0 && !loading ? (
-        <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-slate-400">Tahimik pa ang tambayan — wala pang naka-log.</p>
+        <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-slate-400">All quiet — nothing logged yet.</p>
       ) : (
         <ol className="scrollbar-thin max-h-[50vh] space-y-1 overflow-y-auto pr-1" aria-label="Audit log entries">
           {entries.map((entry) => {

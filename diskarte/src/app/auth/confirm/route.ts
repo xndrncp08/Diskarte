@@ -19,5 +19,5 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
     if (!error) return NextResponse.redirect(new URL(next, siteUrl));
   }
-  return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent("Nag-expire o invalid ang confirmation link.")}`, siteUrl));
+  return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent("That confirmation link is invalid or has expired.")}`, siteUrl));
 }

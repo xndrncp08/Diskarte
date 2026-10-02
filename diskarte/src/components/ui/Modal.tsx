@@ -6,6 +6,7 @@ import { useEffect, useEffectEvent, useId, useRef, type ReactNode } from "react"
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { InertWhenExiting } from "./InertWhenExiting";
+import { isTopOverlay, pushOverlay, removeOverlay } from "./overlay-stack";
 
 const FOCUSABLE = 'a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
@@ -29,12 +30,14 @@ export function Modal({ open, onClose, title, description, children, className, 
 
   useEffect(() => {
     if (!open) return;
+    const token = pushOverlay();
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const frame = requestAnimationFrame(() => {
       const first = panel.current?.querySelector<HTMLElement>("[data-autofocus]") ?? panel.current?.querySelector<HTMLElement>(FOCUSABLE);
       first?.focus();
     });
     const onKey = (e: KeyboardEvent) => {
+      if (!isTopOverlay(token)) return; // a dialog opened on top of this one handles its own keys
       if (e.key === "Escape") {
         e.stopPropagation();
         requestClose();
@@ -57,6 +60,7 @@ export function Modal({ open, onClose, title, description, children, className, 
     document.body.style.overflow = "hidden";
     return () => {
       cancelAnimationFrame(frame);
+      removeOverlay(token);
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = overflow;
       previouslyFocused?.focus?.();

@@ -34,7 +34,7 @@ export function AddServerDialog({ open, onClose, initialTab = "create" }: { open
         if (result.error) toast.error(result.error);
         return;
       }
-      toast.success("Bagong tambayan, bagong tropa! 🎉");
+      toast.success("Server created! 🎉");
       close();
       router.push(`/tambayan/${result.data.serverId}`);
       router.refresh();
@@ -51,7 +51,7 @@ export function AddServerDialog({ open, onClose, initialTab = "create" }: { open
         if (result.error) toast.error(result.error);
         return;
       }
-      toast.success("Welcome sa tambayan!");
+      toast.success("Welcome to the server!");
       close();
       router.push(`/tambayan/${result.data.serverId}`);
       router.refresh();
@@ -62,14 +62,14 @@ export function AddServerDialog({ open, onClose, initialTab = "create" }: { open
     <Modal
       open={open}
       onClose={close}
-      title={tab === "create" ? "Gumawa ng Tambayan" : "Sumali sa Tambayan"}
-      description="Ang tambayan mo ang bahay ng barkada — chat, voice at screen share."
+      title={tab === "create" ? "Create a server" : "Join a server"}
+      description="Your server is home base for your crew — chat, voice and screen share."
     >
       <div role="tablist" aria-label="Create or join" className="mb-5 grid grid-cols-2 gap-1 rounded-lg bg-black/40 p-1">
         {(
           [
-            ["create", "Gumawa", Sparkles],
-            ["join", "Sumali", Compass],
+            ["create", "Create", Sparkles],
+            ["join", "Join", Compass],
           ] as const
         ).map(([key, label, Icon]) => (
           <button
@@ -107,7 +107,7 @@ export function AddServerDialog({ open, onClose, initialTab = "create" }: { open
         {tab === "create" ? (
           <form onSubmit={submitCreate} className="space-y-4">
             <InputField
-              label="Pangalan ng tambayan"
+              label="Server name"
               name="name"
               required
               minLength={2}
@@ -121,27 +121,27 @@ export function AddServerDialog({ open, onClose, initialTab = "create" }: { open
               name="description"
               maxLength={280}
               rows={2}
-              placeholder="Tambayan ng mga ranked grinders"
+              placeholder="Home of the ranked grinders"
               error={errors.description}
             />
-            <p className="text-xs text-slate-500">May kasama nang #general, #chika, #lfg-valorant at dalawang voice channels.</p>
+            <p className="text-xs text-slate-500">Comes with #general, #chika, #lfg-valorant and two voice channels.</p>
             <Button type="submit" className="w-full" loading={pending}>
-              Gawin na!
+              Create server
             </Button>
           </form>
         ) : (
           <form onSubmit={submitJoin} className="space-y-4">
             <InputField
-              label="Invite link o code"
+              label="Invite link or code"
               name="invite"
               required
               placeholder="https://diskarte.app/invite/ABCD234XYZ"
-              hint="Humingi ng invite sa kaibigan mo."
+              hint="Ask a friend for an invite."
               error={errors.invite}
               data-autofocus
             />
             <Button type="submit" className="w-full" loading={pending}>
-              Sali na
+              Join
             </Button>
           </form>
         )}

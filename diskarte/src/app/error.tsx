@@ -17,9 +17,9 @@ export default function RootError({ error, reset }: { error: Error & { digest?: 
         <DiskarteLogo size={88} variant="mascot" />
         <p className="font-pixel text-xs text-sun">CONTINUE?</p>
         <h1 className="text-2xl font-extrabold text-white">May nangyaring aberya</h1>
-        <p className="max-w-sm text-slate-400">Baka masyadong mabilis ang mga request (rate limited) o may problema sa connection. Maghintay ng isang minuto at subukan ulit.</p>
+        <p className="max-w-sm text-slate-400">You may be sending requests too quickly (rate limited), or the connection dropped. Wait a minute and try again.</p>
         <button type="button" onClick={reset} className="rounded-lg bg-sun px-4 py-2 font-semibold text-abyss">
-          Subukan ulit
+          Try again
         </button>
       </div>
     </main>

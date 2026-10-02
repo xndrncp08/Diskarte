@@ -26,7 +26,7 @@ function CopyNumber({ label, number, className }: { label: string; number: strin
             setCopied(true);
             setTimeout(() => setCopied(false), 1500);
           } catch {
-            toast.error("Hindi ma-copy. Kopyahin na lang nang mano-mano.");
+            toast.error("Couldn't copy. Copy it manually instead.");
           }
         }}
         className="touch-target relative rounded-lg bg-black/30 p-2 hover:bg-black/50"
@@ -37,7 +37,7 @@ function CopyNumber({ label, number, className }: { label: string; number: strin
   );
 }
 
-/** "Suportahan ang tambayan": GCash/Maya details, boost level and the supporters wall. */
+/** "Support this server": GCash/Maya details, boost level and the supporters wall. */
 export function SupportDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { server, badges, members } = useServer();
   const boosters = members.filter((m) => badges.get(m.user_id)?.includes("booster")).length;
@@ -46,7 +46,7 @@ export function SupportDialog({ open, onClose }: { open: boolean; onClose: () =>
   const hasNumbers = Boolean(server.gcash_number || server.maya_number);
 
   return (
-    <Modal open={open} onClose={onClose} title={`Suportahan ang ${server.name}`} className="max-w-md">
+    <Modal open={open} onClose={onClose} title={`Support ${server.name}`} className="max-w-md">
       <div className="space-y-5" data-testid="support-dialog">
         <div className="rounded-xl border border-fuchsia-400/30 bg-fuchsia-500/10 p-3">
           <p className="flex items-center gap-2 font-pixel text-[10px] text-fuchsia-200">
@@ -57,7 +57,7 @@ export function SupportDialog({ open, onClose }: { open: boolean; onClose: () =>
           </div>
           <p className="mt-1.5 text-xs text-slate-300">
             {boosters} booster{boosters === 1 ? "" : "s"}
-            {next ? ` · ${next - boosters} pa para sa Level ${level + 1}` : " · MAX LEVEL!"}
+            {next ? ` · ${next - boosters} more for Level ${level + 1}` : " · MAX LEVEL!"}
           </p>
         </div>
 
@@ -67,15 +67,15 @@ export function SupportDialog({ open, onClose }: { open: boolean; onClose: () =>
             {server.maya_number && <CopyNumber label="Maya" number={server.maya_number} className="border-emerald-400/40 bg-emerald-500/10 text-emerald-100" />}
             {server.support_note && <p className="rounded-lg bg-white/5 p-3 text-sm text-slate-300">{server.support_note}</p>}
             <p className="text-xs text-slate-500">
-              Pagkatapos mag-send, i-message ang admins para sa badge mo. Walang automatic na payments sa Diskarte — diretso sa tambayan ang ambag mo.
+              After sending, message the admins to get your badge. Diskarte doesn&apos;t process payments — your contribution goes straight to the server.
             </p>
           </div>
         ) : (
-          <p className="rounded-xl border border-dashed border-white/10 p-4 text-center text-sm text-slate-400">Hindi pa naglalagay ng GCash/Maya ang admins ng tambayan na &apos;to.</p>
+          <p className="rounded-xl border border-dashed border-white/10 p-4 text-center text-sm text-slate-400">This server&apos;s admins haven&apos;t added GCash/Maya details yet.</p>
         )}
 
         <div>
-          <p className="mb-2 font-silk text-[11px] uppercase tracking-wider text-slate-400">Mga badge</p>
+          <p className="mb-2 font-silk text-[11px] uppercase tracking-wider text-slate-400">Badges</p>
           <ul className="space-y-1.5">
             {BADGE_KINDS.map((b) => (
               <li key={b} className="flex items-center gap-2 text-sm">
@@ -90,7 +90,7 @@ export function SupportDialog({ open, onClose }: { open: boolean; onClose: () =>
 
         {supporters.length > 0 && (
           <div>
-            <p className="mb-2 font-silk text-[11px] uppercase tracking-wider text-slate-400">Salamat, mga lodi! 💛</p>
+            <p className="mb-2 font-silk text-[11px] uppercase tracking-wider text-slate-400">Thank you for the support! 💛</p>
             <ul className="space-y-1">
               {supporters.map((m) => (
                 <li key={m.user_id} className="flex items-center justify-between gap-2 text-sm text-slate-200">

@@ -44,7 +44,7 @@ export async function requireProfile(nextPath = "/tambayan") {
   const profile = await getCurrentProfile();
   if (!profile) {
     // The on_auth_user_created trigger should always create one; recover by signing out.
-    redirect(`/login?error=${encodeURIComponent("Hindi mahanap ang profile mo. Mag-log in ulit.")}`);
+    redirect(`/login?error=${encodeURIComponent("We couldn't find your profile. Sign in again.")}`);
   }
   return { user, profile };
 }

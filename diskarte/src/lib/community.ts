@@ -11,9 +11,9 @@ export type ServerBadge = Tables<"server_badges">;
 // ---------------------------------------------------------------------------------------
 
 export const BADGES: Record<BadgeKind, { label: string; emoji: string; description: string; className: string }> = {
-  booster: { label: "Server Booster", emoji: "🚀", description: "Nag-boost ng tambayan", className: "border-fuchsia-400/40 bg-fuchsia-500/15 text-fuchsia-200" },
-  lodi_supporter: { label: "Lodi Supporter", emoji: "🏆", description: "Suportado ang tambayan buwan-buwan", className: "border-sun/50 bg-sun/15 text-sun" },
-  gcash_contributor: { label: "Gcash Contributor", emoji: "💙", description: "Nag-ambag via GCash / Maya", className: "border-sky-400/40 bg-sky-500/15 text-sky-200" },
+  booster: { label: "Server Booster", emoji: "🚀", description: "Boosted the server", className: "border-fuchsia-400/40 bg-fuchsia-500/15 text-fuchsia-200" },
+  lodi_supporter: { label: "Lodi Supporter", emoji: "🏆", description: "Supports the server monthly", className: "border-sun/50 bg-sun/15 text-sun" },
+  gcash_contributor: { label: "Gcash Contributor", emoji: "💙", description: "Donated via GCash / Maya", className: "border-sky-400/40 bg-sky-500/15 text-sky-200" },
 };
 
 export const BADGE_KINDS = Object.keys(BADGES) as BadgeKind[];
@@ -42,7 +42,7 @@ export const supportSettingsSchema = z.object({
   supportNote: z
     .string()
     .transform((v) => v.replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, "").trim())
-    .pipe(z.string().max(280, "Hanggang 280 characters lang")),
+    .pipe(z.string().max(280, "280 characters max")),
 });
 
 // ---------------------------------------------------------------------------------------
@@ -50,10 +50,10 @@ export const supportSettingsSchema = z.object({
 // ---------------------------------------------------------------------------------------
 
 export const AUTOMOD_CATEGORIES: Record<AutomodCategory, { label: string; description: string }> = {
-  spam: { label: "Spam & flooding", description: "Paulit-ulit na message, mass mentions, \"free nitro\" at get-rich-quick scams." },
-  phishing: { label: "Phishing links", description: "Pekeng GCash/Maya/bank/Discord/Steam links, IP loggers at lookalike domains." },
-  hate: { label: "Hate speech", description: "Slurs laban sa lahi, kasarian at kapansanan." },
-  explicit: { label: "Explicit content", description: "Porn sites at sexual na salita (English at Tagalog)." },
+  spam: { label: "Spam & flooding", description: "Repeated messages, mass mentions, \"free nitro\" and get-rich-quick scams." },
+  phishing: { label: "Phishing links", description: "Fake GCash/Maya/bank/Discord/Steam links, IP loggers and lookalike domains." },
+  hate: { label: "Hate speech", description: "Slurs targeting race, gender and disability." },
+  explicit: { label: "Explicit content", description: "Porn sites and sexual terms (English and Tagalog)." },
 };
 
 export const AUTOMOD_CATEGORY_KEYS = Object.keys(AUTOMOD_CATEGORIES) as AutomodCategory[];
@@ -64,7 +64,7 @@ export const automodSettingsSchema = z.object({
   customTerms: z
     .array(z.string())
     .transform((terms) => Array.from(new Set(terms.map((t) => t.trim().toLowerCase()).filter(Boolean))))
-    .pipe(z.array(z.string().min(2, "Min 2 characters bawat salita").max(60, "Hanggang 60 characters bawat salita")).max(100, "Hanggang 100 custom words lang")),
+    .pipe(z.array(z.string().min(2, "Min 2 characters bawat salita").max(60, "Hanggang 60 characters bawat salita")).max(100, "Up to 100 custom words")),
 });
 
 /** Parses the custom-terms textarea: one term per line or comma-separated. */
@@ -100,7 +100,7 @@ export function formatDuration(seconds: number) {
 // ---------------------------------------------------------------------------------------
 
 export const AUDIT_FILTERS: { value: string; label: string }[] = [
-  { value: "", label: "Lahat" },
+  { value: "", label: "All" },
   { value: "member.", label: "Members" },
   { value: "channel.", label: "Channels" },
   { value: "message.", label: "Messages" },
@@ -123,9 +123,9 @@ export function describeAudit(entry: Pick<AuditEntry, "action" | "actor_id" | "t
   const str = (v: Json | undefined) => (typeof v === "string" ? v : "");
   switch (entry.action) {
     case "member.join":
-      return `${target} joined the tambayan`;
+      return `${target} joined the server`;
     case "member.leave":
-      return `${target} left the tambayan`;
+      return `${target} left the server`;
     case "member.kick":
       return `${actor} kicked ${target}`;
     case "member.ban":
@@ -152,7 +152,7 @@ export function describeAudit(entry: Pick<AuditEntry, "action" | "actor_id" | "t
       return `Bantay-Bayan blocked a message from ${name(str(m.author_id))} (${AUTOMOD_CATEGORIES[str(m.category) as AutomodCategory]?.label ?? "custom words"})`;
     case "server.update": {
       const changed = Array.isArray(m.changed) ? m.changed.join(", ") : "settings";
-      return `${actor} updated the tambayan (${changed})`;
+      return `${actor} updated the server (${changed})`;
     }
     case "server.transfer":
       return `${actor} transferred ownership to ${target}`;
@@ -186,11 +186,11 @@ export const lfgSchema = z.object({
   game: z
     .string()
     .transform((v) => v.trim())
-    .pipe(z.string().min(1, "Anong laro?").max(48, "Hanggang 48 characters lang")),
+    .pipe(z.string().min(1, "Anong laro?").max(48, "48 characters max")),
   description: z
     .string()
     .transform((v) => v.replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, "").trim())
-    .pipe(z.string().max(200, "Hanggang 200 characters lang")),
+    .pipe(z.string().max(200, "200 characters max")),
   partySize: z.coerce.number().int().min(2).max(10),
   durationMinutes: z.coerce.number().int().min(15).max(240),
   voiceChannelId: z.union([z.literal(""), z.uuid()]).transform((v) => v || null),
@@ -212,31 +212,31 @@ export function minutesLeft(expiresAt: string, now = Date.now()) {
 // ---------------------------------------------------------------------------------------
 
 const COMMUNITY_ERRORS: Record<string, string> = {
-  BANNED: "Naka-ban ka sa tambayan na 'to.",
-  CANNOT_BAN_MEMBER: "Hindi mo pwedeng i-ban ang member na 'yan.",
-  SLOWMODE: "Slow mode — hinay-hinay lang.",
-  VERIFICATION_REQUIRED: "I-verify muna ang email o phone number mo bago mag-chat sa channel na 'to.",
-  AUTOMOD_BLOCKED: "Na-block ng Bantay-Bayan auto-mod ang message mo.",
-  INVALID_THREAD: "Hindi pwedeng mag-thread dito.",
-  LFG_FULL: "Puno na ang party!",
-  LFG_CLOSED: "Sarado na ang LFG beacon na 'yan.",
-  LFG_NOT_FOUND: "Hindi mahanap ang LFG beacon.",
-  INVALID_VOICE_CHANNEL: "Pumili ng voice channel sa tambayan na 'to.",
-  SOUNDBOARD_FULL: "Hanggang 24 sounds lang bawat tambayan.",
-  INVALID_CLIP_PATH: "May problema sa sound file. I-upload ulit.",
-  USER_NOT_FOUND: "Walang user na may ganyang username.",
-  CANNOT_FRIEND_SELF: "Hindi mo pwedeng i-add ang sarili mo. 😅",
-  TOO_MANY_REQUESTS: "Ang dami mo nang pending friend requests.",
-  REQUEST_NOT_FOUND: "Wala nang friend request na 'yan.",
-  DM_NOT_ALLOWED: "Friends lang ang pwedeng mag-DM sa isa't isa.",
-  INVALID_GROUP_SIZE: "Ang group DM ay 3 hanggang 10 tao.",
-  RATE_LIMITED: "Dahan-dahan lang, kabayan — masyadong mabilis mag-send.",
+  BANNED: "You're banned from this server.",
+  CANNOT_BAN_MEMBER: "You can't ban that member.",
+  SLOWMODE: "Slow mode is on — take it easy.",
+  VERIFICATION_REQUIRED: "Verify your email or phone number before chatting in this channel.",
+  AUTOMOD_BLOCKED: "Bantay-Bayan auto-mod blocked your message.",
+  INVALID_THREAD: "Threads aren't allowed here.",
+  LFG_FULL: "The party is full!",
+  LFG_CLOSED: "That LFG beacon is closed.",
+  LFG_NOT_FOUND: "Couldn't find that LFG beacon.",
+  INVALID_VOICE_CHANNEL: "Pick a voice channel in this server.",
+  SOUNDBOARD_FULL: "Up to 24 sounds per server.",
+  INVALID_CLIP_PATH: "Something's wrong with the sound file. Upload it again.",
+  USER_NOT_FOUND: "No user has that username.",
+  CANNOT_FRIEND_SELF: "You can't add yourself. 😅",
+  TOO_MANY_REQUESTS: "You have too many pending friend requests.",
+  REQUEST_NOT_FOUND: "That friend request no longer exists.",
+  DM_NOT_ALLOWED: "Only friends can DM each other.",
+  INVALID_GROUP_SIZE: "Group DMs have 3 to 10 people.",
+  RATE_LIMITED: "Slow down — you're sending too fast.",
 };
 
-export function communityError(message: string | undefined | null, fallback = "May nangyaring mali. Subukan ulit."): string {
+export function communityError(message: string | undefined | null, fallback = "Something went wrong. Try again."): string {
   if (!message) return fallback;
   const key = Object.keys(COMMUNITY_ERRORS).find((k) => message.includes(k));
   if (key) return COMMUNITY_ERRORS[key];
-  if (message.includes("row-level security") || message.includes("permission denied")) return "Wala kang permiso para dito.";
+  if (message.includes("row-level security") || message.includes("permission denied")) return "You don't have permission for this.";
   return fallback;
 }

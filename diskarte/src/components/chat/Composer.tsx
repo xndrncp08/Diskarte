@@ -102,7 +102,7 @@ export function Composer({
     (files: File[]) => {
       if (!serverId) return;
       const room = MAX_ATTACHMENTS - uploads.length;
-      if (files.length > room) toast.error(`Hanggang ${MAX_ATTACHMENTS} files lang bawat message.`);
+      if (files.length > room) toast.error(`Up to ${MAX_ATTACHMENTS} files per message.`);
       for (const file of files.slice(0, Math.max(0, room))) {
         const key = crypto.randomUUID();
         const preview = file.type.startsWith("image/") && file.type !== "image/svg+xml" ? URL.createObjectURL(file) : null;
@@ -132,7 +132,7 @@ export function Composer({
     const content = draft.trim();
     if ((!content && ready.length === 0) || busy || cooldown > 0) return;
     if (content.length > MESSAGE_MAX) {
-      toast.error(`Hanggang ${MESSAGE_MAX} characters lang.`);
+      toast.error(`${MESSAGE_MAX} characters max.`);
       return;
     }
     const previous = { draft, uploads, replyTo };
@@ -218,7 +218,7 @@ export function Composer({
     >
       {dragging && (
         <div className="pointer-events-none absolute inset-x-4 -top-24 bottom-6 z-20 flex items-center justify-center rounded-xl border-2 border-dashed border-sun bg-abyss/80 font-pixel text-[10px] text-sun">
-          I-DROP ANG FILES DITO
+          DROP FILES HERE
         </div>
       )}
       <div className="glass overflow-hidden rounded-xl transition-shadow focus-within:border-sun/50 focus-within:ring-2 focus-within:ring-sun/25">

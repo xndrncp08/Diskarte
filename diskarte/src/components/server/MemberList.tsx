@@ -1,8 +1,8 @@
 "use client";
 
 import { AnimatePresence } from "framer-motion";
-import { Ban, Crown, Shield, ShieldCheck, UserMinus } from "lucide-react";
-import { useEffect, useRef, useState, useTransition, type RefObject } from "react";
+import { Ban, BellRing, Crown, PictureInPicture2, Shield, ShieldCheck, UserMinus, UserRound } from "lucide-react";
+import { useContext, useEffect, useRef, useState, useTransition, type ReactNode, type RefObject } from "react";
 import { toast } from "sonner";
 import { banMemberAction, setBadgeAction } from "@/actions/moderation";
 import { kickMemberAction, setMemberRoleAction } from "@/actions/servers";
@@ -13,7 +13,10 @@ import { ProfileCard } from "@/components/profile/ProfileCard";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { Button } from "@/components/ui/Button";
 import { FloatingPortal, useFloating } from "@/components/ui/floating";
+import { FloatingWindow } from "@/components/ui/FloatingWindow";
 import { InertWhenExiting } from "@/components/ui/InertWhenExiting";
+import { CallContext } from "@/components/voice/CallProvider";
+import { useRinger } from "@/components/voice/IncomingCalls";
 import { BADGES, BADGE_KINDS } from "@/lib/community";
 import { visibleStatus, type PresencePayload } from "@/lib/presence";
 import { canManageMember, ROLE_LABEL, ROLE_RANK, type MemberWithProfile } from "@/lib/servers";
@@ -27,26 +30,22 @@ function RoleIcon({ role, owner }: { role: MemberRole; owner: boolean }) {
   return null;
 }
 
+/** Quick profile anchored beside the member row; dismissed by clicking outside or Escape. */
 function MemberPopover({
   member,
   presence,
   onClose,
+  onPopOut,
   anchor,
 }: {
   member: MemberWithProfile;
   presence: PresencePayload | undefined;
   onClose: () => void;
+  onPopOut: () => void;
   anchor: RefObject<HTMLButtonElement | null>;
 }) {
-  const { server, myRole, badges } = useServer();
-  const { me } = useMe();
-  const [pending, startTransition] = useTransition();
-  const [banning, setBanning] = useState(false);
-  const [reason, setReason] = useState("");
-  const memberBadges = badges.get(member.user_id) ?? [];
   const ref = useRef<HTMLDivElement>(null);
   const { style, side } = useFloating(true, anchor, ref, { side: "left", align: "start", offset: 12 });
-  const perms = canManageMember({ actorRole: myRole, actorId: me.id, target: member, ownerId: server.owner_id });
 
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
@@ -63,51 +62,6 @@ function MemberPopover({
     };
   }, [onClose, anchor]);
 
-  function setRole(role: MemberRole) {
-    startTransition(async () => {
-      const result = await setMemberRoleAction({ serverId: server.id, userId: member.user_id, role });
-      if (result.ok) toast.success(`${member.profile.display_name} is now ${ROLE_LABEL[role]}.`);
-      else toast.error(result.error ?? "Hindi napalitan ang role.");
-    });
-  }
-
-  function toggleBadge(badge: BadgeKind) {
-    const on = !memberBadges.includes(badge);
-    startTransition(async () => {
-      const result = await setBadgeAction({ serverId: server.id, userId: member.user_id, badge, on });
-      if (result.ok) toast.success(on ? `${BADGES[badge].emoji} ${BADGES[badge].label} para kay ${member.profile.display_name}!` : `Inalis ang ${BADGES[badge].label}.`);
-      else toast.error(result.error ?? "Hindi na-update ang badge.");
-    });
-  }
-
-  function ban() {
-    startTransition(async () => {
-      const result = await banMemberAction({ serverId: server.id, userId: member.user_id, reason });
-      if (result.ok) {
-        toast.success(`Na-ban si ${member.profile.display_name}.`);
-        onClose();
-      } else toast.error(result.error ?? "Hindi na-ban.");
-    });
-  }
-
-  function kick() {
-    startTransition(async () => {
-      const result = await kickMemberAction({ serverId: server.id, userId: member.user_id });
-      if (result.ok) {
-        toast.success(`Na-kick si ${member.profile.display_name}.`);
-        onClose();
-      } else toast.error(result.error ?? "Hindi na-kick.");
-    });
-  }
-
-  const status = visibleStatus(presence);
-  const profile = {
-    ...member.profile,
-    status: status === "offline" ? ("invisible" as const) : status,
-    custom_status: presence?.custom_status ?? member.profile.custom_status,
-    custom_status_emoji: presence?.custom_status_emoji ?? member.profile.custom_status_emoji,
-  };
-
   return (
     <InertWhenExiting
       ref={ref}
@@ -122,12 +76,115 @@ function MemberPopover({
       transition={{ duration: 0.15 }}
       className="z-50"
     >
+      <MemberProfileCard
+        member={member}
+        presence={presence}
+        onDone={onClose}
+        action={
+          <button
+            type="button"
+            onClick={onPopOut}
+            aria-label="Open in a window"
+            title="Open in a window"
+            className="flex size-8 items-center justify-center rounded-lg bg-black/50 text-slate-200 backdrop-blur transition-colors hover:bg-black/70 hover:text-white pointer-coarse:size-11"
+          >
+            <PictureInPicture2 className="size-4" aria-hidden />
+          </button>
+        }
+      />
+    </InertWhenExiting>
+  );
+}
+
+/** A member's profile plus the moderation tools the viewer may use (role, badges, kick, ban). */
+function MemberProfileCard({
+  member,
+  presence,
+  onDone,
+  action,
+  className,
+}: {
+  member: MemberWithProfile;
+  presence: PresencePayload | undefined;
+  /** Called after a kick or ban (the profile no longer applies). */
+  onDone: () => void;
+  /** Overlaid on the banner's top-right corner. */
+  action?: ReactNode;
+  className?: string;
+}) {
+  const { server, myRole, badges } = useServer();
+  const { me } = useMe();
+  const [pending, startTransition] = useTransition();
+  const [banning, setBanning] = useState(false);
+  const [reason, setReason] = useState("");
+  const memberBadges = badges.get(member.user_id) ?? [];
+  const perms = canManageMember({ actorRole: myRole, actorId: me.id, target: member, ownerId: server.owner_id });
+  // In a voice channel of this server? Then you can ring this member to join you.
+  const call = useContext(CallContext);
+  const ringer = useRinger();
+  const ringChannel =
+    call && call.status === "connected" && call.target && call.target.kind !== "dm" && call.target.serverId === server.id && member.user_id !== me.id ? call.target : null;
+
+  function setRole(role: MemberRole) {
+    startTransition(async () => {
+      const result = await setMemberRoleAction({ serverId: server.id, userId: member.user_id, role });
+      if (result.ok) toast.success(`${member.profile.display_name} is now ${ROLE_LABEL[role]}.`);
+      else toast.error(result.error ?? "Couldn't change the role.");
+    });
+  }
+
+  function toggleBadge(badge: BadgeKind) {
+    const on = !memberBadges.includes(badge);
+    startTransition(async () => {
+      const result = await setBadgeAction({ serverId: server.id, userId: member.user_id, badge, on });
+      if (result.ok) toast.success(on ? `${BADGES[badge].emoji} ${BADGES[badge].label} given to ${member.profile.display_name}!` : `Removed ${BADGES[badge].label}.`);
+      else toast.error(result.error ?? "Couldn't update the badge.");
+    });
+  }
+
+  function ban() {
+    startTransition(async () => {
+      const result = await banMemberAction({ serverId: server.id, userId: member.user_id, reason });
+      if (result.ok) {
+        toast.success(`Banned ${member.profile.display_name}.`);
+        onDone();
+      } else toast.error(result.error ?? "Couldn't ban.");
+    });
+  }
+
+  function kick() {
+    startTransition(async () => {
+      const result = await kickMemberAction({ serverId: server.id, userId: member.user_id });
+      if (result.ok) {
+        toast.success(`Kicked ${member.profile.display_name}.`);
+        onDone();
+      } else toast.error(result.error ?? "Couldn't kick.");
+    });
+  }
+
+  const status = visibleStatus(presence);
+  const profile = {
+    ...member.profile,
+    status: status === "offline" ? ("invisible" as const) : status,
+    custom_status: presence?.custom_status ?? member.profile.custom_status,
+    custom_status_emoji: presence?.custom_status_emoji ?? member.profile.custom_status_emoji,
+  };
+
+  return (
+    <div className="relative">
+      {action && <div className="absolute right-2 top-2 z-10">{action}</div>}
       <ProfileCard
+        className={className}
         profile={profile}
         role={member.user_id === server.owner_id ? "Owner" : ROLE_LABEL[member.role]}
         footer={
           <>
             <Badges badges={memberBadges} className="mt-3" />
+            {ringChannel && ringer && (
+              <Button size="sm" className="mt-3 w-full" onClick={() => void ringer.ringToVoice(member.user_id, member.nickname ?? member.profile.display_name)}>
+                <BellRing className="size-4" aria-hidden /> Ring into {ringChannel.channelName}
+              </Button>
+            )}
             {myRole === "admin" && (
               <div className="mt-3 border-t border-white/10 pt-3">
                 <p className="mb-1.5 font-silk text-[10px] uppercase tracking-wider text-slate-400">Supporter badges</p>
@@ -172,7 +229,7 @@ function MemberPopover({
                 )}
                 {perms.kick && (
                   <Button variant="danger" size="sm" onClick={kick} loading={pending} className="w-full">
-                    <UserMinus className="size-4" aria-hidden /> Kick from tambayan
+                    <UserMinus className="size-4" aria-hidden /> Kick from server
                   </Button>
                 )}
                 {perms.kick &&
@@ -200,7 +257,7 @@ function MemberPopover({
                     </div>
                   ) : (
                     <Button variant="ghost" size="sm" onClick={() => setBanning(true)} className="w-full text-red-300 hover:text-red-200">
-                      <Ban className="size-4" aria-hidden /> Ban from tambayan
+                      <Ban className="size-4" aria-hidden /> Ban from server
                     </Button>
                   ))}
               </div>
@@ -208,13 +265,14 @@ function MemberPopover({
           </>
         }
       />
-    </InertWhenExiting>
+    </div>
   );
 }
 
 function MemberRow({ member, presence, dim }: { member: MemberWithProfile; presence: PresencePayload | undefined; dim: boolean }) {
   const { server, badges } = useServer();
   const [open, setOpen] = useState(false);
+  const [windowOpen, setWindowOpen] = useState(false);
   const row = useRef<HTMLButtonElement>(null);
   const status = visibleStatus(presence);
   const customStatus = presence?.custom_status ?? member.profile.custom_status;
@@ -248,8 +306,35 @@ function MemberRow({ member, presence, dim }: { member: MemberWithProfile; prese
         </span>
       </button>
       <FloatingPortal>
-        <AnimatePresence>{open && <MemberPopover member={member} presence={presence} anchor={row} onClose={() => setOpen(false)} />}</AnimatePresence>
+        <AnimatePresence>
+          {open && (
+            <MemberPopover
+              member={member}
+              presence={presence}
+              anchor={row}
+              onClose={() => setOpen(false)}
+              onPopOut={() => {
+                setOpen(false);
+                setWindowOpen(true);
+              }}
+            />
+          )}
+        </AnimatePresence>
       </FloatingPortal>
+      {/* Popped out: a draggable window that stays open while you chat or browse channels. */}
+      <FloatingWindow
+        id={`profile-${member.user_id}`}
+        remember={false}
+        open={windowOpen}
+        onClose={() => setWindowOpen(false)}
+        anchor={row}
+        title={`${member.nickname ?? member.profile.display_name} · Profile`}
+        icon={<UserRound aria-hidden />}
+        className="w-80"
+        bodyClassName="p-3"
+      >
+        <MemberProfileCard member={member} presence={presence} onDone={() => setWindowOpen(false)} className="w-full" />
+      </FloatingWindow>
     </li>
   );
 }
@@ -273,7 +358,7 @@ export function MemberList() {
   if (offline.length) groups.push({ label: `Offline — ${offline.length}`, list: offline, dim: true });
 
   return (
-    <aside aria-label="Members" className="glass scrollbar-thin h-full w-60 shrink-0 overflow-y-auto border-y-0 border-r-0 px-2 py-4" data-testid="member-list">
+    <aside aria-label="Members" className="glass scrollbar-thin h-full w-60 shrink-0 overflow-y-auto px-2 py-4 max-lg:border-y-0 max-lg:border-r-0 lg:float-card" data-testid="member-list">
       {groups.map((group) => (
         <section key={group.label} className="mb-4">
           <h3 className="mb-1 px-2 font-silk text-[11px] uppercase tracking-wider text-slate-400">{group.label}</h3>

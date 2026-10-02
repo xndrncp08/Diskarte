@@ -27,7 +27,7 @@ import { Timestamp } from "./Timestamp";
 
 const NO_REACTIONS: Reaction[] = [];
 
-export const VERIFY_NOTICE = "Verified accounts lang ang pwedeng mag-chat dito. I-confirm muna ang email o phone number mo.";
+export const VERIFY_NOTICE = "Only verified accounts can chat here. Confirm your email or phone number first.";
 
 export function ChatView({ channel: initialChannel, initial }: { channel: Channel; initial: { messages: MessageWithAuthor[]; reactions: Reaction[]; hasMore: boolean } }) {
   const { me, verified } = useMe();
@@ -98,7 +98,7 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
   const jumpTo = useCallback((id: string) => {
     // The target may be outside the rendered window: scroll the virtualizer there, then flash it.
     if (!listRef.current?.scrollToKey(id)) {
-      toast("Nasa mas lumang history ang message — mag-scroll pataas para i-load.");
+      toast("That message is further back — scroll up to load it.");
       return;
     }
     setPinsOpen(false);
@@ -138,9 +138,9 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
   }
 
   return (
-    <div className="flex min-w-0 flex-1">
+    <div className="flex min-w-0 flex-1 md:gap-3">
       <motion.section
-        className="relative flex min-w-0 flex-1 flex-col"
+        className="relative flex min-w-0 flex-1 flex-col md:overflow-hidden md:float-card"
         aria-label={`#${channel.name}`}
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
@@ -191,8 +191,8 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
                 <span className="mb-3 flex size-16 items-center justify-center rounded-full bg-white/10">
                   <Hash className="size-9 text-white" aria-hidden />
                 </span>
-                <h2 className="text-3xl font-extrabold text-white">Welcome sa #{channel.name}!</h2>
-                <p className="text-slate-400">{channel.topic || "Ito ang simula ng channel na 'to."}</p>
+                <h2 className="text-3xl font-extrabold text-white">Welcome to #{channel.name}!</h2>
+                <p className="text-slate-400">{channel.topic || "This is the start of the channel."}</p>
               </div>
             )
           }
@@ -235,7 +235,7 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
             className="absolute bottom-24 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-sun px-3 py-1.5 text-xs font-bold text-abyss shadow-lg"
           >
             <ArrowDown className="size-3.5" aria-hidden />
-            {unseen > 0 ? `${unseen} bagong message${unseen === 1 ? "" : "s"}` : "Jump to present"}
+            {unseen > 0 ? `${unseen} new message${unseen === 1 ? "" : "s"}` : "Jump to present"}
           </button>
         )}
 
@@ -276,11 +276,11 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
           if (confirmDelete) void chat.remove(confirmDelete.id);
           setConfirmDelete(null);
         }}
-        title="I-delete ang message?"
+        title="Delete message?"
         confirmLabel="Delete"
       >
         <span className="line-clamp-3 block rounded-lg bg-black/40 p-2 text-slate-300">{confirmDelete?.content || (confirmDelete?.sticker ? "(sticker)" : "(attachment)")}</span>
-        <span className="mt-2 block text-xs">Tip: Shift + click sa delete para i-skip ang confirmation.</span>
+        <span className="mt-2 block text-xs">Tip: Shift + click delete to skip this confirmation.</span>
       </ConfirmDialog>
     </div>
   );

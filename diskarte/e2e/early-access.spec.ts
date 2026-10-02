@@ -104,19 +104,19 @@ test.describe("early access portal", () => {
     // 5) The email's button lands on the Diskarte app's login, greeting them with the email pre-filled;
     //    the first login goes straight to "change your temporary password", then onboarding.
     await page.goto(loginLink!);
-    await expect(page.getByTestId("early-access-welcome")).toContainText("Maligayang pagdating sa Diskarte!");
+    await expect(page.getByTestId("early-access-welcome")).toContainText("Welcome to Diskarte!");
     await expect(page.getByLabel("Email")).toHaveValue(applicant.email);
     await page.getByLabel("Password", { exact: true }).fill(password!);
-    await page.getByRole("button", { name: "Pasok!" }).click();
+    await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page).toHaveURL(/\/reset-password\?first=1$/);
-    await expect(page.getByRole("heading", { name: "Palitan muna ang temporary password mo" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Change your temporary password" })).toBeVisible();
     await page.goto("/tambayan");
     await expect(page).toHaveURL(/\/reset-password\?first=1$/); // no way around it
-    await page.getByLabel("Bagong password").fill(applicant.password);
-    await page.getByLabel("Ulitin ang password").fill(applicant.password);
-    await page.getByRole("button", { name: "Palitan ang password" }).click();
+    await page.getByLabel("New password").fill(applicant.password);
+    await page.getByLabel("Confirm new password").fill(applicant.password);
+    await page.getByRole("button", { name: "Change password" }).click();
     await expect(page).toHaveURL(/\/onboarding$/);
-    await expect(page.getByRole("heading", { name: new RegExp(`Buuin ang profile mo, ${applicant.displayName}`) })).toBeVisible();
+    await expect(page.getByRole("heading", { name: new RegExp(`Set up your profile, ${applicant.displayName}`) })).toBeVisible();
 
     // 6) The dashboard now lists the application as approved.
     await adminPage.goto(`${PORTAL_URL}/admin?status=approved&q=${encodeURIComponent(applicant.email)}`);

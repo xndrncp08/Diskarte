@@ -1,6 +1,6 @@
 "use client";
 
-import { AtSign, LogOut, Menu as MenuIcon, Phone, PhoneOff } from "lucide-react";
+import { AtSign, LogOut, Menu as MenuIcon, Phone, PhoneOff, Video } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -16,6 +16,7 @@ import { useShellUI } from "@/components/shell/ShellUI";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useCall } from "@/components/voice/CallProvider";
+import { useRinger } from "@/components/voice/IncomingCalls";
 import { StageSkeleton } from "@/components/voice/StageSkeleton";
 import { useDirectChat } from "@/hooks/useDirectChat";
 import type { ChatMessage } from "@/hooks/useChannelChat";
@@ -67,6 +68,7 @@ export function DmView({
 
   const byId = new Map(chat.messages.map((m) => [m.id, m]));
   const names = new Map(participants.map((p) => [p.id, p.display_name]));
+  const ringer = useRinger();
   const actions: MessageActions = {
     onReply: setReplyTo,
     onEdit: (id, content) => chat.edit(id, content),
@@ -77,14 +79,18 @@ export function DmView({
     nameOf: (id) => names.get(id) ?? "Someone",
   };
 
-  function startCall() {
-    void call.join({ kind: "dm", serverId: "", serverName: "Direct Message", channelId: conversation.id, channelName: title });
+  /** Join the DM's call room and ring everyone else in the conversation (their incoming-call pop-up). */
+  async function startCall(video = false) {
+    const joining = call.join({ kind: "dm", serverId: "", serverName: "Direct Message", channelId: conversation.id, channelName: title });
+    void ringer?.ringDm(conversation.id, video);
+    await joining;
+    if (video) await call.toggleCamera();
   }
 
   function leave() {
     startLeave(async () => {
       const result = await leaveDmAction({ conversationId: conversation.id });
-      if (!result.ok) return void toast.error(result.error ?? "Hindi naka-leave.");
+      if (!result.ok) return void toast.error(result.error ?? "Couldn't leave.");
       if (inCall) call.leave();
       await reloadConversations();
       router.replace("/tambayan");
@@ -94,7 +100,7 @@ export function DmView({
   return (
     <>
       <HomeSidebar servers={servers} />
-      <main className="flex min-w-0 flex-1 flex-col" aria-label={title}>
+      <main className="flex min-w-0 flex-1 flex-col md:overflow-hidden md:float-card" aria-label={title}>
         <header className="flex h-12 shrink-0 items-center gap-2 border-b border-white/5 bg-black/20 px-3 backdrop-blur-md">
           <button type="button" onClick={() => setNavOpen(true)} aria-label="Open navigation" className="touch-target relative rounded-md p-1.5 text-slate-300 hover:bg-white/10 md:hidden">
             <MenuIcon className="size-5" aria-hidden />
@@ -110,9 +116,14 @@ export function DmView({
                 <PhoneOff className="size-5" aria-hidden />
               </button>
             ) : (
-              <button type="button" onClick={startCall} aria-label="Start voice call" disabled={!canSend} className="touch-target relative rounded-md p-1.5 text-slate-300 hover:bg-white/10 disabled:opacity-40">
-                <Phone className="size-5" aria-hidden />
-              </button>
+              <>
+                <button type="button" onClick={() => void startCall()} aria-label="Start voice call" disabled={!canSend} className="touch-target relative rounded-md p-1.5 text-slate-300 hover:bg-white/10 disabled:opacity-40">
+                  <Phone className="size-5" aria-hidden />
+                </button>
+                <button type="button" onClick={() => void startCall(true)} aria-label="Start video call" disabled={!canSend} className="touch-target relative rounded-md p-1.5 text-slate-300 hover:bg-white/10 disabled:opacity-40">
+                  <Video className="size-5" aria-hidden />
+                </button>
+              </>
             )}
             {conversation.kind === "group" && (
               <button type="button" onClick={() => setConfirmLeave(true)} aria-label="Leave group" className="touch-target relative rounded-md p-1.5 text-slate-300 hover:bg-white/10">
@@ -140,7 +151,7 @@ export function DmView({
               <ConversationAvatar conversation={{ id: conversation.id, kind: conversation.kind, name: conversation.name, ownerId: conversation.owner_id, lastMessageAt: "", lastReadAt: "", others }} size={72} />
               <h2 className="mt-3 text-2xl font-extrabold text-white">{title}</h2>
               <p className="text-slate-400">
-                {conversation.kind === "direct" ? `Simula ito ng DMs ninyo ni @${others[0]?.username ?? "?"}.` : `Welcome sa group DM! ${participants.length} kayo rito.`}
+                {conversation.kind === "direct" ? `This is the start of your DMs with @${others[0]?.username ?? "?"}.` : `Welcome to the group DM! There are ${participants.length} of you here.`}
               </p>
             </div>
           )}
@@ -193,10 +204,10 @@ export function DmView({
           typingNames={[]}
           onTyping={() => undefined}
           onStopTyping={() => undefined}
-          locked={canSend ? null : "Hindi na kayo friends (o may nag-block), kaya hindi ka na makakapag-message dito."}
+          locked={canSend ? null : "You're no longer friends (or someone blocked the other), so you can't message here anymore."}
         />
       </main>
-      <ConfirmDialog open={confirmLeave} onClose={() => setConfirmLeave(false)} onConfirm={leave} pending={leaving} title={`Umalis sa ${title}?`} confirmLabel="Leave">
+      <ConfirmDialog open={confirmLeave} onClose={() => setConfirmLeave(false)} onConfirm={leave} pending={leaving} title={`Leave ${title}?`} confirmLabel="Leave">
         Hindi ka na makakatanggap ng messages mula sa group na &apos;to.
       </ConfirmDialog>
     </>

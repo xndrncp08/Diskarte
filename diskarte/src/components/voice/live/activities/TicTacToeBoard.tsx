@@ -6,11 +6,11 @@ import { playSfx } from "@/lib/sfx";
 import { cn } from "@/lib/utils";
 
 const MOVE_ERRORS: Record<string, string> = {
-  NOT_A_PLAYER: "Nanonood ka lang — sumali muna.",
-  NOT_YOUR_TURN: "Hindi mo pa turn!",
-  CELL_TAKEN: "May laman na 'yan.",
-  GAME_OVER: "Tapos na ang laban.",
-  WAITING_FOR_OPPONENT: "Hinihintay pa ang kalaban.",
+  NOT_A_PLAYER: "You're spectating — join first.",
+  NOT_YOUR_TURN: "It's not your turn yet!",
+  CELL_TAKEN: "That square is taken.",
+  GAME_OVER: "The match is over.",
+  WAITING_FOR_OPPONENT: "Waiting for an opponent.",
 };
 
 function MarkGlyph({ mark }: { mark: Mark }) {
@@ -43,10 +43,10 @@ export function TicTacToeBoard({ game, me, nameOf, onChange }: { game: TicTacToe
   const status = game.winner
     ? game.winner === "draw"
       ? "Tabla! 🤝"
-      : `Panalo si ${nameOf(game.players[game.winner])}! 🏆`
+      : `${nameOf(game.players[game.winner])} wins! 🏆`
     : waiting
-      ? "Hinihintay ang kalaban…"
-      : `Turn ni ${nameOf(game.players[game.turn])} (${game.turn})`;
+      ? "Waiting for an opponent…"
+      : `${nameOf(game.players[game.turn])}'s turn (${game.turn})`;
 
   return (
     <div className="flex flex-col items-center gap-3" data-testid="tictactoe">
@@ -83,7 +83,7 @@ export function TicTacToeBoard({ game, me, nameOf, onChange }: { game: TicTacToe
       </div>
       {waiting && !mine && (
         <button type="button" onClick={() => onChange(joinTicTacToe(game, me))} className="rounded-lg bg-sky-400 px-3 py-1.5 text-sm font-bold text-abyss hover:bg-sky-300">
-          Laban! Sumali bilang O
+          Play! Join as O
         </button>
       )}
       {game.winner && mine && (

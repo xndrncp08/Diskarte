@@ -176,7 +176,7 @@ export function useChannelChat(
         setMessages((prev) => [...older.filter((o) => !prev.some((p) => p.id === o.id)), ...prev]);
       }
     } catch {
-      toast.error("Hindi ma-load ang mas lumang messages.");
+      toast.error("Couldn't load older messages.");
     } finally {
       setLoadingOlder(false);
     }
@@ -236,7 +236,7 @@ export function useChannelChat(
         return "sent";
       }
       playSfx("error");
-      toast.error(result.error ?? "Hindi na-send.");
+      toast.error(result.error ?? "Couldn't send.");
       if (result.code === "SLOWMODE" || result.code === "AUTOMOD_BLOCKED" || result.code === "VERIFICATION_REQUIRED") {
         if (result.code === "SLOWMODE") setCooldownUntil(Date.now() + (result.retryAfter ?? slowmode) * 1000);
         setMessages((prev) => prev.filter((m) => m.id !== entry.id));
@@ -326,7 +326,7 @@ export function useChannelChat(
       const result = await editMessageAction({ messageId: id, content });
       if (!result.ok) {
         setMessages((prev) => prev.map((m) => (m.id === id ? before : m)));
-        toast.error(result.error ?? "Hindi na-edit.");
+        toast.error(result.error ?? "Couldn't edit.");
         return false;
       }
       return true;
@@ -341,7 +341,7 @@ export function useChannelChat(
       const result = await deleteMessageAction({ messageId: id });
       if (!result.ok) {
         setMessages(before);
-        toast.error(result.error ?? "Hindi na-delete.");
+        toast.error(result.error ?? "Couldn't delete.");
         return false;
       }
       return true;
@@ -354,10 +354,10 @@ export function useChannelChat(
     const result = await setPinnedAction({ messageId: id, pinned });
     if (!result.ok) {
       setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, pinned: !pinned } : m)));
-      toast.error(result.error ?? "Hindi na-pin.");
+      toast.error(result.error ?? "Couldn't pin.");
       return false;
     }
-    toast.success(pinned ? "Na-pin ang message 📌" : "Na-unpin ang message.");
+    toast.success(pinned ? "Message pinned 📌" : "Message unpinned.");
     return true;
   }, []);
 
@@ -380,7 +380,7 @@ export function useChannelChat(
       const result = await toggleReactionAction({ messageId, emoji, on: !mine });
       if (!result.ok) {
         optimistic(mine);
-        toast.error(result.error ?? "Hindi na-react.");
+        toast.error(result.error ?? "Couldn't add the reaction.");
       }
     },
     [reactions, me.id, channelId],

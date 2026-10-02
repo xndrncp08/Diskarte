@@ -13,13 +13,13 @@ import { createClient } from "@/lib/supabase/server";
 import type { ActionResult } from "./servers";
 
 function messageError(message: string | undefined) {
-  if (message?.includes("RATE_LIMITED")) return "Dahan-dahan lang, kabayan — masyadong mabilis mag-send.";
-  if (message?.includes("NOT_A_TEXT_CHANNEL")) return "Hindi pwedeng mag-message sa voice channel.";
-  if (message?.includes("INVALID_ATTACHMENT")) return "May problema sa attachment. I-upload ulit.";
-  if (message?.includes("ONLY_AUTHOR_CAN_EDIT")) return "Ikaw lang ang pwedeng mag-edit ng message mo.";
-  if (message?.includes("ONLY_MODERATORS_CAN_PIN")) return "Moderators lang ang pwedeng mag-pin.";
-  if (message?.includes("TOO_MANY_REACTIONS")) return "Sobrang dami nang reactions dito.";
-  if (message?.includes("row-level security")) return "Wala kang permiso para dito.";
+  if (message?.includes("RATE_LIMITED")) return "Slow down — you're sending too fast.";
+  if (message?.includes("NOT_A_TEXT_CHANNEL")) return "You can't send messages in a voice channel.";
+  if (message?.includes("INVALID_ATTACHMENT")) return "Something's wrong with an attachment. Upload it again.";
+  if (message?.includes("ONLY_AUTHOR_CAN_EDIT")) return "Only you can edit your messages.";
+  if (message?.includes("ONLY_MODERATORS_CAN_PIN")) return "Only moderators can pin messages.";
+  if (message?.includes("TOO_MANY_REACTIONS")) return "This message has too many reactions.";
+  if (message?.includes("row-level security")) return "You don't have permission for this.";
   return communityError(message);
 }
 
@@ -46,7 +46,7 @@ export async function sendMessageAction(input: z.input<typeof sendSchema>): Prom
   const parsed = sendSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid message" };
   const { id, channelId, content, replyToId, threadId, sticker, attachments } = parsed.data;
-  if (!content && attachments.length === 0 && !sticker) return { ok: false, error: "Walang laman ang message." };
+  if (!content && attachments.length === 0 && !sticker) return { ok: false, error: "The message is empty." };
 
   const supabase = await createClient();
   if (attachments.length > 0) {
@@ -75,7 +75,7 @@ export async function sendMessageAction(input: z.input<typeof sendSchema>): Prom
   if (error.code === "PGRST116") return { ok: false, error: communityError("AUTOMOD_BLOCKED"), code: "AUTOMOD_BLOCKED" };
   if (error?.message?.includes("SLOWMODE")) {
     const retryAfter = Math.max(1, Number.parseInt(error.details ?? "", 10) || 5);
-    return { ok: false, error: `Slow mode — makakapag-send ulit in ${retryAfter}s.`, code: "SLOWMODE", retryAfter };
+    return { ok: false, error: `Slow mode — you can send again in ${retryAfter}s.`, code: "SLOWMODE", retryAfter };
   }
   if (error?.message?.includes("VERIFICATION_REQUIRED")) return { ok: false, error: messageError(error.message), code: "VERIFICATION_REQUIRED" };
   return { ok: false, error: messageError(error?.message) };
@@ -90,8 +90,8 @@ export async function editMessageAction(input: { messageId: string; content: str
 
   const supabase = await createClient();
   const { data: existing } = await supabase.from("messages").select("attachments, sticker").eq("id", input.messageId).maybeSingle();
-  if (!existing) return { ok: false, error: "Hindi mahanap ang message." };
-  if (!content.data && parseAttachments(existing.attachments).length === 0 && !existing.sticker) return { ok: false, error: "Hindi pwedeng walang laman — i-delete na lang." };
+  if (!existing) return { ok: false, error: "Couldn't find that message." };
+  if (!content.data && parseAttachments(existing.attachments).length === 0 && !existing.sticker) return { ok: false, error: "A message can't be empty — delete it instead." };
 
   const { data, error } = await supabase.from("messages").update({ content: content.data }).eq("id", input.messageId).select("id");
   if (error || !data?.length) return { ok: false, error: messageError(error?.message ?? "ONLY_AUTHOR_CAN_EDIT") };

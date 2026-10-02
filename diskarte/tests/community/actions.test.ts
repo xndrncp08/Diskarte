@@ -77,7 +77,7 @@ describe("moderation actions", () => {
   it("reports RLS refusals (non-admins) as a friendly error", async () => {
     db.tableResult = () => ({ data: [], error: null });
     const result = await moderation.updateSupportAction({ serverId: SERVER, gcashNumber: "0917 123 4567", mayaNumber: "", supportNote: "" });
-    expect(result).toMatchObject({ ok: false, error: expect.stringMatching(/Admins/) });
+    expect(result).toMatchObject({ ok: false, error: expect.stringMatching(/Only admins/) });
     expect(tableCall("servers", "update")).toMatchObject({ gcash_number: "09171234567", maya_number: null });
   });
 
@@ -85,7 +85,7 @@ describe("moderation actions", () => {
     expect(await moderation.banMemberAction({ serverId: SERVER, userId: TARGET, reason: "  spam links  " })).toEqual({ ok: true });
     expect(rpcCall("ban_member")).toEqual({ p_server_id: SERVER, p_user_id: TARGET, p_reason: "spam links" });
     db.rpcResult = () => ({ data: null, error: { message: "CANNOT_BAN_MEMBER" } });
-    expect(await moderation.banMemberAction({ serverId: SERVER, userId: TARGET })).toMatchObject({ ok: false, error: expect.stringMatching(/i-ban/) });
+    expect(await moderation.banMemberAction({ serverId: SERVER, userId: TARGET })).toMatchObject({ ok: false, error: expect.stringMatching(/can.t ban/) });
     expect((await moderation.banMemberAction({ serverId: "nope", userId: TARGET })).ok).toBe(false);
   });
 
@@ -123,7 +123,7 @@ describe("LFG actions", () => {
     db.rpcResult = () => ({ data: CHANNEL, error: null });
     expect(await lfg.joinLfgAction({ beaconId: MSG })).toEqual({ ok: true, data: { voiceChannelId: CHANNEL } });
     db.rpcResult = () => ({ data: null, error: { message: "LFG_FULL" } });
-    expect(await lfg.joinLfgAction({ beaconId: MSG })).toMatchObject({ ok: false, error: "Puno na ang party!" });
+    expect(await lfg.joinLfgAction({ beaconId: MSG })).toMatchObject({ ok: false, error: "The party is full!" });
   });
 });
 
@@ -134,7 +134,7 @@ describe("social actions", () => {
     expect(rpcCall("send_friend_request")).toEqual({ p_username: "juan.tamad" });
     expect((await social.sendFriendRequestAction({ username: "no spaces!" })).fieldErrors?.username).toBeTruthy();
     db.rpcResult = () => ({ data: null, error: { message: "USER_NOT_FOUND" } });
-    expect((await social.sendFriendRequestAction({ username: "ghost" })).fieldErrors?.username).toMatch(/Walang user/);
+    expect((await social.sendFriendRequestAction({ username: "ghost" })).fieldErrors?.username).toMatch(/No user/);
   });
 
   it("validates group DM size before calling the database", async () => {

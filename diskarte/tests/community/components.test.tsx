@@ -208,8 +208,8 @@ describe("composer & message rendering", () => {
   });
 
   it("replaces the input with a notice in verification-gated channels", () => {
-    render(<Composer {...base} locked="Verified accounts lang" />, { wrapper: wrap() });
-    expect(screen.getByTestId("composer-locked")).toHaveTextContent("Verified accounts lang");
+    render(<Composer {...base} locked="Verified accounts only" />, { wrapper: wrap() });
+    expect(screen.getByTestId("composer-locked")).toHaveTextContent("Verified accounts only");
     expect(screen.queryByTestId("composer")).toBeNull();
   });
 
@@ -254,7 +254,7 @@ describe("composer & message rendering", () => {
       />,
     );
     expect(screen.getByRole("img", { name: "Sticker: Sana All" })).toBeInTheDocument();
-    expect(screen.getByText(/Naka-queue/)).toBeInTheDocument();
+    expect(screen.getByText(/Queued/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onDiscard).toHaveBeenCalledWith("s1");
   });
@@ -308,7 +308,7 @@ describe("Bantay-Bayan settings", () => {
     expect(screen.getAllByRole("tab")).toHaveLength(6);
     await user.click(screen.getByRole("switch", { name: "Explicit content" }));
     await user.type(screen.getByLabelText("Custom blocked words"), "scam{Enter}benta account");
-    await user.click(screen.getByRole("button", { name: "I-save" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(moderationActions.updateAutomodAction).toHaveBeenCalledWith({
         serverId: SERVER_ID,
@@ -326,7 +326,7 @@ describe("Bantay-Bayan settings", () => {
     const card = await screen.findByRole("dialog", { name: "Juan's profile" });
     await user.click(within(card).getByRole("button", { name: /Server Booster/ }));
     await waitFor(() => expect(moderationActions.setBadgeAction).toHaveBeenCalledWith({ serverId: SERVER_ID, userId: MEMBER_ID, badge: "booster", on: true }));
-    await user.click(within(card).getByRole("button", { name: /Ban from tambayan/ }));
+    await user.click(within(card).getByRole("button", { name: /Ban from server/ }));
     await user.type(within(card).getByLabelText(/Reason/), "scam links");
     await user.click(within(card).getByRole("button", { name: "Confirm ban" }));
     await waitFor(() => expect(moderationActions.banMemberAction).toHaveBeenCalledWith({ serverId: SERVER_ID, userId: MEMBER_ID, reason: "scam links" }));
@@ -369,7 +369,7 @@ describe("voice activities", () => {
     await user.click(screen.getByRole("gridcell", { name: "Row 2, column 2: empty" }));
     expect(onChange.mock.calls[0][0].board[4]).toBe("X");
     rerender(<TicTacToeBoard game={onChange.mock.calls[0][0]} me="me" nameOf={(id) => id ?? "—"} onChange={onChange} />);
-    expect(screen.getByRole("status")).toHaveTextContent("Turn ni them (O)");
+    expect(screen.getByRole("status")).toHaveTextContent("them's turn (O)");
     expect(screen.getByRole("gridcell", { name: "Row 1, column 1: empty" })).toBeDisabled();
   });
 });

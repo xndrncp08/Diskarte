@@ -3,7 +3,7 @@ import { DiskarteWordmark } from "@/components/brand/DiskarteWordmark";
 import { ChangePasswordForm } from "@/components/profile/ChangePasswordForm";
 import { requireProfile } from "@/lib/auth";
 
-export const metadata: Metadata = { title: "Bagong password" };
+export const metadata: Metadata = { title: "New password" };
 
 /**
  * Landing page for the password-recovery email (the callback established a recovery session), and
@@ -22,15 +22,15 @@ export default async function ResetPasswordPage({ searchParams }: PageProps<"/re
           {first ? (
             <>
               <p className="font-pixel text-[9px] text-sun">EARLY ACCESS · UNANG LOGIN</p>
-              <h1 className="mt-2 text-2xl font-extrabold text-white">Palitan muna ang temporary password mo</h1>
+              <h1 className="mt-2 text-2xl font-extrabold text-white">Change your temporary password</h1>
               <p className="mt-1 text-sm text-slate-400">
-                Maligayang pagdating! Para sa seguridad mo, gumawa ng sariling password bago pumasok sa tambayan.
+                Welcome! For your security, create your own password before you continue.
               </p>
             </>
           ) : (
             <>
-              <h1 className="text-2xl font-extrabold text-white">Gumawa ng bagong password</h1>
-              <p className="mt-1 text-sm text-slate-400">Pagkatapos nito, dadalhin ka namin pabalik sa tambayan.</p>
+              <h1 className="text-2xl font-extrabold text-white">Create a new password</h1>
+              <p className="mt-1 text-sm text-slate-400">After this, we&apos;ll take you back to your servers.</p>
             </>
           )}
         </div>

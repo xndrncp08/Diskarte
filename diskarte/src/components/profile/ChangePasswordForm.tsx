@@ -12,7 +12,7 @@ export function ChangePasswordForm({ redirectTo }: { redirectTo?: string } = {})
 
   useEffect(() => {
     if (state.ok) {
-      toast.success("Na-update na ang password mo.");
+      toast.success("Your password was updated.");
       formRef.current?.reset();
     }
   }, [state]);
@@ -21,21 +21,21 @@ export function ChangePasswordForm({ redirectTo }: { redirectTo?: string } = {})
     <form ref={formRef} action={action} className="grid max-w-md gap-4">
       {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
       <InputField
-        label="Bagong password"
+        label="New password"
         name="password"
         type="password"
         autoComplete="new-password"
         error={state.fieldErrors?.password}
-        hint="10+ characters na may uppercase, lowercase, number at symbol"
+        hint="10+ characters with uppercase, lowercase, a number and a symbol"
       />
-      <InputField label="Ulitin ang password" name="confirm" type="password" autoComplete="new-password" error={state.fieldErrors?.confirm} />
+      <InputField label="Confirm new password" name="confirm" type="password" autoComplete="new-password" error={state.fieldErrors?.confirm} />
       {state.error && (
         <p role="alert" className="text-sm text-red-300">
           {state.error}
         </p>
       )}
       <Button type="submit" variant="secondary" loading={pending} className="justify-self-start">
-        Palitan ang password
+        Change password
       </Button>
     </form>
   );

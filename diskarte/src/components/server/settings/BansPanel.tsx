@@ -36,10 +36,10 @@ export function BansPanel() {
     startTransition(async () => {
       const result = await unbanMemberAction({ serverId: server.id, userId });
       if (!result.ok) {
-        toast.error(result.error ?? "Hindi na-unban.");
+        toast.error(result.error ?? "Couldn't unban.");
         return;
       }
-      toast.success(`Na-unban si ${name(userId)}. Kailangan niya ng invite para makabalik.`);
+      toast.success(`Unbanned ${name(userId)}. They'll need an invite to rejoin.`);
       setBans((prev) => prev?.filter((b) => b.user_id !== userId) ?? null);
     });
   }
@@ -52,7 +52,7 @@ export function BansPanel() {
     );
   }
   if (bans.length === 0) {
-    return <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-slate-400">Walang naka-ban. Payapa ang tambayan. ✌️</p>;
+    return <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-slate-400">No bans. All peaceful here. ✌️</p>;
   }
   return (
     <ul className="space-y-2" data-testid="bans-list">

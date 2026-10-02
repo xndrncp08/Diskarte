@@ -72,3 +72,12 @@ export function isNetworkError(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err ?? "");
   return /failed to fetch|networkerror|network request failed|load failed|fetch failed|ERR_INTERNET_DISCONNECTED/i.test(message);
 }
+
+/** Forget this account's unsent messages (sign-out on a shared device, account deletion). */
+export function clearOutbox() {
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    // Storage blocked: nothing was persisted either.
+  }
+}

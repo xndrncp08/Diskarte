@@ -12,6 +12,7 @@ const PREVIEWS: { cue: SfxName; label: string }[] = [
   { cue: "message", label: "Message" },
   { cue: "mute", label: "Mute" },
   { cue: "unmute", label: "Unmute" },
+  { cue: "ring", label: "Ring" },
 ];
 
 /** On/off switch, master volume and previews for the 8-bit sound effects. */
@@ -74,7 +75,7 @@ export function SoundSettings({ className }: { className?: string }) {
       </div>
 
       <div>
-        <p className="mb-1.5 font-silk text-[11px] uppercase tracking-wider text-slate-400">Subukan</p>
+        <p className="mb-1.5 font-silk text-[11px] uppercase tracking-wider text-slate-400">Test</p>
         <div className="flex flex-wrap gap-1.5">
           {PREVIEWS.map(({ cue, label }) => (
             <button

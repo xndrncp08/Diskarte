@@ -37,7 +37,7 @@ export function EmojiPickerPanel({ onPick }: { onPick: (value: string) => void }
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Hanapin: petmalu, lodi…"
+          placeholder="Search: petmalu, lodi…"
           aria-label="Search reactions"
           className="mb-2 h-8 w-full rounded-md border border-white/10 bg-black/40 px-2 text-sm outline-none focus:border-sun/60"
           autoFocus

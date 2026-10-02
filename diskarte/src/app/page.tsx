@@ -7,12 +7,12 @@ import { PixelStatus } from "@/components/retro/PixelStatus";
 import { SignalBars } from "@/components/retro/SignalBars";
 
 const FEATURES = [
-  { icon: MessagesSquare, title: "Real-time chika", body: "Instant messages with Markdown, code blocks, pins, edits at Pinoy reactions." },
-  { icon: Headphones, title: "Voice na walang lag", body: "LiveKit WebRTC rooms with noise suppression, active speaker glow at call HUD." },
-  { icon: MonitorUp, title: "Screen share & video", body: "I-share ang ranked game mo o ang thesis slides — adaptive grid for the whole barkada." },
-  { icon: Users, title: "Tambayan servers", body: "Invite codes, categorized channels, and Admin / Moderator / Member roles." },
-  { icon: ShieldCheck, title: "Secure by default", body: "Row-Level Security sa bawat table, CSP nonces, CSRF guards at rate limiting." },
-  { icon: Code2, title: "Open-source forever", body: "Self-host on free tiers. Walang shutdown-shutdown — kasi atin ito." },
+  { icon: MessagesSquare, title: "Real-time chat", body: "Instant messages with Markdown, code blocks, pins, edits at Pinoy reactions." },
+  { icon: Headphones, title: "Lag-free voice", body: "LiveKit WebRTC rooms with noise suppression, active speaker glow at call HUD." },
+  { icon: MonitorUp, title: "Screen share & video", body: "Share your ranked game or your thesis slides — an adaptive grid for the whole crew." },
+  { icon: Users, title: "Community servers", body: "Invite codes, categorized channels, and Admin / Moderator / Member roles." },
+  { icon: ShieldCheck, title: "Secure by default", body: "Row-Level Security on every table, CSP nonces, CSRF guards and rate limiting." },
+  { icon: Code2, title: "Open-source forever", body: "Self-host on free tiers. Walang shutdown-shutdown — because it's ours." },
 ];
 
 const PREVIEW_CHANNELS = ["general", "chika", "lfg-valorant"];
@@ -32,7 +32,7 @@ export default function LandingPage() {
             href="/signup"
             className="rounded-lg bg-sun px-4 py-2 text-sm font-semibold text-abyss shadow-[0_3px_0_0_#b45309] transition-transform active:translate-y-[3px] active:shadow-none pointer-coarse:py-3"
           >
-            Sali na!
+            Sign up
           </Link>
         </nav>
       </header>
@@ -47,18 +47,18 @@ export default function LandingPage() {
             <span className="mt-2 block text-sun">Ang Bagong Istambayan ng Bayan.</span>
           </h1>
           <p className="mt-6 max-w-xl text-pretty text-lg text-slate-300">
-            Nag-shutdown man ang iba, may <strong className="text-white">diskarte</strong> tayo. Chat, voice, video at screen share para
-            sa gamers, estudyante at buong komunidad — open-source, libre, at gawang Pinoy.
+            Even if others shut down, we&apos;ve got <strong className="text-white">diskarte</strong>. Chat, voice, video and screen share for
+            gamers, students and whole communities — open-source, free, and made in the Philippines.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Link
               href="/signup"
               className="inline-flex h-12 items-center gap-2 rounded-xl bg-sun px-6 text-base font-bold text-abyss shadow-[0_4px_0_0_#b45309] transition-transform active:translate-y-[4px] active:shadow-none"
             >
-              <Gamepad2 className="size-5" aria-hidden /> Gumawa ng account
+              <Gamepad2 className="size-5" aria-hidden /> Create an account
             </Link>
             <Link href="/login" className="glass inline-flex h-12 items-center rounded-xl px-6 text-base font-semibold text-white transition-colors hover:bg-white/10">
-              May account na ako
+              I already have an account
             </Link>
             <a
               href="https://github.com/xndrncp08/Diskorte"

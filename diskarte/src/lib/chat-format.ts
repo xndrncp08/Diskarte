@@ -46,13 +46,13 @@ export function formatTime(iso: string, timeZone?: string) {
   return fmt("time", timeZone).format(new Date(iso));
 }
 
-/** "Ngayong araw 3:14 PM", "Kahapon 9:02 AM", or a full date. */
+/** "Today 3:14 PM", "Yesterday 9:02 AM", or a full date. */
 export function formatTimestamp(iso: string, now = new Date(), timeZone?: string) {
   const date = new Date(iso);
   const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const key = dayKey(date, timeZone);
-  if (key === dayKey(now, timeZone)) return `Ngayong araw ${formatTime(iso, timeZone)}`;
-  if (key === dayKey(yesterday, timeZone)) return `Kahapon ${formatTime(iso, timeZone)}`;
+  if (key === dayKey(now, timeZone)) return `Today ${formatTime(iso, timeZone)}`;
+  if (key === dayKey(yesterday, timeZone)) return `Yesterday ${formatTime(iso, timeZone)}`;
   return `${fmt("day", timeZone).format(date)} ${formatTime(iso, timeZone)}`;
 }
 

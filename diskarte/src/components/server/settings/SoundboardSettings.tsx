@@ -18,10 +18,10 @@ const MAX_CLIPS = 24;
 
 /** Validates an MP3 before upload: type, size, magic bytes. */
 export async function validateClip(file: File): Promise<string | null> {
-  if (file.type !== "audio/mpeg" && !file.name.toLowerCase().endsWith(".mp3")) return "MP3 lang ang pwede.";
-  if (file.size > MAX_CLIP_BYTES) return "Hanggang 1 MB lang bawat sound.";
+  if (file.type !== "audio/mpeg" && !file.name.toLowerCase().endsWith(".mp3")) return "Only MP3 files are allowed.";
+  if (file.size > MAX_CLIP_BYTES) return "Each sound can be up to 1 MB.";
   const head = new Uint8Array(await file.slice(0, 16).arrayBuffer());
-  if (!sniffMatches("audio/mpeg", head)) return "Mukhang hindi totoong MP3 ang file.";
+  if (!sniffMatches("audio/mpeg", head)) return "That file doesn't look like a real MP3.";
   return null;
 }
 
@@ -54,7 +54,7 @@ export function SoundboardSettings() {
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
-    if (!file) return setErrors({ file: "Pumili ng MP3." });
+    if (!file) return setErrors({ file: "Choose an MP3." });
     const problem = await validateClip(file);
     if (problem) return setErrors({ file: problem });
     setUploading(true);
@@ -62,27 +62,27 @@ export function SoundboardSettings() {
     const { error } = await supabase.storage.from("soundboard").upload(path, file, { contentType: "audio/mpeg", upsert: false });
     if (error) {
       setUploading(false);
-      toast.error("Hindi na-upload ang sound.");
+      toast.error("Couldn't upload the sound.");
       return;
     }
     const result = await addSoundboardClipAction({ serverId: server.id, name: String(data.get("name") ?? ""), emoji: String(data.get("emoji") ?? ""), path });
     setUploading(false);
     if (!result.ok) {
       setErrors(result.fieldErrors ?? {});
-      toast.error(result.error ?? "Hindi na-save ang sound.");
+      toast.error(result.error ?? "Couldn't save the sound.");
       return;
     }
     setErrors({});
     setFile(null);
     form.reset();
-    toast.success("Bagong sound sa soundboard! 🔊");
+    toast.success("New sound added to the soundboard! 🔊");
     void load();
   }
 
   function remove(clip: SoundboardClip) {
     startTransition(async () => {
       const result = await removeSoundboardClipAction({ clipId: clip.id });
-      if (!result.ok) return void toast.error(result.error ?? "Hindi naalis.");
+      if (!result.ok) return void toast.error(result.error ?? "Couldn't remove.");
       setClips((prev) => prev.filter((c) => c.id !== clip.id));
     });
   }
@@ -115,10 +115,10 @@ export function SoundboardSettings() {
 
       <section>
         <p className="mb-2 font-silk text-[11px] uppercase tracking-wider text-slate-400">
-          Tambayan sounds ({clips.length}/{MAX_CLIPS})
+          Server sounds ({clips.length}/{MAX_CLIPS})
         </p>
         {clips.length === 0 ? (
-          <p className="text-sm text-slate-500">Wala pang custom sounds.</p>
+          <p className="text-sm text-slate-500">No custom sounds yet.</p>
         ) : (
           <ul className="space-y-1.5">
             {clips.map((clip) => (
@@ -141,9 +141,9 @@ export function SoundboardSettings() {
 
       {clips.length < MAX_CLIPS && (
         <form onSubmit={upload} className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-3">
-          <p className="text-sm font-semibold text-white">Mag-upload ng sound</p>
+          <p className="text-sm font-semibold text-white">Upload a sound</p>
           <div className="grid grid-cols-[1fr_5rem] gap-2">
-            <InputField label="Pangalan" name="name" maxLength={32} required placeholder="Ayos!" error={errors.name} />
+            <InputField label="Name" name="name" maxLength={32} required placeholder="Done!" error={errors.name} />
             <InputField label="Emoji" name="emoji" maxLength={16} placeholder="🔊" />
           </div>
           <input
@@ -159,9 +159,9 @@ export function SoundboardSettings() {
           />
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="secondary" size="sm" onClick={() => fileInput.current?.click()}>
-              <Upload className="size-4" aria-hidden /> {file ? file.name : "Pumili ng MP3"}
+              <Upload className="size-4" aria-hidden /> {file ? file.name : "Choose an MP3"}
             </Button>
-            <span className="text-xs text-slate-500">MP3, hanggang 1 MB; puputulin sa {MAX_CLIP_MS / 1000}s.</span>
+            <span className="text-xs text-slate-500">MP3, up to 1 MB; trimmed to {MAX_CLIP_MS / 1000}s.</span>
           </div>
           {errors.file && (
             <p role="alert" className="text-xs text-red-300">

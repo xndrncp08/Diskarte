@@ -29,11 +29,11 @@ export function AutomodSettings() {
       const result = await updateAutomodAction({ serverId: server.id, enabled, categories, customTerms: parseTermList(terms) });
       if (!result.ok) {
         setError(result.error);
-        toast.error(result.error ?? "Hindi na-save.");
+        toast.error(result.error ?? "Couldn't save.");
         return;
       }
       setError(undefined);
-      toast.success("Na-save ang Bantay-Bayan settings. 🛡️");
+      toast.success("Bantay-Bayan settings saved. 🛡️");
     });
   }
 
@@ -42,11 +42,11 @@ export function AutomodSettings() {
       <div className="flex items-start gap-3 rounded-xl border border-sun/30 bg-sun/5 p-3">
         <ShieldCheck className="mt-0.5 size-5 shrink-0 text-sun" aria-hidden />
         <p className="text-sm text-slate-300">
-          Awtomatikong bina-block ng <strong className="text-white">Bantay-Bayan</strong> ang messages na tumatama sa filters bago pa makita ng iba. Exempt ang
-          moderators at admins, at naka-log ang bawat block sa Audit Log.
+          <strong className="text-white">Bantay-Bayan</strong> automatically blocks messages that hit a filter before anyone else sees them. Moderators
+          and admins are exempt, and every block is recorded in the Audit Log.
         </p>
       </div>
-      <Switch checked={enabled} onChange={setEnabled} label="I-enable ang auto-mod" hint="Patayin para i-pause ang lahat ng filters." />
+      <Switch checked={enabled} onChange={setEnabled} label="Enable auto-mod" hint="Turn off to pause every filter." />
       <fieldset disabled={!enabled} className="space-y-3 disabled:opacity-50">
         <legend className="mb-2 font-silk text-[11px] uppercase tracking-wider text-slate-400">Filters</legend>
         {AUTOMOD_CATEGORY_KEYS.map((key) => (
@@ -61,7 +61,7 @@ export function AutomodSettings() {
         ))}
         <TextareaField
           label="Custom blocked words"
-          hint="Isang salita o phrase bawat linya (o comma-separated). Hindi case-sensitive; kasama ang leetspeak tulad ng '0' para sa 'o'."
+          hint="One word or phrase per line (or comma-separated). Case-insensitive; catches leetspeak like '0' for 'o'."
           value={terms}
           onChange={(e) => setTerms(e.target.value)}
           rows={4}
@@ -71,7 +71,7 @@ export function AutomodSettings() {
         />
       </fieldset>
       <Button onClick={save} loading={pending}>
-        I-save
+        Save
       </Button>
     </div>
   );

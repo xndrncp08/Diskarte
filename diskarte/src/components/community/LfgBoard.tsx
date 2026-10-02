@@ -25,9 +25,9 @@ type PartyRow = Tables<"lfg_party_members">;
 
 const DURATIONS = [
   { value: 30, label: "30 min" },
-  { value: 60, label: "1 oras" },
-  { value: 120, label: "2 oras" },
-  { value: 240, label: "4 oras" },
+  { value: 60, label: "1 hour" },
+  { value: 120, label: "2 hours" },
+  { value: 240, label: "4 hours" },
 ];
 
 /** Live beacons + party rosters for this tambayan (initial fetch, then Realtime). */
@@ -97,10 +97,10 @@ export function LfgBoard() {
   function joinParty(beacon: LfgBeacon) {
     startTransition(async () => {
       const result = await joinLfgAction({ beaconId: beacon.id });
-      if (!result.ok) return void toast.error(result.error ?? "Hindi naka-join.");
+      if (!result.ok) return void toast.error(result.error ?? "Couldn't join.");
       setParty((prev) => (prev.some((p) => p.beacon_id === beacon.id && p.user_id === me.id) ? prev : [...prev, { beacon_id: beacon.id, server_id: server.id, user_id: me.id, joined_at: new Date().toISOString() }]));
       const voice = channels.find((c) => c.id === result.data?.voiceChannelId);
-      toast.success(`Nasa party ka na para sa ${beacon.game}! 🎮`);
+      toast.success(`You're in the ${beacon.game} party! 🎮`);
       if (voice) {
         void call.join({ serverId: server.id, serverName: server.name, channelId: voice.id, channelName: voice.name });
         router.push(`/tambayan/${server.id}/${voice.id}`);
@@ -111,7 +111,7 @@ export function LfgBoard() {
   function leaveParty(beacon: LfgBeacon) {
     startTransition(async () => {
       const result = await leaveLfgAction({ beaconId: beacon.id });
-      if (!result.ok) return void toast.error(result.error ?? "May mali.");
+      if (!result.ok) return void toast.error(result.error ?? "Something went wrong.");
       setParty((prev) => prev.filter((p) => !(p.beacon_id === beacon.id && p.user_id === me.id)));
       void reload();
     });
@@ -120,13 +120,13 @@ export function LfgBoard() {
   function close(beacon: LfgBeacon) {
     startTransition(async () => {
       const result = await closeLfgAction({ beaconId: beacon.id });
-      if (!result.ok) return void toast.error(result.error ?? "Hindi naisara.");
+      if (!result.ok) return void toast.error(result.error ?? "Couldn't close.");
       void reload();
     });
   }
 
   return (
-    <motion.section className="flex min-w-0 flex-1 flex-col" aria-label="LFG Board" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
+    <motion.section className="flex min-w-0 flex-1 flex-col md:overflow-hidden md:float-card" aria-label="LFG Board" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-white/5 bg-black/20 px-3 backdrop-blur-md">
         <button type="button" onClick={() => setNavOpen(true)} aria-label="Open navigation" className="touch-target relative rounded-md p-1.5 text-slate-300 hover:bg-white/10 md:hidden">
           <MenuIcon className="size-5" aria-hidden />
@@ -135,7 +135,7 @@ export function LfgBoard() {
         <h1 className="truncate font-bold text-white" data-testid="channel-title">
           LFG Board
         </h1>
-        <p className="hidden truncate text-sm text-slate-400 sm:block">Maghanap ng ka-squad — 1 click lang para sumali.</p>
+        <p className="hidden truncate text-sm text-slate-400 sm:block">Find a squad — one click to join.</p>
         <Button size="sm" className="ml-auto" onClick={() => setCreating(true)} data-testid="new-beacon">
           <Plus className="size-4" aria-hidden /> Beacon
         </Button>
@@ -151,10 +151,10 @@ export function LfgBoard() {
         ) : live.length === 0 ? (
           <div className="mx-auto mt-16 max-w-sm text-center">
             <p className="font-pixel text-[10px] text-sun">NO SIGNAL</p>
-            <p className="mt-3 text-lg font-bold text-white">Walang naka-LFG ngayon.</p>
-            <p className="mt-1 text-sm text-slate-400">Magpa-beacon at hintayin ang tropa!</p>
+            <p className="mt-3 text-lg font-bold text-white">Nobody is looking for a group right now.</p>
+            <p className="mt-1 text-sm text-slate-400">Start a beacon and wait for your squad!</p>
             <Button className="mt-5" onClick={() => setCreating(true)}>
-              <Radio className="size-4" aria-hidden /> Magpa-beacon
+              <Radio className="size-4" aria-hidden /> Start a beacon
             </Button>
           </div>
         ) : (
@@ -209,7 +209,7 @@ export function LfgBoard() {
                               router.push(`/tambayan/${server.id}/${voice.id}`);
                             }}
                           >
-                            <Volume2 className="size-4" aria-hidden /> Pumunta sa voice
+                            <Volume2 className="size-4" aria-hidden /> Go to voice
                           </Button>
                         )}
                         {beacon.author_id !== me.id && (
@@ -220,7 +220,7 @@ export function LfgBoard() {
                       </>
                     ) : (
                       <Button size="sm" onClick={() => joinParty(beacon)} disabled={full || pending} data-testid="join-party">
-                        {full ? "Puno na" : "Join Party"}
+                        {full ? "Full" : "Join Party"}
                       </Button>
                     )}
                     {canClose && (
@@ -236,7 +236,7 @@ export function LfgBoard() {
         )}
       </div>
 
-      <Modal open={creating} onClose={() => setCreating(false)} title="Magpa-LFG beacon">
+      <Modal open={creating} onClose={() => setCreating(false)} title="Start an LFG beacon">
         <BeaconForm
           voiceChannels={voiceChannels}
           onDone={() => {
@@ -279,13 +279,13 @@ function BeaconForm({ voiceChannels, onDone }: { voiceChannels: { id: string; na
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <InputField label="Laro" name="game" list="lfg-games" required maxLength={48} placeholder="Valorant" data-autofocus error={errors.game} />
+      <InputField label="Game" name="game" list="lfg-games" required maxLength={48} placeholder="Valorant" data-autofocus error={errors.game} />
       <datalist id="lfg-games">
         {LFG_GAMES.map((g) => (
           <option key={g} value={g} />
         ))}
       </datalist>
-      <TextareaField label="Details (optional)" name="description" maxLength={200} rows={2} placeholder="Ranked, Gold+ lang. Chill lang, walang toxic." error={errors.description} />
+      <TextareaField label="Details (optional)" name="description" maxLength={200} rows={2} placeholder="Ranked, Gold+ only. Chill, no toxicity." error={errors.description} />
       <div>
         <p id="party-size" className="mb-1.5 font-silk text-[11px] uppercase tracking-wider text-slate-300">
           Party size: {size}
@@ -296,7 +296,7 @@ function BeaconForm({ voiceChannels, onDone }: { voiceChannels: { id: string; na
         <label className="block space-y-1.5">
           <span className="block font-silk text-[11px] uppercase tracking-wider text-slate-300">Voice channel</span>
           <select name="voice" defaultValue={voiceChannels[0]?.id ?? ""} className="h-10 w-full rounded-lg border border-white/10 bg-black/40 px-2 text-sm text-slate-100">
-            <option value="">Wala</option>
+            <option value="">None</option>
             {voiceChannels.map((c) => (
               <option key={c.id} value={c.id}>
                 🔊 {c.name}
@@ -316,7 +316,7 @@ function BeaconForm({ voiceChannels, onDone }: { voiceChannels: { id: string; na
         </label>
       </div>
       <Button type="submit" loading={pending} className="w-full">
-        <Radio className="size-4" aria-hidden /> I-broadcast ang beacon
+        <Radio className="size-4" aria-hidden /> Broadcast beacon
       </Button>
     </form>
   );

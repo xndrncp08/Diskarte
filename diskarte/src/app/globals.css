@@ -78,6 +78,21 @@ body {
   border: 1px solid rgb(255 255 255 / 0.1);
 }
 
+/*
+ * Floating dashboard card: every desktop column (micro-dock, sidebars, chat, member list) is a
+ * rounded, frosted panel hovering over the ambient backdrop instead of a rigid full-height column.
+ */
+@utility float-card {
+  background-color: rgb(15 23 42 / 0.6);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 1.5rem;
+  box-shadow:
+    0 1px 0 0 rgb(255 255 255 / 0.06) inset,
+    0 24px 48px -24px rgb(0 0 0 / 0.75);
+}
+
 @utility glass-strong {
   background-color: rgb(2 6 23 / 0.72);
   backdrop-filter: blur(20px) saturate(160%);

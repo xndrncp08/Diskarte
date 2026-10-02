@@ -1,7 +1,7 @@
-import { LogOut, ShieldAlert } from "lucide-react";
-import { signOutAction } from "@/app/(auth)/actions";
 import { ChangePasswordForm } from "@/components/profile/ChangePasswordForm";
+import { DangerZone } from "@/components/profile/DangerZone";
 import { LowDataToggle } from "@/components/profile/LowDataToggle";
+import { SignOutButton } from "@/components/profile/SignOutButton";
 import { SoundSettings } from "@/components/profile/SoundSettings";
 
 export interface AccountInfo {
@@ -16,7 +16,7 @@ export function signInMethods(appMetadata: { provider?: string; providers?: stri
 }
 
 /**
- * Account details, password, 8-bit sounds, data saver and sessions. Shared by the /settings/account
+ * Account details, password, 8-bit sounds, data saver, sessions and the danger zone. Shared by the /settings/account
  * page and the in-app Settings dialog (which keeps an active voice call connected).
  */
 export function AccountSettings({ account, username, createdAt }: { account: AccountInfo; username: string; createdAt: string }) {
@@ -65,24 +65,16 @@ export function AccountSettings({ account, username, createdAt }: { account: Acc
       <section className="glass rounded-2xl p-5">
         <h2 className="mb-1 font-pixel text-[10px] text-sun">SESSIONS</h2>
         <p className="mb-4 text-sm text-slate-400">
-          Sessions are short-lived JWTs refreshed on every request. Nawala ang phone mo? Mag-log out sa lahat ng devices para i-revoke ang
-          lahat ng refresh tokens.
+          Sessions are short-lived JWTs refreshed on every request. Lost your phone? Sign out of every device to revoke all
+          refresh tokens.
         </p>
         <div className="flex flex-wrap gap-3">
-          <form action={signOutAction}>
-            <input type="hidden" name="scope" value="local" />
-            <button type="submit" className="inline-flex h-10 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 text-sm font-semibold hover:bg-white/10">
-              <LogOut className="size-4" aria-hidden /> Log out dito
-            </button>
-          </form>
-          <form action={signOutAction}>
-            <input type="hidden" name="scope" value="global" />
-            <button type="submit" className="inline-flex h-10 items-center gap-2 rounded-lg bg-red-500/90 px-4 text-sm font-semibold text-white hover:bg-red-500">
-              <ShieldAlert className="size-4" aria-hidden /> Log out sa lahat ng devices
-            </button>
-          </form>
+          <SignOutButton />
+          <SignOutButton scope="global" />
         </div>
       </section>
+
+      <DangerZone username={username} />
     </div>
   );
 }

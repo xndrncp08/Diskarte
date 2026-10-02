@@ -35,8 +35,8 @@ export const BANNER_PRESET_KEYS = Object.keys(BANNER_PRESETS) as BannerPreset[];
 export const STATUS_TRIGGERS = [
   { emoji: "🍜", text: "Nagluto ng Canton" },
   { emoji: "😴", text: "AFK / Tulog" },
-  { emoji: "🎮", text: "LFG" },
-  { emoji: "📚", text: "Nag-aaral (wag istorbohin)" },
+  { emoji: "🎮", text: "LFG / Pa-carry" },
+  { emoji: "📚", text: "Nag-aaral pa boffum" },
   { emoji: "🚌", text: "Nasa jeep, mahina signal" },
   { emoji: "🍚", text: "Kumakain, brb" },
   { emoji: "☕", text: "Kape muna" },
@@ -66,7 +66,7 @@ export const usernameSchema = z
   .string()
   .trim()
   .toLowerCase()
-  .regex(/^[a-z0-9_.]{3,32}$/, "3–32 characters: letters, numbers, underscore o tuldok lang.");
+  .regex(/^[a-z0-9_.]{3,32}$/, "3–32 characters: letters, numbers, underscores or periods only.");
 
 /** Strip ASCII control characters (keeps newlines out of single-line fields). */
 export function stripControl(value: string, allowNewlines = false) {
@@ -100,11 +100,11 @@ export const profileUpdateSchema = z.object({
   displayName: z
     .string()
     .transform((v) => stripControl(v).trim())
-    .pipe(z.string().min(1, "Ano'ng itatawag namin sa'yo?").max(32, "Hanggang 32 characters lang")),
+    .pipe(z.string().min(1, "What should we call you?").max(32, "32 characters max")),
   bio: z
     .string()
     .transform((v) => stripControl(v, true).trim())
-    .pipe(z.string().max(190, "Hanggang 190 characters lang ang bio")),
+    .pipe(z.string().max(190, "Bio is 190 characters max")),
   avatarPreset: z.enum(AVATAR_PRESET_KEYS as [AvatarPreset, ...AvatarPreset[]]),
   bannerPreset: z.enum(BANNER_PRESET_KEYS as [BannerPreset, ...BannerPreset[]]),
   avatarUrl: imageUrl.nullable().optional(),
@@ -113,7 +113,7 @@ export const profileUpdateSchema = z.object({
   customStatus: z
     .string()
     .transform((v) => stripControl(v).trim())
-    .pipe(z.string().max(64, "Hanggang 64 characters lang"))
+    .pipe(z.string().max(64, "64 characters max"))
     .transform((v) => (v === "" ? null : v)),
   customStatusEmoji: z
     .string()
@@ -125,7 +125,7 @@ export const profileUpdateSchema = z.object({
 export type ProfileUpdateInput = z.input<typeof profileUpdateSchema>;
 export type ProfileUpdate = z.output<typeof profileUpdateSchema>;
 
-export const emailSchema = z.string().trim().toLowerCase().pipe(z.email("Mukhang mali ang email"));
+export const emailSchema = z.string().trim().toLowerCase().pipe(z.email("That email doesn't look right"));
 
 export const PASSWORD_RULES = [
   { test: (v: string) => v.length >= 10, label: "10+ characters" },
@@ -138,20 +138,20 @@ export const PASSWORD_RULES = [
 /** Strong password policy for new/changed passwords (bcrypt only reads the first 72 bytes). */
 export const passwordSchema = z
   .string()
-  .max(72, "Hanggang 72 characters lang")
-  .refine((v) => new TextEncoder().encode(v).length <= 72, "Masyadong mahaba ang password")
+  .max(72, "72 characters max")
+  .refine((v) => new TextEncoder().encode(v).length <= 72, "That password is too long")
   .superRefine((value, ctx) => {
     const missing = PASSWORD_RULES.filter((r) => !r.test(value)).map((r) => r.label);
-    if (missing.length) ctx.addIssue({ code: "custom", message: `Kulang ang password: ${missing.join(", ")}.` });
+    if (missing.length) ctx.addIssue({ code: "custom", message: `Password needs: ${missing.join(", ")}.` });
   });
 
 /** Sign-in only checks shape — policy is enforced when passwords are set, never revealed on login. */
 export const credentialsSchema = z.object({
   email: emailSchema,
-  password: z.string().min(1, "Ilagay ang password").max(72, "Hanggang 72 characters lang"),
+  password: z.string().min(1, "Enter your password").max(72, "72 characters max"),
 });
 
-export const PASSWORD_MISMATCH = "Hindi magkapareho ang passwords";
+export const PASSWORD_MISMATCH = "Passwords don't match";
 
 export const signUpSchema = z
   .object({
@@ -162,7 +162,7 @@ export const signUpSchema = z
     displayName: z
       .string()
       .transform((v) => stripControl(v).trim())
-      .pipe(z.string().min(1, "Ano'ng itatawag namin sa'yo?").max(32)),
+      .pipe(z.string().min(1, "What should we call you?").max(32)),
   })
   .refine((v) => v.password === v.confirmPassword, { path: ["confirmPassword"], message: PASSWORD_MISMATCH });
 

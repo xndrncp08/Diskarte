@@ -25,7 +25,7 @@ interface ChannelDialogProps {
 
 export function ChannelDialog(props: ChannelDialogProps) {
   return (
-    <Modal open={props.open} onClose={props.onClose} title={props.channel ? "I-edit ang channel" : "Gumawa ng channel"}>
+    <Modal open={props.open} onClose={props.onClose} title={props.channel ? "Edit channel" : "Create channel"}>
       <ChannelForm {...props} />
     </Modal>
   );
@@ -66,7 +66,7 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
         if (result.error) toast.error(result.error);
         return;
       }
-      toast.success(channel ? "Na-update ang channel." : "Bagong channel!");
+      toast.success(channel ? "Channel updated." : "Channel created!");
       onClose();
       if (!channel && result.data && "channelId" in result.data) router.push(`/tambayan/${server.id}/${result.data.channelId}`);
     });
@@ -77,11 +77,11 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
     startTransition(async () => {
       const result = await deleteChannelAction({ channelId: channel.id });
       if (!result.ok) {
-        toast.error(result.error ?? "Hindi na-delete.");
+        toast.error(result.error ?? "Couldn't delete.");
         return;
       }
       removeChannel(channel.id);
-      toast.success(`Na-delete ang ${channel.type === "text" ? "#" : ""}${channel.name}.`);
+      toast.success(`Deleted ${channel.type === "text" ? "#" : ""}${channel.name}.`);
       onClose();
       router.push(`/tambayan/${server.id}`);
     });
@@ -126,7 +126,7 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
         required
         data-autofocus
         error={errors.name}
-        hint={type === "text" && name ? `Magiging #${slugifyChannelName(name) || "…"}` : undefined}
+        hint={type === "text" && name ? `Will be #${slugifyChannelName(name) || "…"}` : undefined}
         placeholder={type === "text" ? "ranked-grind" : "Tambayan 2"}
       />
       <div className="space-y-1.5">
@@ -152,7 +152,7 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
           defaultValue={channel?.topic ?? ""}
           maxLength={256}
           error={errors.topic}
-          placeholder="Anong pag-uusapan dito?"
+          placeholder="What's this channel about?"
         />
       )}
       {type === "text" && (
@@ -162,7 +162,7 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
             <p id="slowmode-label" className="text-sm font-semibold text-white">
               Slow mode
             </p>
-            <p className="mb-2 text-xs text-slate-400">Ilang segundo bago makapag-send ulit ang members (moderators exempt).</p>
+            <p className="mb-2 text-xs text-slate-400">Seconds members must wait between messages (moderators are exempt).</p>
             <div role="radiogroup" aria-labelledby="slowmode-label" className="flex flex-wrap gap-1">
               {SLOWMODE_OPTIONS.map((o) => (
                 <button
@@ -184,8 +184,8 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
           <Switch
             checked={verifiedOnly}
             onChange={setVerifiedOnly}
-            label="Verified accounts lang"
-            hint="Kailangan confirmed ang email o phone number bago makapag-chat dito."
+            label="Verified accounts only"
+            hint="Members need a confirmed email or phone number to chat here."
           />
         </fieldset>
       )}
@@ -198,7 +198,7 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
           <span />
         )}
         <Button type="submit" loading={pending}>
-          {editing ? "I-save" : "Gumawa"}
+          {editing ? "Save" : "Create"}
         </Button>
       </div>
     </form>

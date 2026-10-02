@@ -29,23 +29,23 @@ export function SupportSettings() {
         return;
       }
       setErrors({});
-      toast.success("Na-save ang support details. Salamat, lodi! 💙");
+      toast.success("Support details saved. 💙");
     });
   }
 
   return (
     <form onSubmit={save} className="space-y-4" data-testid="support-settings">
       <p className="text-sm text-slate-400">
-        Ipakita sa members kung saan pwedeng mag-ambag para sa tambayan (server costs, tournaments, pa-load sa events). Manual ang pag-verify ng donations:
-        bigyan ng badge ang supporters sa member list.
+        Show members where they can chip in for the server (hosting costs, tournaments, prepaid load for events). Donations are verified manually:
+        give supporters a badge from the member list.
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         <InputField label="GCash number" name="gcash" inputMode="tel" autoComplete="off" placeholder="09XX XXX XXXX" defaultValue={server.gcash_number ?? ""} error={errors.gcashNumber} />
         <InputField label="Maya number" name="maya" inputMode="tel" autoComplete="off" placeholder="09XX XXX XXXX" defaultValue={server.maya_number ?? ""} error={errors.mayaNumber} />
       </div>
-      <TextareaField label="Message para sa supporters" name="note" rows={3} maxLength={280} defaultValue={server.support_note} placeholder="Salamat sa suporta! Lahat ng ambag ay para sa server at monthly tournament." error={errors.supportNote} />
+      <TextareaField label="Message for supporters" name="note" rows={3} maxLength={280} defaultValue={server.support_note} placeholder="Thanks for the support! Every contribution goes to the server and our monthly tournament." error={errors.supportNote} />
       <Button type="submit" loading={pending}>
-        I-save
+        Save
       </Button>
     </form>
   );

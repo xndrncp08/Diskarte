@@ -1,7 +1,8 @@
 "use client";
 
-import { Music, Play } from "lucide-react";
-import { useState } from "react";
+import { Maximize2, Music, Play } from "lucide-react";
+import { useState, type MouseEvent } from "react";
+import { useMediaViewer, type MediaItem } from "@/components/chat/MediaViewer";
 import { SmartImage } from "@/components/ui/SmartImage";
 import { useLowData } from "@/hooks/useLowData";
 import { useSignedUrls } from "@/hooks/useSignedUrls";
@@ -15,10 +16,23 @@ export function Attachments({ attachments }: { attachments: Attachment[] }) {
   // Low-data mode: GIFs (often several MB) only download once tapped.
   const [revealed, setRevealed] = useState<Set<string>>(() => new Set());
   const urls = useSignedUrls(attachments.map((a) => a.path));
+  const viewer = useMediaViewer();
   if (attachments.length === 0) return null;
   const images = attachments.filter(isImageAttachment);
   const videos = attachments.filter(isVideoAttachment);
   const audio = attachments.filter(isAudioAttachment);
+  // Images and videos of this message form one gallery in the media viewer window.
+  const gallery: (MediaItem & { path: string })[] = [...images, ...videos]
+    .filter((a) => urls[a.path])
+    .map((a) => ({ path: a.path, url: urls[a.path], name: a.name, type: a.type }));
+  const open = (path: string, e?: MouseEvent) => {
+    // New-tab clicks, and contexts without the app shell, keep the plain link behaviour.
+    if (!viewer || (e && (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0))) return;
+    const index = gallery.findIndex((g) => g.path === path);
+    if (index < 0) return;
+    e?.preventDefault();
+    viewer.openMedia(gallery, index);
+  };
 
   return (
     <div className="mt-1 space-y-1.5" data-testid="attachments">
@@ -33,6 +47,8 @@ export function Attachments({ attachments }: { attachments: Attachment[] }) {
                 href={urls[a.path]}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={(e) => open(a.path, e)}
+                aria-label={`Open ${a.name}`}
                 className="relative block overflow-hidden rounded-lg border border-white/10 bg-black/30"
                 style={{ width, aspectRatio: ratio, maxHeight: 360 }}
               >
@@ -61,7 +77,17 @@ export function Attachments({ attachments }: { attachments: Attachment[] }) {
         </div>
       )}
       {videos.map((a) => (
-        <div key={a.path} className="max-w-xl overflow-hidden rounded-lg border border-white/10 bg-black">
+        <div key={a.path} className="relative max-w-xl overflow-hidden rounded-lg border border-white/10 bg-black">
+          {urls[a.path] && viewer && (
+            <button
+              type="button"
+              onClick={() => open(a.path)}
+              aria-label={`Expand ${a.name}`}
+              className="absolute right-2 top-2 z-10 flex size-8 items-center justify-center rounded-md bg-black/60 text-white backdrop-blur hover:bg-black/80 pointer-coarse:size-11"
+            >
+              <Maximize2 className="size-4" aria-hidden />
+            </button>
+          )}
           {urls[a.path] ? (
             <video src={urls[a.path]} controls preload={lowData ? "none" : "metadata"} playsInline className="max-h-96 w-full" aria-label={a.name} />
           ) : (

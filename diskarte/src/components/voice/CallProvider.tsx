@@ -53,6 +53,17 @@ export interface CallContextValue extends CallState {
   sendData: (topic: string, payload: unknown) => Promise<void>;
   /** Subscribe to a data topic; returns an unsubscribe function. */
   onData: (topic: string, handler: DataHandler) => () => void;
+  /** Audio mixer: overall call volume and per-person volume (0–1), remembered on this device. */
+  mix: AudioMix;
+  setMasterVolume: (volume: number) => void;
+  setParticipantVolume: (identity: string, volume: number) => void;
+  /** Switch microphone or speakers mid-call. */
+  switchDevice: (kind: "audioinput" | "audiooutput", deviceId: string) => Promise<void>;
+}
+
+export interface AudioMix {
+  master: number;
+  people: Record<string, number>;
 }
 
 /**
@@ -90,10 +101,10 @@ export function qualityToLevel(quality: ConnectionQuality | string): SignalLevel
 export function mediaErrorMessage(err: unknown, device: "mic" | "camera" | "screen") {
   const name = (err as Error | undefined)?.name ?? "";
   const what = device === "mic" ? "mikropono" : device === "camera" ? "camera" : "screen share";
-  if (["NotAllowedError", "PermissionDeniedError", "SecurityError"].includes(name)) return `Walang permiso sa ${what}. I-allow sa browser settings.`;
-  if (["NotFoundError", "DevicesNotFoundError", "OverconstrainedError"].includes(name)) return `Walang nakitang ${what}.`;
-  if (["NotReadableError", "TrackStartError", "AbortError"].includes(name)) return `Gamit ng ibang app ang ${what}.`;
-  return `Hindi ma-on ang ${what}.`;
+  if (["NotAllowedError", "PermissionDeniedError", "SecurityError"].includes(name)) return `No permission to use the ${what}. Allow it in your browser settings.`;
+  if (["NotFoundError", "DevicesNotFoundError", "OverconstrainedError"].includes(name)) return `No ${what} found.`;
+  if (["NotReadableError", "TrackStartError", "AbortError"].includes(name)) return `Another app is using the ${what}.`;
+  return `Couldn't turn on the ${what}.`;
 }
 
 function readNoiseSuppression() {
@@ -102,6 +113,31 @@ function readNoiseSuppression() {
   } catch {
     return true;
   }
+}
+
+const MIX_KEY = "diskarte:audio-mix";
+const clampVolume = (v: number) => (Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1);
+
+function readMix(): AudioMix {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(MIX_KEY) ?? "null") as Partial<AudioMix> | null;
+    const people = Object.fromEntries(Object.entries(parsed?.people ?? {}).map(([id, v]) => [id, clampVolume(Number(v))]));
+    return { master: clampVolume(Number(parsed?.master ?? 1)), people };
+  } catch {
+    return { master: 1, people: {} };
+  }
+}
+
+/** Effective playback volume for one person: the master level times their own slider. */
+export function effectiveVolume(mix: AudioMix, identity: string) {
+  return mix.master * (mix.people[identity] ?? 1);
+}
+
+function applyMix(participant: RemoteParticipant, mix: AudioMix) {
+  const volume = effectiveVolume(mix, participant.identity);
+  participant.setVolume(volume);
+  // Screen-share audio follows the same slider.
+  participant.setVolume(volume, "screen_share_audio" as Parameters<RemoteParticipant["setVolume"]>[1]);
 }
 
 /** Remote video at low simulcast layers when low-data mode is on. */
@@ -128,6 +164,8 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const leaving = useRef(false);
   const mutedBeforeDeafen = useRef(false);
   const dataHandlers = useRef(new Map<string, Set<DataHandler>>());
+  const [mix, setMix] = useState<AudioMix>(readMix);
+  const mixRef = useRef(mix);
   const setVoice = useVoicePresence();
   const isDm = state.target?.kind === "dm";
 
@@ -175,7 +213,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
       const body = (await res?.json().catch(() => null)) as { token?: string; url?: string; error?: string } | null;
       if (!res?.ok || !body?.token || !body.url) {
         playSfx("error");
-        toast.error(body?.error ?? "Hindi maka-connect sa voice. Subukan ulit.");
+        toast.error(body?.error ?? "Couldn't connect to voice. Try again.");
         setState((s) => ({ ...IDLE, noiseSuppression: s.noiseSuppression }));
         return;
       }
@@ -202,8 +240,9 @@ export function CallProvider({ children }: { children: ReactNode }) {
         .on(lk.RoomEvent.ParticipantConnected, () => playSfx("join"))
         .on(lk.RoomEvent.ParticipantDisconnected, () => playSfx("leave"))
         .on(lk.RoomEvent.ActiveSpeakersChanged, (speakers: Participant[]) => setSpeaking(speakers.map((p) => p.identity)))
-        .on(lk.RoomEvent.TrackSubscribed, (_track: unknown, publication: RemoteTrackPublication) => {
+        .on(lk.RoomEvent.TrackSubscribed, (_track: unknown, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
           if (getLowDataMode() && publication.kind === lk.Track.Kind.Video) publication.setVideoQuality(lk.VideoQuality.LOW);
+          if (publication.kind === lk.Track.Kind.Audio) applyMix(participant, mixRef.current);
         })
         .on(lk.RoomEvent.DataReceived, (payload: Uint8Array, participant?: RemoteParticipant, _kind?: unknown, topic?: string) => {
           const handlers = topic ? dataHandlers.current.get(topic) : undefined;
@@ -231,7 +270,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
           if (roomRef.current !== next) return;
           if (!leaving.current) {
             playSfx("leave");
-            toast(reason === (lk.DisconnectReason.DUPLICATE_IDENTITY as DisconnectReason) ? "Nag-join ka sa voice mula sa ibang tab." : "Na-disconnect ka sa voice.");
+            toast(reason === (lk.DisconnectReason.DUPLICATE_IDENTITY as DisconnectReason) ? "You joined voice from another tab." : "You were disconnected from voice.");
           }
           teardown();
         });
@@ -243,7 +282,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
       } catch {
         if (roomRef.current === next) {
           playSfx("error");
-          toast.error("Hindi maka-connect sa voice server.");
+          toast.error("Couldn't reach the voice server.");
           teardown();
         }
         return;
@@ -324,7 +363,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
     if (mic && "restartTrack" in mic) {
       await (mic as { restartTrack: (o: MediaTrackConstraints) => Promise<void> })
         .restartTrack({ noiseSuppression: enabled, echoCancellation: true, autoGainControl: true })
-        .catch(() => toast.error("Hindi ma-apply ang noise suppression."));
+        .catch(() => toast.error("Couldn't apply noise suppression."));
     }
     toast(enabled ? "Noise suppression: ON 🎧" : "Noise suppression: OFF");
   }, [state.noiseSuppression]);
@@ -354,11 +393,52 @@ export function CallProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Mixer: apply levels to everyone in the room and remember them on this device.
+  useEffect(() => {
+    mixRef.current = mix;
+    room?.remoteParticipants.forEach((p) => applyMix(p, mix));
+    try {
+      localStorage.setItem(MIX_KEY, JSON.stringify(mix));
+    } catch {
+      // Storage blocked: levels last for this session only.
+    }
+  }, [room, mix]);
+
+  const setMasterVolume = useCallback((volume: number) => setMix((m) => ({ ...m, master: clampVolume(volume) })), []);
+  const setParticipantVolume = useCallback((identity: string, volume: number) => setMix((m) => ({ ...m, people: { ...m.people, [identity]: clampVolume(volume) } })), []);
+
+  const switchDevice = useCallback(async (kind: "audioinput" | "audiooutput", deviceId: string) => {
+    const current = roomRef.current;
+    if (!current) return;
+    try {
+      await current.switchActiveDevice(kind, deviceId);
+    } catch (err) {
+      toast.error(kind === "audioinput" ? mediaErrorMessage(err, "mic") : "Couldn't switch speakers.");
+    }
+  }, []);
+
   useEffect(() => () => void roomRef.current?.disconnect(), []);
 
   const value = useMemo<CallContextValue>(
-    () => ({ ...state, room, speaking, join, leave, toggleMute, toggleDeafen, toggleCamera, toggleScreen, toggleNoiseSuppression, sendData, onData }),
-    [state, room, speaking, join, leave, toggleMute, toggleDeafen, toggleCamera, toggleScreen, toggleNoiseSuppression, sendData, onData],
+    () => ({
+      ...state,
+      room,
+      speaking,
+      join,
+      leave,
+      toggleMute,
+      toggleDeafen,
+      toggleCamera,
+      toggleScreen,
+      toggleNoiseSuppression,
+      sendData,
+      onData,
+      mix,
+      setMasterVolume,
+      setParticipantVolume,
+      switchDevice,
+    }),
+    [state, room, speaking, join, leave, toggleMute, toggleDeafen, toggleCamera, toggleScreen, toggleNoiseSuppression, sendData, onData, mix, setMasterVolume, setParticipantVolume, switchDevice],
   );
 
   return (

@@ -48,9 +48,9 @@ describe("uploads", () => {
   });
 
   it("only allows the MIME allow-list up to 10 MB", () => {
-    expect(validateAttachment(new File([], "empty.png", { type: "image/png" }))).toMatch(/walang laman/);
+    expect(validateAttachment(new File([], "empty.png", { type: "image/png" }))).toMatch(/is empty/);
     for (const type of ["image/svg+xml", "text/html", "text/plain", "application/pdf", "application/x-msdownload"]) {
-      expect(validateAttachment(new File(["x"], "f", { type }))).toMatch(/lang ang pwede/);
+      expect(validateAttachment(new File(["x"], "f", { type }))).toMatch(/are allowed/);
     }
     const big = new File(["x"], "big.mp4", { type: "video/mp4" });
     Object.defineProperty(big, "size", { value: 10 * 1024 * 1024 + 1 });

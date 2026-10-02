@@ -23,14 +23,15 @@ test.describe("registration and profile customisation", () => {
     await builder.getByRole("radio", { name: /Watawat/ }).click();
     await builder.getByRole("button", { name: /LFG/ }).click();
     await builder.getByLabel("Display name").fill(`${user.displayName} PH`);
-    await builder.getByRole("button", { name: "I-save ang profile" }).click();
-    await expect(page.getByText("Na-save na ang profile mo!")).toBeVisible();
+    await builder.getByRole("button", { name: "Save profile" }).click();
+    await expect(page.getByText("Profile saved!")).toBeVisible();
     await expect(page.getByTestId("profile-card")).toContainText(`${user.displayName} PH`);
     await expect(page.getByTestId("profile-card")).toContainText("LFG");
 
-    // Sessions: log out, then back in.
-    await page.goto("/settings/account");
-    await page.getByRole("button", { name: "Log out dito" }).click();
+    // Sessions: sign out from the floating Settings window, then back in.
+    await page.goto("/tambayan");
+    await page.getByTestId("user-panel").getByRole("link", { name: "User settings" }).click();
+    await page.getByRole("dialog", { name: "User settings" }).getByRole("button", { name: "Sign out" }).first().click();
     await expect(page).toHaveURL(/\/login$/);
     await page.goto("/tambayan");
     await expect(page).toHaveURL(/\/login\?next=/);
@@ -49,8 +50,31 @@ test.describe("registration and profile customisation", () => {
     await p2.getByLabel("Email").fill(makeUser("x").email);
     await p2.getByLabel("Password", { exact: true }).fill("Diskarte!12345");
     await p2.getByLabel("Confirm password").fill("Diskarte!12345");
-    await p2.getByRole("button", { name: "Sali na!" }).click();
-    await expect(p2.getByText("May gumagamit na ng username na 'yan.")).toBeVisible();
+    await p2.getByRole("button", { name: "Sign up" }).click();
+    await expect(p2.getByText("That username is taken.")).toBeVisible();
     await other.close();
+  });
+
+  test("an account can be deleted from Settings, after typing the username", async ({ page }) => {
+    const user = makeUser("Paalam");
+    await signUpAndOnboard(page, user);
+    await page.getByTestId("user-panel").getByRole("link", { name: "User settings" }).click();
+    const settings = page.getByRole("dialog", { name: "User settings" });
+    await settings.getByRole("tab", { name: "Account & Sessions" }).click();
+    await settings.getByTestId("danger-zone").getByRole("button", { name: "Delete account" }).click();
+
+    const confirm = page.getByRole("dialog", { name: "Delete your account?" });
+    const submit = confirm.getByRole("button", { name: "Delete my account" });
+    await expect(submit).toBeDisabled();
+    await confirm.getByLabel(/Type your username/).fill(user.username);
+    await submit.click();
+    await expect(page).toHaveURL(/\/login\?deleted=1$/);
+    await expect(page.getByRole("status")).toContainText("Your account and its data were deleted");
+
+    // The credentials no longer work.
+    await page.getByLabel("Email").fill(user.email);
+    await page.getByLabel("Password", { exact: true }).fill(user.password);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page.getByRole("alert")).toContainText("Incorrect email or password");
   });
 });
