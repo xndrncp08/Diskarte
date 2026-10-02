@@ -12,6 +12,7 @@ const PREVIEWS: { cue: SfxName; label: string }[] = [
   { cue: "message", label: "Message" },
   { cue: "mute", label: "Mute" },
   { cue: "unmute", label: "Unmute" },
+  { cue: "ring", label: "Ring" },
 ];
 
 /** On/off switch, master volume and previews for the 8-bit sound effects. */

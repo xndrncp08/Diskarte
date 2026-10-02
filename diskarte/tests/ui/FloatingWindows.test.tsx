@@ -119,7 +119,7 @@ describe("FloatingWindow", () => {
 });
 
 describe("media viewer window", () => {
-  const attachment = (n: number, type = "image/png") => ({ path: `${SERVER_ID}/${GENERAL.id}/u/${n}.png`, name: `photo-${n}.png`, size: 1000, type, width: 800, height: 600 });
+  const attachment = (n: number) => ({ path: `${SERVER_ID}/${GENERAL.id}/u/${n}.png`, name: `photo-${n}.png`, size: 1000, type: "image/png" as const, width: 800, height: 600 });
 
   it("opens a message's images as a gallery instead of leaving the app", async () => {
     const user = userEvent.setup();

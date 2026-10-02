@@ -117,6 +117,15 @@ test.describe("community features", () => {
     await sendMessage(a.page, "G! 9pm");
     await expect(messageItem(b.page, "G! 9pm")).toBeVisible();
 
+    // Calling rings the other person: an incoming-call pop-up with Accept / Decline.
+    await a.page.getByRole("button", { name: "Start voice call" }).click();
+    const popup = b.page.getByRole("dialog", { name: `Incoming call from ${a.user.displayName}` });
+    await expect(popup).toContainText(`${a.user.displayName} is calling you`, { timeout: 15_000 });
+    await popup.getByRole("button", { name: "Accept" }).click();
+    await expect(popup).toHaveCount(0);
+    await expect(b.page.getByTestId("call-dock")).toContainText("Voice Connected", { timeout: 30_000 });
+    await expect(a.page.getByTestId("participant-tile")).toHaveCount(2, { timeout: 30_000 });
+
     await a.context.close();
     await b.context.close();
   });

@@ -11,6 +11,7 @@ import type { AccountInfo } from "@/components/profile/AccountSettings";
 import { SettingsDialogProvider } from "@/components/profile/SettingsDialog";
 import { MediaViewerProvider } from "@/components/chat/MediaViewer";
 import { AudioMixerProvider } from "@/components/voice/AudioMixer";
+import { IncomingCallsProvider } from "@/components/voice/IncomingCalls";
 import { CallProvider } from "@/components/voice/CallProvider";
 import { FloatingCallHUD } from "@/components/voice/FloatingCallHUD";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
@@ -105,10 +106,12 @@ export function AppShell({
               <SettingsDialogProvider account={account}>
                 <AudioMixerProvider>
                   <MediaViewerProvider>
-                    <ShellUIProvider>
-                      <MembershipWatcher userId={profile.id} />
-                      <Frame servers={servers}>{children}</Frame>
-                    </ShellUIProvider>
+                    <IncomingCallsProvider>
+                      <ShellUIProvider>
+                        <MembershipWatcher userId={profile.id} />
+                        <Frame servers={servers}>{children}</Frame>
+                      </ShellUIProvider>
+                    </IncomingCallsProvider>
                   </MediaViewerProvider>
                 </AudioMixerProvider>
               </SettingsDialogProvider>

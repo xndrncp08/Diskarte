@@ -1,6 +1,6 @@
 "use client";
 
-import { AtSign, LogOut, Menu as MenuIcon, Phone, PhoneOff } from "lucide-react";
+import { AtSign, LogOut, Menu as MenuIcon, Phone, PhoneOff, Video } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -16,6 +16,7 @@ import { useShellUI } from "@/components/shell/ShellUI";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useCall } from "@/components/voice/CallProvider";
+import { useRinger } from "@/components/voice/IncomingCalls";
 import { StageSkeleton } from "@/components/voice/StageSkeleton";
 import { useDirectChat } from "@/hooks/useDirectChat";
 import type { ChatMessage } from "@/hooks/useChannelChat";
@@ -67,6 +68,7 @@ export function DmView({
 
   const byId = new Map(chat.messages.map((m) => [m.id, m]));
   const names = new Map(participants.map((p) => [p.id, p.display_name]));
+  const ringer = useRinger();
   const actions: MessageActions = {
     onReply: setReplyTo,
     onEdit: (id, content) => chat.edit(id, content),
@@ -77,8 +79,12 @@ export function DmView({
     nameOf: (id) => names.get(id) ?? "Someone",
   };
 
-  function startCall() {
-    void call.join({ kind: "dm", serverId: "", serverName: "Direct Message", channelId: conversation.id, channelName: title });
+  /** Join the DM's call room and ring everyone else in the conversation (their incoming-call pop-up). */
+  async function startCall(video = false) {
+    const joining = call.join({ kind: "dm", serverId: "", serverName: "Direct Message", channelId: conversation.id, channelName: title });
+    void ringer?.ringDm(conversation.id, video);
+    await joining;
+    if (video) await call.toggleCamera();
   }
 
   function leave() {
@@ -110,9 +116,14 @@ export function DmView({
                 <PhoneOff className="size-5" aria-hidden />
               </button>
             ) : (
-              <button type="button" onClick={startCall} aria-label="Start voice call" disabled={!canSend} className="touch-target relative rounded-md p-1.5 text-slate-300 hover:bg-white/10 disabled:opacity-40">
-                <Phone className="size-5" aria-hidden />
-              </button>
+              <>
+                <button type="button" onClick={() => void startCall()} aria-label="Start voice call" disabled={!canSend} className="touch-target relative rounded-md p-1.5 text-slate-300 hover:bg-white/10 disabled:opacity-40">
+                  <Phone className="size-5" aria-hidden />
+                </button>
+                <button type="button" onClick={() => void startCall(true)} aria-label="Start video call" disabled={!canSend} className="touch-target relative rounded-md p-1.5 text-slate-300 hover:bg-white/10 disabled:opacity-40">
+                  <Video className="size-5" aria-hidden />
+                </button>
+              </>
             )}
             {conversation.kind === "group" && (
               <button type="button" onClick={() => setConfirmLeave(true)} aria-label="Leave group" className="touch-target relative rounded-md p-1.5 text-slate-300 hover:bg-white/10">

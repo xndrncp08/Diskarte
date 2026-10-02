@@ -1,8 +1,8 @@
 "use client";
 
 import { AnimatePresence } from "framer-motion";
-import { Ban, Crown, PictureInPicture2, Shield, ShieldCheck, UserMinus, UserRound } from "lucide-react";
-import { useEffect, useRef, useState, useTransition, type ReactNode, type RefObject } from "react";
+import { Ban, BellRing, Crown, PictureInPicture2, Shield, ShieldCheck, UserMinus, UserRound } from "lucide-react";
+import { useContext, useEffect, useRef, useState, useTransition, type ReactNode, type RefObject } from "react";
 import { toast } from "sonner";
 import { banMemberAction, setBadgeAction } from "@/actions/moderation";
 import { kickMemberAction, setMemberRoleAction } from "@/actions/servers";
@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/Button";
 import { FloatingPortal, useFloating } from "@/components/ui/floating";
 import { FloatingWindow } from "@/components/ui/FloatingWindow";
 import { InertWhenExiting } from "@/components/ui/InertWhenExiting";
+import { CallContext } from "@/components/voice/CallProvider";
+import { useRinger } from "@/components/voice/IncomingCalls";
 import { BADGES, BADGE_KINDS } from "@/lib/community";
 import { visibleStatus, type PresencePayload } from "@/lib/presence";
 import { canManageMember, ROLE_LABEL, ROLE_RANK, type MemberWithProfile } from "@/lib/servers";
@@ -117,6 +119,11 @@ function MemberProfileCard({
   const [reason, setReason] = useState("");
   const memberBadges = badges.get(member.user_id) ?? [];
   const perms = canManageMember({ actorRole: myRole, actorId: me.id, target: member, ownerId: server.owner_id });
+  // In a voice channel of this server? Then you can ring this member to join you.
+  const call = useContext(CallContext);
+  const ringer = useRinger();
+  const ringChannel =
+    call && call.status === "connected" && call.target && call.target.kind !== "dm" && call.target.serverId === server.id && member.user_id !== me.id ? call.target : null;
 
   function setRole(role: MemberRole) {
     startTransition(async () => {
@@ -173,6 +180,11 @@ function MemberProfileCard({
         footer={
           <>
             <Badges badges={memberBadges} className="mt-3" />
+            {ringChannel && ringer && (
+              <Button size="sm" className="mt-3 w-full" onClick={() => void ringer.ringToVoice(member.user_id, member.nickname ?? member.profile.display_name)}>
+                <BellRing className="size-4" aria-hidden /> Ring into {ringChannel.channelName}
+              </Button>
+            )}
             {myRole === "admin" && (
               <div className="mt-3 border-t border-white/10 pt-3">
                 <p className="mb-1.5 font-silk text-[10px] uppercase tracking-wider text-slate-400">Supporter badges</p>

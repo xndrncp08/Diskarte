@@ -3,7 +3,7 @@
  * Each cue layers short square/triangle notes (with optional pitch slides) and, for toggles, a tiny
  * noise "click", shaped by fast attack/decay envelopes. A persisted master volume scales everything.
  */
-export type SfxName = "join" | "leave" | "mute" | "unmute" | "deafen" | "message" | "mention" | "send" | "error" | "start";
+export type SfxName = "join" | "leave" | "mute" | "unmute" | "deafen" | "message" | "mention" | "send" | "error" | "start" | "ring";
 
 export interface Note {
   freq: number;
@@ -86,6 +86,14 @@ const CUES: Record<SfxName, Cue> = {
       { freq: C5, at: 0.055, dur: 0.06 },
       { freq: E5, at: 0.11, dur: 0.06 },
       { freq: C6, at: 0.165, dur: 0.16 },
+    ],
+  },
+  // Incoming call: a two-tone 8-bit trill, twice (looped by the incoming-call pop-up).
+  ring: {
+    level: 0.8,
+    notes: [
+      ...[0, 0.09, 0.18, 0.27].map((at, i) => ({ freq: i % 2 ? E6 : C6, at, dur: 0.08, wave: "square" as OscillatorType, gain: 0.8 })),
+      ...[0.6, 0.69, 0.78, 0.87].map((at, i) => ({ freq: i % 2 ? E6 : C6, at, dur: 0.08, wave: "square" as OscillatorType, gain: 0.8 })),
     ],
   },
 };
