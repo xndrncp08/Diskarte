@@ -4,7 +4,7 @@ import type { ConnectionQuality, DisconnectReason, LocalTrackPublication, Partic
 import dynamic from "next/dynamic";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { useServerPresence, useVoicePresence } from "@/components/providers/PresenceProvider";
+import { useBroadcastSpeaking, useServerPresence, useVoicePresence } from "@/components/providers/PresenceProvider";
 import type { SignalLevel } from "@/components/retro/SignalBars";
 import { getLowDataMode, subscribeLowDataMode } from "@/lib/low-data";
 import { playSfx } from "@/lib/sfx";
@@ -116,6 +116,8 @@ function readNoiseSuppression() {
 }
 
 const MIX_KEY = "diskarte:audio-mix";
+/** Re-announce "still talking" well inside the observers' SPEAKING_TTL_MS. */
+const SPEAKING_HEARTBEAT_MS = 2000;
 const clampVolume = (v: number) => (Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1);
 
 function readMix(): AudioMix {
@@ -392,6 +394,22 @@ export function CallProvider({ children }: { children: ReactNode }) {
       map.get(topic)?.delete(handler);
     };
   }, []);
+
+  // Voice activity for people *watching* the server (sidebar rosters): an ephemeral Realtime Broadcast
+  // on the server's presence channel — on start/stop plus a heartbeat while talking — never stored.
+  const broadcastSpeaking = useBroadcastSpeaking();
+  const speakingServer = state.status === "connected" && state.target && state.target.kind !== "dm" ? state.target.serverId : null;
+  const localIdentity = room?.localParticipant?.identity;
+  const meSpeaking = !!localIdentity && !state.muted && speaking.includes(localIdentity);
+  useEffect(() => {
+    if (!speakingServer || !meSpeaking) return;
+    broadcastSpeaking(speakingServer, true);
+    const heartbeat = setInterval(() => broadcastSpeaking(speakingServer, true), SPEAKING_HEARTBEAT_MS);
+    return () => {
+      clearInterval(heartbeat);
+      broadcastSpeaking(speakingServer, false);
+    };
+  }, [speakingServer, meSpeaking, broadcastSpeaking]);
 
   // Mixer: apply levels to everyone in the room and remember them on this device.
   useEffect(() => {

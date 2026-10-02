@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { leaveServerAction } from "@/actions/servers";
 import { SupportDialog } from "@/components/community/SupportDialog";
 import { useMe } from "@/components/providers/MeProvider";
+import { useServerSpeaking } from "@/components/providers/PresenceProvider";
 import { useServer } from "@/components/providers/ServerProvider";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { SignalBars } from "@/components/retro/SignalBars";
@@ -37,12 +38,15 @@ type DialogState =
 
 function VoiceOccupants({ channelId }: { channelId: string }) {
   const call = useCall();
-  // Active-speaker identities come from CallProvider's room events (no LiveKit UI bundle needed).
+  const { server } = useServer();
+  // In the call: LiveKit's own active-speaker events. Watching from outside: the members' ephemeral
+  // "speaking" broadcasts on the server's presence channel.
+  const observed = useServerSpeaking(server.id);
   const live = call.status === "connected" && call.target?.channelId === channelId;
-  return <OccupantList channelId={channelId} speaking={live ? new Set(call.speaking) : null} />;
+  return <OccupantList channelId={channelId} speaking={live ? new Set(call.speaking) : observed} />;
 }
 
-function OccupantList({ channelId, speaking }: { channelId: string; speaking: Set<string> | null }) {
+function OccupantList({ channelId, speaking }: { channelId: string; speaking: ReadonlySet<string> | null }) {
   const { presence, members } = useServer();
   const inRoom = members.filter((m) => presence.get(m.user_id)?.voice_channel_id === channelId);
   if (inRoom.length === 0) return null;

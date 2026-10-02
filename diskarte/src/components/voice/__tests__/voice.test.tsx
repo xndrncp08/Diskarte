@@ -33,7 +33,7 @@ vi.mock("@livekit/components-react", () => ({
   RoomAudioRenderer: ({ muted }: { muted: boolean }) => <div data-testid="audio-renderer" data-muted={String(muted)} />,
 }));
 const setVoice = vi.fn();
-vi.mock("@/components/providers/PresenceProvider", () => ({ useVoicePresence: () => setVoice, useServerPresence: () => new Map() }));
+vi.mock("@/components/providers/PresenceProvider", () => ({ useVoicePresence: () => setVoice, useServerPresence: () => new Map(), useBroadcastSpeaking: () => () => undefined }));
 const sfx = vi.fn();
 vi.mock("@/lib/sfx", () => ({ playSfx: (n: string) => sfx(n) }));
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }) }));
