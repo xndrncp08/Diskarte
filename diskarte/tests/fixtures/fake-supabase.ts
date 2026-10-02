@@ -13,7 +13,9 @@ interface Binding {
  * can `emit` postgres_changes / broadcast events, and answers queries from a per-table fixture.
  */
 export function createFakeSupabase(tables: Record<string, unknown[]> = {}) {
-  const channels: { name: string; bindings: Binding[]; sent: unknown[] }[] = [];
+  const channels: { name: string; config: Record<string, unknown>; bindings: Binding[]; sent: unknown[]; subscribed: boolean; authedFirst: boolean }[] = [];
+  /** How many times realtime.setAuth() has resolved (a join must follow one to carry the user's JWT). */
+  let authed = 0;
   const uploads: { bucket: string; path: string }[] = [];
   const removed: string[] = [];
 
@@ -38,8 +40,8 @@ export function createFakeSupabase(tables: Record<string, unknown[]> = {}) {
   }
 
   const client = {
-    channel: vi.fn((name: string) => {
-      const entry = { name, bindings: [] as Binding[], sent: [] as unknown[] };
+    channel: vi.fn((name: string, opts: { config?: Record<string, unknown> } = {}) => {
+      const entry = { name, config: opts.config ?? {}, bindings: [] as Binding[], sent: [] as unknown[], subscribed: false, authedFirst: false };
       channels.push(entry);
       const ch = {
         on: (type: string, filter: Record<string, string>, handler: Handler) => {
@@ -47,6 +49,8 @@ export function createFakeSupabase(tables: Record<string, unknown[]> = {}) {
           return ch;
         },
         subscribe: (cb?: (status: string) => void) => {
+          entry.subscribed = true;
+          entry.authedFirst = authed > 0;
           cb?.("SUBSCRIBED");
           return ch;
         },
@@ -60,7 +64,11 @@ export function createFakeSupabase(tables: Record<string, unknown[]> = {}) {
       return ch;
     }),
     removeChannel: vi.fn(async () => "ok"),
-    realtime: { setAuth: vi.fn(async () => undefined) },
+    realtime: {
+      setAuth: vi.fn(async () => {
+        authed += 1;
+      }),
+    },
     from: vi.fn((table: string) => builder(table)),
     rpc: vi.fn(async () => ({ data: null, error: null })),
     storage: {
@@ -80,9 +88,9 @@ export function createFakeSupabase(tables: Record<string, unknown[]> = {}) {
     },
   };
 
-  /** Fire a postgres_changes event at every matching binding. */
+  /** Fire a postgres_changes event at every matching binding of a subscribed channel. */
   function emitDb(table: string, event: "INSERT" | "UPDATE" | "DELETE", row: Record<string, unknown>) {
-    for (const ch of channels) {
+    for (const ch of channels.filter((c) => c.subscribed)) {
       for (const b of ch.bindings) {
         if (b.type !== "postgres_changes" || b.filter.table !== table || (b.filter.event !== event && b.filter.event !== "*")) continue;
         if (b.filter.filter) {
@@ -100,5 +108,10 @@ export function createFakeSupabase(tables: Record<string, unknown[]> = {}) {
     }
   }
 
-  return { client, channels, uploads, removed, emitDb, emitBroadcast };
+  /** The subscribed channel with this topic, if any. */
+  function joined(name: string) {
+    return channels.find((c) => c.name === name && c.subscribed);
+  }
+
+  return { client, channels, uploads, removed, emitDb, emitBroadcast, joined };
 }

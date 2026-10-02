@@ -16,6 +16,7 @@ import { InputField, TextareaField } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { useCall } from "@/components/voice/CallProvider";
 import { isBeaconLive, LFG_GAMES, minutesLeft, type LfgBeacon } from "@/lib/community";
+import { subscribeDbChanges } from "@/lib/realtime";
 import { hasRole } from "@/lib/servers";
 import type { Tables } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
@@ -47,26 +48,23 @@ function useBeacons(serverId: string) {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch
     void load();
-    const channel = supabase
-      .channel(`db:lfg:${serverId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "lfg_beacons", filter: `server_id=eq.${serverId}` }, ({ eventType, new: row }) => {
-        const beacon = row as LfgBeacon;
-        if (eventType === "INSERT") setBeacons((prev) => (prev && !prev.some((b) => b.id === beacon.id) ? [beacon, ...prev] : prev));
-        if (eventType === "UPDATE") setBeacons((prev) => prev?.map((b) => (b.id === beacon.id ? beacon : b)) ?? prev);
-      })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "lfg_party_members", filter: `server_id=eq.${serverId}` }, ({ new: row }) => {
-        const member = row as PartyRow;
-        setParty((prev) => (prev.some((p) => p.beacon_id === member.beacon_id && p.user_id === member.user_id) ? prev : [...prev, member]));
-      })
-      // DELETE payloads only carry the primary key (beacon_id, user_id).
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "lfg_party_members" }, ({ old }) => {
-        const key = old as Partial<PartyRow>;
-        setParty((prev) => prev.filter((p) => !(p.beacon_id === key.beacon_id && p.user_id === key.user_id)));
-      })
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return subscribeDbChanges(supabase, `lfg:${serverId}`, (channel) =>
+      channel
+        .on("postgres_changes", { event: "*", schema: "public", table: "lfg_beacons", filter: `server_id=eq.${serverId}` }, ({ eventType, new: row }) => {
+          const beacon = row as LfgBeacon;
+          if (eventType === "INSERT") setBeacons((prev) => (prev && !prev.some((b) => b.id === beacon.id) ? [beacon, ...prev] : prev));
+          if (eventType === "UPDATE") setBeacons((prev) => prev?.map((b) => (b.id === beacon.id ? beacon : b)) ?? prev);
+        })
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "lfg_party_members", filter: `server_id=eq.${serverId}` }, ({ new: row }) => {
+          const member = row as PartyRow;
+          setParty((prev) => (prev.some((p) => p.beacon_id === member.beacon_id && p.user_id === member.user_id) ? prev : [...prev, member]));
+        })
+        // DELETE payloads only carry the primary key (beacon_id, user_id).
+        .on("postgres_changes", { event: "DELETE", schema: "public", table: "lfg_party_members" }, ({ old }) => {
+          const key = old as Partial<PartyRow>;
+          setParty((prev) => prev.filter((p) => !(p.beacon_id === key.beacon_id && p.user_id === key.user_id)));
+        }),
+    );
   }, [supabase, serverId, load]);
 
   return { beacons, party, setParty, reload: load };

@@ -462,8 +462,10 @@ describe("direct messages", () => {
     expect(await rows(db, "select * from public.dm_conversations")).toHaveLength(0);
     expect(await failure(db, "insert into public.direct_messages (conversation_id, author_id, content) values ($1, $2, 'sneaky')", [dm, owner])).toMatch(/DM_NOT_ALLOWED|row-level security/);
     expect((await one<{ ok: boolean }>(db, "select public.can_access_realtime_topic($1) ok", [`dm:${dm}`])).ok).toBe(false);
+    expect((await one<{ ok: boolean }>(db, "select public.can_access_realtime_topic($1) ok", [`db:dm:${dm}`])).ok).toBe(false);
     await asUser(db, member);
     expect((await one<{ ok: boolean }>(db, "select public.can_access_realtime_topic($1) ok", [`dm:${dm}`])).ok).toBe(true);
+    expect((await one<{ ok: boolean }>(db, "select public.can_access_realtime_topic($1) ok", [`db:dm:${dm}`])).ok).toBe(true);
   });
 
   it("refuses phishing links, and edits by anyone but the author", async () => {

@@ -10,6 +10,7 @@ import { SocialProvider } from "@/components/providers/SocialProvider";
 import { CallProvider } from "@/components/voice/CallProvider";
 import { FloatingCallHUD } from "@/components/voice/FloatingCallHUD";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
+import { subscribeDbChanges } from "@/lib/realtime";
 import type { Server } from "@/lib/servers";
 import type { Tables } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
@@ -21,16 +22,13 @@ function MembershipWatcher({ userId }: { userId: string }) {
   const supabase = useSupabase();
   const router = useRouter();
   useEffect(() => {
-    const channel = supabase
-      .channel(`db:memberships:${userId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "members", filter: `user_id=eq.${userId}` }, () => router.refresh())
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "members" }, ({ old }) => {
-        if ((old as { user_id?: string }).user_id === userId) router.refresh();
-      })
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return subscribeDbChanges(supabase, `memberships:${userId}`, (channel) =>
+      channel
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "members", filter: `user_id=eq.${userId}` }, () => router.refresh())
+        .on("postgres_changes", { event: "DELETE", schema: "public", table: "members" }, ({ old }) => {
+          if ((old as { user_id?: string }).user_id === userId) router.refresh();
+        }),
+    );
   }, [supabase, userId, router]);
   return null;
 }
