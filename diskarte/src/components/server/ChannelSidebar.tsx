@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { ChevronDown, Hash, HeadphoneOff, Heart, LogOut, MicOff, Pencil, Plus, Radio, Settings, ShieldCheck, UserPlus, Video, Volume2 } from "lucide-react";
@@ -26,7 +27,9 @@ import { groupChannels, hasRole, type Channel } from "@/lib/servers";
 import { cn } from "@/lib/utils";
 import { ChannelDialog } from "./ChannelDialog";
 import { InviteDialog } from "./InviteDialog";
-import { ServerSettingsDialog, type SettingsTab } from "./ServerSettingsDialog";
+import type { SettingsTab } from "./ServerSettingsDialog";
+
+const ServerSettingsDialog = dynamic(() => import("./ServerSettingsDialog").then((m) => m.ServerSettingsDialog), { ssr: false });
 
 type DialogState =
   | { kind: "invite" }
@@ -86,6 +89,9 @@ export function ChannelSidebar() {
   const router = useRouter();
   const online = useOnline();
   const [dialog, setDialog] = useState<DialogState>(null);
+  // Server settings (all its tabs) download the first time someone opens them, then stay mounted.
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  if (dialog?.kind === "settings" && !settingsLoaded) setSettingsLoaded(true);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [leaving, startLeave] = useTransition();
   const canManageChannels = hasRole(myRole, "moderator");
@@ -257,7 +263,9 @@ export function ChannelSidebar() {
       <UserPanel />
 
       <InviteDialog open={dialog?.kind === "invite"} onClose={() => setDialog(null)} />
-      <ServerSettingsDialog open={dialog?.kind === "settings"} onClose={() => setDialog(null)} initialTab={dialog?.kind === "settings" ? (dialog.tab ?? (myRole === "admin" ? "overview" : "audit")) : "overview"} />
+      {settingsLoaded && (
+        <ServerSettingsDialog open={dialog?.kind === "settings"} onClose={() => setDialog(null)} initialTab={dialog?.kind === "settings" ? (dialog.tab ?? (myRole === "admin" ? "overview" : "audit")) : "overview"} />
+      )}
       <SupportDialog open={dialog?.kind === "support"} onClose={() => setDialog(null)} />
       <ChannelDialog
         open={dialog?.kind === "channel"}

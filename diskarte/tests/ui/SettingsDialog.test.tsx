@@ -70,7 +70,8 @@ describe("Settings dialog", () => {
     await user.click(settingsButton());
     const dialog = await screen.findByRole("dialog", { name: "User settings" });
     expect(navigation.path).toBe(ROUTE); // no route change, so the shell (and CallProvider) stays mounted
-    expect(within(dialog).getByRole("tab", { name: "My Profile" })).toHaveAttribute("aria-selected", "true");
+    // The window's body loads on first open.
+    expect(await within(dialog).findByRole("tab", { name: "My Profile" })).toHaveAttribute("aria-selected", "true");
     expect(within(dialog).getByTestId("profile-builder")).toBeInTheDocument();
 
     await user.click(within(dialog).getByRole("tab", { name: "Account & Sessions" }));
@@ -92,7 +93,8 @@ describe("Settings dialog", () => {
     renderShell();
     await user.click(settingsButton());
     const dialog = await screen.findByRole("dialog", { name: "User settings" });
-    const profileTab = within(dialog).getByRole("tab", { name: "My Profile" });
+    const profileTab = await within(dialog).findByRole("tab", { name: "My Profile" });
+    // Focus moves into the lazily loaded content once it arrives.
     await waitFor(() => expect(profileTab).toHaveFocus());
     await user.keyboard("{ArrowRight}");
     const accountTab = within(dialog).getByRole("tab", { name: "Account & Sessions" });

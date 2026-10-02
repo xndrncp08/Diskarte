@@ -133,7 +133,7 @@ describe("media viewer window", () => {
     );
     await user.click(await screen.findByRole("link", { name: "Open photo-2.png" }));
     const viewer = await screen.findByRole("dialog", { name: "photo-2.png" });
-    expect(within(viewer).getByText("2 / 3")).toBeInTheDocument();
+    expect(await within(viewer).findByText("2 / 3")).toBeInTheDocument(); // the gallery body loads on first open
     await user.click(within(viewer).getByRole("button", { name: "Next" }));
     expect(await screen.findByRole("dialog", { name: "photo-3.png" })).toBeInTheDocument();
     await user.keyboard("{ArrowRight}");
@@ -193,7 +193,7 @@ describe("audio mixer window", () => {
 
     await user.click(screen.getByRole("button", { name: "Audio mixer" }));
     const mixer = await screen.findByRole("dialog", { name: "Audio mixer" });
-    expect(within(mixer).getAllByTestId("mixer-person")).toHaveLength(1);
+    expect(await within(mixer).findAllByTestId("mixer-person")).toHaveLength(1); // the panel loads on first open
 
     fireEvent.change(within(mixer).getByRole("slider", { name: "Volume for Maria" }), { target: { value: "50" } });
     expect(maria.setVolume).toHaveBeenLastCalledWith(0.5, "screen_share_audio");
