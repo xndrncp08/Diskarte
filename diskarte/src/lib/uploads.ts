@@ -19,8 +19,8 @@ export const ATTACHMENT_ACCEPT = Object.keys(ATTACHMENT_TYPES).join(",");
 const EXT: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" };
 
 export function validateImage(file: File): string | null {
-  if (!(IMAGE_TYPES as readonly string[]).includes(file.type)) return "PNG, JPG, WEBP o GIF lang ang pwede.";
-  if (file.size > MAX_AVATAR_BYTES) return "Hanggang 5 MB lang ang image.";
+  if (!(IMAGE_TYPES as readonly string[]).includes(file.type)) return "Only PNG, JPG, WEBP or GIF images are allowed.";
+  if (file.size > MAX_AVATAR_BYTES) return "Images can be up to 5 MB.";
   return null;
 }
 
@@ -30,7 +30,7 @@ export async function uploadPublicImage(supabase: SupabaseClient, folder: string
   if (problem) throw new Error(problem);
   const path = `${folder}/${kind}-${crypto.randomUUID()}.${EXT[file.type]}`;
   const { error } = await supabase.storage.from("avatars").upload(path, file, { contentType: file.type, cacheControl: "31536000", upsert: false });
-  if (error) throw new Error("Hindi na-upload ang image. Subukan ulit.");
+  if (error) throw new Error("Couldn't upload the image. Try again.");
   return supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
 }
 
@@ -64,9 +64,9 @@ export function isAllowedAttachmentType(type: string): type is AttachmentMime {
 }
 
 export function validateAttachment(file: File): string | null {
-  if (file.size === 0) return `${file.name}: walang laman ang file.`;
-  if (file.size > MAX_ATTACHMENT_BYTES) return `${file.name}: hanggang 10 MB lang bawat file.`;
-  if (!isAllowedAttachmentType(file.type)) return `${file.name}: JPG, PNG, WEBP, GIF, MP3 o MP4 lang ang pwede.`;
+  if (file.size === 0) return `${file.name}: the file is empty.`;
+  if (file.size > MAX_ATTACHMENT_BYTES) return `${file.name}: files can be up to 10 MB.`;
+  if (!isAllowedAttachmentType(file.type)) return `${file.name}: only JPG, PNG, WEBP, GIF, MP3 or MP4 files are allowed.`;
   return null;
 }
 
@@ -115,10 +115,10 @@ export async function uploadAttachment(
   const problem = validateAttachment(opts.file);
   if (problem) throw new Error(problem);
   const type = opts.file.type as AttachmentMime;
-  if (!sniffMatches(type, await readHead(opts.file))) throw new Error(`${opts.file.name}: hindi tugma ang laman sa file type.`);
+  if (!sniffMatches(type, await readHead(opts.file))) throw new Error(`${opts.file.name}: the contents don't match the file type.`);
   const path = `${opts.serverId}/${opts.channelId}/${opts.userId}/${crypto.randomUUID()}.${ATTACHMENT_TYPES[type]}`;
   const { error } = await supabase.storage.from("attachments").upload(path, opts.file, { contentType: type, upsert: false, cacheControl: "3600" });
-  if (error) throw new Error(`${opts.file.name}: hindi na-upload.`);
+  if (error) throw new Error(`${opts.file.name}: upload failed.`);
   const size = await imageSize(opts.file);
   return { path, name: safeFileName(opts.file.name).slice(0, 120), size: opts.file.size, type, ...(size ?? {}) };
 }

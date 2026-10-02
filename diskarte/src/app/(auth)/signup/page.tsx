@@ -19,22 +19,22 @@ export default async function SignupPage({ searchParams }: PageProps<"/signup">)
     return (
       <div className="space-y-5" data-testid="invite-only">
         <p className="font-pixel text-[9px] text-sun">EARLY ACCESS</p>
-        <h1 className="text-2xl font-extrabold text-white">Invite-only muna ang Diskarte</h1>
+        <h1 className="text-2xl font-extrabold text-white">Diskarte is invite-only for now</h1>
         <p className="text-sm text-slate-400">
-          Unti-unti naming binubuksan ang tambayan. Mag-apply sa waitlist — kapag na-approve ka, ie-email namin ang login details mo.
+          We&apos;re opening Diskarte gradually. Apply to the waitlist — once you&apos;re approved, we&apos;ll email your sign-in details.
         </p>
         {policy.earlyAccessUrl && (
           <a
             href={policy.earlyAccessUrl}
             className="flex h-11 items-center justify-center rounded-xl bg-sun font-bold text-abyss shadow-[0_4px_0_0_#b45309] hover:brightness-110"
           >
-            Mag-apply para sa Early Access ▶
+            Apply for Early Access ▶
           </a>
         )}
         <p className="text-center text-sm text-slate-400">
-          Na-approve ka na?{" "}
+          Already approved?{" "}
           <Link href="/login" className="text-sky-300 hover:underline">
-            Mag-login
+            Sign in
           </Link>
         </p>
       </div>
@@ -44,8 +44,8 @@ export default async function SignupPage({ searchParams }: PageProps<"/signup">)
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold text-white">Sali sa bagong tambayan</h1>
-        <p className="mt-1 text-sm text-slate-400">Libre, open-source, at walang shutdown-shutdown.</p>
+        <h1 className="text-2xl font-extrabold text-white">Create your account</h1>
+        <p className="mt-1 text-sm text-slate-400">Free, open-source, and walang shutdown-shutdown.</p>
       </div>
       {tryGetPublicEnv() ? (
         <>

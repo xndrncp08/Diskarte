@@ -83,4 +83,4 @@ export function healthLevel(stats: CallStats, livekitLevel: SignalLevel): Signal
   return Math.min(measured, livekitLevel) as SignalLevel;
 }
 
-export const HEALTH_LABEL: Record<SignalLevel, string> = { 0: "Offline", 1: "Mahina", 2: "Okay lang", 3: "Malakas", 4: "Solid" };
+export const HEALTH_LABEL: Record<SignalLevel, string> = { 0: "Offline", 1: "Mahina", 2: "Okay", 3: "Malakas", 4: "Solid" };

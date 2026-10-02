@@ -84,7 +84,7 @@ export function DmView({
   function leave() {
     startLeave(async () => {
       const result = await leaveDmAction({ conversationId: conversation.id });
-      if (!result.ok) return void toast.error(result.error ?? "Hindi naka-leave.");
+      if (!result.ok) return void toast.error(result.error ?? "Couldn't leave.");
       if (inCall) call.leave();
       await reloadConversations();
       router.replace("/tambayan");
@@ -140,7 +140,7 @@ export function DmView({
               <ConversationAvatar conversation={{ id: conversation.id, kind: conversation.kind, name: conversation.name, ownerId: conversation.owner_id, lastMessageAt: "", lastReadAt: "", others }} size={72} />
               <h2 className="mt-3 text-2xl font-extrabold text-white">{title}</h2>
               <p className="text-slate-400">
-                {conversation.kind === "direct" ? `Simula ito ng DMs ninyo ni @${others[0]?.username ?? "?"}.` : `Welcome sa group DM! ${participants.length} kayo rito.`}
+                {conversation.kind === "direct" ? `This is the start of your DMs with @${others[0]?.username ?? "?"}.` : `Welcome to the group DM! There are ${participants.length} of you here.`}
               </p>
             </div>
           )}
@@ -193,10 +193,10 @@ export function DmView({
           typingNames={[]}
           onTyping={() => undefined}
           onStopTyping={() => undefined}
-          locked={canSend ? null : "Hindi na kayo friends (o may nag-block), kaya hindi ka na makakapag-message dito."}
+          locked={canSend ? null : "You're no longer friends (or someone blocked the other), so you can't message here anymore."}
         />
       </main>
-      <ConfirmDialog open={confirmLeave} onClose={() => setConfirmLeave(false)} onConfirm={leave} pending={leaving} title={`Umalis sa ${title}?`} confirmLabel="Leave">
+      <ConfirmDialog open={confirmLeave} onClose={() => setConfirmLeave(false)} onConfirm={leave} pending={leaving} title={`Leave ${title}?`} confirmLabel="Leave">
         Hindi ka na makakatanggap ng messages mula sa group na &apos;to.
       </ConfirmDialog>
     </>

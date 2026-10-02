@@ -48,7 +48,7 @@ describe("accessibility (axe-core)", () => {
     const { unmount } = render(
       <main>
         <h1>Login</h1>
-        <LoginForm next="/tambayan" initialError="Mali ang email o password." />
+        <LoginForm next="/tambayan" initialError="Incorrect email or password." />
         <OAuthButtons providers={["github", "google"]} next="/tambayan" />
       </main>,
     );
@@ -82,7 +82,7 @@ describe("accessibility (axe-core)", () => {
     expect(await violations(document.body, true)).toEqual([]);
     await user.keyboard("{Escape}");
     await user.click(screen.getByRole("button", { name: "Add a server" }));
-    await screen.findByRole("dialog", { name: "Gumawa ng Tambayan" });
+    await screen.findByRole("dialog", { name: "Create a server" });
     expect(await violations()).toEqual([]);
   });
 

@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/lib/supabase/database.types";
 import type { ActionResult } from "./servers";
 
-const RATE_LIMITED: ActionResult<never> = { ok: false, error: "Dahan-dahan lang, kabayan. Subukan ulit mamaya.", code: "RATE_LIMITED" };
+const RATE_LIMITED: ActionResult<never> = { ok: false, error: "Slow down a little. Try again in a moment.", code: "RATE_LIMITED" };
 
 async function authed(bucket: "mutation" | "message" = "mutation") {
   const user = await getSessionUser();
@@ -37,7 +37,7 @@ export async function sendFriendRequestAction(input: { username: string }): Prom
   if (!username.success) return { ok: false, fieldErrors: { username: username.error.issues[0]?.message ?? "Invalid username" } };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("send_friend_request", { p_username: username.data });
-  if (error || !data) return { ok: false, fieldErrors: { username: communityError(error?.message, "Hindi na-send ang friend request.") } };
+  if (error || !data) return { ok: false, fieldErrors: { username: communityError(error?.message, "Couldn't send the friend request.") } };
   return { ok: true, data: { status: data } };
 }
 
@@ -87,7 +87,7 @@ export async function openDmAction(input: { userId: string }): Promise<ActionRes
   if (!parsed.success) return { ok: false, error: "Invalid request" };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("open_dm", { p_user_id: parsed.data.userId });
-  if (error || !data) return { ok: false, error: communityError(error?.message, "Hindi mabuksan ang DM.") };
+  if (error || !data) return { ok: false, error: communityError(error?.message, "Couldn't open the DM.") };
   return { ok: true, data: { conversationId: data } };
 }
 
@@ -96,17 +96,17 @@ export async function createGroupDmAction(input: { userIds: string[]; name: stri
   if (limited) return RATE_LIMITED;
   const parsed = z
     .object({
-      userIds: z.array(z.uuid()).min(2, "Pumili ng hindi bababa sa 2 friends.").max(9, "Hanggang 9 friends lang (10 kasama ka)."),
+      userIds: z.array(z.uuid()).min(2, "Pick at least 2 friends.").max(9, "Up to 9 friends (10 including you)."),
       name: z
         .string()
         .transform((v) => v.replace(/[\u0000-\u001F\u007F]/g, "").trim())
-        .pipe(z.string().max(64, "Hanggang 64 characters lang")),
+        .pipe(z.string().max(64, "64 characters max")),
     })
     .safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_group_dm", { p_user_ids: parsed.data.userIds, p_name: parsed.data.name || null });
-  if (error || !data) return { ok: false, error: communityError(error?.message, "Hindi nagawa ang group DM.") };
+  if (error || !data) return { ok: false, error: communityError(error?.message, "Couldn't create the group DM.") };
   return { ok: true, data: { conversationId: data } };
 }
 
@@ -141,7 +141,7 @@ export async function sendDirectMessageAction(input: z.input<typeof sendSchema>)
   const parsed = sendSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid message" };
   const { id, conversationId: conversation, content, replyToId, sticker } = parsed.data;
-  if (!content && !sticker) return { ok: false, error: "Walang laman ang message." };
+  if (!content && !sticker) return { ok: false, error: "The message is empty." };
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -155,7 +155,7 @@ export async function sendDirectMessageAction(input: z.input<typeof sendSchema>)
     if (existing) return { ok: true, data: { message: existing } };
   }
   const code = ["AUTOMOD_BLOCKED", "DM_NOT_ALLOWED", "RATE_LIMITED"].find((c) => error?.message?.includes(c));
-  return { ok: false, error: communityError(error?.message, "Hindi na-send."), code };
+  return { ok: false, error: communityError(error?.message, "Couldn't send."), code };
 }
 
 export async function editDirectMessageAction(input: { messageId: string; content: string }): Promise<ActionResult> {
@@ -164,10 +164,10 @@ export async function editDirectMessageAction(input: { messageId: string; conten
   const id = z.uuid().safeParse(input.messageId);
   const content = messageContentSchema.safeParse(input.content);
   if (!id.success || !content.success) return { ok: false, error: "Invalid message" };
-  if (!content.data) return { ok: false, error: "Hindi pwedeng walang laman — i-delete na lang." };
+  if (!content.data) return { ok: false, error: "A message can't be empty — delete it instead." };
   const supabase = await createClient();
   const { data, error } = await supabase.from("direct_messages").update({ content: content.data }).eq("id", id.data).select("id");
-  if (error || !data?.length) return { ok: false, error: communityError(error?.message, "Ikaw lang ang pwedeng mag-edit ng message mo.") };
+  if (error || !data?.length) return { ok: false, error: communityError(error?.message, "Only you can edit your messages.") };
   return { ok: true };
 }
 
@@ -178,6 +178,6 @@ export async function deleteDirectMessageAction(input: { messageId: string }): P
   if (!id.success) return { ok: false, error: "Invalid message" };
   const supabase = await createClient();
   const { data, error } = await supabase.from("direct_messages").delete().eq("id", id.data).select("id");
-  if (error || !data?.length) return { ok: false, error: communityError(error?.message, "Ikaw lang ang pwedeng mag-delete ng message mo.") };
+  if (error || !data?.length) return { ok: false, error: communityError(error?.message, "Only you can delete your messages.") };
   return { ok: true };
 }

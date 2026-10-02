@@ -70,7 +70,7 @@ describe("Settings dialog", () => {
 
     await user.click(within(dialog).getByRole("tab", { name: "Account & Sessions" }));
     expect(within(dialog).getByRole("tabpanel")).toHaveTextContent(ACCOUNT.email);
-    expect(within(dialog).getByLabelText("Bagong password")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("New password")).toBeInTheDocument();
     expect(screen.getByTestId("call-status")).toHaveTextContent("connected");
 
     fireEvent.keyDown(document, { key: "Escape" });

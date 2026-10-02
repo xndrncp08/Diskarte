@@ -17,19 +17,19 @@ test.describe("WebRTC voice rooms", () => {
     const dock = page.getByTestId("call-dock");
     await expect(dock).toContainText("Voice Connected", { timeout: 30_000 });
     await expect(page.getByTestId("voice-stage")).toBeVisible();
-    await expect(page.getByTestId("participant-tile").filter({ hasText: "(ikaw)" })).toBeVisible();
+    await expect(page.getByTestId("participant-tile").filter({ hasText: "(you)" })).toBeVisible();
 
     // A friend joins the same room.
     const friend = await newUserPage(browser, "Guest");
     await friend.page.goto(invite);
-    await friend.page.getByRole("button", { name: "Sumali sa tambayan" }).click();
+    await friend.page.getByRole("button", { name: "Join server" }).click();
     await friend.page.getByRole("navigation", { name: "Channels" }).getByRole("link", { name: "Tambayan 1" }).click();
-    await expect(friend.page.getByText(/1 ang nasa loob ngayon/)).toBeVisible();
+    await expect(friend.page.getByText(/1 in voice now/)).toBeVisible();
     await friend.page.getByTestId("join-voice").click();
     await expect(friend.page.getByTestId("call-dock")).toContainText("Voice Connected", { timeout: 30_000 });
 
     await expect(page.getByTestId("participant-tile")).toHaveCount(2, { timeout: 30_000 });
-    await expect(page.getByRole("list", { name: "Nasa voice channel" })).toContainText(friend.user.displayName);
+    await expect(page.getByRole("list", { name: "In voice" })).toContainText(friend.user.displayName);
 
     // Mute via the stage controls.
     await page.getByTestId("voice-stage").getByRole("button", { name: "Mute" }).click();

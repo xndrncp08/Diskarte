@@ -32,7 +32,7 @@ test.describe("servers, channels and real-time chat", () => {
     const friend = await newUserPage(browser, "Maria");
     await friend.page.goto(invite);
     await expect(friend.page.getByRole("heading", { name: serverName })).toBeVisible();
-    await friend.page.getByRole("button", { name: "Sumali sa tambayan" }).click();
+    await friend.page.getByRole("button", { name: "Join server" }).click();
     await expect(friend.page.getByTestId("channel-title")).toHaveText("general");
     await expect(messageItem(friend.page, "Mabuhay!")).toBeVisible();
 
@@ -74,11 +74,11 @@ test.describe("servers, channels and real-time chat", () => {
 
     const outsider = await newUserPage(browser, "Outsider");
     await outsider.page.goto(serverUrl);
-    await expect(outsider.page.getByRole("heading", { name: "Walang ganitong tambayan" })).toBeVisible();
+    await expect(outsider.page.getByRole("heading", { name: "Page not found" })).toBeVisible();
 
     const invite = await inviteLink(page);
     await outsider.page.goto(invite);
-    await outsider.page.getByRole("button", { name: "Sumali sa tambayan" }).click();
+    await outsider.page.getByRole("button", { name: "Join server" }).click();
     const item = messageItem(outsider.page, "Admin lang ang pwedeng mag-pin nito");
     await item.hover();
     const toolbar = item.getByRole("toolbar", { name: "Message actions" });
@@ -87,7 +87,7 @@ test.describe("servers, channels and real-time chat", () => {
     await expect(toolbar.getByRole("button", { name: "Delete" })).toHaveCount(0);
     await outsider.page.getByTestId("server-menu").click();
     await expect(outsider.page.getByRole("menuitem", { name: "Create channel" })).toHaveCount(0);
-    await expect(outsider.page.getByRole("menuitem", { name: "Leave tambayan" })).toBeVisible();
+    await expect(outsider.page.getByRole("menuitem", { name: "Leave server" })).toBeVisible();
     await outsider.context.close();
   });
 });

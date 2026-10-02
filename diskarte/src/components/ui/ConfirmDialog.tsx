@@ -10,7 +10,7 @@ export function ConfirmDialog({
   onConfirm,
   title,
   children,
-  confirmLabel = "Oo, sige",
+  confirmLabel = "Confirm",
   danger = true,
   pending = false,
 }: {
@@ -27,7 +27,7 @@ export function ConfirmDialog({
     <Modal open={open} onClose={onClose} title={title} description={children}>
       <div className="flex justify-end gap-2">
         <Button variant="ghost" onClick={onClose} data-autofocus>
-          Wag na
+          Cancel
         </Button>
         <Button variant={danger ? "danger" : "primary"} onClick={onConfirm} loading={pending}>
           {confirmLabel}

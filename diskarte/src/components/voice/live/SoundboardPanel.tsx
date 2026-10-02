@@ -38,13 +38,13 @@ export function SoundboardPanel() {
 
   function fire(message: SoundboardMessage) {
     if (!allow.current("me")) {
-      toast("Sandali lang — may cooldown ang soundboard. ⏳");
+      toast("Hold on — the soundboard is on cooldown. ⏳");
       return;
     }
     setCooling(true);
     setTimeout(() => setCooling(false), SOUNDBOARD_COOLDOWN_MS);
     void playSoundboard(supabase, message, { force: true });
-    void sendData("soundboard", message).catch(() => toast.error("Hindi na-send ang sound."));
+    void sendData("soundboard", message).catch(() => toast.error("Couldn't play the sound."));
   }
 
   const tile = "flex flex-col items-center gap-1 rounded-xl border border-white/10 bg-white/5 px-1 py-2 text-[11px] font-semibold text-slate-200 transition-[background-color,transform] hover:bg-white/10 active:scale-95 disabled:opacity-40";
@@ -81,8 +81,8 @@ export function SoundboardPanel() {
         </div>
         {clips.length > 0 && (
           <>
-            <p className="font-silk text-[11px] uppercase tracking-wider text-slate-400">Tambayan sounds</p>
-            <div className="grid grid-cols-4 gap-1.5" role="group" aria-label="Tambayan sounds">
+            <p className="font-silk text-[11px] uppercase tracking-wider text-slate-400">Server sounds</p>
+            <div className="grid grid-cols-4 gap-1.5" role="group" aria-label="Server sounds">
               {clips.map((clip) => (
                 <button key={clip.id} type="button" disabled={cooling} onClick={() => fire({ type: "play", kind: "clip", clipId: clip.id })} className={tile}>
                   <span className="text-xl" aria-hidden>
@@ -100,8 +100,8 @@ export function SoundboardPanel() {
             setMuted(value);
             setSoundboardMuted(value);
           }}
-          label="I-mute ang soundboard ng iba"
-          hint="Ikaw lang ang hindi makakarinig."
+          label="Mute other people's soundboard"
+          hint="Only you won't hear it."
         />
       </div>
     </Popover>

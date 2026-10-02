@@ -147,7 +147,7 @@ function ThreadBody({ channel, root, initial, locked }: { channel: Channel; root
         channelName={channel.name}
         serverId={server.id}
         channelId={channel.id}
-        placeholder="Reply sa thread…"
+        placeholder="Reply in thread…"
         replyTo={replyTo}
         onCancelReply={() => setReplyTo(null)}
         onSend={chat.send}

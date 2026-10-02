@@ -87,7 +87,7 @@ export function HomeSidebar({ servers = [] }: { servers?: Server[] }) {
             {conversations === null ? (
               [0, 1, 2].map((i) => <li key={i} className="mx-2 h-9 animate-pulse rounded-md bg-white/5" />)
             ) : conversations.length === 0 ? (
-              <li className="px-2 py-1 text-xs text-slate-500">Wala pang DMs. Mag-add ng friends!</li>
+              <li className="px-2 py-1 text-xs text-slate-500">No DMs yet. Add some friends!</li>
             ) : (
               conversations.map((c) => {
                 const href = `/tambayan/dm/${c.id}`;
@@ -123,7 +123,7 @@ export function HomeSidebar({ servers = [] }: { servers?: Server[] }) {
 
           {servers.length > 0 && (
             <>
-              <p className="mb-1 mt-5 px-2 font-silk text-[11px] uppercase tracking-wider text-slate-400">Mga tambayan mo</p>
+              <p className="mb-1 mt-5 px-2 font-silk text-[11px] uppercase tracking-wider text-slate-400">Your servers</p>
               <ul className="space-y-0.5">
                 {servers.map((s) => (
                   <li key={s.id}>
@@ -140,7 +140,7 @@ export function HomeSidebar({ servers = [] }: { servers?: Server[] }) {
         <CallDock />
         <UserPanel />
       </aside>
-      <Modal open={groupOpen} onClose={() => setGroupOpen(false)} title="Bagong group DM">
+      <Modal open={groupOpen} onClose={() => setGroupOpen(false)} title="New group DM">
         <GroupDmForm friendIds={accepted.map((f) => f.userId)} profiles={profiles} onDone={() => setGroupOpen(false)} />
       </Modal>
     </DrawerPanel>
@@ -155,13 +155,13 @@ function GroupDmForm({ friendIds, profiles, onDone }: { friendIds: string[]; pro
   const [pending, startTransition] = useTransition();
 
   if (friendIds.length < 2) {
-    return <p className="text-sm text-slate-400">Kailangan mo ng hindi bababa sa 2 friends para gumawa ng group DM.</p>;
+    return <p className="text-sm text-slate-400">You need at least 2 friends to create a group DM.</p>;
   }
 
   function create() {
     startTransition(async () => {
       const result = await createGroupDmAction({ userIds: picked, name });
-      if (!result.ok || !result.data) return void toast.error(result.error ?? "Hindi nagawa.");
+      if (!result.ok || !result.data) return void toast.error(result.error ?? "Couldn't create it.");
       await reloadConversations();
       onDone();
       router.push(`/tambayan/dm/${result.data.conversationId}`);
@@ -198,7 +198,7 @@ function GroupDmForm({ friendIds, profiles, onDone }: { friendIds: string[]; pro
         </ul>
       </fieldset>
       <Button onClick={create} loading={pending} disabled={picked.length < 2} className="w-full">
-        Gumawa ng group DM
+        Create group DM
       </Button>
     </div>
   );

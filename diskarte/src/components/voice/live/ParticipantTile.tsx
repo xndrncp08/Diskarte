@@ -69,7 +69,7 @@ export function ParticipantTile({ trackRef, className, compact = false }: { trac
         {isScreen && <MonitorUp className="size-3.5 shrink-0 text-sun" aria-hidden />}
         {!isScreen && !micOn && <MicOff className="size-3.5 shrink-0 text-red-400" aria-label="Muted" />}
         <span className="truncate">{isScreen ? `Screen ni ${profile.name}` : profile.name}</span>
-        {participant.isLocal && !isScreen && <span className="text-slate-400">(ikaw)</span>}
+        {participant.isLocal && !isScreen && <span className="text-slate-400">(you)</span>}
       </div>
       {!isScreen && quality !== ConnectionQuality.Unknown && (
         <div className="absolute right-2 top-2 rounded bg-black/50 px-1 py-0.5">

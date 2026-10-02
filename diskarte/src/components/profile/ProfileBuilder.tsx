@@ -49,7 +49,7 @@ export function ProfileBuilder({ profile, mode }: { profile: Profile; mode: "onb
   const bannerInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (state.ok) toast.success("Na-save na ang profile mo! 🎉");
+    if (state.ok) toast.success("Profile saved! 🎉");
     else if (state.error) toast.error(state.error);
   }, [state]);
 
@@ -267,13 +267,13 @@ export function ProfileBuilder({ profile, mode }: { profile: Profile; mode: "onb
             rows={3}
             hint={`${bio.length}/190`}
             error={state.fieldErrors?.bio}
-            placeholder="Main ko si Jett. Laging may baong Skyflakes."
+            placeholder="Jett main. Always packing Skyflakes."
           />
         </section>
 
         <div className="flex items-center gap-3">
           <Button type="submit" size="lg" loading={pending} disabled={uploading !== null}>
-            {mode === "onboarding" ? "Tara na sa tambayan!" : "I-save ang profile"}
+            {mode === "onboarding" ? "Let's go!" : "Save profile"}
           </Button>
           {state.error && (
             <p role="alert" className="text-sm text-red-300">

@@ -35,7 +35,7 @@ const TABS: { id: SettingsTab; label: string; adminOnly: boolean }[] = [
 /** Tambayan settings. Admins see every tab; moderators get the audit log and bans. */
 export function ServerSettingsDialog({ open, onClose, initialTab = "overview" }: { open: boolean; onClose: () => void; initialTab?: SettingsTab }) {
   return (
-    <Modal open={open} onClose={onClose} title="Tambayan settings" className="max-w-2xl">
+    <Modal open={open} onClose={onClose} title="Server settings" className="max-w-2xl">
       <SettingsTabs key={initialTab} initialTab={initialTab} onClose={onClose} />
     </Modal>
   );
@@ -139,7 +139,7 @@ function ServerSettingsForm({ onClose }: { onClose: () => void }) {
         if (result.error) toast.error(result.error);
         return;
       }
-      toast.success("Na-save ang tambayan settings.");
+      toast.success("Server settings saved.");
       router.refresh();
       onClose();
     });
@@ -153,7 +153,7 @@ function ServerSettingsForm({ onClose }: { onClose: () => void }) {
         if (result.error) toast.error(result.error);
         return;
       }
-      toast.success(`Paalam, ${server.name}.`);
+      toast.success(`Deleted ${server.name}.`);
       onClose();
       router.replace("/tambayan");
       router.refresh();
@@ -187,7 +187,7 @@ function ServerSettingsForm({ onClose }: { onClose: () => void }) {
         <InputField label="Pangalan" name="name" defaultValue={server.name} minLength={2} maxLength={64} required error={errors.name} />
         <TextareaField label="Description" name="description" defaultValue={server.description} maxLength={280} rows={3} error={errors.description} />
         <Button type="submit" loading={pending} disabled={uploading}>
-          I-save
+          Save
         </Button>
       </form>
 

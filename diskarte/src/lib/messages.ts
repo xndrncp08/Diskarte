@@ -20,7 +20,7 @@ export function cleanMessageContent(raw: string): string {
 export const messageContentSchema = z
   .string()
   .transform(cleanMessageContent)
-  .pipe(z.string().max(MESSAGE_MAX, `Hanggang ${MESSAGE_MAX} characters lang ang message.`));
+  .pipe(z.string().max(MESSAGE_MAX, `Messages are ${MESSAGE_MAX} characters max.`));
 
 export const AUTHOR_COLUMNS = "id, username, display_name, avatar_url, avatar_preset";
 export const MESSAGE_SELECT = `*, author:profiles!messages_author_id_fkey(${AUTHOR_COLUMNS})`;

@@ -17,7 +17,7 @@ describe("LoginForm", () => {
     expect(screen.getByLabelText("Email")).toHaveAttribute("type", "email");
     expect(screen.getByLabelText("Password")).toHaveAttribute("autocomplete", "current-password");
     expect(document.querySelector("input[name=next]")).toHaveAttribute("value", "/tambayan/abc");
-    expect(screen.getByRole("link", { name: "Gumawa ng account" })).toHaveAttribute("href", "/signup?next=%2Ftambayan%2Fabc");
+    expect(screen.getByRole("link", { name: "Create an account" })).toHaveAttribute("href", "/signup?next=%2Ftambayan%2Fabc");
   });
 
   it("shows errors passed from the callback", () => {
@@ -53,19 +53,19 @@ describe("SignupForm", () => {
     render(<SignupForm />);
     for (const label of ["Display name", "Username", "Email", "Password", "Confirm password"]) expect(screen.getByLabelText(label)).toBeInTheDocument();
     expect(screen.getByLabelText("Confirm password")).toHaveAttribute("name", "confirmPassword");
-    expect(screen.getByRole("button", { name: "Sali na!" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign up" })).toBeInTheDocument();
   });
 
   it("flags mismatched confirmation live and blocks submit until it matches", () => {
     render(<SignupForm />);
     fireEvent.change(screen.getByLabelText("Password"), { target: { value: "Kape-Muna-2026" } });
     fireEvent.change(screen.getByLabelText("Confirm password"), { target: { value: "Kape-Muna-202" } });
-    expect(screen.getByRole("alert")).toHaveTextContent("Hindi magkapareho ang passwords");
-    expect(screen.getByRole("button", { name: "Sali na!" })).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent("Passwords don't match");
+    expect(screen.getByRole("button", { name: "Sign up" })).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Confirm password"), { target: { value: "Kape-Muna-2026" } });
     expect(screen.queryByRole("alert")).toBeNull();
-    expect(screen.getByText("Magkapareho ✓")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Sali na!" })).toBeEnabled();
+    expect(screen.getByText("Passwords match ✓")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign up" })).toBeEnabled();
   });
 });
 

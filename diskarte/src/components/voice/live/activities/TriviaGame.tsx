@@ -60,7 +60,7 @@ export function TriviaGame({
       <div className="flex flex-col items-center gap-3 text-center" data-testid="trivia">
         <p className="font-pixel text-[10px] text-sun">GAME OVER</p>
         <ol className="w-full max-w-xs space-y-1">
-          {board.length === 0 && <li className="text-sm text-slate-400">Walang sumagot. 😅</li>}
+          {board.length === 0 && <li className="text-sm text-slate-400">Nobody answered. 😅</li>}
           {board.map((row, i) => (
             <li key={row.player} className={cn("flex items-center justify-between rounded-lg px-3 py-1.5 text-sm", i === 0 ? "bg-sun/15 text-sun" : "bg-white/5 text-slate-200")}>
               <span>

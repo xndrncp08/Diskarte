@@ -74,7 +74,7 @@ export function SoundSettings({ className }: { className?: string }) {
       </div>
 
       <div>
-        <p className="mb-1.5 font-silk text-[11px] uppercase tracking-wider text-slate-400">Subukan</p>
+        <p className="mb-1.5 font-silk text-[11px] uppercase tracking-wider text-slate-400">Test</p>
         <div className="flex flex-wrap gap-1.5">
           {PREVIEWS.map(({ cue, label }) => (
             <button

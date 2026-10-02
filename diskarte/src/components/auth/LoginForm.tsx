@@ -36,7 +36,7 @@ export function LoginForm({ next, initialError, initialEmail }: { next: string; 
       />
       <p className="-mt-2 text-right text-xs">
         <Link href="/forgot-password" className="inline-flex items-center pointer-coarse:min-h-11 pointer-coarse:min-w-11 pointer-coarse:justify-center pointer-coarse:px-1 text-slate-400 hover:text-sun hover:underline">
-          Nakalimutan ang password?
+          Forgot your password?
         </Link>
       </p>
       {state.error && (
@@ -45,12 +45,12 @@ export function LoginForm({ next, initialError, initialEmail }: { next: string; 
         </p>
       )}
       <Button type="submit" size="lg" className="w-full" loading={pending}>
-        Pasok!
+        Sign in
       </Button>
       <p className="text-center text-sm text-slate-400">
-        Bago ka dito?{" "}
+        New here?{" "}
         <Link href={`/signup${next !== "/tambayan" ? `?next=${encodeURIComponent(next)}` : ""}`} className="inline-flex items-center pointer-coarse:min-h-11 pointer-coarse:min-w-11 pointer-coarse:justify-center pointer-coarse:px-1 font-semibold text-sun hover:underline">
-          Gumawa ng account
+          Create an account
         </Link>
       </p>
     </form>

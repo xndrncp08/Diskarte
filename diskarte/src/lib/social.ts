@@ -35,7 +35,7 @@ export interface ConversationSummary {
 export function conversationTitle(conversation: Pick<ConversationSummary, "kind" | "name" | "others">): string {
   if (conversation.kind === "group" && conversation.name) return conversation.name;
   const names = conversation.others.map((p) => p.display_name);
-  if (names.length === 0) return "Ikaw lang";
+  if (names.length === 0) return "Just you";
   if (conversation.kind === "direct") return names[0];
   return names.length <= 3 ? names.join(", ") : `${names.slice(0, 3).join(", ")} +${names.length - 3}`;
 }

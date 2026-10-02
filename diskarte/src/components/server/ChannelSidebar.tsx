@@ -47,7 +47,7 @@ function OccupantList({ channelId, speaking }: { channelId: string; speaking: Se
   const inRoom = members.filter((m) => presence.get(m.user_id)?.voice_channel_id === channelId);
   if (inRoom.length === 0) return null;
   return (
-    <ul className="mb-1 ml-7 space-y-0.5" aria-label="Nasa voice channel">
+    <ul className="mb-1 ml-7 space-y-0.5" aria-label="In voice">
       {inRoom.map((m) => {
         const p = presence.get(m.user_id);
         return (
@@ -90,11 +90,11 @@ export function ChannelSidebar() {
     startLeave(async () => {
       const result = await leaveServerAction({ serverId: server.id });
       if (!result.ok) {
-        toast.error(result.error ?? "Hindi naka-leave.");
+        toast.error(result.error ?? "Couldn't leave.");
         return;
       }
       setDialog(null);
-      toast(`Umalis ka sa ${server.name}.`);
+      toast(`You left ${server.name}.`);
       router.replace("/tambayan");
       router.refresh();
     });
@@ -107,7 +107,7 @@ export function ChannelSidebar() {
         items={[
           { label: "Invite people", icon: <UserPlus className="size-4" aria-hidden />, onSelect: () => setDialog({ kind: "invite" }) },
           {
-            label: "Tambayan settings",
+            label: "Server settings",
             icon: <Settings className="size-4" aria-hidden />,
             onSelect: () => setDialog({ kind: "settings" }),
             hidden: myRole !== "admin",
@@ -118,7 +118,7 @@ export function ChannelSidebar() {
             onSelect: () => setDialog({ kind: "settings", tab: "audit" }),
             hidden: !canManageChannels,
           },
-          { label: "Suportahan ang tambayan", icon: <Heart className="size-4" aria-hidden />, onSelect: () => setDialog({ kind: "support" }) },
+          { label: "Support this server", icon: <Heart className="size-4" aria-hidden />, onSelect: () => setDialog({ kind: "support" }) },
           {
             label: "Create channel",
             icon: <Plus className="size-4" aria-hidden />,
@@ -126,7 +126,7 @@ export function ChannelSidebar() {
             hidden: !canManageChannels,
           },
           {
-            label: "Leave tambayan",
+            label: "Leave server",
             icon: <LogOut className="size-4" aria-hidden />,
             onSelect: () => setDialog({ kind: "leave" }),
             danger: true,
@@ -265,10 +265,10 @@ export function ChannelSidebar() {
         onClose={() => setDialog(null)}
         onConfirm={leave}
         pending={leaving}
-        title={`Umalis sa ${server.name}?`}
+        title={`Leave ${server.name}?`}
         confirmLabel="Leave"
       >
-        Kailangan mo ng bagong invite para makabalik.
+        You&apos;ll need a new invite to come back.
       </ConfirmDialog>
     </aside>
   );

@@ -10,7 +10,7 @@ export async function generateMetadata({ params }: LayoutProps<"/tambayan/[serve
   const { serverId } = await params;
   const { profile } = await requireProfile();
   const bundle = await getServerBundle(serverId, profile.id);
-  return { title: bundle?.server.name ?? "Tambayan" };
+  return { title: bundle?.server.name ?? "Server" };
 }
 
 export default async function ServerLayout({ children, params }: LayoutProps<"/tambayan/[serverId]">) {

@@ -18,7 +18,7 @@ export function JoinInviteButton({ code }: { code: string }) {
         startTransition(async () => {
           const result = await joinServerAction({ invite: code });
           if (!result.ok || !result.data) {
-            toast.error(result.error ?? result.fieldErrors?.invite ?? "Hindi naka-join.");
+            toast.error(result.error ?? result.fieldErrors?.invite ?? "Couldn't join.");
             return;
           }
           router.push(`/tambayan/${result.data.serverId}`);
@@ -26,7 +26,7 @@ export function JoinInviteButton({ code }: { code: string }) {
         })
       }
     >
-      Sumali sa tambayan
+      Join server
     </Button>
   );
 }

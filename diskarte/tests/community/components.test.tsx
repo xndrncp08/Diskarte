@@ -208,8 +208,8 @@ describe("composer & message rendering", () => {
   });
 
   it("replaces the input with a notice in verification-gated channels", () => {
-    render(<Composer {...base} locked="Verified accounts lang" />, { wrapper: wrap() });
-    expect(screen.getByTestId("composer-locked")).toHaveTextContent("Verified accounts lang");
+    render(<Composer {...base} locked="Verified accounts only" />, { wrapper: wrap() });
+    expect(screen.getByTestId("composer-locked")).toHaveTextContent("Verified accounts only");
     expect(screen.queryByTestId("composer")).toBeNull();
   });
 
@@ -308,7 +308,7 @@ describe("Bantay-Bayan settings", () => {
     expect(screen.getAllByRole("tab")).toHaveLength(6);
     await user.click(screen.getByRole("switch", { name: "Explicit content" }));
     await user.type(screen.getByLabelText("Custom blocked words"), "scam{Enter}benta account");
-    await user.click(screen.getByRole("button", { name: "I-save" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(moderationActions.updateAutomodAction).toHaveBeenCalledWith({
         serverId: SERVER_ID,
@@ -326,7 +326,7 @@ describe("Bantay-Bayan settings", () => {
     const card = await screen.findByRole("dialog", { name: "Juan's profile" });
     await user.click(within(card).getByRole("button", { name: /Server Booster/ }));
     await waitFor(() => expect(moderationActions.setBadgeAction).toHaveBeenCalledWith({ serverId: SERVER_ID, userId: MEMBER_ID, badge: "booster", on: true }));
-    await user.click(within(card).getByRole("button", { name: /Ban from tambayan/ }));
+    await user.click(within(card).getByRole("button", { name: /Ban from server/ }));
     await user.type(within(card).getByLabelText(/Reason/), "scam links");
     await user.click(within(card).getByRole("button", { name: "Confirm ban" }));
     await waitFor(() => expect(moderationActions.banMemberAction).toHaveBeenCalledWith({ serverId: SERVER_ID, userId: MEMBER_ID, reason: "scam links" }));

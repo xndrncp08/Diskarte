@@ -59,7 +59,7 @@ export function ServerRail({ servers }: { servers: Server[] }) {
           </li>
         ))}
       </ul>
-      <Tooltip label="Gumawa o sumali sa tambayan">
+      <Tooltip label="Create or join a server">
         <button
           type="button"
           onClick={() => setAdding(true)}

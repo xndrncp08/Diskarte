@@ -21,7 +21,7 @@ function useNameOf(me: string) {
   return useCallback(
     (id: string | null) => {
       if (!id) return "—";
-      if (id === me) return "Ikaw";
+      if (id === me) return "You";
       const member = server?.members.find((m) => m.user_id === id);
       return member?.nickname ?? member?.profile.display_name ?? room?.remoteParticipants.get(id)?.name ?? "Player";
     },
@@ -69,7 +69,7 @@ export function ActivitiesMenu({ controls }: { controls: ActivityControls }) {
     event.preventDefault();
     const videoId = parseYouTubeId(url);
     if (!videoId) {
-      toast.error("Hindi valid na YouTube link.");
+      toast.error("That isn't a valid YouTube link.");
       return;
     }
     start(watchParty(videoId));
@@ -98,7 +98,7 @@ export function ActivitiesMenu({ controls }: { controls: ActivityControls }) {
       {(close) => (
         <div className="space-y-3">
           <p className="font-pixel text-[9px] text-sun">ACTIVITIES</p>
-          {activity && <p className="text-xs text-slate-400">Papalitan nito ang kasalukuyang activity.</p>}
+          {activity && <p className="text-xs text-slate-400">This replaces the current activity.</p>}
           <form onSubmit={(e) => startWatch(e, close)} className="space-y-1.5 rounded-xl border border-white/10 bg-white/5 p-2.5">
             <label htmlFor="watch-url" className="block text-sm font-semibold text-white">
               {ACTIVITY_LABEL.watch.emoji} {ACTIVITY_LABEL.watch.name}

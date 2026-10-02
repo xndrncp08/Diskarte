@@ -5,7 +5,7 @@ import type { OAuthProvider } from "@/lib/profile";
 const META: Record<OAuthProvider, { label: string; Icon: (p: { className?: string }) => React.ReactElement }> = {
   github: { label: "GitHub", Icon: GithubMark },
   google: { label: "Google", Icon: GoogleMark },
-  discord: { label: "Discord (habang buhay pa)", Icon: DiscordMark },
+  discord: { label: "Discord", Icon: DiscordMark },
 };
 
 export function OAuthButtons({ providers, next }: { providers: OAuthProvider[]; next: string }) {
@@ -14,7 +14,7 @@ export function OAuthButtons({ providers, next }: { providers: OAuthProvider[]; 
     <div className="space-y-3">
       <div className="flex items-center gap-3 text-xs text-slate-500">
         <span className="h-px flex-1 bg-white/10" />
-        <span className="font-silk uppercase tracking-wider">o kaya</span>
+        <span className="font-silk uppercase tracking-wider">or</span>
         <span className="h-px flex-1 bg-white/10" />
       </div>
       <div className="grid gap-2">

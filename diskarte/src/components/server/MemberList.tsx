@@ -67,7 +67,7 @@ function MemberPopover({
     startTransition(async () => {
       const result = await setMemberRoleAction({ serverId: server.id, userId: member.user_id, role });
       if (result.ok) toast.success(`${member.profile.display_name} is now ${ROLE_LABEL[role]}.`);
-      else toast.error(result.error ?? "Hindi napalitan ang role.");
+      else toast.error(result.error ?? "Couldn't change the role.");
     });
   }
 
@@ -75,8 +75,8 @@ function MemberPopover({
     const on = !memberBadges.includes(badge);
     startTransition(async () => {
       const result = await setBadgeAction({ serverId: server.id, userId: member.user_id, badge, on });
-      if (result.ok) toast.success(on ? `${BADGES[badge].emoji} ${BADGES[badge].label} para kay ${member.profile.display_name}!` : `Inalis ang ${BADGES[badge].label}.`);
-      else toast.error(result.error ?? "Hindi na-update ang badge.");
+      if (result.ok) toast.success(on ? `${BADGES[badge].emoji} ${BADGES[badge].label} given to ${member.profile.display_name}!` : `Removed ${BADGES[badge].label}.`);
+      else toast.error(result.error ?? "Couldn't update the badge.");
     });
   }
 
@@ -84,9 +84,9 @@ function MemberPopover({
     startTransition(async () => {
       const result = await banMemberAction({ serverId: server.id, userId: member.user_id, reason });
       if (result.ok) {
-        toast.success(`Na-ban si ${member.profile.display_name}.`);
+        toast.success(`Banned ${member.profile.display_name}.`);
         onClose();
-      } else toast.error(result.error ?? "Hindi na-ban.");
+      } else toast.error(result.error ?? "Couldn't ban.");
     });
   }
 
@@ -94,9 +94,9 @@ function MemberPopover({
     startTransition(async () => {
       const result = await kickMemberAction({ serverId: server.id, userId: member.user_id });
       if (result.ok) {
-        toast.success(`Na-kick si ${member.profile.display_name}.`);
+        toast.success(`Kicked ${member.profile.display_name}.`);
         onClose();
-      } else toast.error(result.error ?? "Hindi na-kick.");
+      } else toast.error(result.error ?? "Couldn't kick.");
     });
   }
 
@@ -172,7 +172,7 @@ function MemberPopover({
                 )}
                 {perms.kick && (
                   <Button variant="danger" size="sm" onClick={kick} loading={pending} className="w-full">
-                    <UserMinus className="size-4" aria-hidden /> Kick from tambayan
+                    <UserMinus className="size-4" aria-hidden /> Kick from server
                   </Button>
                 )}
                 {perms.kick &&
@@ -200,7 +200,7 @@ function MemberPopover({
                     </div>
                   ) : (
                     <Button variant="ghost" size="sm" onClick={() => setBanning(true)} className="w-full text-red-300 hover:text-red-200">
-                      <Ban className="size-4" aria-hidden /> Ban from tambayan
+                      <Ban className="size-4" aria-hidden /> Ban from server
                     </Button>
                   ))}
               </div>

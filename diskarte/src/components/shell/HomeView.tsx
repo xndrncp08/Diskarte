@@ -33,25 +33,25 @@ export function HomeView({ servers }: { servers: Server[] }) {
             <div>
               <p className="font-pixel text-[10px] text-sun">PLAYER 1 READY</p>
               <h1 className="mt-2 text-3xl font-extrabold text-white">Mabuhay, {me.display_name}!</h1>
-              <p className="text-slate-400">Saan tayo tatambay ngayon?</p>
+              <p className="text-slate-400">Where are we hanging out today?</p>
             </div>
           </div>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             <button type="button" onClick={() => setDialog("create")} className="glass group rounded-2xl p-5 text-left transition-colors hover:border-sun/40">
               <Sparkles className="mb-3 size-6 text-sun" aria-hidden />
-              <p className="font-bold text-white">Gumawa ng Tambayan</p>
-              <p className="text-sm text-slate-400">Sariling server para sa barkada, klase o guild.</p>
+              <p className="font-bold text-white">Create a server</p>
+              <p className="text-sm text-slate-400">Your own space for friends, a class or a guild.</p>
             </button>
             <button type="button" onClick={() => setDialog("join")} className="glass group rounded-2xl p-5 text-left transition-colors hover:border-sun/40">
               <Compass className="mb-3 size-6 text-sky-300" aria-hidden />
-              <p className="font-bold text-white">Sumali gamit ang invite</p>
-              <p className="text-sm text-slate-400">May link ka galing sa tropa? I-paste mo dito.</p>
+              <p className="font-bold text-white">Join with an invite</p>
+              <p className="text-sm text-slate-400">Got a link from a friend? Paste it here.</p>
             </button>
             <Link href="/tambayan/friends" className="glass group rounded-2xl p-5 text-left transition-colors hover:border-sun/40">
               <Users className="mb-3 size-6 text-emerald-300" aria-hidden />
-              <p className="font-bold text-white">Mag-add ng friends</p>
-              <p className="text-sm text-slate-400">Hanapin ang tropa gamit ang @username at mag-DM.</p>
+              <p className="font-bold text-white">Add friends</p>
+              <p className="text-sm text-slate-400">Find friends by @username and start a DM.</p>
             </Link>
           </div>
 
@@ -65,7 +65,7 @@ export function HomeView({ servers }: { servers: Server[] }) {
                       <ServerIcon server={s} size={44} />
                       <span className="min-w-0">
                         <span className="block truncate font-semibold text-white">{s.name}</span>
-                        <span className="block truncate text-xs text-slate-400">{s.description || "Tambayan"}</span>
+                        <span className="block truncate text-xs text-slate-400">{s.description || "Server"}</span>
                       </span>
                     </Link>
                   </li>

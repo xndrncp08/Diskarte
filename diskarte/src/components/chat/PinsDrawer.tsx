@@ -84,7 +84,7 @@ export function PinsDrawer({
             ) : list.length === 0 ? (
               <div className="p-6 text-center">
                 <p className="font-pixel text-[9px] text-sun">WALANG PINS</p>
-                <p className="mt-2 text-sm text-slate-400">Wala pang naka-pin dito. Mods can pin important messages.</p>
+                <p className="mt-2 text-sm text-slate-400">Nothing pinned yet. Moderators can pin important messages.</p>
               </div>
             ) : (
               list.map((m) => (

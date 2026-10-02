@@ -13,7 +13,7 @@ export function LowDataToggle({ className }: { className?: string }) {
       checked={lowData}
       onChange={setLowDataMode}
       label="📶 Low-data mode"
-      hint="Para sa prepaid data at mahinang signal: mas maliit na images, GIFs sa tap lang, at mababang video quality sa calls."
+      hint="For prepaid data and weak signal: smaller images, GIFs play on tap, and lower video quality in calls."
     />
   );
 }

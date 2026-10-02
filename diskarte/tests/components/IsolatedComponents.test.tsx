@@ -139,7 +139,7 @@ describe("server options dropdown", () => {
     const before = columnsSignature();
     await user.click(screen.getByTestId("server-menu"));
     const menu = await screen.findByRole("menu", { name: "Server menu" });
-    expect(within(menu).getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Invite people", "Tambayan settings", "Bantay-Bayan", "Suportahan ang tambayan", "Create channel"]);
+    expect(within(menu).getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Invite people", "Server settings", "Bantay-Bayan", "Support this server", "Create channel"]);
     expect(menu.parentElement).toBe(document.body); // escapes every overflow boundary
     expect(menu).toHaveClass("z-50");
     expect(menu.style.position).toBe("fixed");
@@ -324,11 +324,11 @@ describe("glass modals & scroll locking", () => {
     render(<DiskarteLayout />);
     const trigger = screen.getByRole("button", { name: "Add a server" });
     await user.click(trigger);
-    const dialog = await screen.findByRole("dialog", { name: "Gumawa ng Tambayan" });
+    const dialog = await screen.findByRole("dialog", { name: "Create a server" });
     expect(dialog).toHaveAttribute("aria-modal", "true");
     expect(document.body.style.overflow).toBe("hidden");
     expect(dialog.closest("[class*='fixed']")?.parentElement).toBe(document.body);
-    await waitFor(() => expect(within(dialog).getByLabelText("Pangalan ng tambayan")).toHaveFocus());
+    await waitFor(() => expect(within(dialog).getByLabelText("Server name")).toHaveFocus());
 
     // Focus trap: tabbing from the last control wraps to the first.
     const focusables = within(dialog).getAllByRole("button");
@@ -337,7 +337,7 @@ describe("glass modals & scroll locking", () => {
     expect(dialog.contains(document.activeElement)).toBe(true);
 
     await user.keyboard("{Escape}");
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Gumawa ng Tambayan" })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Create a server" })).toBeNull());
     expect(document.body.style.overflow).toBe("scroll");
     expect(trigger).toHaveFocus();
   });
@@ -347,15 +347,15 @@ describe("glass modals & scroll locking", () => {
     render(<DiskarteLayout />);
     const trigger = screen.getByTestId("server-menu");
     await user.click(trigger);
-    await user.click(await screen.findByRole("menuitem", { name: "Tambayan settings" }));
-    const dialog = await screen.findByRole("dialog", { name: "Tambayan settings" });
+    await user.click(await screen.findByRole("menuitem", { name: "Server settings" }));
+    const dialog = await screen.findByRole("dialog", { name: "Server settings" });
     // The menu may still be fading out, but it no longer takes clicks while it does.
     const exiting = screen.queryByRole("menu");
     if (exiting) expect(exiting.style.pointerEvents).toBe("none");
     await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
     expect(document.body.style.overflow).toBe("hidden");
     await user.click(within(dialog).getByRole("button", { name: "Close" }));
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Tambayan settings" })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Server settings" })).toBeNull());
     expect(document.body.style.overflow).toBe("");
     expect(trigger).toHaveFocus();
   });
@@ -365,10 +365,10 @@ describe("glass modals & scroll locking", () => {
     render(<DiskarteLayout />);
     await user.click(screen.getByTestId("server-menu"));
     await user.click(await screen.findByRole("menuitem", { name: "Invite people" }));
-    const dialog = await screen.findByRole("dialog", { name: /I-invite ang barkada/ });
+    const dialog = await screen.findByRole("dialog", { name: /Invite friends/ });
     const backdrop = dialog.parentElement!.querySelector<HTMLElement>("[aria-hidden]")!;
     await user.click(backdrop);
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: /I-invite/ })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: /Invite/ })).toBeNull());
     expect(document.body.style.overflow).toBe("");
   });
 });
@@ -419,7 +419,7 @@ describe("floating call widgets", () => {
     expect(screen.getByRole("complementary", { name: /channels$/ }).contains(hud)).toBe(false);
     expect(screen.getByTestId("active-view").contains(hud)).toBe(false);
     expect(within(hud).getByTestId("video-track")).toBeInTheDocument();
-    expect(within(hud).getByRole("link", { name: "Bumalik sa call" })).toHaveAttribute("href", channelUrl(TAMBAYAN.id));
+    expect(within(hud).getByRole("link", { name: "Back to call" })).toHaveAttribute("href", channelUrl(TAMBAYAN.id));
   });
 });
 

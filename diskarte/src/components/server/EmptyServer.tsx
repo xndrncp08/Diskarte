@@ -25,12 +25,12 @@ export function EmptyServer() {
         <h1 className="text-xl font-bold text-white">Walang channels pa sa {server.name}</h1>
         {hasRole(myRole, "moderator") ? (
           <>
-            <p className="text-slate-400">Gumawa ng unang channel para magsimula ang kwentuhan.</p>
-            <Button onClick={() => setOpen(true)}>Gumawa ng channel</Button>
+            <p className="text-slate-400">Create the first channel to get the conversation going.</p>
+            <Button onClick={() => setOpen(true)}>Create channel</Button>
             <ChannelDialog open={open} onClose={() => setOpen(false)} />
           </>
         ) : (
-          <p className="text-slate-400">Hintayin ang admins na gumawa ng channel.</p>
+          <p className="text-slate-400">Waiting for an admin to create a channel.</p>
         )}
       </div>
     </main>

@@ -9,7 +9,7 @@ import { limiters } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 import type { ActionResult } from "./servers";
 
-const RATE_LIMITED: ActionResult<never> = { ok: false, error: "Dahan-dahan lang, kabayan. Subukan ulit mamaya." };
+const RATE_LIMITED: ActionResult<never> = { ok: false, error: "Slow down a little. Try again in a moment." };
 
 async function authed() {
   const user = await getSessionUser();
@@ -42,7 +42,7 @@ export async function createLfgAction(input: {
     p_voice_channel_id: parsed.data.voiceChannelId,
     p_duration_minutes: parsed.data.durationMinutes,
   });
-  if (error || !data) return { ok: false, error: communityError(error?.message, "Hindi naitayo ang beacon.") };
+  if (error || !data) return { ok: false, error: communityError(error?.message, "Couldn't start the beacon.") };
   return { ok: true, data: { beaconId: data } };
 }
 
@@ -54,7 +54,7 @@ export async function joinLfgAction(input: { beaconId: string }): Promise<Action
   if (!parsed.success) return { ok: false, error: "Invalid beacon" };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("join_lfg", { p_beacon_id: parsed.data.beaconId });
-  if (error) return { ok: false, error: communityError(error.message, "Hindi naka-join sa party.") };
+  if (error) return { ok: false, error: communityError(error.message, "Couldn't join the party.") };
   return { ok: true, data: { voiceChannelId: data ?? null } };
 }
 
@@ -76,6 +76,6 @@ export async function closeLfgAction(input: { beaconId: string }): Promise<Actio
   if (!parsed.success) return { ok: false, error: "Invalid beacon" };
   const supabase = await createClient();
   const { error } = await supabase.rpc("close_lfg", { p_beacon_id: parsed.data.beaconId });
-  if (error) return { ok: false, error: communityError(error.message, "Hindi naisara ang beacon.") };
+  if (error) return { ok: false, error: communityError(error.message, "Couldn't close the beacon.") };
   return { ok: true };
 }

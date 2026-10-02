@@ -158,7 +158,7 @@ export const MessageItem = memo(function MessageItem({
                 <span className="truncate">{previewText(replyTo.content) || (replyTo.sticker ? "Sticker" : "Attachment")}</span>
               </>
             ) : (
-              <span className="italic">Hindi na makita ang original message</span>
+              <span className="italic">Original message unavailable</span>
             )}
           </button>
         )}
@@ -225,7 +225,7 @@ export const MessageItem = memo(function MessageItem({
 
         {message.failed && (
           <p className="mt-1 flex items-center gap-2 text-xs text-red-300" role="alert">
-            Hindi na-send.
+            Couldn&apos;t send.
             <button type="button" onClick={() => actions.onRetry(message)} className="inline-flex items-center gap-1 font-semibold hover:underline">
               <RotateCw className="size-3" aria-hidden /> Retry
             </button>

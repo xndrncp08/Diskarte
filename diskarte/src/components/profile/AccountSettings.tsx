@@ -65,8 +65,8 @@ export function AccountSettings({ account, username, createdAt }: { account: Acc
       <section className="glass rounded-2xl p-5">
         <h2 className="mb-1 font-pixel text-[10px] text-sun">SESSIONS</h2>
         <p className="mb-4 text-sm text-slate-400">
-          Sessions are short-lived JWTs refreshed on every request. Nawala ang phone mo? Mag-log out sa lahat ng devices para i-revoke ang
-          lahat ng refresh tokens.
+          Sessions are short-lived JWTs refreshed on every request. Lost your phone? Sign out of every device to revoke all
+          refresh tokens.
         </p>
         <div className="flex flex-wrap gap-3">
           <form action={signOutAction}>

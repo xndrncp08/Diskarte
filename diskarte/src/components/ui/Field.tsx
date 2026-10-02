@@ -75,7 +75,7 @@ export const InputField = forwardRef<HTMLInputElement, InputFieldProps>(function
             aria-label="Show password"
             aria-pressed={revealed}
             aria-controls={inputId}
-            title={revealed ? "Itago ang password" : "Ipakita ang password"}
+            title={revealed ? "Hide password" : "Show password"}
             // Keep focus (and the caret) in the input on mouse/touch; keyboard users can still tab here.
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setRevealed((r) => !r)}

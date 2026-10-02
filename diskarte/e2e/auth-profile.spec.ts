@@ -23,8 +23,8 @@ test.describe("registration and profile customisation", () => {
     await builder.getByRole("radio", { name: /Watawat/ }).click();
     await builder.getByRole("button", { name: /LFG/ }).click();
     await builder.getByLabel("Display name").fill(`${user.displayName} PH`);
-    await builder.getByRole("button", { name: "I-save ang profile" }).click();
-    await expect(page.getByText("Na-save na ang profile mo!")).toBeVisible();
+    await builder.getByRole("button", { name: "Save profile" }).click();
+    await expect(page.getByText("Profile saved!")).toBeVisible();
     await expect(page.getByTestId("profile-card")).toContainText(`${user.displayName} PH`);
     await expect(page.getByTestId("profile-card")).toContainText("LFG");
 
@@ -49,8 +49,8 @@ test.describe("registration and profile customisation", () => {
     await p2.getByLabel("Email").fill(makeUser("x").email);
     await p2.getByLabel("Password", { exact: true }).fill("Diskarte!12345");
     await p2.getByLabel("Confirm password").fill("Diskarte!12345");
-    await p2.getByRole("button", { name: "Sali na!" }).click();
-    await expect(p2.getByText("May gumagamit na ng username na 'yan.")).toBeVisible();
+    await p2.getByRole("button", { name: "Sign up" }).click();
+    await expect(p2.getByText("That username is taken.")).toBeVisible();
     await other.close();
   });
 });

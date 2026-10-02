@@ -23,15 +23,15 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
       {fromEarlyAccess ? (
         <div data-testid="early-access-welcome">
           <p className="font-pixel text-[9px] text-sun">EARLY ACCESS · APPROVED</p>
-          <h1 className="mt-2 text-2xl font-extrabold text-white">Maligayang pagdating sa Diskarte!</h1>
+          <h1 className="mt-2 text-2xl font-extrabold text-white">Welcome to Diskarte!</h1>
           <p className="mt-1 text-sm text-slate-400">
-            Gamitin ang email at temporary password mula sa welcome email mo. Pagkatapos, gagawa ka ng sariling password.
+            Use the email and temporary password from your welcome email. Next, you&apos;ll create your own password.
           </p>
         </div>
       ) : (
         <div>
-          <h1 className="text-2xl font-extrabold text-white">Welcome back, kabayan!</h1>
-          <p className="mt-1 text-sm text-slate-400">Tuloy ang tambayan. Mag-log in para bumalik sa barkada.</p>
+          <h1 className="text-2xl font-extrabold text-white">Welcome back!</h1>
+          <p className="mt-1 text-sm text-slate-400">Sign in to get back to your servers and friends.</p>
         </div>
       )}
       {tryGetPublicEnv() ? (

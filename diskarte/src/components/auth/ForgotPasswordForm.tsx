@@ -15,7 +15,7 @@ export function ForgotPasswordForm() {
         <MailCheck className="mx-auto size-10 text-sun" aria-hidden />
         <p className="text-slate-200">{state.notice}</p>
         <Link href="/login" className="inline-block font-semibold text-sun hover:underline">
-          Balik sa login
+          Back to sign in
         </Link>
       </div>
     );
@@ -29,11 +29,11 @@ export function ForgotPasswordForm() {
         </p>
       )}
       <Button type="submit" size="lg" className="w-full" loading={pending}>
-        I-send ang reset link
+        Send reset link
       </Button>
       <p className="text-center text-sm text-slate-400">
         <Link href="/login" className="font-semibold text-sun hover:underline">
-          Balik sa login
+          Back to sign in
         </Link>
       </p>
     </form>

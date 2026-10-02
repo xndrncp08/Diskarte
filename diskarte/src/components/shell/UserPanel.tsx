@@ -33,7 +33,7 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
       const result = await setStatusAction({ status, customStatus, customStatusEmoji });
       if (!result.ok) {
         setMe(() => previous);
-        toast.error(result.error ?? "Hindi na-update ang status.");
+        toast.error(result.error ?? "Couldn't update your status.");
       } else {
         router.refresh();
       }

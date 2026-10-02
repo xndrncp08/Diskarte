@@ -39,7 +39,7 @@ describe("presets", () => {
   });
 
   it("ships the Filipino status triggers", () => {
-    expect(STATUS_TRIGGERS.map((t) => t.text)).toEqual(expect.arrayContaining(["Nagluto ng Canton", "AFK / Tulog", "LFG"]));
+    expect(STATUS_TRIGGERS.map((t) => t.text)).toEqual(expect.arrayContaining(["Nagluto ng Canton", "AFK / Tulog", "LFG / Pa-carry", "Nag-aaral pa boffum"]));
   });
 });
 
@@ -94,7 +94,7 @@ describe("auth schemas", () => {
     expect(signUpSchema.safeParse({ ...base, confirmPassword: "Kape-Muna-2026" }).success).toBe(true);
     const mismatch = signUpSchema.safeParse({ ...base, confirmPassword: "Kape-Muna-2027" });
     expect(mismatch.success).toBe(false);
-    expect(mismatch.error?.issues[0]).toMatchObject({ path: ["confirmPassword"], message: "Hindi magkapareho ang passwords" });
+    expect(mismatch.error?.issues[0]).toMatchObject({ path: ["confirmPassword"], message: "Passwords don't match" });
     expect(signUpSchema.safeParse({ ...base }).success).toBe(false);
   });
 
@@ -110,10 +110,10 @@ describe("auth schemas", () => {
 });
 
 describe("friendlyAuthError", () => {
-  it("maps Supabase messages to Taglish", () => {
-    expect(friendlyAuthError("Invalid login credentials")).toBe("Mali ang email o password.");
-    expect(friendlyAuthError("User already registered")).toMatch(/May account na/);
-    expect(friendlyAuthError("Email not confirmed")).toMatch(/I-confirm/);
-    expect(friendlyAuthError("socket hang up")).toBe("May nangyaring mali. Subukan ulit.");
+  it("maps Supabase messages to friendly English", () => {
+    expect(friendlyAuthError("Invalid login credentials")).toBe("Incorrect email or password.");
+    expect(friendlyAuthError("User already registered")).toMatch(/already exists/);
+    expect(friendlyAuthError("Email not confirmed")).toMatch(/Confirm your email/);
+    expect(friendlyAuthError("socket hang up")).toBe("Something went wrong. Try again.");
   });
 });

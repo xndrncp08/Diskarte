@@ -4,13 +4,13 @@ export type SignalLevel = 0 | 1 | 2 | 3 | 4;
 
 const LABELS: Record<SignalLevel, string> = {
   0: "Offline",
-  1: "Mahina ang signal",
-  2: "Okay-okay lang",
+  1: "Weak signal",
+  2: "Fair",
   3: "Malakas",
-  4: "Solid ang connection",
+  4: "Strong connection",
 };
 
-const SHORT: Record<SignalLevel, string> = { 0: "Offline", 1: "Mahina", 2: "Okay lang", 3: "Malakas", 4: "Solid" };
+const SHORT: Record<SignalLevel, string> = { 0: "Offline", 1: "Mahina", 2: "Okay", 3: "Malakas", 4: "Solid" };
 
 function colorFor(level: SignalLevel) {
   if (level <= 1) return "#EF4444";

@@ -62,7 +62,7 @@ export function bump(activity: Activity, game: ActivityGame, author: string): Ac
 }
 
 export const ACTIVITY_LABEL: Record<ActivityGame["kind"], { name: string; emoji: string; blurb: string }> = {
-  watch: { name: "Watch Party", emoji: "📺", blurb: "Sabay-sabay manood ng YouTube." },
+  watch: { name: "Watch Party", emoji: "📺", blurb: "Watch YouTube together." },
   tictactoe: { name: "Tic-Tac-Toe", emoji: "❌", blurb: "8-bit X at O, isang laban." },
   trivia: { name: "Pinoy Trivia", emoji: "🇵🇭", blurb: "5 tanong, 15 segundo bawat isa." },
 };

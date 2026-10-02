@@ -17,14 +17,14 @@ export interface AccountFormState {
 
 const newPasswordSchema = z
   .object({ password: passwordSchema, confirm: z.string() })
-  .refine((v) => v.password === v.confirm, { path: ["confirm"], message: "Hindi magkapareho ang passwords" });
+  .refine((v) => v.password === v.confirm, { path: ["confirm"], message: "Passwords don't match" });
 
 /** Change password (settings) or finish a reset (recovery session from the email link). */
 export async function changePasswordAction(_prev: AccountFormState, form: FormData): Promise<AccountFormState> {
   const user = await getSessionUser();
   if (!user) redirect("/login");
   // Per-account budget on top of proxy.ts's per-IP limit.
-  if (!(await checkLimit("auth", `password:${user.id}`)).ok) return { error: "Masyadong maraming attempts. Pahinga muna." };
+  if (!(await checkLimit("auth", `password:${user.id}`)).ok) return { error: "Too many attempts. Take a short break." };
 
   const parsed = newPasswordSchema.safeParse({ password: form.get("password"), confirm: form.get("confirm") });
   if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error) };

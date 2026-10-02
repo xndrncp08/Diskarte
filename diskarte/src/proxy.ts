@@ -26,8 +26,8 @@ function matches(pathname: string, prefixes: readonly string[]) {
 function tooManyRequests(result: RateLimitResult, json: boolean) {
   const headers = { "Retry-After": String(retryAfterSeconds(result)), "Cache-Control": "no-store" };
   return json
-    ? NextResponse.json({ error: "Too many requests. Dahan-dahan lang, kabayan." }, { status: 429, headers })
-    : new NextResponse("Too many requests. Dahan-dahan lang, kabayan — subukan ulit mamaya.", {
+    ? NextResponse.json({ error: "Too many requests. Slow down a little." }, { status: 429, headers })
+    : new NextResponse("Too many requests. Slow down and try again in a moment.", {
         status: 429,
         headers: { ...headers, "Content-Type": "text/plain; charset=utf-8" },
       });

@@ -81,10 +81,10 @@ describe("Bantay-Bayan helpers", () => {
     expect(auditExcerpt({ metadata: {} })).toBeNull();
   });
 
-  it("maps database error codes to friendly Taglish", () => {
+  it("maps database error codes to friendly English", () => {
     expect(communityError('new row violates... "SLOWMODE"')).toMatch(/Slow mode/);
-    expect(communityError("BANNED")).toMatch(/Naka-ban/);
-    expect(communityError("permission denied for table x")).toMatch(/permiso/);
+    expect(communityError("BANNED")).toMatch(/banned/);
+    expect(communityError("permission denied for table x")).toMatch(/permission/);
     expect(communityError("weird", "fallback")).toBe("fallback");
   });
 });

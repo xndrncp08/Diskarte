@@ -11,7 +11,7 @@ test.describe("community features", () => {
     const invite = await inviteLink(owner.page);
     const member = await newUserPage(browser, "Juan");
     await member.page.goto(invite);
-    await member.page.getByRole("button", { name: "Sumali sa tambayan" }).click();
+    await member.page.getByRole("button", { name: "Join server" }).click();
     await expect(member.page.getByTestId("channel-title")).toHaveText("general");
 
     // Threads: the reply lives in the thread panel and the root shows a reply chip.
@@ -32,14 +32,14 @@ test.describe("community features", () => {
 
     // Auto-mod drops phishing links from members and logs it for moderators.
     await sendMessage(member.page, "Libreng load! https://gcash-rewards.xyz/claim");
-    await expect(member.page.getByText("Na-block ng Bantay-Bayan auto-mod ang message mo.")).toBeVisible();
+    await expect(member.page.getByText("Bantay-Bayan auto-mod blocked your message.")).toBeVisible();
     await expect(member.page.getByTestId("composer")).toHaveValue(/gcash-rewards/); // draft handed back
     await expect(messageItem(owner.page, "gcash-rewards")).toHaveCount(0);
     await owner.page.getByTestId("server-menu").click();
     await owner.page.getByRole("menuitem", { name: "Bantay-Bayan" }).click();
-    const settings = owner.page.getByRole("dialog", { name: "Tambayan settings" });
+    const settings = owner.page.getByRole("dialog", { name: "Server settings" });
     await expect(settings.getByTestId("audit-log")).toContainText(`Bantay-Bayan blocked a message from ${member.user.displayName} (Phishing links)`);
-    await expect(settings.getByTestId("audit-log")).toContainText(`${member.user.displayName} joined the tambayan`);
+    await expect(settings.getByTestId("audit-log")).toContainText(`${member.user.displayName} joined the server`);
     await owner.page.keyboard.press("Escape");
 
     // Slow mode: members wait between messages; the composer counts down. (10 s, and we let the
@@ -48,9 +48,9 @@ test.describe("community features", () => {
     const general = owner.page.getByRole("navigation", { name: "Channels" }).getByRole("link", { name: "general" });
     await general.hover();
     await owner.page.getByRole("button", { name: "Edit general" }).click();
-    const dialog = owner.page.getByRole("dialog", { name: "I-edit ang channel" });
+    const dialog = owner.page.getByRole("dialog", { name: "Edit channel" });
     await dialog.getByRole("radio", { name: "10s" }).click();
-    await dialog.getByRole("button", { name: "I-save" }).click();
+    await dialog.getByRole("button", { name: "Save" }).click();
     await expect(member.page.getByTestId("slowmode-indicator")).toHaveText(/Slow mode 10s/);
     await member.page.waitForTimeout(10_500);
     await sendMessage(member.page, "una!");
@@ -69,7 +69,7 @@ test.describe("community features", () => {
     const invite = await inviteLink(owner.page);
     const player = await newUserPage(browser, "Player");
     await player.page.goto(invite);
-    await player.page.getByRole("button", { name: "Sumali sa tambayan" }).click();
+    await player.page.getByRole("button", { name: "Join server" }).click();
     await expect(player.page.getByTestId("channel-title")).toHaveText("general");
 
     await owner.page.getByRole("link", { name: "LFG Board" }).click();
@@ -99,13 +99,13 @@ test.describe("community features", () => {
     await a.page.getByRole("tab", { name: "Add Friend" }).click();
     await a.page.getByLabel("Username").fill(`@${b.user.username}`);
     await a.page.getByRole("button", { name: "Send" }).click();
-    await expect(a.page.getByText(`Na-send ang friend request kay @${b.user.username}.`)).toBeVisible();
+    await expect(a.page.getByText(`Friend request sent to @${b.user.username}.`)).toBeVisible();
 
     await b.page.goto("/tambayan/friends");
     await expect(b.page.getByRole("link", { name: /Friends/ })).toContainText("1");
     await b.page.getByRole("tab", { name: /Pending/ }).click();
     await b.page.getByTestId("friend-row").filter({ hasText: a.user.displayName }).getByRole("button", { name: "Accept" }).click();
-    await b.page.getByRole("tab", { name: "Lahat" }).click();
+    await b.page.getByRole("tab", { name: "All" }).click();
     await b.page.getByRole("button", { name: `Message ${a.user.displayName}` }).click();
     await expect(b.page.getByTestId("dm-title")).toHaveText(a.user.displayName);
     await sendMessage(b.page, "Uy! Laro tayo mamaya?");

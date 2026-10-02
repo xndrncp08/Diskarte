@@ -68,7 +68,7 @@ describe("branding & vector logo", () => {
     const heading = screen.getByRole("heading", { level: 1 });
     // Rendered as two lines of one heading: "Walang Shutdown-Shutdown." / "Ang Bagong Istambayan ng Bayan."
     expect(heading).toHaveTextContent(/^Walang Shutdown-Shutdown\.\s*Ang Bagong Istambayan ng Bayan\.$/);
-    expect(screen.getByRole("link", { name: /Gumawa ng account/ })).toHaveAttribute("href", "/signup");
+    expect(screen.getByRole("link", { name: /Create an account/ })).toHaveAttribute("href", "/signup");
   });
 });
 
@@ -85,7 +85,7 @@ describe("channel navigation & sidebar", () => {
     expect(within(nav).getByRole("button", { name: "Text Channels" })).toHaveAttribute("aria-expanded", "true");
     expect(within(nav).getByRole("button", { name: "Voice Channels" })).toHaveAttribute("aria-expanded", "true");
     // Presence: Maria is hanging out in Tambayan 1.
-    expect(within(nav).getByRole("list", { name: "Nasa voice channel" })).toHaveTextContent("Maria");
+    expect(within(nav).getByRole("list", { name: "In voice" })).toHaveTextContent("Maria");
   });
 
   it("switches the active view to the voice room, then the call grid after joining", async () => {
@@ -100,12 +100,12 @@ describe("channel navigation & sidebar", () => {
     expect(navigation.path).toBe(channelUrl(TAMBAYAN.id));
     expect(within(view).queryByTestId("composer")).toBeNull();
     expect(within(view).getByText("VOICE CHANNEL")).toBeInTheDocument();
-    expect(within(view).getByText("1 ang nasa loob ngayon")).toBeInTheDocument();
+    expect(within(view).getByText("1 in voice now")).toBeInTheDocument();
 
     await user.click(within(view).getByTestId("join-voice"));
     const stage = await within(view).findByTestId("voice-stage");
     expect(within(stage).getAllByTestId("participant-tile")).toHaveLength(2);
-    expect(within(stage).getByText("(ikaw)")).toBeInTheDocument();
+    expect(within(stage).getByText("(you)")).toBeInTheDocument();
     expect(within(stage).getByRole("toolbar", { name: "Call controls" })).toBeInTheDocument();
     expect(audioMock.notes.length).toBeGreaterThan(0); // 8-bit join cue
   });
@@ -218,7 +218,7 @@ describe("profile & status triggers", () => {
     for (const [tag, emoji] of [
       ["Nagluto ng Canton", "🍜"],
       ["AFK / Tulog", "😴"],
-      ["LFG", "🎮"],
+      ["LFG / Pa-carry", "🎮"],
     ] as const) {
       await user.click(screen.getByRole("button", { name: new RegExp(tag.replace("/", "\\/")) }));
       expect(card).toHaveTextContent(`${emoji}${tag}`);

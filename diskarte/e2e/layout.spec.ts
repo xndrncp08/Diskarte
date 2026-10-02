@@ -64,7 +64,7 @@ test.describe("overlay layout regression", () => {
     // The DB allows 8 messages / 10 s per user, so use 7 tall messages to get a scrolling list.
     for (let i = 0; i < 7; i++) await sendMessage(page, `Filler message ${i}\npara\nmay\nscroll\ndito`);
     await expect(messageItem(page, "Filler message 6")).toBeVisible();
-    await expect(page.getByTestId("message").filter({ hasText: "Hindi na-send" })).toHaveCount(0);
+    await expect(page.getByTestId("message").filter({ hasText: "Couldn't send" })).toHaveCount(0);
     const before = await columnBoxes(page);
     await expectNoPageOverflow(page);
 
@@ -118,7 +118,7 @@ test.describe("overlay layout regression", () => {
 
     // Create-server modal locks page scroll and restores it.
     await page.getByRole("button", { name: "Add a server" }).click();
-    const modal = page.getByRole("dialog", { name: "Gumawa ng Tambayan" });
+    const modal = page.getByRole("dialog", { name: "Create a server" });
     await expectFullyVisible(page, modal);
     expect(await page.evaluate(() => getComputedStyle(document.body).overflow)).toBe("hidden");
     await page.keyboard.press("Escape");

@@ -19,6 +19,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(friendlyAuthError(error.message))}`, siteUrl));
   }
 
-  const message = providerError ? friendlyAuthError(providerError) : "Nag-expire o invalid ang login link.";
+  const message = providerError ? friendlyAuthError(providerError) : "That sign-in link is invalid or has expired.";
   return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(message)}`, siteUrl));
 }
