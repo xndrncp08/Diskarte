@@ -336,6 +336,39 @@ describe("realtime authorization", () => {
     await asUser(db, outsider);
     expect((await one<{ ok: boolean }>(db, "select public.can_access_realtime_topic($1) as ok", [`server:${serverId}`])).ok).toBe(false);
   });
+
+  // With "Allow public access" off, Realtime rejects every non-private channel — including the
+  // `db:*` Postgres Changes subscriptions — so each one must be authorised like any other topic.
+  it("authorises the private db:* Postgres Changes topics", async () => {
+    const allowed = async (topic: string) => (await one<{ ok: boolean }>(db, "select public.can_access_realtime_topic($1) as ok", [topic])).ok;
+    await asUser(db, member);
+    expect(await allowed(`db:chat:${general}`)).toBe(true);
+    expect(await allowed(`db:chat:${general}:${general}`)).toBe(true);
+    expect(await allowed(`db:server:${serverId}`)).toBe(true);
+    expect(await allowed(`db:lfg:${serverId}`)).toBe(true);
+    expect(await allowed(`db:memberships:${member}`)).toBe(true);
+    expect(await allowed(`db:friends:${member}`)).toBe(true);
+    expect(await allowed(`db:dms:${member}`)).toBe(true);
+    expect(await allowed(`db:memberships:${owner}`)).toBe(false);
+    expect(await allowed(`db:friends:${owner}`)).toBe(false);
+    expect(await allowed(`db:dms:${owner}`)).toBe(false);
+    expect(await allowed(`db:chat:not-a-uuid`)).toBe(false);
+    expect(await allowed(`db:unknown:${serverId}`)).toBe(false);
+
+    await asUser(db, outsider);
+    expect(await allowed(`db:chat:${general}`)).toBe(false);
+    expect(await allowed(`db:server:${serverId}`)).toBe(false);
+    expect(await allowed(`db:lfg:${serverId}`)).toBe(false);
+  });
+
+  it("lets members join db:* topics but never broadcast on them", async () => {
+    await asUser(db, member);
+    await db.query("select set_config('realtime.topic', $1, false)", [`db:chat:${general}`]);
+    expect(await failure(db, "insert into realtime.messages (topic, payload) values ($1, '{}')", [`db:chat:${general}`])).toMatch(/row-level security/);
+    await db.query("select set_config('realtime.topic', $1, false)", [`channel:${general}`]);
+    expect(await failure(db, "insert into realtime.messages (topic, payload) values ($1, '{}')", [`channel:${general}`])).toBeNull();
+    await db.query("select set_config('realtime.topic', '', false)");
+  });
 });
 
 describe("server deletion", () => {

@@ -7,9 +7,12 @@ import { useSwipeDrawer } from "@/hooks/useSwipeDrawer";
 import { MeProvider } from "@/components/providers/MeProvider";
 import { PresenceProvider } from "@/components/providers/PresenceProvider";
 import { SocialProvider } from "@/components/providers/SocialProvider";
+import type { AccountInfo } from "@/components/profile/AccountSettings";
+import { SettingsDialogProvider } from "@/components/profile/SettingsDialog";
 import { CallProvider } from "@/components/voice/CallProvider";
 import { FloatingCallHUD } from "@/components/voice/FloatingCallHUD";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
+import { subscribeDbChanges } from "@/lib/realtime";
 import type { Server } from "@/lib/servers";
 import type { Tables } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
@@ -21,16 +24,13 @@ function MembershipWatcher({ userId }: { userId: string }) {
   const supabase = useSupabase();
   const router = useRouter();
   useEffect(() => {
-    const channel = supabase
-      .channel(`db:memberships:${userId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "members", filter: `user_id=eq.${userId}` }, () => router.refresh())
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "members" }, ({ old }) => {
-        if ((old as { user_id?: string }).user_id === userId) router.refresh();
-      })
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return subscribeDbChanges(supabase, `memberships:${userId}`, (channel) =>
+      channel
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "members", filter: `user_id=eq.${userId}` }, () => router.refresh())
+        .on("postgres_changes", { event: "DELETE", schema: "public", table: "members" }, ({ old }) => {
+          if ((old as { user_id?: string }).user_id === userId) router.refresh();
+        }),
+    );
   }, [supabase, userId, router]);
   return null;
 }
@@ -78,7 +78,19 @@ function Frame({ servers, children }: { servers: Server[]; children: ReactNode }
   );
 }
 
-export function AppShell({ profile, verified = true, servers, children }: { profile: Tables<"profiles">; verified?: boolean; servers: Server[]; children: ReactNode }) {
+export function AppShell({
+  profile,
+  account,
+  verified = true,
+  servers,
+  children,
+}: {
+  profile: Tables<"profiles">;
+  account: AccountInfo;
+  verified?: boolean;
+  servers: Server[];
+  children: ReactNode;
+}) {
   return (
     <MeProvider profile={profile} verified={verified}>
       {/* Honour the OS "reduce motion" setting for every framer-motion animation in the app. */}
@@ -86,10 +98,13 @@ export function AppShell({ profile, verified = true, servers, children }: { prof
         <PresenceProvider>
           <SocialProvider>
             <CallProvider>
-              <ShellUIProvider>
-                <MembershipWatcher userId={profile.id} />
-                <Frame servers={servers}>{children}</Frame>
-              </ShellUIProvider>
+              {/* Inside CallProvider: opening settings must never unmount (and so hang up) the call. */}
+              <SettingsDialogProvider account={account}>
+                <ShellUIProvider>
+                  <MembershipWatcher userId={profile.id} />
+                  <Frame servers={servers}>{children}</Frame>
+                </ShellUIProvider>
+              </SettingsDialogProvider>
             </CallProvider>
           </SocialProvider>
         </PresenceProvider>

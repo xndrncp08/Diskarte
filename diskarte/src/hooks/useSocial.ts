@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
+import { subscribeDbChanges } from "@/lib/realtime";
 import { classifyFriendships, SOCIAL_PROFILE_COLUMNS, sortConversations, type ConversationSummary, type FriendEntry, type SocialProfile } from "@/lib/social";
 
 /** Re-runs `load` at most once per `ms` while realtime events stream in. */
@@ -40,13 +41,10 @@ export function useFriends() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch; realtime keeps it current
     void load();
     // RLS limits these events to friendships I'm part of.
-    const channel = supabase
-      .channel(`db:friends:${me.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "friendships" }, reload)
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return subscribeDbChanges(supabase, `friends:${me.id}`, (channel) =>
+      channel
+        .on("postgres_changes", { event: "*", schema: "public", table: "friendships" }, reload),
+    );
   }, [supabase, me.id, load, reload]);
 
   return { friends, blocked, profiles, reload: load };
@@ -96,14 +94,11 @@ export function useConversations() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch; realtime keeps it current
     void load();
-    const channel = supabase
-      .channel(`db:dms:${me.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "dm_conversations" }, reload)
-      .on("postgres_changes", { event: "*", schema: "public", table: "dm_participants" }, reload)
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return subscribeDbChanges(supabase, `dms:${me.id}`, (channel) =>
+      channel
+        .on("postgres_changes", { event: "*", schema: "public", table: "dm_conversations" }, reload)
+        .on("postgres_changes", { event: "*", schema: "public", table: "dm_participants" }, reload),
+    );
   }, [supabase, me.id, load, reload]);
 
   /** Optimistically clear the unread dot (the RPC updates last_read_at). */

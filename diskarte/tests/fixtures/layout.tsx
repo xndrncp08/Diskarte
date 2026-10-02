@@ -39,6 +39,9 @@ export const RUNTIME = {
   siteUrl: "http://localhost:3000",
 };
 
+/** What the tambayan layout hands the shell's Settings dialog for a password (email) account. */
+export const ACCOUNT = { email: "kapitan@diskarte.ph", providers: ["email"] };
+
 export const channelUrl = (id: string) => `/tambayan/${SERVER_ID}/${id}`;
 
 function ChannelRoute({ history }: { history: Record<string, MessageWithAuthor[]> }) {

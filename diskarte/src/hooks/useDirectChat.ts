@@ -7,6 +7,7 @@ import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { PAGE_SIZE, type MessageAuthor } from "@/lib/messages";
 import { dequeue, enqueue, isNetworkError, outboxFor, type OutboxEntry } from "@/lib/outbox";
+import { subscribeDbChanges } from "@/lib/realtime";
 import { playSfx } from "@/lib/sfx";
 import type { ChatMessage, SendExtras, SendResult } from "./useChannelChat";
 
@@ -52,28 +53,25 @@ export function useDirectChat(conversationId: string, initial: { messages: Direc
   }, [onIncoming]);
 
   useEffect(() => {
-    const channel = supabase
-      .channel(`db:dm:${conversationId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "direct_messages", filter: `conversation_id=eq.${conversationId}` }, ({ new: row }) => {
-        const dm = row as DirectMessage;
-        setMessages((prev) => (prev.some((m) => m.id === dm.id) ? prev.map((m) => (m.id === dm.id ? { ...dmToChat(dm, m.author) } : m)) : [...prev, dmToChat(dm, authorOf(dm.author_id))].sort(byTime)));
-        if (dm.author_id !== me.id) {
-          playSfx("message");
-          incoming.current?.();
-        }
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "direct_messages", filter: `conversation_id=eq.${conversationId}` }, ({ new: row }) => {
-        const dm = row as DirectMessage;
-        setMessages((prev) => prev.map((m) => (m.id === dm.id ? dmToChat(dm, m.author) : m)));
-      })
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "direct_messages" }, ({ old }) => {
-        const id = (old as { id?: string }).id;
-        if (id) setMessages((prev) => prev.filter((m) => m.id !== id));
-      })
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return subscribeDbChanges(supabase, `dm:${conversationId}`, (channel) =>
+      channel
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "direct_messages", filter: `conversation_id=eq.${conversationId}` }, ({ new: row }) => {
+          const dm = row as DirectMessage;
+          setMessages((prev) => (prev.some((m) => m.id === dm.id) ? prev.map((m) => (m.id === dm.id ? { ...dmToChat(dm, m.author) } : m)) : [...prev, dmToChat(dm, authorOf(dm.author_id))].sort(byTime)));
+          if (dm.author_id !== me.id) {
+            playSfx("message");
+            incoming.current?.();
+          }
+        })
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "direct_messages", filter: `conversation_id=eq.${conversationId}` }, ({ new: row }) => {
+          const dm = row as DirectMessage;
+          setMessages((prev) => prev.map((m) => (m.id === dm.id ? dmToChat(dm, m.author) : m)));
+        })
+        .on("postgres_changes", { event: "DELETE", schema: "public", table: "direct_messages" }, ({ old }) => {
+          const id = (old as { id?: string }).id;
+          if (id) setMessages((prev) => prev.filter((m) => m.id !== id));
+        }),
+    );
   }, [supabase, conversationId, me.id, authorOf]);
 
   const loadOlder = useCallback(async () => {

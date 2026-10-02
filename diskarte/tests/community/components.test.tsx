@@ -169,6 +169,7 @@ describe("offline queue & slow mode (useChannelChat)", () => {
   it("keeps thread replies out of the channel and in their thread", async () => {
     const channel = renderHook(() => useChannelChat(CHANNEL, initial), { wrapper: wrap() });
     const thread = renderHook(() => useChannelChat(CHANNEL, { messages: [], reactions: [], hasMore: false }, { threadId: "m1" }), { wrapper: wrap() });
+    await waitFor(() => expect(fake.joined(`db:chat:${CHANNEL}`) && fake.joined(`db:chat:${CHANNEL}:m1`)).toBeTruthy());
     act(() => fake.emitDb("messages", "INSERT", { ...msg("r1", { thread_id: "m1" }), author: undefined }));
     await waitFor(() => expect(thread.result.current.messages.map((m) => m.id)).toEqual(["r1"]));
     expect(channel.result.current.messages.map((m) => m.id)).toEqual(["m1"]);

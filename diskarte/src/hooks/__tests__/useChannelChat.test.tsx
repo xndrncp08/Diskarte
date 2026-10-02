@@ -52,8 +52,11 @@ const wrapper = ({ children }: { children: ReactNode }) => (
   </ServerFixture>
 );
 
-function setup() {
-  return renderHook(() => useChannelChat(CHANNEL, { messages: [msg("m1", MOD_ID, "hello", "2026-09-26T01:00:00Z")], reactions: [], hasMore: false }), { wrapper });
+/** Renders the hook and waits for its realtime channel to join (it first hands the socket my JWT). */
+async function setup() {
+  const hook = renderHook(() => useChannelChat(CHANNEL, { messages: [msg("m1", MOD_ID, "hello", "2026-09-26T01:00:00Z")], reactions: [], hasMore: false }), { wrapper });
+  await waitFor(() => expect(fake.joined(`db:chat:${CHANNEL}`)).toBeDefined());
+  return hook;
 }
 
 beforeEach(() => {
@@ -62,8 +65,25 @@ beforeEach(() => {
 });
 
 describe("useChannelChat realtime", () => {
+  // Production runs Realtime with "Allow public access" off: a public channel is refused outright,
+  // and a join sent before the socket has my JWT is evaluated as anon, so RLS hides every message.
+  it("joins db:chat as a private channel, only after the session token reaches the socket", async () => {
+    const { unmount } = await setup();
+    const channel = fake.joined(`db:chat:${CHANNEL}`)!;
+    expect(channel.config).toMatchObject({ private: true });
+    expect(channel.authedFirst).toBe(true);
+    unmount();
+    expect(fake.client.removeChannel).toHaveBeenCalled();
+  });
+
+  it("delivers another member's message live, without a reload", async () => {
+    const { result } = await setup();
+    act(() => fake.emitDb("messages", "INSERT", { ...msg("live", MEMBER_ID, "nandito na ako", "2026-09-26T01:01:30Z"), author: undefined }));
+    await waitFor(() => expect(result.current.messages.map((m) => m.content)).toContain("nandito na ako"));
+  });
+
   it("appends inserts with the author resolved from the member list and plays an alert", async () => {
-    const { result } = setup();
+    const { result } = await setup();
     act(() => fake.emitDb("messages", "INSERT", { ...msg("m2", MEMBER_ID, "hi @kapitan", "2026-09-26T01:01:00Z"), author: undefined }));
     await waitFor(() => expect(result.current.messages).toHaveLength(2));
     expect(result.current.messages[1].author?.display_name).toBe("Juan");
@@ -71,14 +91,14 @@ describe("useChannelChat realtime", () => {
   });
 
   it("ignores inserts for other channels", async () => {
-    const { result } = setup();
+    const { result } = await setup();
     act(() => fake.emitDb("messages", "INSERT", { ...msg("x", MEMBER_ID, "elsewhere", "2026-09-26T01:02:00Z"), channel_id: "other" }));
     await new Promise((r) => setTimeout(r, 10));
     expect(result.current.messages.map((m) => m.id)).toEqual(["m1"]);
   });
 
   it("applies edits and deletes", async () => {
-    const { result } = setup();
+    const { result } = await setup();
     act(() => fake.emitDb("messages", "UPDATE", { ...msg("m1", MOD_ID, "hello (edited)", "2026-09-26T01:00:00Z"), author: undefined, edited_at: "2026-09-26T01:05:00Z" }));
     await waitFor(() => expect(result.current.messages[0].content).toBe("hello (edited)"));
     expect(result.current.messages[0].author?.display_name).toBe("Maria");
@@ -87,7 +107,7 @@ describe("useChannelChat realtime", () => {
   });
 
   it("tracks reactions from realtime events", async () => {
-    const { result } = setup();
+    const { result } = await setup();
     act(() => fake.emitDb("reactions", "INSERT", { message_id: "m1", user_id: MEMBER_ID, emoji: ":lodi:", channel_id: CHANNEL, server_id: "s", created_at: "2026-09-26T01:03:00Z" }));
     await waitFor(() => expect(result.current.reactions.get("m1")).toHaveLength(1));
     act(() => fake.emitDb("reactions", "DELETE", { message_id: "m1", user_id: MEMBER_ID, emoji: ":lodi:" }));
@@ -101,7 +121,7 @@ describe("useChannelChat mutations", () => {
       ok: true,
       data: { message: { ...msg(input.id as string, OWNER_ID, input.content as string, "2026-09-26T01:10:00Z") } },
     }));
-    const { result } = setup();
+    const { result } = await setup();
     let outcome = "";
     await act(async () => {
       outcome = await result.current.send("mabuhay!");
@@ -119,7 +139,7 @@ describe("useChannelChat mutations", () => {
 
   it("marks failed sends for retry", async () => {
     vi.mocked(actions.sendMessageAction).mockResolvedValue({ ok: false, error: "RATE" });
-    const { result } = setup();
+    const { result } = await setup();
     await act(async () => {
       await result.current.send("spam");
     });
@@ -129,7 +149,7 @@ describe("useChannelChat mutations", () => {
   });
 
   it("toggles my reaction optimistically", async () => {
-    const { result } = setup();
+    const { result } = await setup();
     await act(async () => {
       await result.current.toggleReaction("m1", ":petmalu:");
     });
@@ -142,7 +162,7 @@ describe("useChannelChat mutations", () => {
   });
 
   it("pins and exposes the pinned list", async () => {
-    const { result } = setup();
+    const { result } = await setup();
     await act(async () => {
       await result.current.setPinned("m1", true);
     });

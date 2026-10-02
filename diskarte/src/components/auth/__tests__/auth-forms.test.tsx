@@ -24,6 +24,28 @@ describe("LoginForm", () => {
     render(<LoginForm next="/tambayan" initialError="Nag-expire ang link." />);
     expect(screen.getByRole("alert")).toHaveTextContent("Nag-expire ang link.");
   });
+
+  it("shows and hides the password with the eye toggle, keeping what was typed", () => {
+    render(<LoginForm next="/tambayan" />);
+    const password = screen.getByLabelText("Password");
+    fireEvent.change(password, { target: { value: "Kape-Muna-2026" } });
+    expect(password).toHaveAttribute("type", "password");
+
+    const toggle = screen.getByRole("button", { name: "Show password" });
+    expect(toggle).toHaveAttribute("type", "button"); // never submits the form
+    expect(toggle).toHaveAttribute("aria-controls", password.id);
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(toggle);
+    expect(password).toHaveAttribute("type", "text");
+    expect(password).toHaveValue("Kape-Muna-2026");
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(toggle);
+    expect(password).toHaveAttribute("type", "password");
+    expect(screen.getByRole("button", { name: "Show password" })).toBe(toggle);
+    // The email field is not a password: no toggle there.
+    expect(screen.getAllByRole("button", { name: /password$/ })).toHaveLength(1);
+  });
 });
 
 describe("SignupForm", () => {
@@ -44,6 +66,18 @@ describe("SignupForm", () => {
     expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.getByText("Magkapareho ✓")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sali na!" })).toBeEnabled();
+  });
+});
+
+describe("SignupForm password toggles", () => {
+  it("gives each password field its own independent toggle", () => {
+    render(<SignupForm />);
+    const [first, second] = screen.getAllByRole("button", { name: "Show password" });
+    fireEvent.click(second);
+    expect(screen.getByLabelText("Confirm password")).toHaveAttribute("type", "text");
+    expect(screen.getByLabelText("Password")).toHaveAttribute("type", "password");
+    fireEvent.click(first);
+    expect(screen.getByLabelText("Password")).toHaveAttribute("type", "text");
   });
 });
 

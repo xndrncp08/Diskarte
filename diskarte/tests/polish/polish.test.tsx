@@ -14,7 +14,7 @@ vi.mock("@/actions/servers", async () => (await import("../mocks/actions")).serv
 vi.mock("@/actions/profile", async () => (await import("../mocks/actions")).profileActions);
 vi.mock("sonner", async () => (await import("../mocks/actions")).toastMock);
 
-const { DiskarteLayout, GENERAL, MEMBERS, RUNTIME, TAMBAYAN, channelUrl, messageFixture } = await import("../fixtures/layout");
+const { ACCOUNT, DiskarteLayout, GENERAL, MEMBERS, RUNTIME, TAMBAYAN, channelUrl, messageFixture } = await import("../fixtures/layout");
 const { SoundSettings } = await import("@/components/profile/SoundSettings");
 const { useCallStats } = await import("@/hooks/useCallStats");
 
@@ -202,7 +202,7 @@ describe("mobile interactions", () => {
     const { RuntimeConfigProvider } = await import("@/components/providers/RuntimeConfig");
     render(
       <RuntimeConfigProvider value={RUNTIME}>
-        <AppShell profile={MEMBERS[0].profile} servers={[server]}>
+        <AppShell profile={MEMBERS[0].profile} account={ACCOUNT} servers={[server]}>
           <DrawerPanel>
             <aside aria-label="Drawer content">x</aside>
           </DrawerPanel>

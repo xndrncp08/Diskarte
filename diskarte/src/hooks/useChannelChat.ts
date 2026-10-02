@@ -8,6 +8,7 @@ import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { useServer } from "@/components/providers/ServerProvider";
 import { AUTHOR_COLUMNS, MESSAGE_SELECT, PAGE_SIZE, type Attachment, type Message, type MessageAuthor, type MessageWithAuthor, type Reaction } from "@/lib/messages";
 import { dequeue, enqueue, isNetworkError, outboxFor, type OutboxEntry } from "@/lib/outbox";
+import { subscribeDbChanges } from "@/lib/realtime";
 import { playSfx } from "@/lib/sfx";
 
 export type ChatMessage = MessageWithAuthor & { pending?: boolean; failed?: boolean; queued?: boolean };
@@ -90,63 +91,59 @@ export function useChannelChat(
   useEffect(() => {
     const inScope = (m: Message) => m.channel_id === channelId && (m.thread_id ?? null) === threadId;
     const filter = threadId ? `thread_id=eq.${threadId}` : `channel_id=eq.${channelId}`;
-    const channel = supabase
-      .channel(`db:chat:${channelId}${threadId ? `:${threadId}` : ""}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter }, async ({ new: row }) => {
-        const message = row as Message;
-        if (!inScope(message)) return;
-        const author = await resolveAuthor(message.author_id);
-        setMessages((prev) => {
-          const existing = prev.find((m) => m.id === message.id);
-          if (existing) return prev.map((m) => (m.id === message.id ? { ...message, author: m.author ?? author } : m));
-          return [...prev, { ...message, author }].sort(byTime);
-        });
-        if (message.author_id !== me.id) playSfx(mentionsUser(message.content, me.username) ? "mention" : "message");
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter }, ({ new: row }) => {
-        const message = row as Message;
-        setMessages((prev) => prev.map((m) => (m.id === message.id ? { ...m, ...message, author: m.author } : m)));
-      })
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "messages" }, ({ old }) => {
-        const id = (old as { id?: string }).id;
-        if (!id) return;
-        setMessages((prev) => prev.filter((m) => m.id !== id));
-        setReactions((prev) => {
-          if (!prev.has(id)) return prev;
-          const next = new Map(prev);
-          next.delete(id);
-          return next;
-        });
-      })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "reactions", filter: `channel_id=eq.${channelId}` }, ({ new: row }) => {
-        const r = row as Reaction;
-        setReactions((prev) => {
-          const list = prev.get(r.message_id) ?? [];
-          if (list.some((x) => x.user_id === r.user_id && x.emoji === r.emoji)) return prev;
-          const next = new Map(prev);
-          next.set(r.message_id, [...list, r]);
-          return next;
-        });
-      })
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "reactions" }, ({ old }) => {
-        const r = old as Partial<Reaction>;
-        if (!r.message_id) return;
-        setReactions((prev) => {
-          const list = prev.get(r.message_id!);
-          if (!list) return prev;
-          const next = new Map(prev);
-          next.set(
-            r.message_id!,
-            list.filter((x) => !(x.user_id === r.user_id && x.emoji === r.emoji)),
-          );
-          return next;
-        });
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return subscribeDbChanges(supabase, `chat:${channelId}${threadId ? `:${threadId}` : ""}`, (channel) =>
+      channel
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter }, async ({ new: row }) => {
+          const message = row as Message;
+          if (!inScope(message)) return;
+          const author = await resolveAuthor(message.author_id);
+          setMessages((prev) => {
+            const existing = prev.find((m) => m.id === message.id);
+            if (existing) return prev.map((m) => (m.id === message.id ? { ...message, author: m.author ?? author } : m));
+            return [...prev, { ...message, author }].sort(byTime);
+          });
+          if (message.author_id !== me.id) playSfx(mentionsUser(message.content, me.username) ? "mention" : "message");
+        })
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter }, ({ new: row }) => {
+          const message = row as Message;
+          setMessages((prev) => prev.map((m) => (m.id === message.id ? { ...m, ...message, author: m.author } : m)));
+        })
+        .on("postgres_changes", { event: "DELETE", schema: "public", table: "messages" }, ({ old }) => {
+          const id = (old as { id?: string }).id;
+          if (!id) return;
+          setMessages((prev) => prev.filter((m) => m.id !== id));
+          setReactions((prev) => {
+            if (!prev.has(id)) return prev;
+            const next = new Map(prev);
+            next.delete(id);
+            return next;
+          });
+        })
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "reactions", filter: `channel_id=eq.${channelId}` }, ({ new: row }) => {
+          const r = row as Reaction;
+          setReactions((prev) => {
+            const list = prev.get(r.message_id) ?? [];
+            if (list.some((x) => x.user_id === r.user_id && x.emoji === r.emoji)) return prev;
+            const next = new Map(prev);
+            next.set(r.message_id, [...list, r]);
+            return next;
+          });
+        })
+        .on("postgres_changes", { event: "DELETE", schema: "public", table: "reactions" }, ({ old }) => {
+          const r = old as Partial<Reaction>;
+          if (!r.message_id) return;
+          setReactions((prev) => {
+            const list = prev.get(r.message_id!);
+            if (!list) return prev;
+            const next = new Map(prev);
+            next.set(
+              r.message_id!,
+              list.filter((x) => !(x.user_id === r.user_id && x.emoji === r.emoji)),
+            );
+            return next;
+          });
+        }),
+    );
   }, [supabase, channelId, threadId, me.id, me.username, resolveAuthor]);
 
   // ---- pagination ----------------------------------------------------------------------

@@ -7,6 +7,7 @@ import { useTransition, type ReactNode } from "react";
 import { toast } from "sonner";
 import { setStatusAction } from "@/actions/profile";
 import { useMe } from "@/components/providers/MeProvider";
+import { useSettingsDialog } from "@/components/profile/SettingsDialog";
 import { SoundSettingsPopover } from "@/components/profile/SoundSettingsPopover";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { PixelStatus } from "@/components/retro/PixelStatus";
@@ -18,6 +19,7 @@ import type { PresenceStatus } from "@/lib/supabase/database.types";
 /** Bottom-left identity panel with the quick status switcher; `controls` slot hosts voice buttons. */
 export function UserPanel({ controls }: { controls?: ReactNode }) {
   const { me, setMe } = useMe();
+  const settings = useSettingsDialog();
   const router = useRouter();
   const [, startTransition] = useTransition();
 
@@ -81,7 +83,19 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
       {controls}
       <SoundSettingsPopover />
       <Tooltip label="User settings" side="top">
-        <Link href="/settings/profile" aria-label="User settings" className="touch-target relative rounded-md p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-white pointer-coarse:p-3.5">
+        {/* Opens the Settings dialog in place so a voice call stays connected; the link still
+            works for new-tab clicks and outside the app shell. */}
+        <Link
+          href="/settings/profile"
+          aria-label="User settings"
+          aria-haspopup={settings ? "dialog" : undefined}
+          onClick={(event) => {
+            if (!settings || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            event.preventDefault();
+            settings.openSettings();
+          }}
+          className="touch-target relative rounded-md p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-white pointer-coarse:p-3.5"
+        >
           <Settings className="size-4" aria-hidden />
         </Link>
       </Tooltip>

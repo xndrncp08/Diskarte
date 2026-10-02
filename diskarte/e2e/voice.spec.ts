@@ -41,6 +41,18 @@ test.describe("WebRTC voice rooms", () => {
     await expect(dock).toContainText("Voice Connected");
     await expect(dock).toContainText("Tambayan 1");
 
+    // Settings open as a floating dialog over the shell: the call (and its audio) stays connected.
+    await page.getByTestId("user-panel").getByRole("link", { name: "User settings" }).click();
+    const settings = page.getByRole("dialog", { name: "User settings" });
+    await expect(settings.getByTestId("profile-builder")).toBeVisible();
+    await settings.getByRole("tab", { name: "Account & Sessions" }).click();
+    await expect(settings.getByRole("tabpanel")).toContainText(host.email);
+    await expect(page).toHaveURL(/\/tambayan\//);
+    await page.keyboard.press("Escape");
+    await expect(settings).toHaveCount(0);
+    await expect(dock).toContainText("Voice Connected");
+    await expect(friend.page.getByTestId("participant-tile")).toHaveCount(2);
+
     await dock.getByRole("button", { name: "Disconnect" }).click();
     await expect(dock).toHaveCount(0);
     await friend.context.close();

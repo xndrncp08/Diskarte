@@ -1,4 +1,7 @@
-import { forwardRef, useId, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
+"use client";
+
+import { Eye, EyeOff } from "lucide-react";
+import { forwardRef, useId, useState, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 const control =
@@ -42,22 +45,49 @@ export interface InputFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   wrapperClassName?: string;
 }
 
+/** Password fields get an eye toggle that reveals the text in place (it never submits the form). */
 export const InputField = forwardRef<HTMLInputElement, InputFieldProps>(function InputField(
-  { label, hint, error, id, className, wrapperClassName, ...props },
+  { label, hint, error, id, type, className, wrapperClassName, ...props },
   ref,
 ) {
   const autoId = useId();
   const inputId = id ?? autoId;
+  const [revealed, setRevealed] = useState(false);
+  const isPassword = type === "password";
+  const input = (
+    <input
+      ref={ref}
+      id={inputId}
+      type={isPassword && revealed ? "text" : type}
+      aria-invalid={error ? true : undefined}
+      aria-describedby={error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined}
+      className={cn(control, "h-10 pointer-coarse:h-11", isPassword && "pr-11 pointer-coarse:pr-12", className)}
+      {...props}
+    />
+  );
   return (
     <FieldShell label={label} hint={hint} error={error} htmlFor={inputId} className={wrapperClassName}>
-      <input
-        ref={ref}
-        id={inputId}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined}
-        className={cn(control, "h-10 pointer-coarse:h-11", className)}
-        {...props}
-      />
+      {isPassword ? (
+        <div className="relative">
+          {input}
+          <button
+            type="button"
+            aria-label="Show password"
+            aria-pressed={revealed}
+            aria-controls={inputId}
+            title={revealed ? "Itago ang password" : "Ipakita ang password"}
+            // Keep focus (and the caret) in the input on mouse/touch; keyboard users can still tab here.
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => setRevealed((r) => !r)}
+            disabled={props.disabled}
+            className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-lg text-slate-400 transition-colors hover:text-white focus-visible:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sun/40 disabled:opacity-60 pointer-coarse:w-11"
+          >
+            {revealed ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
+          </button>
+        </div>
+      ) : (
+        input
+      )}
     </FieldShell>
   );
 });

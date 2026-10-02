@@ -8,6 +8,7 @@ import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { useServerPresence } from "@/components/providers/PresenceProvider";
 import type { ServerBadge } from "@/lib/community";
 import type { PresencePayload, RealtimeHealth } from "@/lib/presence";
+import { subscribeDbChanges } from "@/lib/realtime";
 import type { Channel, MemberWithProfile, Server } from "@/lib/servers";
 import type { BadgeKind, MemberRole, Tables } from "@/lib/supabase/database.types";
 
@@ -80,66 +81,66 @@ export function ServerProvider({ server: initialServer, channels: initialChannel
       return data;
     };
 
-    const db = supabase
-      .channel(`db:server:${serverId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "channels", filter: `server_id=eq.${serverId}` }, ({ new: row }) => {
-        setChannels((prev) => (prev.some((c) => c.id === row.id) ? prev : [...prev, row as Channel]));
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "channels", filter: `server_id=eq.${serverId}` }, ({ new: row }) => {
-        setChannels((prev) => prev.map((c) => (c.id === row.id ? (row as Channel) : c)));
-      })
-      // DELETE events cannot be filtered server-side; the payload only carries the primary key.
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "channels" }, ({ old }) => {
-        setChannels((prev) => prev.filter((c) => c.id !== (old as { id?: string }).id));
-      })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "members", filter: `server_id=eq.${serverId}` }, async ({ new: row }) => {
-        const member = row as Tables<"members">;
-        const profile = await fetchProfile(member.user_id);
-        if (!profile) return;
-        setMembers((prev) => (prev.some((m) => m.user_id === member.user_id) ? prev : [...prev, { ...member, profile }]));
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "members", filter: `server_id=eq.${serverId}` }, ({ new: row }) => {
-        const member = row as Tables<"members">;
-        setMembers((prev) => prev.map((m) => (m.user_id === member.user_id ? { ...m, ...member } : m)));
-      })
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "members" }, ({ old }) => {
-        const key = old as { server_id?: string; user_id?: string };
-        if (key.server_id !== serverId || !key.user_id) return;
-        if (key.user_id === me.id) {
-          toast.error("Na-remove ka sa tambayan na 'to.");
-          router.replace("/tambayan");
-          router.refresh();
-          return;
-        }
-        setMembers((prev) => prev.filter((m) => m.user_id !== key.user_id));
-      })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "server_badges", filter: `server_id=eq.${serverId}` }, ({ new: row }) => {
-        const badge = row as ServerBadge;
-        setBadgeRows((prev) => (prev.some((b) => b.user_id === badge.user_id && b.badge === badge.badge) ? prev : [...prev, badge]));
-      })
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "server_badges" }, ({ old }) => {
-        const key = old as Partial<ServerBadge>;
-        if (key.server_id !== serverId) return;
-        setBadgeRows((prev) => prev.filter((b) => !(b.user_id === key.user_id && b.badge === key.badge)));
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "servers", filter: `id=eq.${serverId}` }, ({ new: row }) => {
-        setServer(row as Server);
-      })
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "servers" }, ({ old }) => {
-        if ((old as { id?: string }).id !== serverId) return;
-        toast("Na-delete ang tambayan na 'to.");
-        router.replace("/tambayan");
-        router.refresh();
-      })
-      .subscribe((status) => {
+    return subscribeDbChanges(
+      supabase,
+      `server:${serverId}`,
+      (channel) =>
+        channel
+          .on("postgres_changes", { event: "INSERT", schema: "public", table: "channels", filter: `server_id=eq.${serverId}` }, ({ new: row }) => {
+            setChannels((prev) => (prev.some((c) => c.id === row.id) ? prev : [...prev, row as Channel]));
+          })
+          .on("postgres_changes", { event: "UPDATE", schema: "public", table: "channels", filter: `server_id=eq.${serverId}` }, ({ new: row }) => {
+            setChannels((prev) => prev.map((c) => (c.id === row.id ? (row as Channel) : c)));
+          })
+          // DELETE events cannot be filtered server-side; the payload only carries the primary key.
+          .on("postgres_changes", { event: "DELETE", schema: "public", table: "channels" }, ({ old }) => {
+            setChannels((prev) => prev.filter((c) => c.id !== (old as { id?: string }).id));
+          })
+          .on("postgres_changes", { event: "INSERT", schema: "public", table: "members", filter: `server_id=eq.${serverId}` }, async ({ new: row }) => {
+            const member = row as Tables<"members">;
+            const profile = await fetchProfile(member.user_id);
+            if (!profile) return;
+            setMembers((prev) => (prev.some((m) => m.user_id === member.user_id) ? prev : [...prev, { ...member, profile }]));
+          })
+          .on("postgres_changes", { event: "UPDATE", schema: "public", table: "members", filter: `server_id=eq.${serverId}` }, ({ new: row }) => {
+            const member = row as Tables<"members">;
+            setMembers((prev) => prev.map((m) => (m.user_id === member.user_id ? { ...m, ...member } : m)));
+          })
+          .on("postgres_changes", { event: "DELETE", schema: "public", table: "members" }, ({ old }) => {
+            const key = old as { server_id?: string; user_id?: string };
+            if (key.server_id !== serverId || !key.user_id) return;
+            if (key.user_id === me.id) {
+              toast.error("Na-remove ka sa tambayan na 'to.");
+              router.replace("/tambayan");
+              router.refresh();
+              return;
+            }
+            setMembers((prev) => prev.filter((m) => m.user_id !== key.user_id));
+          })
+          .on("postgres_changes", { event: "INSERT", schema: "public", table: "server_badges", filter: `server_id=eq.${serverId}` }, ({ new: row }) => {
+            const badge = row as ServerBadge;
+            setBadgeRows((prev) => (prev.some((b) => b.user_id === badge.user_id && b.badge === badge.badge) ? prev : [...prev, badge]));
+          })
+          .on("postgres_changes", { event: "DELETE", schema: "public", table: "server_badges" }, ({ old }) => {
+            const key = old as Partial<ServerBadge>;
+            if (key.server_id !== serverId) return;
+            setBadgeRows((prev) => prev.filter((b) => !(b.user_id === key.user_id && b.badge === key.badge)));
+          })
+          .on("postgres_changes", { event: "UPDATE", schema: "public", table: "servers", filter: `id=eq.${serverId}` }, ({ new: row }) => {
+            setServer(row as Server);
+          })
+          .on("postgres_changes", { event: "DELETE", schema: "public", table: "servers" }, ({ old }) => {
+            if ((old as { id?: string }).id !== serverId) return;
+            toast("Na-delete ang tambayan na 'to.");
+            router.replace("/tambayan");
+            router.refresh();
+          }),
+      (status) => {
         if (status === "SUBSCRIBED") setHealth((h) => (h === "offline" ? h : "connected"));
         else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") setHealth("degraded");
         else if (status === "CLOSED") setHealth("offline");
-      });
-
-    return () => {
-      supabase.removeChannel(db);
-    };
+      },
+    );
   }, [supabase, serverId, me.id, router]);
 
   // ---- presence (shared, ref-counted channel from PresenceProvider) ---------------------
