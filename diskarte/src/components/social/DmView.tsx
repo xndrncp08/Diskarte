@@ -15,7 +15,7 @@ import { useSocial } from "@/components/providers/SocialProvider";
 import { useShellUI } from "@/components/shell/ShellUI";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { useCall } from "@/components/voice/CallProvider";
+import { useCall, usePrewarm } from "@/components/voice/CallProvider";
 import { useRinger } from "@/components/voice/IncomingCalls";
 import { StageSkeleton } from "@/components/voice/StageSkeleton";
 import { useDirectChat } from "@/hooks/useDirectChat";
@@ -69,6 +69,8 @@ export function DmView({
   const byId = new Map(chat.messages.map((m) => [m.id, m]));
   const names = new Map(participants.map((p) => [p.id, p.display_name]));
   const ringer = useRinger();
+  const prewarm = usePrewarm();
+  const callTarget = { kind: "dm" as const, serverId: "", serverName: "Direct Message", channelId: conversation.id, channelName: title };
   const actions: MessageActions = {
     onReply: setReplyTo,
     onEdit: (id, content) => chat.edit(id, content),
@@ -81,7 +83,7 @@ export function DmView({
 
   /** Join the DM's call room and ring everyone else in the conversation (their incoming-call pop-up). */
   async function startCall(video = false) {
-    const joining = call.join({ kind: "dm", serverId: "", serverName: "Direct Message", channelId: conversation.id, channelName: title });
+    const joining = call.join(callTarget);
     void ringer?.ringDm(conversation.id, video);
     await joining;
     if (video) await call.toggleCamera();
@@ -117,10 +119,10 @@ export function DmView({
               </button>
             ) : (
               <>
-                <button type="button" onClick={() => void startCall()} aria-label="Start voice call" disabled={!canSend} className="touch-target relative rounded-md p-1.5 text-slate-300 hover:bg-white/10 disabled:opacity-40">
+                <button type="button" onClick={() => void startCall()} {...prewarm(callTarget)} aria-label="Start voice call" disabled={!canSend} className="touch-target relative rounded-md p-1.5 text-slate-300 hover:bg-white/10 disabled:opacity-40">
                   <Phone className="size-5" aria-hidden />
                 </button>
-                <button type="button" onClick={() => void startCall(true)} aria-label="Start video call" disabled={!canSend} className="touch-target relative rounded-md p-1.5 text-slate-300 hover:bg-white/10 disabled:opacity-40">
+                <button type="button" onClick={() => void startCall(true)} {...prewarm(callTarget)} aria-label="Start video call" disabled={!canSend} className="touch-target relative rounded-md p-1.5 text-slate-300 hover:bg-white/10 disabled:opacity-40">
                   <Video className="size-5" aria-hidden />
                 </button>
               </>

@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Loader2, Volume2 } from "lucide-react";
 import dynamic from "next/dynamic";
+import { useEffect } from "react";
 import { useServer } from "@/components/providers/ServerProvider";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { ChannelHeader } from "@/components/server/ChannelHeader";
@@ -20,6 +21,15 @@ export function VoiceChannelView({ channel }: { channel: Channel }) {
   const call = useCall();
   const here = call.target?.channelId === channel.id;
   const inRoom = members.filter((m) => presence.get(m.user_id)?.voice_channel_id === channel.id);
+  const target = { serverId: server.id, serverName: server.name, channelId: channel.id, channelName: channel.name };
+
+  // Opening a voice channel is a strong hint you'll join: warm the SDK and token now.
+  const { prewarm } = call;
+  useEffect(() => {
+    if (!here) prewarm({ serverId: server.id, serverName: server.name, channelId: channel.id, channelName: channel.name });
+    // Warm once per channel opened, not on every call-state change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel.id, prewarm]);
 
   return (
     <motion.section
@@ -55,7 +65,7 @@ export function VoiceChannelView({ channel }: { channel: Channel }) {
           <Button
             size="lg"
             loading={here && (call.status === "connecting" || call.status === "reconnecting")}
-            onClick={() => void call.join({ serverId: server.id, serverName: server.name, channelId: channel.id, channelName: channel.name })}
+            onClick={() => void call.join(target)}
             data-testid="join-voice"
           >
             {here && call.status !== "idle" ? (

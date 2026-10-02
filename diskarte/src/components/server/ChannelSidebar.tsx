@@ -17,7 +17,7 @@ import { UserPanel } from "@/components/shell/UserPanel";
 import { useShellUI } from "@/components/shell/ShellUI";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CallDock } from "@/components/voice/CallDock";
-import { useCall } from "@/components/voice/CallProvider";
+import { useCall, usePrewarm } from "@/components/voice/CallProvider";
 import { Menu } from "@/components/ui/Menu";
 import { useOnline } from "@/hooks/useOnline";
 import { boostLevel } from "@/lib/community";
@@ -78,6 +78,7 @@ export function ChannelSidebar() {
   const { server, channels, myRole, health, members, badges } = useServer();
   const { me } = useMe();
   const { setNavOpen } = useShellUI();
+  const prewarm = usePrewarm();
   const params = useParams<{ channelId?: string }>();
   const pathname = usePathname();
   const onLfg = pathname === `/tambayan/${server.id}/lfg`;
@@ -223,6 +224,7 @@ export function ChannelSidebar() {
                           aria-current={active ? "page" : undefined}
                           className="flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1.5 text-[15px] pointer-coarse:min-h-11 pointer-coarse:py-2.5"
                           data-channel-type={channel.type}
+                          {...(channel.type === "voice" ? prewarm({ serverId: server.id, serverName: server.name, channelId: channel.id, channelName: channel.name }) : {})}
                         >
                           <Icon className="size-4 shrink-0 opacity-70" aria-hidden />
                           <span className="truncate">{channel.name}</span>
