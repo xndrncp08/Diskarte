@@ -53,6 +53,17 @@ export interface CallContextValue extends CallState {
   sendData: (topic: string, payload: unknown) => Promise<void>;
   /** Subscribe to a data topic; returns an unsubscribe function. */
   onData: (topic: string, handler: DataHandler) => () => void;
+  /** Audio mixer: overall call volume and per-person volume (0–1), remembered on this device. */
+  mix: AudioMix;
+  setMasterVolume: (volume: number) => void;
+  setParticipantVolume: (identity: string, volume: number) => void;
+  /** Switch microphone or speakers mid-call. */
+  switchDevice: (kind: "audioinput" | "audiooutput", deviceId: string) => Promise<void>;
+}
+
+export interface AudioMix {
+  master: number;
+  people: Record<string, number>;
 }
 
 /**
@@ -104,6 +115,31 @@ function readNoiseSuppression() {
   }
 }
 
+const MIX_KEY = "diskarte:audio-mix";
+const clampVolume = (v: number) => (Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1);
+
+function readMix(): AudioMix {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(MIX_KEY) ?? "null") as Partial<AudioMix> | null;
+    const people = Object.fromEntries(Object.entries(parsed?.people ?? {}).map(([id, v]) => [id, clampVolume(Number(v))]));
+    return { master: clampVolume(Number(parsed?.master ?? 1)), people };
+  } catch {
+    return { master: 1, people: {} };
+  }
+}
+
+/** Effective playback volume for one person: the master level times their own slider. */
+export function effectiveVolume(mix: AudioMix, identity: string) {
+  return mix.master * (mix.people[identity] ?? 1);
+}
+
+function applyMix(participant: RemoteParticipant, mix: AudioMix) {
+  const volume = effectiveVolume(mix, participant.identity);
+  participant.setVolume(volume);
+  // Screen-share audio follows the same slider.
+  participant.setVolume(volume, "screen_share_audio" as Parameters<RemoteParticipant["setVolume"]>[1]);
+}
+
 /** Remote video at low simulcast layers when low-data mode is on. */
 function applySubscribeQuality(room: Room, lk: typeof import("livekit-client"), low: boolean) {
   room.remoteParticipants.forEach((p: RemoteParticipant) =>
@@ -128,6 +164,8 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const leaving = useRef(false);
   const mutedBeforeDeafen = useRef(false);
   const dataHandlers = useRef(new Map<string, Set<DataHandler>>());
+  const [mix, setMix] = useState<AudioMix>(readMix);
+  const mixRef = useRef(mix);
   const setVoice = useVoicePresence();
   const isDm = state.target?.kind === "dm";
 
@@ -202,8 +240,9 @@ export function CallProvider({ children }: { children: ReactNode }) {
         .on(lk.RoomEvent.ParticipantConnected, () => playSfx("join"))
         .on(lk.RoomEvent.ParticipantDisconnected, () => playSfx("leave"))
         .on(lk.RoomEvent.ActiveSpeakersChanged, (speakers: Participant[]) => setSpeaking(speakers.map((p) => p.identity)))
-        .on(lk.RoomEvent.TrackSubscribed, (_track: unknown, publication: RemoteTrackPublication) => {
+        .on(lk.RoomEvent.TrackSubscribed, (_track: unknown, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
           if (getLowDataMode() && publication.kind === lk.Track.Kind.Video) publication.setVideoQuality(lk.VideoQuality.LOW);
+          if (publication.kind === lk.Track.Kind.Audio) applyMix(participant, mixRef.current);
         })
         .on(lk.RoomEvent.DataReceived, (payload: Uint8Array, participant?: RemoteParticipant, _kind?: unknown, topic?: string) => {
           const handlers = topic ? dataHandlers.current.get(topic) : undefined;
@@ -354,11 +393,52 @@ export function CallProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Mixer: apply levels to everyone in the room and remember them on this device.
+  useEffect(() => {
+    mixRef.current = mix;
+    room?.remoteParticipants.forEach((p) => applyMix(p, mix));
+    try {
+      localStorage.setItem(MIX_KEY, JSON.stringify(mix));
+    } catch {
+      // Storage blocked: levels last for this session only.
+    }
+  }, [room, mix]);
+
+  const setMasterVolume = useCallback((volume: number) => setMix((m) => ({ ...m, master: clampVolume(volume) })), []);
+  const setParticipantVolume = useCallback((identity: string, volume: number) => setMix((m) => ({ ...m, people: { ...m.people, [identity]: clampVolume(volume) } })), []);
+
+  const switchDevice = useCallback(async (kind: "audioinput" | "audiooutput", deviceId: string) => {
+    const current = roomRef.current;
+    if (!current) return;
+    try {
+      await current.switchActiveDevice(kind, deviceId);
+    } catch (err) {
+      toast.error(kind === "audioinput" ? mediaErrorMessage(err, "mic") : "Couldn't switch speakers.");
+    }
+  }, []);
+
   useEffect(() => () => void roomRef.current?.disconnect(), []);
 
   const value = useMemo<CallContextValue>(
-    () => ({ ...state, room, speaking, join, leave, toggleMute, toggleDeafen, toggleCamera, toggleScreen, toggleNoiseSuppression, sendData, onData }),
-    [state, room, speaking, join, leave, toggleMute, toggleDeafen, toggleCamera, toggleScreen, toggleNoiseSuppression, sendData, onData],
+    () => ({
+      ...state,
+      room,
+      speaking,
+      join,
+      leave,
+      toggleMute,
+      toggleDeafen,
+      toggleCamera,
+      toggleScreen,
+      toggleNoiseSuppression,
+      sendData,
+      onData,
+      mix,
+      setMasterVolume,
+      setParticipantVolume,
+      switchDevice,
+    }),
+    [state, room, speaking, join, leave, toggleMute, toggleDeafen, toggleCamera, toggleScreen, toggleNoiseSuppression, sendData, onData, mix, setMasterVolume, setParticipantVolume, switchDevice],
   );
 
   return (

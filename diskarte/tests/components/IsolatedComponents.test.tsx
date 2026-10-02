@@ -342,7 +342,7 @@ describe("glass modals & scroll locking", () => {
     expect(trigger).toHaveFocus();
   });
 
-  it("settings modal opened from the server menu restores focus to the menu trigger", async () => {
+  it("settings window opened from the server menu is non-modal and restores focus to the menu trigger", async () => {
     const user = userEvent.setup();
     render(<DiskarteLayout />);
     const trigger = screen.getByTestId("server-menu");
@@ -353,7 +353,9 @@ describe("glass modals & scroll locking", () => {
     const exiting = screen.queryByRole("menu");
     if (exiting) expect(exiting.style.pointerEvents).toBe("none");
     await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
-    expect(document.body.style.overflow).toBe("hidden");
+    // A floating window: the page behind stays scrollable and usable.
+    expect(dialog).toHaveAttribute("aria-modal", "false");
+    expect(document.body.style.overflow).toBe("");
     await user.click(within(dialog).getByRole("button", { name: "Close" }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Server settings" })).toBeNull());
     expect(document.body.style.overflow).toBe("");

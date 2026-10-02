@@ -9,6 +9,7 @@ class FakeRoom {
   handlers = new Map<string, (...args: unknown[]) => void>();
   connect = vi.fn(async () => undefined);
   disconnect = vi.fn(async () => undefined);
+  remoteParticipants = new Map<string, { identity: string; setVolume: (v: number) => void }>();
   localParticipant = {
     setMicrophoneEnabled: vi.fn(async () => undefined),
     setCameraEnabled: vi.fn(async () => undefined),

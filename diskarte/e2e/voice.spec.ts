@@ -53,6 +53,15 @@ test.describe("WebRTC voice rooms", () => {
     await expect(dock).toContainText("Voice Connected");
     await expect(friend.page.getByTestId("participant-tile")).toHaveCount(2);
 
+    // The floating audio mixer adjusts levels without touching the connection.
+    await dock.getByRole("button", { name: "Audio mixer" }).click();
+    const mixer = page.getByRole("dialog", { name: "Audio mixer" });
+    await expect(mixer.getByTestId("mixer-person")).toHaveCount(1);
+    await mixer.getByRole("slider", { name: `Volume for ${friend.user.displayName}` }).fill("40");
+    await mixer.getByRole("button", { name: "Close" }).click();
+    await expect(mixer).toHaveCount(0);
+    await expect(dock).toContainText("Voice Connected");
+
     await dock.getByRole("button", { name: "Disconnect" }).click();
     await expect(dock).toHaveCount(0);
     await friend.context.close();

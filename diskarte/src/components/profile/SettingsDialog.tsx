@@ -1,11 +1,12 @@
 "use client";
 
+import { Settings } from "lucide-react";
 import { createContext, useCallback, useContext, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useMe } from "@/components/providers/MeProvider";
 import { AccountSettings, type AccountInfo } from "@/components/profile/AccountSettings";
 import { ProfileBuilder } from "@/components/profile/ProfileBuilder";
 import { SignOutButton } from "@/components/profile/SignOutButton";
-import { Modal } from "@/components/ui/Modal";
+import { FloatingWindow } from "@/components/ui/FloatingWindow";
 import { cn } from "@/lib/utils";
 
 export type SettingsTab = "profile" | "account";
@@ -22,9 +23,10 @@ interface SettingsDialogValue {
 const SettingsDialogContext = createContext<SettingsDialogValue | null>(null);
 
 /**
- * User settings as a floating dialog over the app shell. It lives inside <CallProvider>, so opening
- * it (unlike navigating to the /settings pages, which leave the shell) never unmounts the LiveKit
- * room: an active voice/video call stays connected with audio playing while settings change.
+ * User settings as a draggable floating window over the app shell. It lives inside <CallProvider>,
+ * so opening it (unlike navigating to the /settings pages, which leave the shell) never unmounts the
+ * LiveKit room: an active voice/video call stays connected with audio playing while settings change,
+ * and the window is non-modal, so chat stays usable beside it.
  */
 export function SettingsDialogProvider({ account, children }: { account: AccountInfo; children: ReactNode }) {
   const [tab, setTab] = useState<SettingsTab | null>(null);
@@ -33,15 +35,16 @@ export function SettingsDialogProvider({ account, children }: { account: Account
   return (
     <SettingsDialogContext.Provider value={value}>
       {children}
-      <Modal
+      <FloatingWindow
+        id="user-settings"
         open={tab !== null}
         onClose={() => setTab(null)}
         title="User settings"
-        hideTitle
-        className="max-h-[calc(100dvh-2rem)] max-w-6xl overflow-y-auto overscroll-contain p-0"
+        icon={<Settings aria-hidden />}
+        className="h-[min(48rem,calc(100dvh-2rem))] w-[min(72rem,calc(100vw-2rem))]"
       >
         {tab && <SettingsPanels account={account} tab={tab} onTab={setTab} />}
-      </Modal>
+      </FloatingWindow>
     </SettingsDialogContext.Provider>
   );
 }
@@ -67,9 +70,8 @@ function SettingsPanels({ account, tab, onTab }: { account: AccountInfo; tab: Se
   }
 
   return (
-    <div className="flex flex-col md:min-h-[32rem] md:flex-row">
+    <div className="flex min-h-full flex-col md:flex-row">
       <div className="flex shrink-0 flex-col border-b border-white/5 px-4 pb-3 pt-5 md:w-48 md:border-b-0 md:border-r md:bg-black/20 md:px-3 md:py-8">
-        <p className="mb-2 px-3 font-silk text-[10px] uppercase tracking-widest text-slate-500">User settings</p>
         <div role="tablist" aria-label="User settings" onKeyDown={onKeyDown} className="flex gap-2 pr-10 md:flex-col md:gap-1 md:pr-0">
           {TABS.map((t, i) => (
             <button

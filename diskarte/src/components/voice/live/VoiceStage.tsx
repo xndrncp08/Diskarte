@@ -12,6 +12,7 @@ import { ParticipantTile } from "./ParticipantTile";
 import { SoundboardPanel } from "./SoundboardPanel";
 import { useCall } from "../CallProvider";
 import { VoiceControls } from "../VoiceControls";
+import { MixerButton } from "../AudioMixer";
 
 function useSize<T extends HTMLElement>() {
   const ref = useRef<T>(null);
@@ -141,6 +142,7 @@ function Stage() {
           <div className="flex gap-1.5 sm:gap-3" role="toolbar" aria-label="Call extras">
             <SoundboardPanel />
             <ActivitiesMenu controls={activity} />
+            <MixerButton />
           </div>
         </div>
       </div>

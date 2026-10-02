@@ -9,6 +9,8 @@ import { PresenceProvider } from "@/components/providers/PresenceProvider";
 import { SocialProvider } from "@/components/providers/SocialProvider";
 import type { AccountInfo } from "@/components/profile/AccountSettings";
 import { SettingsDialogProvider } from "@/components/profile/SettingsDialog";
+import { MediaViewerProvider } from "@/components/chat/MediaViewer";
+import { AudioMixerProvider } from "@/components/voice/AudioMixer";
 import { CallProvider } from "@/components/voice/CallProvider";
 import { FloatingCallHUD } from "@/components/voice/FloatingCallHUD";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
@@ -98,12 +100,17 @@ export function AppShell({
         <PresenceProvider>
           <SocialProvider>
             <CallProvider>
-              {/* Inside CallProvider: opening settings must never unmount (and so hang up) the call. */}
+              {/* Floating windows live inside CallProvider: opening or closing one never unmounts (and so
+                  never hangs up) the call. */}
               <SettingsDialogProvider account={account}>
-                <ShellUIProvider>
-                  <MembershipWatcher userId={profile.id} />
-                  <Frame servers={servers}>{children}</Frame>
-                </ShellUIProvider>
+                <AudioMixerProvider>
+                  <MediaViewerProvider>
+                    <ShellUIProvider>
+                      <MembershipWatcher userId={profile.id} />
+                      <Frame servers={servers}>{children}</Frame>
+                    </ShellUIProvider>
+                  </MediaViewerProvider>
+                </AudioMixerProvider>
               </SettingsDialogProvider>
             </CallProvider>
           </SocialProvider>

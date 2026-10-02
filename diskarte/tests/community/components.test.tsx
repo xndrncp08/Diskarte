@@ -369,7 +369,7 @@ describe("voice activities", () => {
     await user.click(screen.getByRole("gridcell", { name: "Row 2, column 2: empty" }));
     expect(onChange.mock.calls[0][0].board[4]).toBe("X");
     rerender(<TicTacToeBoard game={onChange.mock.calls[0][0]} me="me" nameOf={(id) => id ?? "—"} onChange={onChange} />);
-    expect(screen.getByRole("status")).toHaveTextContent("Turn ni them (O)");
+    expect(screen.getByRole("status")).toHaveTextContent("them's turn (O)");
     expect(screen.getByRole("gridcell", { name: "Row 1, column 1: empty" })).toBeDisabled();
   });
 });

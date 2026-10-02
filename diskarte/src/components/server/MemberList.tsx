@@ -1,8 +1,8 @@
 "use client";
 
 import { AnimatePresence } from "framer-motion";
-import { Ban, Crown, Shield, ShieldCheck, UserMinus } from "lucide-react";
-import { useEffect, useRef, useState, useTransition, type RefObject } from "react";
+import { Ban, Crown, PictureInPicture2, Shield, ShieldCheck, UserMinus, UserRound } from "lucide-react";
+import { useEffect, useRef, useState, useTransition, type ReactNode, type RefObject } from "react";
 import { toast } from "sonner";
 import { banMemberAction, setBadgeAction } from "@/actions/moderation";
 import { kickMemberAction, setMemberRoleAction } from "@/actions/servers";
@@ -13,6 +13,7 @@ import { ProfileCard } from "@/components/profile/ProfileCard";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { Button } from "@/components/ui/Button";
 import { FloatingPortal, useFloating } from "@/components/ui/floating";
+import { FloatingWindow } from "@/components/ui/FloatingWindow";
 import { InertWhenExiting } from "@/components/ui/InertWhenExiting";
 import { BADGES, BADGE_KINDS } from "@/lib/community";
 import { visibleStatus, type PresencePayload } from "@/lib/presence";
@@ -27,26 +28,22 @@ function RoleIcon({ role, owner }: { role: MemberRole; owner: boolean }) {
   return null;
 }
 
+/** Quick profile anchored beside the member row; dismissed by clicking outside or Escape. */
 function MemberPopover({
   member,
   presence,
   onClose,
+  onPopOut,
   anchor,
 }: {
   member: MemberWithProfile;
   presence: PresencePayload | undefined;
   onClose: () => void;
+  onPopOut: () => void;
   anchor: RefObject<HTMLButtonElement | null>;
 }) {
-  const { server, myRole, badges } = useServer();
-  const { me } = useMe();
-  const [pending, startTransition] = useTransition();
-  const [banning, setBanning] = useState(false);
-  const [reason, setReason] = useState("");
-  const memberBadges = badges.get(member.user_id) ?? [];
   const ref = useRef<HTMLDivElement>(null);
   const { style, side } = useFloating(true, anchor, ref, { side: "left", align: "start", offset: 12 });
-  const perms = canManageMember({ actorRole: myRole, actorId: me.id, target: member, ownerId: server.owner_id });
 
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
@@ -62,6 +59,64 @@ function MemberPopover({
       document.removeEventListener("keydown", onKey);
     };
   }, [onClose, anchor]);
+
+  return (
+    <InertWhenExiting
+      ref={ref}
+      role="dialog"
+      aria-label={`${member.profile.display_name}'s profile`}
+      data-floating="member-popover"
+      data-side={side}
+      style={style}
+      initial={{ opacity: 0, x: 8 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 8 }}
+      transition={{ duration: 0.15 }}
+      className="z-50"
+    >
+      <MemberProfileCard
+        member={member}
+        presence={presence}
+        onDone={onClose}
+        action={
+          <button
+            type="button"
+            onClick={onPopOut}
+            aria-label="Open in a window"
+            title="Open in a window"
+            className="flex size-8 items-center justify-center rounded-lg bg-black/50 text-slate-200 backdrop-blur transition-colors hover:bg-black/70 hover:text-white pointer-coarse:size-11"
+          >
+            <PictureInPicture2 className="size-4" aria-hidden />
+          </button>
+        }
+      />
+    </InertWhenExiting>
+  );
+}
+
+/** A member's profile plus the moderation tools the viewer may use (role, badges, kick, ban). */
+function MemberProfileCard({
+  member,
+  presence,
+  onDone,
+  action,
+  className,
+}: {
+  member: MemberWithProfile;
+  presence: PresencePayload | undefined;
+  /** Called after a kick or ban (the profile no longer applies). */
+  onDone: () => void;
+  /** Overlaid on the banner's top-right corner. */
+  action?: ReactNode;
+  className?: string;
+}) {
+  const { server, myRole, badges } = useServer();
+  const { me } = useMe();
+  const [pending, startTransition] = useTransition();
+  const [banning, setBanning] = useState(false);
+  const [reason, setReason] = useState("");
+  const memberBadges = badges.get(member.user_id) ?? [];
+  const perms = canManageMember({ actorRole: myRole, actorId: me.id, target: member, ownerId: server.owner_id });
 
   function setRole(role: MemberRole) {
     startTransition(async () => {
@@ -85,7 +140,7 @@ function MemberPopover({
       const result = await banMemberAction({ serverId: server.id, userId: member.user_id, reason });
       if (result.ok) {
         toast.success(`Banned ${member.profile.display_name}.`);
-        onClose();
+        onDone();
       } else toast.error(result.error ?? "Couldn't ban.");
     });
   }
@@ -95,7 +150,7 @@ function MemberPopover({
       const result = await kickMemberAction({ serverId: server.id, userId: member.user_id });
       if (result.ok) {
         toast.success(`Kicked ${member.profile.display_name}.`);
-        onClose();
+        onDone();
       } else toast.error(result.error ?? "Couldn't kick.");
     });
   }
@@ -109,20 +164,10 @@ function MemberPopover({
   };
 
   return (
-    <InertWhenExiting
-      ref={ref}
-      role="dialog"
-      aria-label={`${member.profile.display_name}'s profile`}
-      data-floating="member-popover"
-      data-side={side}
-      style={style}
-      initial={{ opacity: 0, x: 8 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 8 }}
-      transition={{ duration: 0.15 }}
-      className="z-50"
-    >
+    <div className="relative">
+      {action && <div className="absolute right-2 top-2 z-10">{action}</div>}
       <ProfileCard
+        className={className}
         profile={profile}
         role={member.user_id === server.owner_id ? "Owner" : ROLE_LABEL[member.role]}
         footer={
@@ -208,13 +253,14 @@ function MemberPopover({
           </>
         }
       />
-    </InertWhenExiting>
+    </div>
   );
 }
 
 function MemberRow({ member, presence, dim }: { member: MemberWithProfile; presence: PresencePayload | undefined; dim: boolean }) {
   const { server, badges } = useServer();
   const [open, setOpen] = useState(false);
+  const [windowOpen, setWindowOpen] = useState(false);
   const row = useRef<HTMLButtonElement>(null);
   const status = visibleStatus(presence);
   const customStatus = presence?.custom_status ?? member.profile.custom_status;
@@ -248,8 +294,35 @@ function MemberRow({ member, presence, dim }: { member: MemberWithProfile; prese
         </span>
       </button>
       <FloatingPortal>
-        <AnimatePresence>{open && <MemberPopover member={member} presence={presence} anchor={row} onClose={() => setOpen(false)} />}</AnimatePresence>
+        <AnimatePresence>
+          {open && (
+            <MemberPopover
+              member={member}
+              presence={presence}
+              anchor={row}
+              onClose={() => setOpen(false)}
+              onPopOut={() => {
+                setOpen(false);
+                setWindowOpen(true);
+              }}
+            />
+          )}
+        </AnimatePresence>
       </FloatingPortal>
+      {/* Popped out: a draggable window that stays open while you chat or browse channels. */}
+      <FloatingWindow
+        id={`profile-${member.user_id}`}
+        remember={false}
+        open={windowOpen}
+        onClose={() => setWindowOpen(false)}
+        anchor={row}
+        title={`${member.nickname ?? member.profile.display_name} · Profile`}
+        icon={<UserRound aria-hidden />}
+        className="w-80"
+        bodyClassName="p-3"
+      >
+        <MemberProfileCard member={member} presence={presence} onDone={() => setWindowOpen(false)} className="w-full" />
+      </FloatingWindow>
     </li>
   );
 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { callHref, useCall } from "./CallProvider";
+import { MixerButton } from "./AudioMixer";
 import { ConnectionMeter } from "./ConnectionMeter";
 import { VoiceControls } from "./VoiceControls";
 
@@ -25,7 +26,7 @@ export function CallDock() {
         >
           <div className="mb-2 flex items-start justify-between gap-2">
             <ConnectionMeter />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className={`text-sm font-bold ${call.status === "connected" ? "text-signal-green" : "text-signal-idle"}`} role="status">
                 {STATUS_TEXT[call.status]}
               </p>
@@ -33,6 +34,7 @@ export function CallDock() {
                 {call.target!.channelName} / {call.target!.serverName}
               </Link>
             </div>
+            <MixerButton size="sm" className="shrink-0" />
           </div>
           <VoiceControls size="sm" />
         </motion.div>
