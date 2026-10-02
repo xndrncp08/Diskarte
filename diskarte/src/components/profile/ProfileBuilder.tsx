@@ -112,7 +112,7 @@ export function ProfileBuilder({ profile, mode }: { profile: Profile; mode: "onb
               maxLength={32}
               required
               error={state.fieldErrors?.username}
-              hint="Lowercase, numbers, _ at ."
+              hint="Lowercase, numbers, _ and ."
             />
           </div>
         </section>
@@ -148,7 +148,7 @@ export function ProfileBuilder({ profile, mode }: { profile: Profile; mode: "onb
             </Button>
             {avatarUrl && (
               <Button variant="ghost" size="sm" onClick={() => setAvatarUrl("")}>
-                <Trash2 className="size-4" aria-hidden /> Gamitin ang salakot avatar
+                <Trash2 className="size-4" aria-hidden /> Use a salakot avatar
               </Button>
             )}
           </div>
@@ -185,7 +185,7 @@ export function ProfileBuilder({ profile, mode }: { profile: Profile; mode: "onb
             </Button>
             {bannerUrl && (
               <Button variant="ghost" size="sm" onClick={() => setBannerUrl("")}>
-                <Trash2 className="size-4" aria-hidden /> Alisin ang custom banner
+                <Trash2 className="size-4" aria-hidden /> Remove custom banner
               </Button>
             )}
           </div>
@@ -250,7 +250,7 @@ export function ProfileBuilder({ profile, mode }: { profile: Profile; mode: "onb
               value={customStatus}
               onChange={(e) => setCustomStatus(e.target.value)}
               maxLength={64}
-              placeholder="Anong ganap?"
+              placeholder="What's happening?"
               error={state.fieldErrors?.customStatus}
             />
           </div>

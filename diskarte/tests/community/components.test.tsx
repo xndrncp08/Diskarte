@@ -254,7 +254,7 @@ describe("composer & message rendering", () => {
       />,
     );
     expect(screen.getByRole("img", { name: "Sticker: Sana All" })).toBeInTheDocument();
-    expect(screen.getByText(/Naka-queue/)).toBeInTheDocument();
+    expect(screen.getByText(/Queued/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onDiscard).toHaveBeenCalledWith("s1");
   });

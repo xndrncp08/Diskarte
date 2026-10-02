@@ -170,7 +170,7 @@ function GroupDmForm({ friendIds, profiles, onDone }: { friendIds: string[]; pro
 
   return (
     <div className="space-y-4">
-      <InputField label="Pangalan (optional)" value={name} onChange={(e) => setName(e.target.value)} maxLength={64} placeholder="Squad Goals" />
+      <InputField label="Name (optional)" value={name} onChange={(e) => setName(e.target.value)} maxLength={64} placeholder="Squad Goals" />
       <fieldset>
         <legend className="mb-1.5 font-silk text-[11px] uppercase tracking-wider text-slate-300">Friends ({picked.length}/9)</legend>
         <ul className="scrollbar-thin max-h-60 space-y-1 overflow-y-auto">

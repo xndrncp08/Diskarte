@@ -143,7 +143,7 @@ export function SoundboardSettings() {
         <form onSubmit={upload} className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-3">
           <p className="text-sm font-semibold text-white">Upload a sound</p>
           <div className="grid grid-cols-[1fr_5rem] gap-2">
-            <InputField label="Pangalan" name="name" maxLength={32} required placeholder="Done!" error={errors.name} />
+            <InputField label="Name" name="name" maxLength={32} required placeholder="Done!" error={errors.name} />
             <InputField label="Emoji" name="emoji" maxLength={16} placeholder="🔊" />
           </div>
           <input
@@ -161,7 +161,7 @@ export function SoundboardSettings() {
             <Button variant="secondary" size="sm" onClick={() => fileInput.current?.click()}>
               <Upload className="size-4" aria-hidden /> {file ? file.name : "Choose an MP3"}
             </Button>
-            <span className="text-xs text-slate-500">MP3, hanggang 1 MB; puputulin sa {MAX_CLIP_MS / 1000}s.</span>
+            <span className="text-xs text-slate-500">MP3, up to 1 MB; trimmed to {MAX_CLIP_MS / 1000}s.</span>
           </div>
           {errors.file && (
             <p role="alert" className="text-xs text-red-300">

@@ -93,6 +93,6 @@ describe("ServerRail", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add a server" }));
     expect(await screen.findByRole("dialog", { name: "Create a server" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: /Join/ }));
-    expect(screen.getByLabelText("Invite link o code")).toBeInTheDocument();
+    expect(screen.getByLabelText("Invite link or code")).toBeInTheDocument();
   });
 });

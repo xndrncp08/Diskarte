@@ -73,7 +73,7 @@ function EditBox({ initial, onSave, onCancel }: { initial: string; onSave: (valu
         className="w-full resize-none rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-[15px] text-slate-100 outline-none focus:border-sun/60"
       />
       <p className="text-xs text-slate-500">
-        escape para <button type="button" className="text-sky-300 hover:underline" onClick={onCancel}>cancel</button> • enter para{" "}
+        escape to <button type="button" className="text-sky-300 hover:underline" onClick={onCancel}>cancel</button> • enter to{" "}
         <button type="button" className="text-sky-300 hover:underline" onClick={() => onSave(value)}>
           save
         </button>
@@ -216,7 +216,7 @@ export const MessageItem = memo(function MessageItem({
 
         {message.queued && (
           <p className="mt-1 flex items-center gap-1.5 font-silk text-[11px] text-sun" role="status">
-            <Clock className="size-3" aria-hidden /> Naka-queue — ise-send pagbalik ng signal
+            <Clock className="size-3" aria-hidden /> Queued — sends when your signal is back
             <button type="button" onClick={() => actions.onDiscard(message.id)} className="ml-1 text-slate-400 underline-offset-2 hover:text-white hover:underline">
               Cancel
             </button>

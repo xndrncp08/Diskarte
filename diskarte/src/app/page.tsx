@@ -7,7 +7,7 @@ import { PixelStatus } from "@/components/retro/PixelStatus";
 import { SignalBars } from "@/components/retro/SignalBars";
 
 const FEATURES = [
-  { icon: MessagesSquare, title: "Real-time chika", body: "Instant messages with Markdown, code blocks, pins, edits at Pinoy reactions." },
+  { icon: MessagesSquare, title: "Real-time chat", body: "Instant messages with Markdown, code blocks, pins, edits at Pinoy reactions." },
   { icon: Headphones, title: "Lag-free voice", body: "LiveKit WebRTC rooms with noise suppression, active speaker glow at call HUD." },
   { icon: MonitorUp, title: "Screen share & video", body: "Share your ranked game or your thesis slides — an adaptive grid for the whole crew." },
   { icon: Users, title: "Community servers", body: "Invite codes, categorized channels, and Admin / Moderator / Member roles." },

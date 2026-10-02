@@ -32,7 +32,7 @@ export function HomeView({ servers }: { servers: Server[] }) {
             <DiskarteLogo size={72} variant="mascot" />
             <div>
               <p className="font-pixel text-[10px] text-sun">PLAYER 1 READY</p>
-              <h1 className="mt-2 text-3xl font-extrabold text-white">Mabuhay, {me.display_name}!</h1>
+              <h1 className="mt-2 text-3xl font-extrabold text-white">Welcome back, {me.display_name}!</h1>
               <p className="text-slate-400">Where are we hanging out today?</p>
             </div>
           </div>

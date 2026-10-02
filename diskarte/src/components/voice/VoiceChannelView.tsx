@@ -60,7 +60,7 @@ export function VoiceChannelView({ channel }: { channel: Channel }) {
           >
             {here && call.status !== "idle" ? (
               <>
-                <Loader2 className="size-4 animate-spin" aria-hidden /> Kumokonekta…
+                <Loader2 className="size-4 animate-spin" aria-hidden /> Connecting…
               </>
             ) : call.target ? (
               "Switch here"

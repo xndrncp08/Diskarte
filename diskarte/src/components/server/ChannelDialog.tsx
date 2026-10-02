@@ -126,7 +126,7 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
         required
         data-autofocus
         error={errors.name}
-        hint={type === "text" && name ? `Magiging #${slugifyChannelName(name) || "…"}` : undefined}
+        hint={type === "text" && name ? `Will be #${slugifyChannelName(name) || "…"}` : undefined}
         placeholder={type === "text" ? "ranked-grind" : "Tambayan 2"}
       />
       <div className="space-y-1.5">

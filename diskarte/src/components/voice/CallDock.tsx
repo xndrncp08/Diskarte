@@ -6,7 +6,7 @@ import { callHref, useCall } from "./CallProvider";
 import { ConnectionMeter } from "./ConnectionMeter";
 import { VoiceControls } from "./VoiceControls";
 
-const STATUS_TEXT = { connecting: "Kumokonekta…", reconnecting: "Nagre-reconnect…", connected: "Voice Connected", idle: "" } as const;
+const STATUS_TEXT = { connecting: "Connecting…", reconnecting: "Reconnecting…", connected: "Voice Connected", idle: "" } as const;
 
 /** Floating active-call widget pinned above the user panel while you browse other channels. */
 export function CallDock() {

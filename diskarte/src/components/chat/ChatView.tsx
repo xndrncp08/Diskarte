@@ -191,7 +191,7 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
                 <span className="mb-3 flex size-16 items-center justify-center rounded-full bg-white/10">
                   <Hash className="size-9 text-white" aria-hidden />
                 </span>
-                <h2 className="text-3xl font-extrabold text-white">Welcome sa #{channel.name}!</h2>
+                <h2 className="text-3xl font-extrabold text-white">Welcome to #{channel.name}!</h2>
                 <p className="text-slate-400">{channel.topic || "This is the start of the channel."}</p>
               </div>
             )

@@ -51,7 +51,7 @@ export const supportSettingsSchema = z.object({
 
 export const AUTOMOD_CATEGORIES: Record<AutomodCategory, { label: string; description: string }> = {
   spam: { label: "Spam & flooding", description: "Repeated messages, mass mentions, \"free nitro\" and get-rich-quick scams." },
-  phishing: { label: "Phishing links", description: "Pekeng GCash/Maya/bank/Discord/Steam links, IP loggers at lookalike domains." },
+  phishing: { label: "Phishing links", description: "Fake GCash/Maya/bank/Discord/Steam links, IP loggers and lookalike domains." },
   hate: { label: "Hate speech", description: "Slurs targeting race, gender and disability." },
   explicit: { label: "Explicit content", description: "Porn sites and sexual terms (English and Tagalog)." },
 };

@@ -153,7 +153,7 @@ export function FriendsView({ servers }: { servers: Server[] }) {
 
           {friends && tab === "all" && (
             <section aria-label="All friends">
-              <h2 className="mb-2 font-silk text-[11px] uppercase tracking-wider text-slate-400">Lahat ng friends — {accepted.length}</h2>
+              <h2 className="mb-2 font-silk text-[11px] uppercase tracking-wider text-slate-400">All friends — {accepted.length}</h2>
               {accepted.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-slate-400">No friends yet. Press &quot;Add Friend&quot; to get started!</p>
               ) : (

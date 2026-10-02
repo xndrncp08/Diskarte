@@ -43,10 +43,10 @@ export function TicTacToeBoard({ game, me, nameOf, onChange }: { game: TicTacToe
   const status = game.winner
     ? game.winner === "draw"
       ? "Tabla! 🤝"
-      : `Panalo si ${nameOf(game.players[game.winner])}! 🏆`
+      : `${nameOf(game.players[game.winner])} wins! 🏆`
     : waiting
       ? "Waiting for an opponent…"
-      : `Turn ni ${nameOf(game.players[game.turn])} (${game.turn})`;
+      : `${nameOf(game.players[game.turn])}'s turn (${game.turn})`;
 
   return (
     <div className="flex flex-col items-center gap-3" data-testid="tictactoe">

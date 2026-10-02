@@ -74,10 +74,10 @@ test.describe("community features", () => {
 
     await owner.page.getByRole("link", { name: "LFG Board" }).click();
     await owner.page.getByTestId("new-beacon").click();
-    const form = owner.page.getByRole("dialog", { name: "Magpa-LFG beacon" });
-    await form.getByLabel("Laro").fill("Valorant");
+    const form = owner.page.getByRole("dialog", { name: "Start an LFG beacon" });
+    await form.getByLabel("Game").fill("Valorant");
     await form.getByLabel("Details (optional)").fill("Need 1 more, Gold+");
-    await form.getByRole("button", { name: /I-broadcast/ }).click();
+    await form.getByRole("button", { name: /Broadcast beacon/ }).click();
     const card = owner.page.getByTestId("lfg-beacon").filter({ hasText: "Valorant" });
     await expect(card.getByLabel("1 of 5 in party")).toBeVisible();
 

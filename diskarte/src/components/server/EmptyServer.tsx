@@ -22,7 +22,7 @@ export function EmptyServer() {
       </header>
       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
         <Hash className="size-12 text-slate-600" aria-hidden />
-        <h1 className="text-xl font-bold text-white">Walang channels pa sa {server.name}</h1>
+        <h1 className="text-xl font-bold text-white">No channels in {server.name} yet</h1>
         {hasRole(myRole, "moderator") ? (
           <>
             <p className="text-slate-400">Create the first channel to get the conversation going.</p>

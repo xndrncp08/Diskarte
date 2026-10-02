@@ -25,9 +25,9 @@ type PartyRow = Tables<"lfg_party_members">;
 
 const DURATIONS = [
   { value: 30, label: "30 min" },
-  { value: 60, label: "1 oras" },
-  { value: 120, label: "2 oras" },
-  { value: 240, label: "4 oras" },
+  { value: 60, label: "1 hour" },
+  { value: 120, label: "2 hours" },
+  { value: 240, label: "4 hours" },
 ];
 
 /** Live beacons + party rosters for this tambayan (initial fetch, then Realtime). */
@@ -154,7 +154,7 @@ export function LfgBoard() {
             <p className="mt-3 text-lg font-bold text-white">Nobody is looking for a group right now.</p>
             <p className="mt-1 text-sm text-slate-400">Start a beacon and wait for your squad!</p>
             <Button className="mt-5" onClick={() => setCreating(true)}>
-              <Radio className="size-4" aria-hidden /> Magpa-beacon
+              <Radio className="size-4" aria-hidden /> Start a beacon
             </Button>
           </div>
         ) : (
@@ -209,7 +209,7 @@ export function LfgBoard() {
                               router.push(`/tambayan/${server.id}/${voice.id}`);
                             }}
                           >
-                            <Volume2 className="size-4" aria-hidden /> Pumunta sa voice
+                            <Volume2 className="size-4" aria-hidden /> Go to voice
                           </Button>
                         )}
                         {beacon.author_id !== me.id && (
@@ -236,7 +236,7 @@ export function LfgBoard() {
         )}
       </div>
 
-      <Modal open={creating} onClose={() => setCreating(false)} title="Magpa-LFG beacon">
+      <Modal open={creating} onClose={() => setCreating(false)} title="Start an LFG beacon">
         <BeaconForm
           voiceChannels={voiceChannels}
           onDone={() => {
@@ -279,7 +279,7 @@ function BeaconForm({ voiceChannels, onDone }: { voiceChannels: { id: string; na
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <InputField label="Laro" name="game" list="lfg-games" required maxLength={48} placeholder="Valorant" data-autofocus error={errors.game} />
+      <InputField label="Game" name="game" list="lfg-games" required maxLength={48} placeholder="Valorant" data-autofocus error={errors.game} />
       <datalist id="lfg-games">
         {LFG_GAMES.map((g) => (
           <option key={g} value={g} />
@@ -316,7 +316,7 @@ function BeaconForm({ voiceChannels, onDone }: { voiceChannels: { id: string; na
         </label>
       </div>
       <Button type="submit" loading={pending} className="w-full">
-        <Radio className="size-4" aria-hidden /> I-broadcast ang beacon
+        <Radio className="size-4" aria-hidden /> Broadcast beacon
       </Button>
     </form>
   );

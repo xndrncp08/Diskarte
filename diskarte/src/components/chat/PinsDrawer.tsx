@@ -80,10 +80,10 @@ export function PinsDrawer({
           </header>
           <div className="scrollbar-thin flex-1 space-y-2 overflow-y-auto p-3">
             {fetched === null && list.length === 0 ? (
-              <p className="p-4 text-center text-sm text-slate-400">Naglo-load…</p>
+              <p className="p-4 text-center text-sm text-slate-400">Loading…</p>
             ) : list.length === 0 ? (
               <div className="p-6 text-center">
-                <p className="font-pixel text-[9px] text-sun">WALANG PINS</p>
+                <p className="font-pixel text-[9px] text-sun">NO PINS</p>
                 <p className="mt-2 text-sm text-slate-400">Nothing pinned yet. Moderators can pin important messages.</p>
               </div>
             ) : (

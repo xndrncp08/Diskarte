@@ -36,7 +36,7 @@ export async function signUpAndOnboard(page: Page, user: TestUser, opts: { avata
   if (opts.bio) await page.getByLabel("Bio").fill(opts.bio);
   await page.getByRole("button", { name: "Let's go!" }).click();
   await expect(page).toHaveURL(/\/tambayan$/);
-  await expect(page.getByRole("heading", { name: `Mabuhay, ${user.displayName}!` })).toBeVisible();
+  await expect(page.getByRole("heading", { name: `Welcome back, ${user.displayName}!` })).toBeVisible();
 }
 
 export async function logIn(page: Page, user: TestUser) {

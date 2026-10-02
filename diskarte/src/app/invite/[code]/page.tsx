@@ -36,7 +36,7 @@ export default async function InvitePage({ params }: PageProps<"/invite/[code]">
       <div className="glass-strong relative z-10 w-full max-w-sm rounded-2xl p-6 text-center shadow-2xl shadow-black/50">
         {invite && code ? (
           <>
-            <p className="font-pixel text-[9px] text-sun">INIMBITAHAN KA SA</p>
+            <p className="font-pixel text-[9px] text-sun">YOU'RE INVITED TO</p>
             <div className="my-4 flex justify-center">
               <ServerIcon server={{ id: invite.server_id, name: invite.name, icon_url: invite.icon_url }} size={80} active />
             </div>

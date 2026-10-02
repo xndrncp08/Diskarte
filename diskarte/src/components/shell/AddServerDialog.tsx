@@ -132,7 +132,7 @@ export function AddServerDialog({ open, onClose, initialTab = "create" }: { open
         ) : (
           <form onSubmit={submitJoin} className="space-y-4">
             <InputField
-              label="Invite link o code"
+              label="Invite link or code"
               name="invite"
               required
               placeholder="https://diskarte.app/invite/ABCD234XYZ"
