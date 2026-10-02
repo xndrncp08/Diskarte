@@ -16,6 +16,7 @@ vi.mock("sonner", async () => (await import("../mocks/actions")).toastMock);
 const { MeProvider } = await import("@/components/providers/MeProvider");
 const { PresenceProvider, SPEAKING_TTL_MS, useServerSpeaking } = await import("@/components/providers/PresenceProvider");
 const { AppShell } = await import("@/components/shell/AppShell");
+const { SessionProviders } = await import("@/components/shell/SessionProviders");
 const { RuntimeConfigProvider } = await import("@/components/providers/RuntimeConfig");
 const { useCall } = await import("@/components/voice/CallProvider");
 const { ACCOUNT, MEMBERS, RUNTIME, TAMBAYAN } = await import("../fixtures/layout");
@@ -80,9 +81,11 @@ describe("voice activity over Realtime Broadcast", () => {
     const user = userEvent.setup();
     render(
       <RuntimeConfigProvider value={RUNTIME}>
-        <AppShell profile={ME} account={ACCOUNT} servers={[server]}>
+        <SessionProviders profile={ME} account={ACCOUNT}>
+          <AppShell servers={[server]}>
           <Join />
-        </AppShell>
+          </AppShell>
+        </SessionProviders>
       </RuntimeConfigProvider>,
     );
     await user.click(screen.getByRole("button", { name: "Join" }));

@@ -14,6 +14,7 @@ vi.mock("@/app/(auth)/actions", () => ({ signOutAction: vi.fn(async () => undefi
 vi.mock("sonner", async () => (await import("../mocks/actions")).toastMock);
 
 const { AppShell } = await import("@/components/shell/AppShell");
+const { SessionProviders } = await import("@/components/shell/SessionProviders");
 const { UserPanel } = await import("@/components/shell/UserPanel");
 const { useCall } = await import("@/components/voice/CallProvider");
 const { RuntimeConfigProvider } = await import("@/components/providers/RuntimeConfig");
@@ -38,9 +39,11 @@ function VoiceHarness() {
 function renderShell() {
   return render(
     <RuntimeConfigProvider value={RUNTIME}>
-      <AppShell profile={MEMBERS[0].profile} account={ACCOUNT} servers={[server]}>
+      <SessionProviders profile={MEMBERS[0].profile} account={ACCOUNT}>
+        <AppShell servers={[server]}>
         <VoiceHarness />
-      </AppShell>
+        </AppShell>
+      </SessionProviders>
     </RuntimeConfigProvider>,
   );
 }

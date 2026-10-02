@@ -30,6 +30,7 @@ vi.mock("@/actions/profile", async () => (await import("../mocks/actions")).prof
 vi.mock("sonner", async () => (await import("../mocks/actions")).toastMock);
 
 const { AppShell } = await import("@/components/shell/AppShell");
+const { SessionProviders } = await import("@/components/shell/SessionProviders");
 const { RuntimeConfigProvider } = await import("@/components/providers/RuntimeConfig");
 const { useCall } = await import("@/components/voice/CallProvider");
 const { useRinger } = await import("@/components/voice/IncomingCalls");
@@ -62,9 +63,11 @@ function ring(extra: Record<string, unknown> = {}) {
 async function renderShell(me = ME, children: React.ReactNode = null) {
   render(
     <RuntimeConfigProvider value={RUNTIME}>
-      <AppShell profile={me} account={ACCOUNT} servers={[server]}>
+      <SessionProviders profile={me} account={ACCOUNT}>
+        <AppShell servers={[server]}>
         {children}
-      </AppShell>
+        </AppShell>
+      </SessionProviders>
     </RuntimeConfigProvider>,
   );
   await waitFor(() => expect(fake.joined(`db:rings:${me.id}`)).toBeDefined());

@@ -14,6 +14,7 @@ vi.mock("sonner", async () => (await import("../mocks/actions")).toastMock);
 
 const { FloatingWindow } = await import("@/components/ui/FloatingWindow");
 const { AppShell } = await import("@/components/shell/AppShell");
+const { SessionProviders } = await import("@/components/shell/SessionProviders");
 const { useCall } = await import("@/components/voice/CallProvider");
 const { MixerButton } = await import("@/components/voice/AudioMixer");
 const { MediaViewerProvider } = await import("@/components/chat/MediaViewer");
@@ -177,9 +178,11 @@ describe("audio mixer window", () => {
     const user = userEvent.setup();
     render(
       <RuntimeConfigProvider value={RUNTIME}>
-        <AppShell profile={MEMBERS[0].profile} account={ACCOUNT} servers={[server]}>
+        <SessionProviders profile={MEMBERS[0].profile} account={ACCOUNT}>
+          <AppShell servers={[server]}>
           <CallHarness />
-        </AppShell>
+          </AppShell>
+        </SessionProviders>
       </RuntimeConfigProvider>,
     );
     await user.click(screen.getByRole("button", { name: "Join voice" }));
@@ -214,9 +217,11 @@ describe("audio mixer window", () => {
     const user = userEvent.setup();
     render(
       <RuntimeConfigProvider value={RUNTIME}>
-        <AppShell profile={MEMBERS[0].profile} account={ACCOUNT} servers={[server]}>
+        <SessionProviders profile={MEMBERS[0].profile} account={ACCOUNT}>
+          <AppShell servers={[server]}>
           <MixerButton />
-        </AppShell>
+          </AppShell>
+        </SessionProviders>
       </RuntimeConfigProvider>,
     );
     await user.click(screen.getByRole("button", { name: "Audio mixer" }));

@@ -1,23 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { AnimatePresence, MotionConfig, motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, type ReactNode } from "react";
 import { useSwipeDrawer } from "@/hooks/useSwipeDrawer";
-import { MeProvider } from "@/components/providers/MeProvider";
-import { PresenceProvider } from "@/components/providers/PresenceProvider";
-import { SocialProvider } from "@/components/providers/SocialProvider";
-import type { AccountInfo } from "@/components/profile/AccountSettings";
-import { SettingsDialogProvider } from "@/components/profile/SettingsDialog";
-import { MediaViewerProvider } from "@/components/chat/MediaViewer";
-import { AudioMixerProvider } from "@/components/voice/AudioMixer";
-import { IncomingCallsProvider } from "@/components/voice/IncomingCalls";
-import { CallProvider } from "@/components/voice/CallProvider";
-import { FloatingCallHUD } from "@/components/voice/FloatingCallHUD";
+import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { subscribeDbChanges } from "@/lib/realtime";
 import type { Server } from "@/lib/servers";
-import type { Tables } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
 import { ServerRail } from "./ServerRail";
 import { ShellUIProvider, useShellUI } from "./ShellUI";
@@ -76,50 +66,18 @@ function Frame({ servers, children }: { servers: Server[]; children: ReactNode }
       <div id="main-content" tabIndex={-1} className="relative flex min-w-0 flex-1 outline-none md:gap-3">
         {children}
       </div>
-      <FloatingCallHUD />
     </div>
   );
 }
 
-export function AppShell({
-  profile,
-  account,
-  verified = true,
-  servers,
-  children,
-}: {
-  profile: Tables<"profiles">;
-  account: AccountInfo;
-  verified?: boolean;
-  servers: Server[];
-  children: ReactNode;
-}) {
+/** The signed-in app frame: micro-dock, drawers and the active view. Session state lives above it in <SessionProviders>. */
+export function AppShell({ servers, children }: { servers: Server[]; children: ReactNode }) {
+  const { me } = useMe();
   return (
-    <MeProvider profile={profile} verified={verified}>
-      {/* Honour the OS "reduce motion" setting for every framer-motion animation in the app. */}
-      <MotionConfig reducedMotion="user">
-        <PresenceProvider>
-          <SocialProvider>
-            <CallProvider>
-              {/* Floating windows live inside CallProvider: opening or closing one never unmounts (and so
-                  never hangs up) the call. */}
-              <SettingsDialogProvider account={account}>
-                <AudioMixerProvider>
-                  <MediaViewerProvider>
-                    <IncomingCallsProvider>
-                      <ShellUIProvider>
-                        <MembershipWatcher userId={profile.id} />
-                        <Frame servers={servers}>{children}</Frame>
-                      </ShellUIProvider>
-                    </IncomingCallsProvider>
-                  </MediaViewerProvider>
-                </AudioMixerProvider>
-              </SettingsDialogProvider>
-            </CallProvider>
-          </SocialProvider>
-        </PresenceProvider>
-      </MotionConfig>
-    </MeProvider>
+    <ShellUIProvider>
+      <MembershipWatcher userId={me.id} />
+      <Frame servers={servers}>{children}</Frame>
+    </ShellUIProvider>
   );
 }
 
