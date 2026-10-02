@@ -37,7 +37,7 @@ export function SettingsDialogProvider({ account, children }: { account: Account
         onClose={() => setTab(null)}
         title="User settings"
         hideTitle
-        className="max-h-[calc(100dvh-2rem)] max-w-4xl overflow-y-auto overscroll-contain p-0"
+        className="max-h-[calc(100dvh-2rem)] max-w-6xl overflow-y-auto overscroll-contain p-0"
       >
         {tab && <SettingsPanels account={account} tab={tab} onTab={setTab} />}
       </Modal>
@@ -67,7 +67,7 @@ function SettingsPanels({ account, tab, onTab }: { account: AccountInfo; tab: Se
 
   return (
     <div className="flex flex-col md:min-h-[32rem] md:flex-row">
-      <div className="shrink-0 border-b border-white/5 px-4 pb-3 pt-5 md:w-56 md:border-b-0 md:border-r md:bg-black/20 md:px-3 md:py-8">
+      <div className="shrink-0 border-b border-white/5 px-4 pb-3 pt-5 md:w-48 md:border-b-0 md:border-r md:bg-black/20 md:px-3 md:py-8">
         <p className="mb-2 px-3 font-silk text-[10px] uppercase tracking-widest text-slate-500">User settings</p>
         <div role="tablist" aria-label="User settings" onKeyDown={onKeyDown} className="flex gap-2 pr-10 md:flex-col md:gap-1 md:pr-0">
           {TABS.map((t, i) => (
