@@ -60,6 +60,21 @@ test.describe("smoke (no backend required)", () => {
     await page.getByLabel("Confirm password").fill("Kape-Muna-2026");
     await expect(page.getByRole("button", { name: "Sali na!" })).toBeEnabled();
   });
+
+  test("sign-in password can be shown and hidden without losing focus or text", async ({ page }) => {
+    await page.goto("/login");
+    const password = page.getByLabel("Password", { exact: true });
+    await password.fill("Kape-Muna-2026");
+    await expect(password).toHaveAttribute("type", "password");
+    const toggle = page.getByRole("button", { name: "Show password" });
+    await toggle.click();
+    await expect(password).toHaveAttribute("type", "text");
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+    await expect(password).toBeFocused();
+    await expect(password).toHaveValue("Kape-Muna-2026");
+    await toggle.click();
+    await expect(password).toHaveAttribute("type", "password");
+  });
 });
 
 test.describe("security smoke", () => {
