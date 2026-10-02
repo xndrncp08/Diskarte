@@ -7,6 +7,8 @@ import { useSwipeDrawer } from "@/hooks/useSwipeDrawer";
 import { MeProvider } from "@/components/providers/MeProvider";
 import { PresenceProvider } from "@/components/providers/PresenceProvider";
 import { SocialProvider } from "@/components/providers/SocialProvider";
+import type { AccountInfo } from "@/components/profile/AccountSettings";
+import { SettingsDialogProvider } from "@/components/profile/SettingsDialog";
 import { CallProvider } from "@/components/voice/CallProvider";
 import { FloatingCallHUD } from "@/components/voice/FloatingCallHUD";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
@@ -76,7 +78,19 @@ function Frame({ servers, children }: { servers: Server[]; children: ReactNode }
   );
 }
 
-export function AppShell({ profile, verified = true, servers, children }: { profile: Tables<"profiles">; verified?: boolean; servers: Server[]; children: ReactNode }) {
+export function AppShell({
+  profile,
+  account,
+  verified = true,
+  servers,
+  children,
+}: {
+  profile: Tables<"profiles">;
+  account: AccountInfo;
+  verified?: boolean;
+  servers: Server[];
+  children: ReactNode;
+}) {
   return (
     <MeProvider profile={profile} verified={verified}>
       {/* Honour the OS "reduce motion" setting for every framer-motion animation in the app. */}
@@ -84,10 +98,13 @@ export function AppShell({ profile, verified = true, servers, children }: { prof
         <PresenceProvider>
           <SocialProvider>
             <CallProvider>
-              <ShellUIProvider>
-                <MembershipWatcher userId={profile.id} />
-                <Frame servers={servers}>{children}</Frame>
-              </ShellUIProvider>
+              {/* Inside CallProvider: opening settings must never unmount (and so hang up) the call. */}
+              <SettingsDialogProvider account={account}>
+                <ShellUIProvider>
+                  <MembershipWatcher userId={profile.id} />
+                  <Frame servers={servers}>{children}</Frame>
+                </ShellUIProvider>
+              </SettingsDialogProvider>
             </CallProvider>
           </SocialProvider>
         </PresenceProvider>
