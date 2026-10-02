@@ -112,7 +112,7 @@ test.describe("early access portal", () => {
     await expect(page.getByRole("heading", { name: "Change your temporary password" })).toBeVisible();
     await page.goto("/tambayan");
     await expect(page).toHaveURL(/\/reset-password\?first=1$/); // no way around it
-    await page.getByLabel("New password").fill(applicant.password);
+    await page.getByLabel("New password", { exact: true }).fill(applicant.password);
     await page.getByLabel("Confirm new password").fill(applicant.password);
     await page.getByRole("button", { name: "Change password" }).click();
     await expect(page).toHaveURL(/\/onboarding$/);
