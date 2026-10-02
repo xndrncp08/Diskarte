@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useId, useMemo, useRef, useStat
 import { useMe } from "@/components/providers/MeProvider";
 import { AccountSettings, type AccountInfo } from "@/components/profile/AccountSettings";
 import { ProfileBuilder } from "@/components/profile/ProfileBuilder";
+import { SignOutButton } from "@/components/profile/SignOutButton";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
 
@@ -67,7 +68,7 @@ function SettingsPanels({ account, tab, onTab }: { account: AccountInfo; tab: Se
 
   return (
     <div className="flex flex-col md:min-h-[32rem] md:flex-row">
-      <div className="shrink-0 border-b border-white/5 px-4 pb-3 pt-5 md:w-48 md:border-b-0 md:border-r md:bg-black/20 md:px-3 md:py-8">
+      <div className="flex shrink-0 flex-col border-b border-white/5 px-4 pb-3 pt-5 md:w-48 md:border-b-0 md:border-r md:bg-black/20 md:px-3 md:py-8">
         <p className="mb-2 px-3 font-silk text-[10px] uppercase tracking-widest text-slate-500">User settings</p>
         <div role="tablist" aria-label="User settings" onKeyDown={onKeyDown} className="flex gap-2 pr-10 md:flex-col md:gap-1 md:pr-0">
           {TABS.map((t, i) => (
@@ -92,6 +93,9 @@ function SettingsPanels({ account, tab, onTab }: { account: AccountInfo; tab: Se
               {t.label}
             </button>
           ))}
+        </div>
+        <div className="mt-3 md:mt-auto md:pt-6">
+          <SignOutButton className="w-full" />
         </div>
       </div>
       <div role="tabpanel" id={`${id}-${tab}-panel`} aria-labelledby={`${id}-${tab}-tab`} className="min-w-0 flex-1 px-4 py-6 sm:px-8 md:py-8">

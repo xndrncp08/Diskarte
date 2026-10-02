@@ -114,5 +114,5 @@ export async function signOutAction(form: FormData): Promise<void> {
   const scope = text(form, "scope") === "global" ? "global" : "local";
   const supabase = await createClient();
   await supabase.auth.signOut({ scope });
-  redirect("/login");
+  redirect("/auth");
 }

@@ -7,7 +7,7 @@ import { enabledOAuthProviders } from "@/lib/profile";
 import { emailSchema } from "@/lib/profile";
 import { safeRedirectPath } from "@/lib/security";
 
-export const metadata: Metadata = { title: "Log in" };
+export const metadata: Metadata = { title: "Sign in" };
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const params = await searchParams;
@@ -17,6 +17,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   // address the credentials were sent to. Only a syntactically valid email is ever echoed back.
   const fromEarlyAccess = params.from === "early-access";
   const email = typeof params.email === "string" ? emailSchema.safeParse(params.email) : null;
+  const deleted = params.deleted === "1";
 
   return (
     <div className="space-y-6">
@@ -33,6 +34,11 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
           <h1 className="text-2xl font-extrabold text-white">Welcome back!</h1>
           <p className="mt-1 text-sm text-slate-400">Sign in to get back to your servers and friends.</p>
         </div>
+      )}
+      {deleted && (
+        <p role="status" className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
+          Your account and its data were deleted. Thanks for hanging out with us.
+        </p>
       )}
       {tryGetPublicEnv() ? (
         <>

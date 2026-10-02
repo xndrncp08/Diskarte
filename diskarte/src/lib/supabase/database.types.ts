@@ -294,6 +294,8 @@ export interface Database {
       server_role: { Args: { p_server_id: string }; Returns: MemberRole };
       is_verified_user: { Args: Record<string, never>; Returns: boolean };
       ban_member: { Args: { p_server_id: string; p_user_id: string; p_reason?: string }; Returns: undefined };
+      account_deletion_files: { Args: Record<string, never>; Returns: { bucket: string; path: string }[] };
+      delete_my_account: { Args: { p_confirm: string }; Returns: undefined };
       unban_member: { Args: { p_server_id: string; p_user_id: string }; Returns: undefined };
       create_lfg: {
         Args: { p_server_id: string; p_game: string; p_description?: string; p_party_size?: number; p_voice_channel_id?: string | null; p_duration_minutes?: number };
