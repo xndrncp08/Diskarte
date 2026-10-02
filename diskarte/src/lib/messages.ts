@@ -80,3 +80,13 @@ export function previewText(content: string, max = 120): string {
     .trim();
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }
+
+/**
+ * PostgREST filter for keyset pagination: rows strictly before `cursor` in (created_at, id) order —
+ * the order of the (…, created_at desc, id desc) history indexes — so messages that share the oldest
+ * loaded timestamp are never skipped at a page boundary. Pair with `.order("created_at", desc)
+ * .order("id", desc)`.
+ */
+export function olderThan(cursor: { created_at: string; id: string }) {
+  return `created_at.lt."${cursor.created_at}",and(created_at.eq."${cursor.created_at}",id.lt."${cursor.id}")`;
+}

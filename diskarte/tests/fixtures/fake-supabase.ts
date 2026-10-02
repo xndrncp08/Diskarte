@@ -21,6 +21,7 @@ export function createFakeSupabase(tables: Record<string, unknown[]> = {}) {
 
   function builder(table: string) {
     let rows = [...((tables[table] as Record<string, unknown>[]) ?? [])];
+    const orders: { col: string; asc: boolean }[] = [];
     const api = {
       select: () => api,
       eq: (col: string, val: unknown) => ((rows = rows.filter((r) => r[col] === val)), api),
@@ -30,7 +31,26 @@ export function createFakeSupabase(tables: Record<string, unknown[]> = {}) {
       lt: (col: string, val: string) => ((rows = rows.filter((r) => String(r[col]) < val)), api),
       gt: (col: string, val: string) => ((rows = rows.filter((r) => String(r[col]) > val)), api),
       in: (col: string, vals: unknown[]) => ((rows = rows.filter((r) => vals.includes(r[col]))), api),
-      order: () => api,
+      // Only the keyset form the chat hooks use: `col.lt."v",and(col.eq."v",id.lt."w")`.
+      or: (filter: string) => {
+        const m = /^(\w+)\.lt\."([^"]+)",and\(\1\.eq\."\2",(\w+)\.lt\."([^"]+)"\)$/.exec(filter);
+        if (!m) throw new Error(`fake supabase: unsupported or() filter ${filter}`);
+        const [, col, value, tie, tieValue] = m;
+        rows = rows.filter((r) => String(r[col]) < value || (String(r[col]) === value && String(r[tie]) < tieValue));
+        return api;
+      },
+      order: (col: string, opts: { ascending?: boolean } = {}) => {
+        // Stable multi-key sort: apply keys in call order by sorting with the latest key last.
+        orders.push({ col, asc: opts.ascending !== false });
+        rows = [...rows].sort((a, b) => {
+          for (const o of orders) {
+            const cmp = String(a[o.col]).localeCompare(String(b[o.col]));
+            if (cmp) return o.asc ? cmp : -cmp;
+          }
+          return 0;
+        });
+        return api;
+      },
       limit: (n: number) => ((rows = rows.slice(0, n)), api),
       maybeSingle: () => Promise.resolve({ data: rows[0] ?? null, error: null }),
       single: () => Promise.resolve({ data: rows[0] ?? null, error: null }),

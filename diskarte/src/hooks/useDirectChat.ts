@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { deleteDirectMessageAction, editDirectMessageAction, sendDirectMessageAction, type DirectMessage } from "@/actions/social";
 import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
-import { PAGE_SIZE, type MessageAuthor } from "@/lib/messages";
+import { olderThan, PAGE_SIZE, type MessageAuthor } from "@/lib/messages";
 import { dequeue, enqueue, isNetworkError, outboxFor, type OutboxEntry } from "@/lib/outbox";
 import { subscribeDbChanges } from "@/lib/realtime";
 import { playSfx } from "@/lib/sfx";
@@ -77,7 +77,14 @@ export function useDirectChat(conversationId: string, initial: { messages: Direc
   const loadOlder = useCallback(async () => {
     const oldest = messages.find((m) => !m.pending && !m.queued);
     if (!oldest || !hasMore) return;
-    const { data } = await supabase.from("direct_messages").select("*").eq("conversation_id", conversationId).lt("created_at", oldest.created_at).order("created_at", { ascending: false }).limit(PAGE_SIZE + 1);
+    const { data } = await supabase
+      .from("direct_messages")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .or(olderThan(oldest))
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(PAGE_SIZE + 1);
     const rows = data ?? [];
     setHasMore(rows.length > PAGE_SIZE);
     const older = rows.slice(0, PAGE_SIZE).reverse().map((m) => dmToChat(m, authorOf(m.author_id)));
