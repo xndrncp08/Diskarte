@@ -185,17 +185,50 @@ function WindowFrame({ onClose, title, id, remember = true, icon, anchor, classN
       });
       observer.observe(body, { childList: true, subtree: true });
     });
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || !token.current || !isTopOverlay(token.current)) return;
-      if (!frame.current?.contains(document.activeElement)) return;
-      e.stopPropagation();
-      requestClose();
+    // Where F6 takes you back to: the last thing focused on the page outside any window.
+    let pageFocus: HTMLElement | null = previouslyFocused;
+    const onFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && !target.closest("[data-window]")) pageFocus = target;
     };
+    const focusables = () => Array.from(frame.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []).filter((el) => !el.closest("[aria-hidden='true']"));
+    const onKey = (e: KeyboardEvent) => {
+      const inside = frame.current?.contains(document.activeElement) ?? false;
+      if (e.key === "Escape") {
+        if (!inside || !token.current || !isTopOverlay(token.current)) return;
+        e.stopPropagation();
+        requestClose();
+      } else if (e.key === "Tab" && inside) {
+        // Keyboard containment: Tab cycles within the window (the mouse can still go anywhere).
+        const nodes = focusables();
+        if (nodes.length === 0) return;
+        const first = nodes[0];
+        const last = nodes[nodes.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      } else if (e.key === "F6") {
+        // F6 hops between this window and the page, like moving between panes.
+        if (inside) {
+          e.preventDefault();
+          (pageFocus?.isConnected ? pageFocus : (document.getElementById("main-content") ?? document.body)).focus();
+        } else if (token.current && isTopOverlay(token.current) && !(document.activeElement as HTMLElement | null)?.closest?.("[data-window]")) {
+          e.preventDefault();
+          (frame.current?.querySelector<HTMLElement>("[data-autofocus]") ?? focusables()[0])?.focus();
+        }
+      }
+    };
+    document.addEventListener("focusin", onFocusIn);
     document.addEventListener("keydown", onKey);
     return () => {
       cancelAnimationFrame(frameId);
       observer?.disconnect();
       document.removeEventListener("keydown", onKey);
+      document.removeEventListener("focusin", onFocusIn);
       if (token.current) removeOverlay(token.current);
       if (previouslyFocused?.isConnected) previouslyFocused.focus?.();
     };
@@ -282,7 +315,7 @@ function WindowFrame({ onClose, title, id, remember = true, icon, anchor, classN
             type="button"
             data-move=""
             aria-label="Move window"
-            title="Drag to move, or use the arrow keys"
+            title="Drag to move, or use the arrow keys. F6 switches between this window and the page."
             onKeyDown={onMoveKey}
             className="flex size-7 shrink-0 cursor-[inherit] items-center justify-center rounded-md text-slate-500 hover:text-slate-200"
           >
