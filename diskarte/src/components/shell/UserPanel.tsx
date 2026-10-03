@@ -50,15 +50,22 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
       label: opt.label,
       icon: <PixelStatus status={opt.value} size={12} />,
       checked: me.status === opt.value,
+      group: "Status",
       onSelect: () => apply({ status: opt.value }),
     })),
     // A trigger sets its text *and* its presence (AFK / Tulog → Idle, Nag-aaral → Do Not Disturb…).
     ...STATUS_TRIGGERS.slice(0, 5).map((t) => ({
       label: `${t.emoji} ${t.text}`,
       checked: me.custom_status === t.text && me.custom_status_emoji === t.emoji,
+      group: "Custom status",
       onSelect: () => apply({ status: t.status, customStatus: t.text, customStatusEmoji: t.emoji }),
     })),
-    { label: "Clear custom status", onSelect: () => apply({ customStatus: null, customStatusEmoji: null }), hidden: !me.custom_status && !me.custom_status_emoji },
+    {
+      label: "Clear custom status",
+      group: "Custom status",
+      onSelect: () => apply({ customStatus: null, customStatusEmoji: null }),
+      hidden: !me.custom_status && !me.custom_status_emoji,
+    },
   ];
 
   return (
