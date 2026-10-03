@@ -14,6 +14,7 @@ import { TicTacToeBoard } from "./TicTacToeBoard";
 import { TriviaGame } from "./TriviaGame";
 import type { ActivityControls } from "./useActivity";
 import { WatchParty } from "./WatchParty";
+import { Glyph } from "@/components/ui/Glyph";
 
 function useNameOf(me: string) {
   const server = useOptionalServer();
@@ -44,7 +45,7 @@ export function ActivityStage({ controls }: { controls: ActivityControls }) {
     <section className="glass relative flex flex-col items-center gap-3 rounded-2xl p-4" aria-label={label.name} data-testid="activity-stage">
       <header className="flex w-full items-center justify-between gap-2">
         <p className="font-pixel text-[10px] text-sun">
-          {label.emoji} {label.name.toUpperCase()}
+          <Glyph code={label.glyph} className="size-3.5" /> {label.name.toUpperCase()}
         </p>
         <span className="text-xs text-slate-400">hosted by {nameOf(activity.host)}</span>
         <button type="button" onClick={end} aria-label="End activity" className="touch-target relative rounded-md p-1 text-slate-400 hover:bg-white/10 hover:text-white">
@@ -101,7 +102,7 @@ export function ActivitiesMenu({ controls }: { controls: ActivityControls }) {
           {activity && <p className="text-xs text-slate-400">This replaces the current activity.</p>}
           <form onSubmit={(e) => startWatch(e, close)} className="space-y-1.5 rounded-xl border border-white/10 bg-white/5 p-2.5">
             <label htmlFor="watch-url" className="block text-sm font-semibold text-white">
-              {ACTIVITY_LABEL.watch.emoji} {ACTIVITY_LABEL.watch.name}
+              <Glyph code={ACTIVITY_LABEL.watch.glyph} className="size-4" /> {ACTIVITY_LABEL.watch.name}
             </label>
             <div className="flex gap-1.5">
               <input
@@ -128,7 +129,7 @@ export function ActivitiesMenu({ controls }: { controls: ActivityControls }) {
               className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-2.5 text-left transition-colors hover:bg-white/10"
             >
               <span className="text-2xl" aria-hidden>
-                {ACTIVITY_LABEL[kind].emoji}
+                <Glyph code={ACTIVITY_LABEL[kind].glyph} className="size-5" />
               </span>
               <span>
                 <span className="block text-sm font-semibold text-white">{ACTIVITY_LABEL[kind].name}</span>

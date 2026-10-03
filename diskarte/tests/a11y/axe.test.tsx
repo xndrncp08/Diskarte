@@ -77,7 +77,7 @@ describe("accessibility (axe-core)", () => {
     await screen.findByRole("menu");
     expect(await violations(document.body, true)).toEqual([]);
     await user.keyboard("{Escape}");
-    await user.click(screen.getByRole("button", { name: "Insert emoji" }));
+    await user.click(screen.getByRole("button", { name: "Insert icon" }));
     await screen.findByRole("button", { name: "Petmalu" });
     expect(await violations(document.body, true)).toEqual([]);
     await user.keyboard("{Escape}");

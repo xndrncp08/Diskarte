@@ -84,7 +84,7 @@ export function SignupForm() {
         value={confirm}
         onChange={(e) => setConfirm(e.target.value)}
         error={mismatch ? PASSWORD_MISMATCH : state.fieldErrors?.confirmPassword}
-        hint={confirm && !mismatch ? "Passwords match ✓" : undefined}
+        hint={confirm && !mismatch ? "Passwords match" : undefined}
         placeholder="••••••••••"
       />
       {state.error && (

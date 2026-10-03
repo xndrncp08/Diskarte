@@ -357,7 +357,7 @@ export function useChannelChat(
       toast.error(result.error ?? "Couldn't pin.");
       return false;
     }
-    toast.success(pinned ? "Message pinned 📌" : "Message unpinned.");
+    toast.success(pinned ? "Message pinned." : "Message unpinned.");
     return true;
   }, []);
 

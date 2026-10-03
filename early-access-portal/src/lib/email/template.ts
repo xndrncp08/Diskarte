@@ -40,7 +40,7 @@ export function welcomeEmail(input: WelcomeEmailInput): EmailMessage {
   const password = escapeHtml(input.tempPassword);
   const loginUrl = escapeHtml(input.loginUrl);
   const logo = escapeHtml(`${input.assetBaseUrl.replace(/\/$/, "")}/email/salakot.png`);
-  const subject = "Maligayang Pagdating sa Diskarte! 🎉 Pasok ka na sa Early Access";
+  const subject = "Maligayang Pagdating sa Diskarte! Pasok ka na sa Early Access";
 
   const credentials = input.existingAccount
     ? `<tr><td style="padding:0 32px 8px;font:15px/1.6 ${FONT};color:#cbd5e1;">
@@ -83,7 +83,7 @@ export function welcomeEmail(input: WelcomeEmailInput): EmailMessage {
       <tr><td align="center" style="padding:8px 32px 0;font:700 11px/1 ${MONO};letter-spacing:3px;color:#FFB800;">&#9650; EARLY ACCESS UNLOCKED &#9650;</td></tr>
       <tr><td align="center" style="padding:14px 32px 6px;font:800 26px/1.25 ${FONT};color:#ffffff;">Maligayang Pagdating sa Diskarte!</td></tr>
       <tr><td style="padding:10px 32px 22px;font:15px/1.6 ${FONT};color:#cbd5e1;">
-        Hi ${name}! 👋 Na-approve na ang application mo — kasama ka na sa unang batch ng mga tatambay sa <strong style="color:#ffffff;">Diskarte</strong>, ang bagong istambayan ng bayan.
+        Hi ${name}! Na-approve na ang application mo — kasama ka na sa unang batch ng mga tatambay sa <strong style="color:#ffffff;">Diskarte</strong>, ang bagong istambayan ng bayan.
       </td></tr>
       ${credentials}
       <tr><td align="center" style="padding:26px 32px 10px;">
@@ -103,7 +103,7 @@ export function welcomeEmail(input: WelcomeEmailInput): EmailMessage {
         </table>
       </td></tr>
       <tr><td style="padding:0 32px 28px;font:12px/1.6 ${FONT};color:#64748b;">
-        🔒 Hinding-hindi hihingin ng Diskarte team ang password mo. Hindi mo ba in-apply ito? Balewalain mo lang ang email na 'to.
+        Paalala: hinding-hindi hihingin ng Diskarte team ang password mo. Hindi mo ba in-apply ito? Balewalain mo lang ang email na 'to.
       </td></tr>
       <tr><td style="height:6px;line-height:6px;font-size:0;background:#CE1126;">&nbsp;</td></tr>
     </table>

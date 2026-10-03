@@ -7,7 +7,9 @@ describe("MessageMarkdown", () => {
     const { container } = render(<MessageMarkdown content={"**bold** ~~gone~~ :petmalu:\n\n```ts\nconst x = 1;\n```"} />);
     expect(container.querySelector("strong")).toHaveTextContent("bold");
     expect(container.querySelector("del")).toHaveTextContent("gone");
-    expect(container.textContent).toContain("🔥");
+    // :petmalu: is drawn as a vector icon, not an emoji.
+    expect(container.querySelector('[data-glyph=":petmalu:"]')).toHaveAttribute("aria-label", "Petmalu");
+    expect(container.textContent).not.toContain(":petmalu:");
     expect(container.querySelector("pre code.hljs")).not.toBeNull();
     expect(container.querySelector(".hljs-keyword")).toHaveTextContent("const");
   });

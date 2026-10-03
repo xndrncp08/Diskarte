@@ -224,7 +224,7 @@ describe("reaction emoji picker & message actions", () => {
     const trigger = within(toolbar).getByRole("button", { name: "Add reaction" });
     placeAnchor(trigger, { ...anchor, width: 28, height: 28 });
     await user.click(trigger);
-    const picker = await screen.findByRole("dialog", { name: "Emoji picker" });
+    const picker = await screen.findByRole("dialog", { name: "Icon picker" });
     return { user, picker, trigger, message };
   }
 
@@ -252,23 +252,23 @@ describe("reaction emoji picker & message actions", () => {
   it("reacts and closes; Escape returns focus to the trigger", async () => {
     const { user, picker, trigger } = await openToolbarPicker({ top: 300, left: 900 });
     await user.click(await within(picker).findByRole("button", { name: "Lodi" }));
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Emoji picker" })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Icon picker" })).toBeNull());
     expect(await screen.findByRole("button", { name: "Lodi: 1 reaction" })).toBeInTheDocument();
     await user.click(trigger);
-    await screen.findByRole("dialog", { name: "Emoji picker" });
+    await screen.findByRole("dialog", { name: "Icon picker" });
     await user.keyboard("{Escape}");
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Emoji picker" })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Icon picker" })).toBeNull());
     expect(trigger).toHaveFocus();
   });
 
   it("the composer picker is not clipped by the composer's rounded overflow-hidden card", async () => {
     const user = userEvent.setup();
     render(<DiskarteLayout />);
-    const trigger = screen.getByRole("button", { name: "Insert emoji" });
+    const trigger = screen.getByRole("button", { name: "Insert icon" });
     expect(trigger.closest(".overflow-hidden")).not.toBeNull(); // the trigger does live inside it…
     placeAnchor(trigger, { top: 850, left: 1300, width: 28, height: 28 });
     await user.click(trigger);
-    const picker = await screen.findByRole("dialog", { name: "Emoji picker" });
+    const picker = await screen.findByRole("dialog", { name: "Icon picker" });
     expect(picker.closest(".overflow-hidden")).toBeNull(); // …but the panel doesn't.
     await waitFor(() => expect(picker).toHaveAttribute("data-side", "top"));
     expectInsideViewport(picker, "emoji-picker");
@@ -476,7 +476,7 @@ describe("resilience", () => {
     const history = { [GENERAL.id]: [messageFixture("m1", GENERAL.id, MOD_ID, "Spam click test")] };
     const { unmount } = render(<DiskarteLayout history={history} />);
     const serverMenu = screen.getByTestId("server-menu");
-    const emoji = screen.getByRole("button", { name: "Insert emoji" });
+    const emoji = screen.getByRole("button", { name: "Insert icon" });
     const addServer = screen.getByRole("button", { name: "Add a server" });
 
     for (let i = 0; i < 25; i++) {

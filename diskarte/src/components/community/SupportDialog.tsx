@@ -8,6 +8,7 @@ import { Modal } from "@/components/ui/Modal";
 import { BADGES, BADGE_KINDS, boostLevel, formatMobile } from "@/lib/community";
 import { cn } from "@/lib/utils";
 import { Badges } from "./Badges";
+import { Glyph } from "@/components/ui/Glyph";
 
 function CopyNumber({ label, number, className }: { label: string; number: string; className: string }) {
   const [copied, setCopied] = useState(false);
@@ -80,7 +81,7 @@ export function SupportDialog({ open, onClose }: { open: boolean; onClose: () =>
             {BADGE_KINDS.map((b) => (
               <li key={b} className="flex items-center gap-2 text-sm">
                 <span className={cn("rounded-md border px-1.5 py-0.5 text-xs font-semibold", BADGES[b].className)}>
-                  {BADGES[b].emoji} {BADGES[b].label}
+                  <Glyph code={BADGES[b].glyph} className="size-3.5" tinted={false} /> {BADGES[b].label}
                 </span>
                 <span className="text-slate-400">{BADGES[b].description}</span>
               </li>
@@ -90,7 +91,7 @@ export function SupportDialog({ open, onClose }: { open: boolean; onClose: () =>
 
         {supporters.length > 0 && (
           <div>
-            <p className="mb-2 font-silk text-[11px] uppercase tracking-wider text-slate-400">Thank you for the support! 💛</p>
+            <p className="mb-2 font-silk text-[11px] uppercase tracking-wider text-slate-400">Thank you for the support!</p>
             <ul className="space-y-1">
               {supporters.map((m) => (
                 <li key={m.user_id} className="flex items-center justify-between gap-2 text-sm text-slate-200">

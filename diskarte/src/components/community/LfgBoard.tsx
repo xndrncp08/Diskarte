@@ -100,7 +100,7 @@ export function LfgBoard() {
       if (!result.ok) return void toast.error(result.error ?? "Couldn't join.");
       setParty((prev) => (prev.some((p) => p.beacon_id === beacon.id && p.user_id === me.id) ? prev : [...prev, { beacon_id: beacon.id, server_id: server.id, user_id: me.id, joined_at: new Date().toISOString() }]));
       const voice = channels.find((c) => c.id === result.data?.voiceChannelId);
-      toast.success(`You're in the ${beacon.game} party! 🎮`);
+      toast.success(`You're in the ${beacon.game} party!`);
       if (voice) {
         void call.join({ serverId: server.id, serverName: server.name, channelId: voice.id, channelName: voice.name });
         router.push(`/tambayan/${server.id}/${voice.id}`);
@@ -272,7 +272,7 @@ function BeaconForm({ voiceChannels, onDone }: { voiceChannels: { id: string; na
         if (result.error) toast.error(result.error);
         return;
       }
-      toast.success("Beacon is live! 📡");
+      toast.success("Beacon is live!");
       onDone();
     });
   }
@@ -299,7 +299,7 @@ function BeaconForm({ voiceChannels, onDone }: { voiceChannels: { id: string; na
             <option value="">None</option>
             {voiceChannels.map((c) => (
               <option key={c.id} value={c.id}>
-                🔊 {c.name}
+                {c.name}
               </option>
             ))}
           </select>

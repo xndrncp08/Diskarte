@@ -15,6 +15,7 @@ import type { Server } from "@/lib/servers";
 import type { SocialProfile } from "@/lib/social";
 import { cn } from "@/lib/utils";
 import { HomeSidebar } from "./HomeSidebar";
+import { Glyph } from "@/components/ui/Glyph";
 
 type Tab = "all" | "pending" | "blocked" | "add";
 
@@ -30,7 +31,7 @@ function PersonRow({ profile, children }: { profile: SocialProfile | undefined; 
           {(profile.custom_status || profile.custom_status_emoji) && (
             <>
               {" "}
-              · {profile.custom_status_emoji} {profile.custom_status}
+              · <Glyph code={profile.custom_status_emoji} className="size-3" /> {profile.custom_status}
             </>
           )}
         </p>
@@ -83,7 +84,7 @@ export function FriendsView({ servers }: { servers: Server[] }) {
       }
       setError(undefined);
       setUsername("");
-      toast.success(result.data?.status === "accepted" ? "You're now friends! 🎉" : `Friend request sent to @${username.replace(/^@/, "")}.`);
+      toast.success(result.data?.status === "accepted" ? "You're now friends!" : `Friend request sent to @${username.replace(/^@/, "")}.`);
       await reload();
     });
   }
@@ -196,7 +197,7 @@ export function FriendsView({ servers }: { servers: Server[] }) {
                     <PersonRow key={f.userId} profile={profiles.get(f.userId)}>
                       <span className="mr-1 text-xs text-slate-500">{f.status === "incoming" ? "Incoming" : "Outgoing"}</span>
                       {f.status === "incoming" && (
-                        <button type="button" aria-label="Accept" onClick={() => run(() => respondFriendRequestAction({ userId: f.userId, accept: true }), "You're now friends! 🎉")} className={cn(iconButton, "hover:text-emerald-300")} disabled={pending}>
+                        <button type="button" aria-label="Accept" onClick={() => run(() => respondFriendRequestAction({ userId: f.userId, accept: true }), "You're now friends!")} className={cn(iconButton, "hover:text-emerald-300")} disabled={pending}>
                           <Check className="size-4" aria-hidden />
                         </button>
                       )}

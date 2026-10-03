@@ -196,14 +196,16 @@ describe("profile & status triggers", () => {
     const panel = screen.getByTestId("user-panel");
     expect(panel).not.toHaveTextContent("Nagluto ng Canton");
 
-    for (const [item, shown] of [
-      [/Nagluto ng Canton/, "🍜 Nagluto ng Canton"],
-      [/AFK \/ Tulog/, "😴 AFK / Tulog"],
-      [/LFG/, "🎮 LFG"],
+    for (const [item, shown, glyph] of [
+      [/Nagluto ng Canton/, "Nagluto ng Canton", ":canton:"],
+      [/AFK \/ Tulog/, "AFK / Tulog", ":afk:"],
+      [/LFG/, "LFG / Pa-carry", ":game:"],
     ] as const) {
       await user.click(within(panel).getByRole("button", { name: /Set status/ }));
       await user.click(await screen.findByRole("menuitemradio", { name: item }));
       await vi.waitFor(() => expect(panel).toHaveTextContent(shown));
+      // The status icon is a vector glyph, never an emoji.
+      expect(panel.querySelector(`[data-glyph="${glyph}"]`)).not.toBeNull();
     }
   });
 
@@ -215,13 +217,14 @@ describe("profile & status triggers", () => {
       </RuntimeConfigProvider>,
     );
     const card = screen.getByTestId("profile-card");
-    for (const [tag, emoji] of [
-      ["Nagluto ng Canton", "🍜"],
-      ["AFK / Tulog", "😴"],
-      ["LFG / Pa-carry", "🎮"],
+    for (const [tag, glyph] of [
+      ["Nagluto ng Canton", ":canton:"],
+      ["AFK / Tulog", ":afk:"],
+      ["LFG / Pa-carry", ":game:"],
     ] as const) {
       await user.click(screen.getByRole("button", { name: new RegExp(tag.replace("/", "\\/")) }));
-      expect(card).toHaveTextContent(`${emoji}${tag}`);
+      expect(card).toHaveTextContent(tag);
+      expect(card.querySelector(`[data-glyph="${glyph}"]`)).not.toBeNull();
       expect(screen.getByLabelText("Custom status")).toHaveValue(tag);
     }
     expect(server.name).toBe("Barkada HQ");

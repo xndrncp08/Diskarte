@@ -28,7 +28,7 @@ export default async function SignupPage({ searchParams }: PageProps<"/signup">)
             href={policy.earlyAccessUrl}
             className="flex h-11 items-center justify-center rounded-xl bg-sun font-bold text-abyss shadow-[0_4px_0_0_#b45309] hover:brightness-110"
           >
-            Apply for Early Access ▶
+            Apply for Early Access
           </a>
         )}
         <p className="text-center text-sm text-slate-400">

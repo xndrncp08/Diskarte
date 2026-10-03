@@ -106,7 +106,9 @@ describe("moderation actions", () => {
     db.tableResult = () => ({ data: null, error: { message: "SOUNDBOARD_FULL" } });
     expect(await moderation.addSoundboardClipAction({ serverId: SERVER, name: "Awit", emoji: "", path: good })).toMatchObject({ ok: false, error: expect.stringMatching(/24/) });
     expect(db.removed).toEqual([[good]]);
-    expect(tableCall("soundboard_clips", "insert")).toMatchObject({ emoji: "🔊", storage_path: good });
+    // An empty icon defaults to the speaker glyph; emoji are refused.
+    expect(tableCall("soundboard_clips", "insert")).toMatchObject({ emoji: ":volume:", storage_path: good });
+    expect(await moderation.addSoundboardClipAction({ serverId: SERVER, name: "Awit", emoji: "🔊", path: good })).toMatchObject({ ok: false });
   });
 });
 

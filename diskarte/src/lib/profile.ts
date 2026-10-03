@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isGlyphCode, type GlyphCode } from "@/lib/glyphs";
 import type { PresenceStatus } from "@/lib/supabase/database.types";
 
 /** Salakot mascot avatars: each preset recolours the bubble, hat band and background. */
@@ -35,15 +36,15 @@ export const BANNER_PRESET_KEYS = Object.keys(BANNER_PRESETS) as BannerPreset[];
  * Filipino community status triggers. Each one also sets the matching presence, so the badge, ring and
  * roster dot say "Idle" when you're AFK / Tulog instead of staying green "Online".
  */
-export const STATUS_TRIGGERS: readonly { emoji: string; text: string; status: PresenceStatus }[] = [
-  { emoji: "🍜", text: "Nagluto ng Canton", status: "idle" },
-  { emoji: "😴", text: "AFK / Tulog", status: "idle" },
-  { emoji: "🎮", text: "LFG / Pa-carry", status: "online" },
-  { emoji: "📚", text: "Nag-aaral pa boffum", status: "dnd" },
-  { emoji: "🚌", text: "Nasa jeep, mahina signal", status: "idle" },
-  { emoji: "🍚", text: "Kumakain, brb", status: "idle" },
-  { emoji: "☕", text: "Kape muna", status: "idle" },
-  { emoji: "🌧️", text: "Brownout / Bumabagyo", status: "idle" },
+export const STATUS_TRIGGERS: readonly { glyph: GlyphCode; text: string; status: PresenceStatus }[] = [
+  { glyph: ":canton:", text: "Nagluto ng Canton", status: "idle" },
+  { glyph: ":afk:", text: "AFK / Tulog", status: "idle" },
+  { glyph: ":game:", text: "LFG / Pa-carry", status: "online" },
+  { glyph: ":study:", text: "Nag-aaral pa boffum", status: "dnd" },
+  { glyph: ":jeep:", text: "Nasa jeep, mahina signal", status: "idle" },
+  { glyph: ":kumakain:", text: "Kumakain, brb", status: "idle" },
+  { glyph: ":coffee:", text: "Kape muna", status: "idle" },
+  { glyph: ":brownout:", text: "Brownout / Bumabagyo", status: "idle" },
 ];
 
 export const PRESENCE_OPTIONS: { value: PresenceStatus; label: string; hint: string }[] = [
@@ -118,10 +119,11 @@ export const profileUpdateSchema = z.object({
     .transform((v) => stripControl(v).trim())
     .pipe(z.string().max(64, "64 characters max"))
     .transform((v) => (v === "" ? null : v)),
+  // The custom status icon is a glyph code (vector icon), never an emoji.
   customStatusEmoji: z
     .string()
     .trim()
-    .max(16)
+    .refine((v) => v === "" || isGlyphCode(v), "Pick a status icon")
     .transform((v) => (v === "" ? null : v)),
 });
 

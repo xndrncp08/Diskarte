@@ -4,6 +4,7 @@ import type { PresenceStatus } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
 import { SmartImage } from "@/components/ui/SmartImage";
 import { UserAvatar } from "./UserAvatar";
+import { Glyph } from "@/components/ui/Glyph";
 
 export interface ProfileCardData {
   username: string;
@@ -35,7 +36,7 @@ export function ProfileCard({ profile, className, footer, role }: { profile: Pro
           {role && <p className="mt-1 inline-block rounded bg-sun/15 px-1.5 py-0.5 font-silk text-[10px] uppercase text-sun">{role}</p>}
           {(profile.custom_status || profile.custom_status_emoji) && (
             <p className="mt-2 text-sm text-slate-200">
-              {profile.custom_status_emoji && <span className="mr-1">{profile.custom_status_emoji}</span>}
+              {profile.custom_status_emoji && <Glyph code={profile.custom_status_emoji} className="mr-1 size-4" />}
               {profile.custom_status}
             </p>
           )}

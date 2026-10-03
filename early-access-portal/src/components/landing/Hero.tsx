@@ -1,5 +1,6 @@
 "use client";
 
+import { Gamepad2, ShieldCheck, Volume2 } from "lucide-react";
 import { motion, type Variants } from "framer-motion";
 import { Mascot } from "@/components/Brand";
 import { EASE_OUT } from "@/components/motion/MotionRoot";
@@ -8,9 +9,9 @@ const container: Variants = { hidden: {}, show: { transition: { staggerChildren:
 const item: Variants = { hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: EASE_OUT } } };
 
 const CHIPS = [
-  { label: "🎮 LFG Board", className: "left-0 top-6", delay: 0 },
-  { label: "🔊 Voice + screen share", className: "right-0 top-24", delay: 1.2 },
-  { label: "🛡️ Bantay-Bayan", className: "left-6 bottom-2", delay: 2.1 },
+  { label: "LFG Board", icon: Gamepad2, className: "left-0 top-6", delay: 0 },
+  { label: "Voice + screen share", icon: Volume2, className: "right-0 top-24", delay: 1.2 },
+  { label: "Bantay-Bayan", icon: ShieldCheck, className: "left-6 bottom-2", delay: 2.1 },
 ];
 
 /** Staggered headline entrance plus the salakot mascot with floating glass chips. */
@@ -52,6 +53,7 @@ export function Hero() {
             animate={{ y: [0, -8, 0] }}
             transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: chip.delay }}
           >
+            <chip.icon className="mr-1.5 inline size-4 text-sun" aria-hidden />
             {chip.label}
           </motion.span>
         ))}

@@ -17,7 +17,7 @@ async function load(params: PageProps<"/tambayan/[serverId]/[channelId]">["param
 export async function generateMetadata({ params }: PageProps<"/tambayan/[serverId]/[channelId]">): Promise<Metadata> {
   const { bundle, channel } = await load(params);
   if (!bundle || !channel) return {};
-  return { title: `${channel.type === "text" ? "#" : "🔊 "}${channel.name} · ${bundle.server.name}` };
+  return { title: `${channel.type === "text" ? "#" : ""}${channel.name} · ${bundle.server.name}` };
 }
 
 export default async function ChannelPage({ params }: PageProps<"/tambayan/[serverId]/[channelId]">) {

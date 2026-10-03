@@ -72,7 +72,7 @@ test.describe("mobile — app shell", () => {
     // The composer sits fully inside the dynamic viewport (100dvh), not under the URL bar.
     const composer = await page.getByTestId("composer").boundingBox();
     expect(composer!.y + composer!.height).toBeLessThanOrEqual(viewport.height);
-    for (const name of ["Attach files", "Insert emoji", "Open navigation", "Pinned messages"]) {
+    for (const name of ["Attach files", "Insert icon", "Open navigation", "Pinned messages"]) {
       await expectTouchTarget(page.locator(`button[aria-label="${name}"]:visible`).first());
     }
 

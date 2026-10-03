@@ -62,7 +62,7 @@ describe("application form", () => {
     await user.click(screen.getByRole("checkbox", { name: /Pumapayag/ }));
     await user.click(screen.getByRole("button", { name: /Sumali sa waitlist/ }));
 
-    await screen.findByText("Nasa pila ka na, Juan! 🎉");
+    await screen.findByText("Nasa pila ka na, Juan!");
     expect(await screen.findByTestId("confetti")).toBeInTheDocument();
     const data = submit.mock.calls[0][1] as FormData;
     expect(Object.fromEntries(data)).toMatchObject({

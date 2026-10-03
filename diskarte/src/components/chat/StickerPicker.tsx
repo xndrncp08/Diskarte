@@ -6,6 +6,7 @@ import { Popover } from "@/components/ui/Popover";
 import { STICKER_PACKS, STICKERS, type StickerPackId } from "@/lib/stickers";
 import { cn } from "@/lib/utils";
 import { Sticker } from "./Sticker";
+import { Glyph } from "@/components/ui/Glyph";
 
 /** Composer button → Pinoy sticker packs. Picking one sends it immediately. */
 export function StickerPicker({ onPick, disabled = false }: { onPick: (id: string) => void; disabled?: boolean }) {
@@ -47,7 +48,7 @@ export function StickerPicker({ onPick, disabled = false }: { onPick: (id: strin
                   pack === p.id ? "bg-sun text-abyss" : "bg-white/5 text-slate-300 hover:bg-white/10",
                 )}
               >
-                {p.emoji} {p.name}
+                <Glyph code={p.glyph} className="size-3.5" tinted={false} /> {p.name}
               </button>
             ))}
           </div>

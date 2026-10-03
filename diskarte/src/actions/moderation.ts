@@ -8,6 +8,7 @@ import { fieldErrors } from "@/lib/profile";
 import { limiters } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 import type { ActionResult } from "./servers";
+import { isGlyphCode } from "@/lib/glyphs";
 
 const RATE_LIMITED: ActionResult<never> = { ok: false, error: "Slow down a little. Try again in a moment." };
 
@@ -114,11 +115,12 @@ const clipSchema = ids.extend({
     .string()
     .transform((v) => v.replace(/[\u0000-\u001F\u007F]/g, "").trim())
     .pipe(z.string().min(1, "Add a name").max(32, "32 characters max")),
+  // A glyph code (vector icon), never an emoji.
   emoji: z
     .string()
     .trim()
-    .max(16)
-    .transform((v) => v || "🔊"),
+    .transform((v) => v || ":volume:")
+    .refine(isGlyphCode, "Pick a sound icon"),
   path: z.string().regex(/^[0-9a-f-]{36}\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.mp3$/, "Invalid path"),
 });
 

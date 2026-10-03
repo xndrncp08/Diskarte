@@ -17,6 +17,7 @@ import { COMMUNITY_SIZES, COMMUNITY_TYPES, PAGE_SIZE, type ListQuery, type Waitl
 import { cn } from "@/lib/utils";
 import { CountUp } from "./CountUp";
 import { Dialog } from "./Dialog";
+import { CommunityIcon } from "@/components/CommunityIcon";
 
 const STATUS_STYLE = {
   pending: "border-sun/40 bg-sun/10 text-sun",
@@ -306,7 +307,7 @@ export function AdminDashboard({ data, query, adminEmail, appUrl }: { data: Dash
 
           {rows.length === 0 ? (
             <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-10 text-center text-slate-400">
-              {query.q ? `Walang tumugma sa “${query.q}”.` : "Walang applications dito. 🎉"}
+              {query.q ? `Walang tumugma sa “${query.q}”.` : "Walang applications dito."}
             </motion.p>
           ) : compact ? (
             <>
@@ -338,7 +339,7 @@ export function AdminDashboard({ data, query, adminEmail, appUrl }: { data: Dash
                           <p className="truncate font-semibold text-white">{row.full_name}</p>
                           <p className="truncate text-xs text-slate-400">{row.email}</p>
                           <p className="mt-1 text-xs text-slate-400">
-                            {community(row)?.emoji} {row.community_name || community(row)?.label} · {dateFmt.format(new Date(row.created_at))}
+                            <CommunityIcon type={row.community_type} className="size-3.5" /> {row.community_name || community(row)?.label} · {dateFmt.format(new Date(row.created_at))}
                           </p>
                         </div>
                         <div className="flex flex-col items-end gap-1">
@@ -405,7 +406,7 @@ export function AdminDashboard({ data, query, adminEmail, appUrl }: { data: Dash
                           </button>
                         </td>
                         <td className="px-3 py-2.5 text-slate-300">
-                          <span aria-hidden>{community(row)?.emoji} </span>
+                          <CommunityIcon type={row.community_type} className="mr-1 size-3.5" />
                           {row.community_name || community(row)?.label}
                           <span className="block text-xs text-slate-500">{COMMUNITY_SIZES[row.community_size as keyof typeof COMMUNITY_SIZES] ?? row.community_size}</span>
                         </td>

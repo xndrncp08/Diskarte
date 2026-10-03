@@ -90,7 +90,7 @@ test.describe("overlay layout regression", () => {
     const last = messageItem(page, "Filler message 6");
     await last.hover();
     await last.getByRole("toolbar", { name: "Message actions" }).getByRole("button", { name: "Add reaction" }).click();
-    const picker = page.getByRole("dialog", { name: "Emoji picker" });
+    const picker = page.getByRole("dialog", { name: "Icon picker" });
     await expectFullyVisible(page, picker);
     expect(await columnBoxes(page)).toEqual(before);
     await expectNoPageOverflow(page);
@@ -105,7 +105,7 @@ test.describe("overlay layout regression", () => {
     await page.keyboard.press("Escape");
 
     // Composer emoji picker escapes the composer's rounded card.
-    await page.getByRole("button", { name: "Insert emoji" }).click();
+    await page.getByRole("button", { name: "Insert icon" }).click();
     await expect(picker).toHaveAttribute("data-side", "top");
     await expectFullyVisible(page, picker);
     await page.keyboard.press("Escape");

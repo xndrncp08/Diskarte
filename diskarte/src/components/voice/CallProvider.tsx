@@ -425,7 +425,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
         .restartTrack({ noiseSuppression: enabled, echoCancellation: true, autoGainControl: true })
         .catch(() => toast.error("Couldn't apply noise suppression."));
     }
-    toast(enabled ? "Noise suppression: ON 🎧" : "Noise suppression: OFF");
+    toast(enabled ? "Noise suppression: on" : "Noise suppression: off");
   }, [state.noiseSuppression]);
 
   // Toggling low-data mode mid-call re-requests remote video at the matching quality.

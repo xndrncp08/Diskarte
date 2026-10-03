@@ -1,49 +1,38 @@
-/** Filipino custom reactions. Stored in the DB as `:shortcode:` (see reactions.emoji check). */
-export const PINOY_REACTIONS = [
-  { code: ":petmalu:", emoji: "🔥", label: "Petmalu" },
-  { code: ":lodi:", emoji: "🙌", label: "Lodi" },
-  { code: ":sana_all:", emoji: "🥺", label: "Sana all" },
-  { code: ":charot:", emoji: "😜", label: "Charot" },
-  { code: ":awit:", emoji: "😩", label: "Awit" },
-  { code: ":g:", emoji: "🟢", label: "G!" },
-  { code: ":naol:", emoji: "💅", label: "Naol" },
-  { code: ":kilig:", emoji: "😍", label: "Kilig" },
-  { code: ":lutang:", emoji: "😵‍💫", label: "Lutang" },
-  { code: ":ayos:", emoji: "👌", label: "Ayos" },
-  { code: ":salamat:", emoji: "🙏", label: "Salamat" },
-  { code: ":tara:", emoji: "🏃", label: "Tara!" },
-  { code: ":mabuhay:", emoji: "🇵🇭", label: "Mabuhay" },
-  { code: ":canton:", emoji: "🍜", label: "Pancit Canton" },
-  { code: ":halo_halo:", emoji: "🍧", label: "Halo-halo" },
-  { code: ":jeep:", emoji: "🚙", label: "Jeepney" },
-  { code: ":lechon:", emoji: "🐖", label: "Lechon" },
-  { code: ":bahala_na:", emoji: "🤷", label: "Bahala na" },
-] as const;
+import { GLYPH_LABELS, isGlyphCode, type GlyphCode } from "./glyphs";
 
-export const CLASSIC_EMOJI = [
-  "👍", "👎", "😂", "🤣", "❤️", "😭", "😮", "😡", "🎉", "👀",
-  "💯", "✅", "❌", "🤔", "😎", "🥲", "😅", "🙏", "👏", "💀",
-  "🤝", "🫡", "🫶", "🤯", "😴", "🥳", "😤", "🤡", "🎮", "🏆",
-  "⚡", "🌧️", "☕", "🍚", "🥭", "🌴", "🌊", "🏀", "🎤", "📚",
-] as const;
+/**
+ * Reactions are `:shortcode:` glyphs drawn as vector icons (components/ui/Glyph.tsx) — never emoji.
+ * Stored in the DB as the code (see the reactions.emoji check).
+ */
+const reaction = (code: GlyphCode) => ({ code, label: GLYPH_LABELS[code] });
 
-const BY_CODE = new Map<string, (typeof PINOY_REACTIONS)[number]>(PINOY_REACTIONS.map((r) => [r.code, r]));
+/** Filipino custom reactions. */
+export const PINOY_REACTIONS = (
+  [":petmalu:", ":lodi:", ":sana_all:", ":charot:", ":awit:", ":g:", ":naol:", ":kilig:", ":lutang:", ":ayos:", ":salamat:", ":tara:", ":mabuhay:", ":canton:", ":halo_halo:", ":jeep:", ":lechon:", ":bahala_na:"] as const
+).map(reaction);
 
+/** Everyday reactions, also as icons. */
+export const CLASSIC_REACTIONS = (
+  [":thumbs_up:", ":thumbs_down:", ":heart:", ":laugh:", ":sad:", ":angry:", ":party:", ":eyes:", ":check:", ":cross:", ":skull:", ":trophy:", ":thinking:", ":cool:", ":star:", ":hype:", ":coffee:", ":game:"] as const
+).map(reaction);
+
+const REACTION_CODES = new Set<string>([...PINOY_REACTIONS, ...CLASSIC_REACTIONS].map((r) => r.code));
+
+/** New reactions must be one of the icon codes above. */
 export function isValidReaction(value: string): boolean {
-  if (BY_CODE.has(value)) return true;
-  return (CLASSIC_EMOJI as readonly string[]).includes(value);
+  return REACTION_CODES.has(value);
 }
 
-export function reactionDisplay(value: string): { emoji: string; label: string; custom: boolean } {
-  const custom = BY_CODE.get(value);
-  if (custom) return { emoji: custom.emoji, label: custom.label, custom: true };
-  return { emoji: value, label: value, custom: false };
-}
-
-/** Replace `:shortcode:` tokens in message text with their emoji (outside code spans/blocks). */
-export function renderShortcodes(text: string): string {
-  const parts = text.split(/(```[\s\S]*?```|`[^`\n]*`)/g);
-  return parts
-    .map((part, i) => (i % 2 === 1 ? part : part.replace(/:[a-z0-9_]{1,32}:/g, (code) => BY_CODE.get(code)?.emoji ?? code)))
-    .join("");
+/** Splits text on known `:code:` glyphs (outside code spans/blocks is the caller's job). */
+export function splitGlyphs(text: string): (string | { code: GlyphCode })[] {
+  const out: (string | { code: GlyphCode })[] = [];
+  let last = 0;
+  for (const match of text.matchAll(/:[a-z0-9_]{1,32}:/g)) {
+    if (!isGlyphCode(match[0])) continue;
+    if (match.index > last) out.push(text.slice(last, match.index));
+    out.push({ code: match[0] });
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
 }

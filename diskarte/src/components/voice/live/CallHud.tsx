@@ -3,7 +3,7 @@
 import { RoomContext, useTracks } from "@livekit/components-react";
 import { motion } from "framer-motion";
 import { Track } from "livekit-client";
-import { Maximize2 } from "lucide-react";
+import { Maximize2, Volume2 } from "lucide-react";
 import Link from "next/link";
 import { callHref, useCall } from "../CallProvider";
 import { ParticipantTile } from "./ParticipantTile";
@@ -24,7 +24,10 @@ function HudContent() {
     >
       <ParticipantTile trackRef={featured} compact className="aspect-video w-full" />
       <div className="flex items-center justify-between px-1.5 pt-1.5">
-        <span className="truncate text-xs text-slate-300">🔊 {call.target.channelName}</span>
+        <span className="flex min-w-0 items-center gap-1 text-xs text-slate-300">
+          <Volume2 className="size-3.5 shrink-0" aria-hidden />
+          <span className="truncate">{call.target.channelName}</span>
+        </span>
         <Link href={callHref(call.target)} aria-label="Back to call" className="touch-target relative rounded p-1 text-slate-300 hover:bg-white/10 hover:text-white">
           <Maximize2 className="size-3.5" aria-hidden />
         </Link>

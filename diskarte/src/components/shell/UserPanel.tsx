@@ -11,6 +11,7 @@ import { useSettingsDialog } from "@/components/profile/SettingsDialog";
 import { SoundSettingsPopover } from "@/components/profile/SoundSettingsPopover";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { PixelStatus, STATUS_LABELS, STATUS_RING } from "@/components/retro/PixelStatus";
+import { Glyph } from "@/components/ui/Glyph";
 import { Menu } from "@/components/ui/Menu";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { PRESENCE_OPTIONS, STATUS_TRIGGERS } from "@/lib/profile";
@@ -43,7 +44,7 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
 
   // What everyone sees: the badge, ring and label all derive from this one value.
   const shown: PresenceStatus | "offline" = me.status === "invisible" ? "offline" : me.status;
-  const label = me.custom_status ? `${me.custom_status_emoji ?? ""} ${me.custom_status}`.trim() : STATUS_LABELS[me.status];
+  const label = me.custom_status ?? STATUS_LABELS[me.status];
 
   const items = [
     ...PRESENCE_OPTIONS.map((opt) => ({
@@ -55,10 +56,11 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
     })),
     // A trigger sets its text *and* its presence (AFK / Tulog → Idle, Nag-aaral → Do Not Disturb…).
     ...STATUS_TRIGGERS.slice(0, 5).map((t) => ({
-      label: `${t.emoji} ${t.text}`,
-      checked: me.custom_status === t.text && me.custom_status_emoji === t.emoji,
+      label: t.text,
+      icon: <Glyph code={t.glyph} className="size-4" />,
+      checked: me.custom_status === t.text && me.custom_status_emoji === t.glyph,
       group: "Custom status",
-      onSelect: () => apply({ status: t.status, customStatus: t.text, customStatusEmoji: t.emoji }),
+      onSelect: () => apply({ status: t.status, customStatus: t.text, customStatusEmoji: t.glyph }),
     })),
     {
       label: "Clear custom status",
@@ -94,7 +96,10 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
             <span className="min-w-0">
               <span className="block truncate text-sm font-semibold text-white">{me.display_name}</span>
               <span className="block truncate text-[11px] text-slate-400">
-                <span data-testid="status-label">{label}</span>
+                <span data-testid="status-label" className="inline-flex min-w-0 max-w-full items-center gap-1">
+                  {me.custom_status && <Glyph code={me.custom_status_emoji} className="size-3.5" />}
+                  <span className="truncate">{label}</span>
+                </span>
               </span>
             </span>
           </button>

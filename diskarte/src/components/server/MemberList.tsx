@@ -12,6 +12,7 @@ import { useServer } from "@/components/providers/ServerProvider";
 import { ProfileCard } from "@/components/profile/ProfileCard";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { STATUS_RING } from "@/components/retro/PixelStatus";
+import { Glyph } from "@/components/ui/Glyph";
 import { Button } from "@/components/ui/Button";
 import { FloatingPortal, useFloating } from "@/components/ui/floating";
 import { FloatingWindow } from "@/components/ui/FloatingWindow";
@@ -138,7 +139,7 @@ function MemberProfileCard({
     const on = !memberBadges.includes(badge);
     startTransition(async () => {
       const result = await setBadgeAction({ serverId: server.id, userId: member.user_id, badge, on });
-      if (result.ok) toast.success(on ? `${BADGES[badge].emoji} ${BADGES[badge].label} given to ${member.profile.display_name}!` : `Removed ${BADGES[badge].label}.`);
+      if (result.ok) toast.success(on ? `${BADGES[badge].label} given to ${member.profile.display_name}!` : `Removed ${BADGES[badge].label}.`);
       else toast.error(result.error ?? "Couldn't update the badge.");
     });
   }
@@ -202,7 +203,7 @@ function MemberProfileCard({
                         memberBadges.includes(b) ? BADGES[b].className : "border-white/10 bg-white/5 text-slate-400 hover:bg-white/10",
                       )}
                     >
-                      {BADGES[b].emoji} {BADGES[b].label}
+                      <Glyph code={BADGES[b].glyph} className="size-3.5" tinted={false} /> {BADGES[b].label}
                     </button>
                   ))}
                 </div>
@@ -304,7 +305,7 @@ function MemberRow({ member, presence, dim }: { member: MemberWithProfile; prese
           </span>
           {status !== "offline" && (customStatus || customEmoji) && (
             <span className="block truncate text-[11px] text-slate-400">
-              {customEmoji} {customStatus}
+              <Glyph code={customEmoji} className="size-3" /> {customStatus}
             </span>
           )}
         </span>

@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, type Variants } from "framer-motion";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Gamepad2, MessagesSquare, Mic, RadioTower, ShieldCheck, Signal } from "lucide-react";
 import { useState } from "react";
 import { EASE_OUT } from "@/components/motion/MotionRoot";
 import { cn } from "@/lib/utils";
@@ -18,12 +18,12 @@ const STEPS = [
 ];
 
 const FEATURES = [
-  { emoji: "🎙️", title: "Voice, video at screen share", body: "LiveKit-powered calls na hindi nagla-lag kahit naka-data." },
-  { emoji: "📡", title: "LFG Board", body: "1-click Join Party diretso sa voice channel ng squad." },
-  { emoji: "🛡️", title: "Bantay-Bayan", body: "Auto-mod laban sa scam links, spam at toxic, may audit log pa." },
-  { emoji: "📶", title: "Low-data mode", body: "Para sa prepaid data at mahinang signal sa probinsya." },
-  { emoji: "🎮", title: "Voice activities", body: "Watch party, 8-bit Tic-Tac-Toe at Pinoy Trivia habang nasa call." },
-  { emoji: "💬", title: "Friends & DMs", body: "Mag-add gamit ang @username, group DMs hanggang 10." },
+  { icon: Mic, title: "Voice, video at screen share", body: "LiveKit-powered calls na hindi nagla-lag kahit naka-data." },
+  { icon: RadioTower, title: "LFG Board", body: "1-click Join Party diretso sa voice channel ng squad." },
+  { icon: ShieldCheck, title: "Bantay-Bayan", body: "Auto-mod laban sa scam links, spam at toxic, may audit log pa." },
+  { icon: Signal, title: "Low-data mode", body: "Para sa prepaid data at mahinang signal sa probinsya." },
+  { icon: Gamepad2, title: "Voice activities", body: "Watch party, 8-bit Tic-Tac-Toe at Pinoy Trivia habang nasa call." },
+  { icon: MessagesSquare, title: "Friends & DMs", body: "Mag-add gamit ang @username, group DMs hanggang 10." },
 ];
 
 const FAQ = [
@@ -69,8 +69,8 @@ export function Features() {
             transition={{ type: "spring", stiffness: 300, damping: 22 }}
             className="glass flex gap-4 rounded-2xl p-5"
           >
-            <span className="text-3xl" aria-hidden>
-              {f.emoji}
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5" aria-hidden>
+              <f.icon className="size-6 text-sun" strokeWidth={2.25} />
             </span>
             <span>
               <span className="block font-bold text-white">{f.title}</span>

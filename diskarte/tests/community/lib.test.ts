@@ -24,6 +24,7 @@ import { BUILTIN_CLIPS, builtinClip, createThrottle, parseSoundboardMessage } fr
 import { cueDuration } from "@/lib/sfx";
 import { getSticker, isStickerId, STICKERS, STICKER_PACKS } from "@/lib/stickers";
 import { expectedPosition, isWatchState, needsResync, parseYouTubeId, playerCommand, youtubeEmbedUrl } from "@/lib/youtube";
+import { isGlyphCode } from "@/lib/glyphs";
 
 // node environment: give the storage-backed modules a tiny localStorage.
 const store = new Map<string, string>();
@@ -165,7 +166,8 @@ describe("soundboard", () => {
     expect(BUILTIN_CLIPS.length).toBeGreaterThanOrEqual(12);
     expect(new Set(BUILTIN_CLIPS.map((c) => c.key)).size).toBe(BUILTIN_CLIPS.length);
     for (const clip of BUILTIN_CLIPS) expect(cueDuration(clip.cue)).toBeLessThan(6);
-    expect(builtinClip("airhorn")?.emoji).toBe("📯");
+    expect(builtinClip("airhorn")?.emoji).toBe(":airhorn:");
+    for (const clip of BUILTIN_CLIPS) expect(isGlyphCode(clip.emoji)).toBe(true);
   });
 
   it("only accepts well-formed play messages", () => {

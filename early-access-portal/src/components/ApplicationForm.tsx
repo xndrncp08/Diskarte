@@ -1,5 +1,6 @@
 "use client";
 
+import { Star } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { useActionState, useEffect, useRef, useState, type FormEvent } from "react";
@@ -10,6 +11,7 @@ import { applicationSchema, COMMUNITY_SIZES, COMMUNITY_TYPES, fieldErrors as toF
 import { cn } from "@/lib/utils";
 import { FloatingInput, FloatingTextarea } from "./form/FloatingField";
 import { Turnstile } from "./form/Turnstile";
+import { CommunityIcon } from "@/components/CommunityIcon";
 
 // The celebration only ships when someone actually applies.
 const Confetti = dynamic(() => import("./Confetti").then((m) => m.Confetti), { ssr: false });
@@ -50,8 +52,11 @@ function Success({ firstName }: { firstName: string }) {
       data-testid="apply-success"
     >
       <Confetti />
-      <p className="font-pixel text-[10px] text-sun">★ PLAYER 2 HAS JOINED ★</p>
-      <h2 className="text-3xl font-extrabold text-white">Nasa pila ka na, {firstName}! 🎉</h2>
+      <p className="font-pixel text-[10px] text-sun"><Star className="mr-1 inline size-3 fill-sun" aria-hidden />
+                PLAYER 2 HAS JOINED
+                <Star className="ml-1 inline size-3 fill-sun" aria-hidden />
+              </p>
+      <h2 className="text-3xl font-extrabold text-white">Nasa pila ka na, {firstName}!</h2>
       <p className="text-slate-300">
         Salamat sa pag-apply sa Diskarte Early Access. Isa-isa naming binabasa ang bawat application. Kapag na-approve ka, darating sa email mo ang login details mo.
       </p>
@@ -245,7 +250,7 @@ export function ApplicationForm({ formToken, turnstileSiteKey, nonce }: { formTo
                   <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2 sm:grid-cols-3" role="radiogroup" aria-labelledby="community-type-label" aria-invalid={errors.communityType ? true : undefined}>
                     {Object.entries(COMMUNITY_TYPES).map(([key, t]) => (
                       <Choice key={key} checked={values.communityType === key} onSelect={() => set("communityType")(key)}>
-                        <span aria-hidden>{t.emoji}</span>
+                        <CommunityIcon type={key} />
                         {t.label}
                       </Choice>
                     ))}

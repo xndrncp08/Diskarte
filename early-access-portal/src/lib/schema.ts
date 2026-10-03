@@ -2,12 +2,12 @@ import { z } from "zod";
 
 /** Shared by the form (client-side hints), the server action and the admin dashboard labels. */
 export const COMMUNITY_TYPES = {
-  gaming: { label: "Gaming squad / guild", emoji: "🎮" },
-  school: { label: "Study group / student org", emoji: "📚" },
-  streaming: { label: "Streamer / content community", emoji: "📺" },
-  barkada: { label: "Barkada / friends", emoji: "🍻" },
-  work: { label: "Startup / work team", emoji: "💼" },
-  other: { label: "Iba pa", emoji: "✨" },
+  gaming: { label: "Gaming squad / guild" },
+  school: { label: "Study group / student org" },
+  streaming: { label: "Streamer / content community" },
+  barkada: { label: "Barkada / friends" },
+  work: { label: "Startup / work team" },
+  other: { label: "Iba pa" },
 } as const;
 
 export const COMMUNITY_SIZES = {

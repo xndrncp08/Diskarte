@@ -7,6 +7,7 @@ import type { Cue } from "@/lib/sfx";
 export interface BuiltinClip {
   key: string;
   name: string;
+  /** Glyph code drawn as a vector icon (custom clips may hold an older emoji, shown via its icon). */
   emoji: string;
   cue: Cue;
 }
@@ -17,7 +18,7 @@ export const BUILTIN_CLIPS: BuiltinClip[] = [
   {
     key: "airhorn",
     name: "Airhorn",
-    emoji: "📯",
+    emoji: ":airhorn:",
     cue: {
       level: 0.9,
       notes: [0, 0.22, 0.44].flatMap((at, i) => [
@@ -30,7 +31,7 @@ export const BUILTIN_CLIPS: BuiltinClip[] = [
   {
     key: "ba-dum-tss",
     name: "Ba Dum Tss",
-    emoji: "🥁",
+    emoji: ":drum:",
     cue: {
       notes: [sq(110, 0, 0.12, { wave: "triangle", slideTo: 60 }), sq(98, 0.18, 0.14, { wave: "triangle", slideTo: 55 })],
       noise: [
@@ -43,7 +44,7 @@ export const BUILTIN_CLIPS: BuiltinClip[] = [
   {
     key: "sad-trombone",
     name: "Sad Trombone",
-    emoji: "😢",
+    emoji: ":sad:",
     cue: {
       notes: [
         sq(392, 0, 0.3, { wave: "triangle", slideTo: 370 }),
@@ -56,7 +57,7 @@ export const BUILTIN_CLIPS: BuiltinClip[] = [
   {
     key: "level-up",
     name: "Level Up!",
-    emoji: "⭐",
+    emoji: ":star:",
     cue: {
       notes: [523, 659, 784, 1047, 784, 1047, 1319].map((f, i) => sq(f, i * 0.07, i === 6 ? 0.3 : 0.07)),
     },
@@ -64,19 +65,19 @@ export const BUILTIN_CLIPS: BuiltinClip[] = [
   {
     key: "coin",
     name: "Barya",
-    emoji: "🪙",
+    emoji: ":coins:",
     cue: { level: 0.8, notes: [sq(988, 0, 0.08), sq(1319, 0.08, 0.35)] },
   },
   {
     key: "boing",
     name: "Boing",
-    emoji: "🌀",
+    emoji: ":warp:",
     cue: { notes: [sq(150, 0, 0.35, { wave: "triangle", slideTo: 600 }), sq(600, 0.35, 0.25, { wave: "triangle", slideTo: 300 })] },
   },
   {
     key: "wow",
     name: "Wowowow",
-    emoji: "😮",
+    emoji: ":eyes:",
     cue: {
       notes: [0, 0.15, 0.3, 0.45].map((at) => sq(330, at, 0.15, { wave: "triangle", slideTo: 494 })),
     },
@@ -84,7 +85,7 @@ export const BUILTIN_CLIPS: BuiltinClip[] = [
   {
     key: "kaboom",
     name: "Kaboom",
-    emoji: "💥",
+    emoji: ":boom:",
     cue: {
       notes: [sq(120, 0, 0.8, { wave: "square", slideTo: 30 })],
       noise: [{ at: 0, dur: 1, gain: 1 }],
@@ -93,7 +94,7 @@ export const BUILTIN_CLIPS: BuiltinClip[] = [
   {
     key: "palakpakan",
     name: "Palakpakan",
-    emoji: "👏",
+    emoji: ":lodi:",
     cue: {
       notes: [],
       noise: Array.from({ length: 10 }, (_, i) => ({ at: i * 0.11 + (i % 3) * 0.02, dur: 0.06, gain: 0.8 })),
@@ -102,19 +103,19 @@ export const BUILTIN_CLIPS: BuiltinClip[] = [
   {
     key: "tama",
     name: "Tama!",
-    emoji: "✅",
+    emoji: ":check:",
     cue: { notes: [sq(784, 0, 0.1), sq(1047, 0.1, 0.25)] },
   },
   {
     key: "mali",
     name: "Mali!",
-    emoji: "❌",
+    emoji: ":cross:",
     cue: { notes: [sq(110, 0, 0.5, { gain: 0.9 }), sq(116, 0, 0.5, { gain: 0.9 })] },
   },
   {
     key: "bruh",
     name: "Bruh",
-    emoji: "🗿",
+    emoji: ":bruh:",
     cue: { notes: [sq(140, 0, 0.35, { slideTo: 90, gain: 0.9 })] },
   },
 ];
