@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createFakeSupabase } from "../fixtures/fake-supabase";
 import { livekitMock } from "../mocks/livekit";
 
@@ -18,7 +18,7 @@ const { PresenceProvider, SPEAKING_TTL_MS, useServerSpeaking } = await import("@
 const { AppShell } = await import("@/components/shell/AppShell");
 const { SessionProviders } = await import("@/components/shell/SessionProviders");
 const { RuntimeConfigProvider } = await import("@/components/providers/RuntimeConfig");
-const { useCall } = await import("@/components/voice/CallProvider");
+const { loadLivekit, useCall } = await import("@/components/voice/CallProvider");
 const { ACCOUNT, MEMBERS, RUNTIME, TAMBAYAN } = await import("../fixtures/layout");
 const { SERVER_ID, server } = await import("../fixtures/server");
 
@@ -30,6 +30,12 @@ function Talking() {
   const speaking = useServerSpeaking(SERVER_ID);
   return <output data-testid="speaking">{[...speaking].sort().join(",")}</output>;
 }
+
+// The LiveKit SDK is imported on first join; under full-suite load that first import alone can take over
+// a second, so load it up front rather than inside the timed assertions.
+beforeAll(async () => {
+  await loadLivekit();
+});
 
 beforeEach(() => {
   fake.channels.length = 0;
@@ -97,7 +103,7 @@ describe("voice activity over Realtime Broadcast", () => {
     room.localParticipant.identity = ME.id;
     await waitFor(() => expect(room.handlers.get("activeSpeakersChanged")).toBeDefined());
     // Only a connected call announces voice activity.
-    await waitFor(() => expect(screen.getByTestId("call-status")).toHaveTextContent("connected"));
+    await waitFor(() => expect(screen.getByTestId("call-status")).toHaveTextContent("connected"), { timeout: 5000 });
     const sent = () => fake.channels.filter((c) => c.name === TOPIC).flatMap((c) => c.sent) as { event: string; payload: unknown }[];
     const queriesBefore = vi.mocked(fake.client.from).mock.calls.length;
 

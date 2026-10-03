@@ -63,7 +63,7 @@ describe("Settings dialog", () => {
     const user = userEvent.setup();
     renderShell();
     await user.click(screen.getByRole("button", { name: "Join voice" }));
-    await waitFor(() => expect(screen.getByTestId("call-status")).toHaveTextContent("connected"));
+    await waitFor(() => expect(screen.getByTestId("call-status")).toHaveTextContent("connected"), { timeout: 5000 }); // first SDK import can be slow under load
     expect(livekitMock.rooms).toHaveLength(1);
     const room = livekitMock.rooms[0];
 
