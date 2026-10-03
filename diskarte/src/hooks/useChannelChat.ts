@@ -237,7 +237,7 @@ export function useChannelChat(
       }
       playSfx("error");
       toast.error(result.error ?? "Couldn't send.");
-      if (result.code === "SLOWMODE" || result.code === "AUTOMOD_BLOCKED" || result.code === "VERIFICATION_REQUIRED") {
+      if (result.code === "SLOWMODE" || result.code === "AUTOMOD_BLOCKED" || result.code === "VERIFICATION_REQUIRED" || result.code === "READ_ONLY_CHANNEL") {
         if (result.code === "SLOWMODE") setCooldownUntil(Date.now() + (result.retryAfter ?? slowmode) * 1000);
         setMessages((prev) => prev.filter((m) => m.id !== entry.id));
         return "rejected";

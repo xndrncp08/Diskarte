@@ -40,6 +40,7 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
   const [name, setName] = useState(channel?.name ?? "");
   const [slowmode, setSlowmode] = useState(channel?.slowmode_seconds ?? 0);
   const [verifiedOnly, setVerifiedOnly] = useState(channel?.requires_verification ?? false);
+  const [readOnly, setReadOnly] = useState(channel?.read_only ?? false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
 
@@ -56,6 +57,7 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
       topic: String(form.get("topic") ?? ""),
       slowmodeSeconds: type === "text" ? slowmode : 0,
       requiresVerification: type === "text" && verifiedOnly,
+      readOnly: type === "text" && readOnly,
     };
     startTransition(async () => {
       const result = channel
@@ -187,6 +189,7 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
             label="Verified accounts only"
             hint="Members need a confirmed email or phone number to chat here."
           />
+          <Switch checked={readOnly} onChange={setReadOnly} label="Read-only (announcements)" hint="Only admins can post; everyone else can read and react." />
         </fieldset>
       )}
       <div className="flex items-center justify-between gap-2 pt-1">

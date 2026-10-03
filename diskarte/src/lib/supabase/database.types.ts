@@ -70,7 +70,10 @@ export interface Database {
           name: string;
           description: string;
           icon_url: string | null;
-          owner_id: string;
+          /** null only for the system server (Diskarte HQ), which belongs to nobody. */
+          owner_id: string | null;
+          /** The global "super server" every account belongs to. */
+          is_system: boolean;
           invite_code: string;
           automod_enabled: boolean;
           automod_categories: AutomodCategory[];
@@ -86,7 +89,8 @@ export interface Database {
           name: string;
           description?: string;
           icon_url?: string | null;
-          owner_id: string;
+          owner_id: string | null;
+          is_system?: boolean;
           invite_code?: string;
           automod_enabled?: boolean;
           automod_categories?: AutomodCategory[];
@@ -134,6 +138,8 @@ export interface Database {
           position: number;
           slowmode_seconds: number;
           requires_verification: boolean;
+          /** Only server admins (in Diskarte HQ: the creators) can post. */
+          read_only: boolean;
           created_at: string;
         };
         Insert: {
@@ -146,6 +152,7 @@ export interface Database {
           position?: number;
           slowmode_seconds?: number;
           requires_verification?: boolean;
+          read_only?: boolean;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["channels"]["Insert"]>;

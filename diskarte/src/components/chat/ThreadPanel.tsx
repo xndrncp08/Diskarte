@@ -8,7 +8,7 @@ import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { useServer } from "@/components/providers/ServerProvider";
 import { useChannelChat, type ChatMessage } from "@/hooks/useChannelChat";
 import { isGroupedWithPrevious } from "@/lib/chat-format";
-import { MESSAGE_SELECT, previewText, type MessageWithAuthor, type Reaction } from "@/lib/messages";
+import { MESSAGE_SELECT, previewText, READ_ONLY_NOTICE, type MessageWithAuthor, type Reaction } from "@/lib/messages";
 import { hasRole, type Channel } from "@/lib/servers";
 import { Composer } from "./Composer";
 import { MessageItem, type MessageActions } from "./MessageItem";
@@ -159,6 +159,7 @@ function ThreadBody({ channel, root, initial, locked }: { channel: Channel; root
         cooldownUntil={chat.cooldownUntil}
         slowmodeSeconds={canModerate ? 0 : channel.slowmode_seconds}
         locked={locked}
+        lockKind={locked === READ_ONLY_NOTICE ? "read-only" : "verification"}
       />
     </>
   );

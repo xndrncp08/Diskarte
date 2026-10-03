@@ -217,6 +217,8 @@ const COMMUNITY_ERRORS: Record<string, string> = {
   SLOWMODE: "Slow mode is on — take it easy.",
   VERIFICATION_REQUIRED: "Verify your email or phone number before chatting in this channel.",
   AUTOMOD_BLOCKED: "Bantay-Bayan auto-mod blocked your message.",
+  READ_ONLY_CHANNEL: "Only creators can post in this channel.",
+  CANNOT_LEAVE_SYSTEM_SERVER: "Everyone stays in Diskarte HQ — it's where announcements live.",
   INVALID_THREAD: "Threads aren't allowed here.",
   LFG_FULL: "The party is full!",
   LFG_CLOSED: "That LFG beacon is closed.",

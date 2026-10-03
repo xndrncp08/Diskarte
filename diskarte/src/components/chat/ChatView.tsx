@@ -14,7 +14,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { mentionsUser, useChannelChat, type ChatMessage } from "@/hooks/useChannelChat";
 import { useTyping } from "@/hooks/useTyping";
 import { isGroupedWithPrevious, sameDay } from "@/lib/chat-format";
-import type { MessageWithAuthor, Reaction } from "@/lib/messages";
+import { READ_ONLY_NOTICE, VERIFY_NOTICE, type MessageWithAuthor, type Reaction } from "@/lib/messages";
 import { hasRole, type Channel } from "@/lib/servers";
 import { cn } from "@/lib/utils";
 import { Composer } from "./Composer";
@@ -27,7 +27,6 @@ import { Timestamp } from "./Timestamp";
 
 const NO_REACTIONS: Reaction[] = [];
 
-export const VERIFY_NOTICE = "Only verified accounts can chat here. Confirm your email or phone number first.";
 
 export function ChatView({ channel: initialChannel, initial }: { channel: Channel; initial: { messages: MessageWithAuthor[]; reactions: Reaction[]; hasMore: boolean } }) {
   const { me, verified } = useMe();
@@ -38,7 +37,10 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
   const canModerate = hasRole(myRole, "moderator");
   const chat = useChannelChat(channel.id, initial, { slowmodeSeconds: channel.slowmode_seconds, slowmodeExempt: canModerate });
   const { typingNames, notifyTyping, stopTyping } = useTyping(channel.id);
-  const locked = channel.requires_verification && !verified && !canModerate ? VERIFY_NOTICE : null;
+  // Read-only channels (Diskarte HQ's #announcements) take posts from admins only — the database enforces
+  // it too; verification-gated channels need a confirmed account.
+  const readOnly = channel.read_only && myRole !== "admin";
+  const locked = readOnly ? READ_ONLY_NOTICE : channel.requires_verification && !verified && !canModerate ? VERIFY_NOTICE : null;
   const [threadRootId, setThreadRootId] = useState<string | null>(null);
 
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
@@ -258,6 +260,7 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
           cooldownUntil={chat.cooldownUntil}
           slowmodeSeconds={canModerate ? 0 : channel.slowmode_seconds}
           locked={locked}
+          lockKind={readOnly ? "read-only" : "verification"}
         />
       </motion.section>
 

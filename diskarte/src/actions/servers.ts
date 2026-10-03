@@ -26,6 +26,8 @@ const DB_ERRORS: Record<string, string> = {
   INVITE_NOT_FOUND: "No server has that invite code.",
   BANNED: "You're banned from this server.",
   OWNER_CANNOT_LEAVE: "You own this server — delete it or transfer ownership first.",
+  CANNOT_LEAVE_SYSTEM_SERVER: "Everyone stays in Diskarte HQ — it's where announcements live.",
+  SYSTEM_SERVER_IMMUTABLE: "Diskarte HQ is managed by the Diskarte team.",
   CANNOT_KICK_MEMBER: "You can't kick that member.",
   ONLY_ADMINS_CAN_CHANGE_ROLES: "Only admins can change roles.",
   CANNOT_CHANGE_OWNER_ROLE: "The owner's role can't be changed.",
@@ -146,6 +148,7 @@ export async function createChannelAction(input: {
   topic?: string;
   slowmodeSeconds?: number;
   requiresVerification?: boolean;
+  readOnly?: boolean;
 }): Promise<ActionResult<{ channelId: string }>> {
   const { limited } = await authed();
   if (limited) return RATE_LIMITED;
@@ -165,6 +168,7 @@ export async function createChannelAction(input: {
       position: (last?.position ?? -1) + 1,
       slowmode_seconds: moderation.data.slowmodeSeconds,
       requires_verification: moderation.data.requiresVerification,
+      read_only: moderation.data.readOnly,
     })
     .select("id")
     .single();
@@ -175,6 +179,8 @@ export async function createChannelAction(input: {
 const channelModerationSchema = z.object({
   slowmodeSeconds: z.number().int().min(0).max(21600).default(0),
   requiresVerification: z.boolean().default(false),
+  /** Announcements-style: only admins can post. */
+  readOnly: z.boolean().default(false),
 });
 
 export async function updateChannelAction(input: {
@@ -185,6 +191,7 @@ export async function updateChannelAction(input: {
   topic: string;
   slowmodeSeconds?: number;
   requiresVerification?: boolean;
+  readOnly?: boolean;
 }): Promise<ActionResult> {
   const { limited } = await authed();
   if (limited) return RATE_LIMITED;
@@ -202,6 +209,7 @@ export async function updateChannelAction(input: {
       topic: parsed.data.topic,
       slowmode_seconds: moderation.data.slowmodeSeconds,
       requires_verification: moderation.data.requiresVerification,
+      read_only: moderation.data.readOnly,
     })
     .eq("id", input.channelId)
     .select("id");

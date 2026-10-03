@@ -15,7 +15,7 @@ export function hasRole(role: MemberRole | null | undefined, min: MemberRole) {
 }
 
 /** Mirrors the members_guard / members_delete_guard triggers so the UI only offers allowed actions. */
-export function canManageMember(opts: { actorRole: MemberRole | null; actorId: string; target: { role: MemberRole; user_id: string }; ownerId: string }) {
+export function canManageMember(opts: { actorRole: MemberRole | null; actorId: string; target: { role: MemberRole; user_id: string }; ownerId: string | null }) {
   const { actorRole, actorId, target, ownerId } = opts;
   const isSelf = target.user_id === actorId;
   const targetIsOwner = target.user_id === ownerId;

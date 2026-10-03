@@ -90,4 +90,23 @@ test.describe("servers, channels and real-time chat", () => {
     await expect(outsider.page.getByRole("menuitem", { name: "Leave server" })).toBeVisible();
     await outsider.context.close();
   });
+
+  test("every new account is already in Diskarte HQ: announcements are creators-only, the lounge is open", async ({ page }) => {
+    const user = makeUser("Bago");
+    await signUpAndOnboard(page, user);
+    const hq = page.getByTestId("pinned-server");
+    await expect(hq).toHaveAccessibleName("Diskarte HQ (official)");
+    await hq.click();
+
+    const channels = page.getByRole("navigation", { name: "Channels" });
+    await channels.getByRole("link", { name: "announcements" }).click();
+    await expect(page.getByTestId("composer-locked")).toHaveText("Only creators can post in this channel.");
+
+    await channels.getByRole("link", { name: "global-lounge" }).click();
+    await sendMessage(page, `Hello from ${user.displayName}!`);
+    await expect(messageItem(page, `Hello from ${user.displayName}!`)).toBeVisible();
+
+    await page.getByTestId("server-menu").click();
+    await expect(page.getByRole("menuitem", { name: "Leave server" })).toHaveCount(0);
+  });
 });
