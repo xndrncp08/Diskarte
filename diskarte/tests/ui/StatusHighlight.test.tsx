@@ -91,6 +91,26 @@ describe("status indicator", () => {
     await waitFor(() => expect(within(panel()).getByTestId("status-label")).toHaveTextContent("Do Not Disturb"));
   });
 
+  it("opens on the current choice, in two labelled groups, with no stray 'selected' highlight", async () => {
+    const user = userEvent.setup();
+    renderPanel();
+    await pick(user, /Nagluto ng Canton/); // → Idle + Nagluto ng Canton
+    await pick(user, /Do Not Disturb/);
+    await user.click(within(panel()).getByRole("button", { name: /Set status/ }));
+    const menu = await screen.findByRole("menu", { name: "Set status" });
+    // Focus lands on the checked presence, not on "Online" at the top.
+    await waitFor(() => expect(within(menu).getByRole("menuitemradio", { name: /Do Not Disturb/ })).toHaveFocus());
+    // Presence and custom status are separate, labelled choices (one check in each).
+    const presence = within(menu).getByRole("group", { name: "Status" });
+    const custom = within(menu).getByRole("group", { name: "Custom status" });
+    expect(within(presence).getAllByRole("menuitemradio").filter((i) => i.getAttribute("aria-checked") === "true")).toHaveLength(1);
+    expect(within(custom).getAllByRole("menuitemradio").filter((i) => i.getAttribute("aria-checked") === "true")).toHaveLength(1);
+    // The gold highlight is for keyboard focus only, so a mouse-opened menu never looks like "Online" is picked.
+    const online = within(menu).getByRole("menuitemradio", { name: /^Online/ });
+    expect(online.className).not.toMatch(/(^|\s)focus:bg-sun/);
+    expect(online.className).toMatch(/focus-visible:bg-sun/);
+  });
+
   it("publishes the new status in my presence, so other members' rosters update live", async () => {
     const user = userEvent.setup();
     renderPanel();

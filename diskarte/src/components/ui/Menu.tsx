@@ -15,6 +15,8 @@ export interface MenuItem {
   hidden?: boolean;
   /** Set for choice items (a status switcher): rendered as a checked/unchecked radio menu item. */
   checked?: boolean;
+  /** Consecutive items sharing a group render as one labelled section (e.g. "Status", "Custom status"). */
+  group?: string;
 }
 
 const ITEM_SELECTOR = "[role=menuitem],[role=menuitemradio]";
@@ -82,7 +84,10 @@ export function Menu({
     };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
-    const frame = requestAnimationFrame(() => panel.current?.querySelector<HTMLElement>(ITEM_SELECTOR)?.focus());
+    // Open on the current choice (a checked item) rather than always on the first row.
+    const frame = requestAnimationFrame(() =>
+      (panel.current?.querySelector<HTMLElement>("[aria-checked=true]") ?? panel.current?.querySelector<HTMLElement>(ITEM_SELECTOR))?.focus(),
+    );
     return () => {
       cancelAnimationFrame(frame);
       document.removeEventListener("mousedown", onDown);
@@ -108,33 +113,67 @@ export function Menu({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98 }}
               transition={{ duration: 0.12 }}
-              className="glass-strong z-50 min-w-52 max-w-[calc(100vw-1rem)] rounded-xl p-1.5 shadow-xl shadow-black/50"
+              className="glass-strong z-50 min-w-52 max-w-[calc(100vw-1rem)] rounded-xl bg-slate-950! p-1.5 shadow-xl shadow-black/50"
             >
-              {visible.map((item) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  role={item.checked === undefined ? "menuitem" : "menuitemradio"}
-                  aria-checked={item.checked}
-                  onClick={() => {
-                    close(true);
-                    item.onSelect();
-                  }}
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm outline-none transition-colors pointer-coarse:py-3",
-                    item.danger ? "text-red-300 hover:bg-red-500/20 focus:bg-red-500/20" : "text-slate-200 hover:bg-sun/90 hover:text-abyss focus:bg-sun/90 focus:text-abyss",
-                    item.checked && "bg-white/10 font-semibold text-white",
-                  )}
-                >
-                  {item.icon}
-                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                  {item.checked && <Check className="size-4 shrink-0" aria-hidden />}
-                </button>
-              ))}
+              {sections(visible).map((section, i) =>
+                section.group ? (
+                  <div key={section.group} role="group" aria-label={section.group} className={cn(i > 0 && "mt-1 border-t border-white/10 pt-1")}>
+                    <p className="px-2.5 pb-0.5 pt-1 font-silk text-[10px] uppercase tracking-wider text-slate-500" aria-hidden>
+                      {section.group}
+                    </p>
+                    {section.items.map((item) => (
+                      <MenuRow key={item.label} item={item} onPick={() => close(true)} />
+                    ))}
+                  </div>
+                ) : (
+                  <div key={`plain-${i}`} className={cn(i > 0 && "mt-1 border-t border-white/10 pt-1")}>
+                    {section.items.map((item) => (
+                      <MenuRow key={item.label} item={item} onPick={() => close(true)} />
+                    ))}
+                  </div>
+                ),
+              )}
             </InertWhenExiting>
           )}
         </AnimatePresence>
       </FloatingPortal>
     </div>
+  );
+}
+
+/** Splits items into runs that share a `group` (ungrouped runs stay plain). */
+function sections(items: MenuItem[]) {
+  const out: { group?: string; items: MenuItem[] }[] = [];
+  for (const item of items) {
+    const last = out[out.length - 1];
+    if (last && last.group === item.group) last.items.push(item);
+    else out.push({ group: item.group, items: [item] });
+  }
+  return out;
+}
+
+function MenuRow({ item, onPick }: { item: MenuItem; onPick: () => void }) {
+  return (
+    <button
+      type="button"
+      role={item.checked === undefined ? "menuitem" : "menuitemradio"}
+      aria-checked={item.checked}
+      onClick={() => {
+        onPick();
+        item.onSelect();
+      }}
+      className={cn(
+        "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm outline-none transition-colors pointer-coarse:py-3",
+        // Gold is the *keyboard* highlight only, so a mouse-opened menu never looks like row one is picked.
+        item.danger
+          ? "text-red-300 hover:bg-red-500/20 focus-visible:bg-red-500/20"
+          : "text-slate-200 hover:bg-white/10 hover:text-white focus-visible:bg-sun/90 focus-visible:text-abyss",
+        item.checked && "bg-white/10 font-semibold text-white",
+      )}
+    >
+      {item.icon}
+      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+      {item.checked && <Check className="size-4 shrink-0 text-sun" aria-hidden />}
+    </button>
   );
 }
