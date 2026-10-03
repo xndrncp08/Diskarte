@@ -10,11 +10,12 @@ import { useMe } from "@/components/providers/MeProvider";
 import { useSettingsDialog } from "@/components/profile/SettingsDialog";
 import { SoundSettingsPopover } from "@/components/profile/SoundSettingsPopover";
 import { UserAvatar } from "@/components/profile/UserAvatar";
-import { PixelStatus } from "@/components/retro/PixelStatus";
+import { PixelStatus, STATUS_LABELS, STATUS_RING } from "@/components/retro/PixelStatus";
 import { Menu } from "@/components/ui/Menu";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { PRESENCE_OPTIONS, STATUS_TRIGGERS } from "@/lib/profile";
 import type { PresenceStatus } from "@/lib/supabase/database.types";
+import { cn } from "@/lib/utils";
 
 /** Bottom-left identity panel with the quick status switcher; `controls` slot hosts voice buttons. */
 export function UserPanel({ controls }: { controls?: ReactNode }) {
@@ -40,15 +41,22 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
     });
   }
 
+  // What everyone sees: the badge, ring and label all derive from this one value.
+  const shown: PresenceStatus | "offline" = me.status === "invisible" ? "offline" : me.status;
+  const label = me.custom_status ? `${me.custom_status_emoji ?? ""} ${me.custom_status}`.trim() : STATUS_LABELS[me.status];
+
   const items = [
     ...PRESENCE_OPTIONS.map((opt) => ({
       label: opt.label,
       icon: <PixelStatus status={opt.value} size={12} />,
+      checked: me.status === opt.value,
       onSelect: () => apply({ status: opt.value }),
     })),
+    // A trigger sets its text *and* its presence (AFK / Tulog → Idle, Nag-aaral → Do Not Disturb…).
     ...STATUS_TRIGGERS.slice(0, 5).map((t) => ({
       label: `${t.emoji} ${t.text}`,
-      onSelect: () => apply({ customStatus: t.text, customStatusEmoji: t.emoji }),
+      checked: me.custom_status === t.text && me.custom_status_emoji === t.emoji,
+      onSelect: () => apply({ status: t.status, customStatus: t.text, customStatusEmoji: t.emoji }),
     })),
     { label: "Clear custom status", onSelect: () => apply({ customStatus: null, customStatusEmoji: null }), hidden: !me.custom_status && !me.custom_status_emoji },
   ];
@@ -70,14 +78,16 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
             aria-expanded={open}
             aria-controls={id}
             aria-haspopup="menu"
-            aria-label={`Set status (currently ${me.status})`}
+            aria-label={`Set status (currently ${STATUS_LABELS[me.status]})`}
             className="flex w-full min-w-0 items-center gap-2 rounded-md p-1 text-left transition-colors hover:bg-white/10 pointer-coarse:py-1.5"
           >
-            <UserAvatar profile={me} size={32} status={me.status === "invisible" ? "offline" : me.status} ring="#0b1020" />
+            <span data-status-ring={shown} className={cn("shrink-0 rounded-full ring-2 ring-offset-2 ring-offset-[#0b1020] transition-shadow duration-300", STATUS_RING[shown])}>
+              <UserAvatar profile={me} size={32} status={shown} ring="#0b1020" />
+            </span>
             <span className="min-w-0">
               <span className="block truncate text-sm font-semibold text-white">{me.display_name}</span>
               <span className="block truncate text-[11px] text-slate-400">
-                {me.custom_status ? `${me.custom_status_emoji ?? ""} ${me.custom_status}`.trim() : `@${me.username}`}
+                <span data-testid="status-label">{label}</span>
               </span>
             </span>
           </button>

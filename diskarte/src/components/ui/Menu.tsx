@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence } from "framer-motion";
+import { Check } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { FloatingPortal, useFloating, type Side } from "./floating";
@@ -12,7 +13,11 @@ export interface MenuItem {
   onSelect: () => void;
   danger?: boolean;
   hidden?: boolean;
+  /** Set for choice items (a status switcher): rendered as a checked/unchecked radio menu item. */
+  checked?: boolean;
 }
+
+const ITEM_SELECTOR = "[role=menuitem],[role=menuitemradio]";
 
 /**
  * Popover menu (server menu, status switcher…). The panel is portalled to <body> with fixed
@@ -61,7 +66,7 @@ export function Menu({
         close(true);
         return;
       }
-      const nodes = Array.from(panel.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? []);
+      const nodes = Array.from(panel.current?.querySelectorAll<HTMLElement>(ITEM_SELECTOR) ?? []);
       if (nodes.length === 0) return;
       const index = nodes.indexOf(document.activeElement as HTMLElement);
       let next = -1;
@@ -77,7 +82,7 @@ export function Menu({
     };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
-    const frame = requestAnimationFrame(() => panel.current?.querySelector<HTMLElement>("[role=menuitem]")?.focus());
+    const frame = requestAnimationFrame(() => panel.current?.querySelector<HTMLElement>(ITEM_SELECTOR)?.focus());
     return () => {
       cancelAnimationFrame(frame);
       document.removeEventListener("mousedown", onDown);
@@ -109,7 +114,8 @@ export function Menu({
                 <button
                   key={item.label}
                   type="button"
-                  role="menuitem"
+                  role={item.checked === undefined ? "menuitem" : "menuitemradio"}
+                  aria-checked={item.checked}
                   onClick={() => {
                     close(true);
                     item.onSelect();
@@ -117,10 +123,12 @@ export function Menu({
                   className={cn(
                     "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm outline-none transition-colors pointer-coarse:py-3",
                     item.danger ? "text-red-300 hover:bg-red-500/20 focus:bg-red-500/20" : "text-slate-200 hover:bg-sun/90 hover:text-abyss focus:bg-sun/90 focus:text-abyss",
+                    item.checked && "bg-white/10 font-semibold text-white",
                   )}
                 >
                   {item.icon}
-                  {item.label}
+                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                  {item.checked && <Check className="size-4 shrink-0" aria-hidden />}
                 </button>
               ))}
             </InertWhenExiting>

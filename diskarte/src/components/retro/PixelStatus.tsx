@@ -9,6 +9,15 @@ const COLORS: Record<PresenceStatus | "offline", string> = {
   offline: "#64748B",
 };
 
+/** Highlight ring around an avatar, matching its status colour. */
+export const STATUS_RING: Record<PresenceStatus | "offline", string> = {
+  online: "ring-signal-green/80",
+  idle: "ring-signal-idle/80",
+  dnd: "ring-signal-dnd/80",
+  invisible: "ring-slate-500/70",
+  offline: "ring-slate-500/70",
+};
+
 export const STATUS_LABELS: Record<PresenceStatus | "offline", string> = {
   online: "Online",
   idle: "Idle",

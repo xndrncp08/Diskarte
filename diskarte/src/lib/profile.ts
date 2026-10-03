@@ -31,17 +31,20 @@ export const BANNER_PRESETS = {
 export type BannerPreset = keyof typeof BANNER_PRESETS;
 export const BANNER_PRESET_KEYS = Object.keys(BANNER_PRESETS) as BannerPreset[];
 
-/** Filipino community status triggers. */
-export const STATUS_TRIGGERS = [
-  { emoji: "🍜", text: "Nagluto ng Canton" },
-  { emoji: "😴", text: "AFK / Tulog" },
-  { emoji: "🎮", text: "LFG / Pa-carry" },
-  { emoji: "📚", text: "Nag-aaral pa boffum" },
-  { emoji: "🚌", text: "Nasa jeep, mahina signal" },
-  { emoji: "🍚", text: "Kumakain, brb" },
-  { emoji: "☕", text: "Kape muna" },
-  { emoji: "🌧️", text: "Brownout / Bumabagyo" },
-] as const;
+/**
+ * Filipino community status triggers. Each one also sets the matching presence, so the badge, ring and
+ * roster dot say "Idle" when you're AFK / Tulog instead of staying green "Online".
+ */
+export const STATUS_TRIGGERS: readonly { emoji: string; text: string; status: PresenceStatus }[] = [
+  { emoji: "🍜", text: "Nagluto ng Canton", status: "idle" },
+  { emoji: "😴", text: "AFK / Tulog", status: "idle" },
+  { emoji: "🎮", text: "LFG / Pa-carry", status: "online" },
+  { emoji: "📚", text: "Nag-aaral pa boffum", status: "dnd" },
+  { emoji: "🚌", text: "Nasa jeep, mahina signal", status: "idle" },
+  { emoji: "🍚", text: "Kumakain, brb", status: "idle" },
+  { emoji: "☕", text: "Kape muna", status: "idle" },
+  { emoji: "🌧️", text: "Brownout / Bumabagyo", status: "idle" },
+];
 
 export const PRESENCE_OPTIONS: { value: PresenceStatus; label: string; hint: string }[] = [
   { value: "online", label: "Online", hint: "G ako!" },
