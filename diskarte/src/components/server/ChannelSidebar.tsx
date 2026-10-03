@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { ChevronDown, Hash, HeadphoneOff, Heart, LogOut, MicOff, Pencil, Plus, Radio, Settings, ShieldCheck, UserPlus, Video, Volume2 } from "lucide-react";
@@ -9,6 +10,7 @@ import { toast } from "sonner";
 import { leaveServerAction } from "@/actions/servers";
 import { SupportDialog } from "@/components/community/SupportDialog";
 import { useMe } from "@/components/providers/MeProvider";
+import { useServerSpeaking } from "@/components/providers/PresenceProvider";
 import { useServer } from "@/components/providers/ServerProvider";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { SignalBars } from "@/components/retro/SignalBars";
@@ -16,7 +18,7 @@ import { UserPanel } from "@/components/shell/UserPanel";
 import { useShellUI } from "@/components/shell/ShellUI";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CallDock } from "@/components/voice/CallDock";
-import { useCall } from "@/components/voice/CallProvider";
+import { useCall, usePrewarm } from "@/components/voice/CallProvider";
 import { Menu } from "@/components/ui/Menu";
 import { useOnline } from "@/hooks/useOnline";
 import { boostLevel } from "@/lib/community";
@@ -25,7 +27,9 @@ import { groupChannels, hasRole, type Channel } from "@/lib/servers";
 import { cn } from "@/lib/utils";
 import { ChannelDialog } from "./ChannelDialog";
 import { InviteDialog } from "./InviteDialog";
-import { ServerSettingsDialog, type SettingsTab } from "./ServerSettingsDialog";
+import type { SettingsTab } from "./ServerSettingsDialog";
+
+const ServerSettingsDialog = dynamic(() => import("./ServerSettingsDialog").then((m) => m.ServerSettingsDialog), { ssr: false });
 
 type DialogState =
   | { kind: "invite" }
@@ -37,12 +41,15 @@ type DialogState =
 
 function VoiceOccupants({ channelId }: { channelId: string }) {
   const call = useCall();
-  // Active-speaker identities come from CallProvider's room events (no LiveKit UI bundle needed).
+  const { server } = useServer();
+  // In the call: LiveKit's own active-speaker events. Watching from outside: the members' ephemeral
+  // "speaking" broadcasts on the server's presence channel.
+  const observed = useServerSpeaking(server.id);
   const live = call.status === "connected" && call.target?.channelId === channelId;
-  return <OccupantList channelId={channelId} speaking={live ? new Set(call.speaking) : null} />;
+  return <OccupantList channelId={channelId} speaking={live ? new Set(call.speaking) : observed} />;
 }
 
-function OccupantList({ channelId, speaking }: { channelId: string; speaking: Set<string> | null }) {
+function OccupantList({ channelId, speaking }: { channelId: string; speaking: ReadonlySet<string> | null }) {
   const { presence, members } = useServer();
   const inRoom = members.filter((m) => presence.get(m.user_id)?.voice_channel_id === channelId);
   if (inRoom.length === 0) return null;
@@ -74,6 +81,7 @@ export function ChannelSidebar() {
   const { server, channels, myRole, health, members, badges } = useServer();
   const { me } = useMe();
   const { setNavOpen } = useShellUI();
+  const prewarm = usePrewarm();
   const params = useParams<{ channelId?: string }>();
   const pathname = usePathname();
   const onLfg = pathname === `/tambayan/${server.id}/lfg`;
@@ -81,6 +89,9 @@ export function ChannelSidebar() {
   const router = useRouter();
   const online = useOnline();
   const [dialog, setDialog] = useState<DialogState>(null);
+  // Server settings (all its tabs) download the first time someone opens them, then stay mounted.
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  if (dialog?.kind === "settings" && !settingsLoaded) setSettingsLoaded(true);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [leaving, startLeave] = useTransition();
   const canManageChannels = hasRole(myRole, "moderator");
@@ -219,6 +230,7 @@ export function ChannelSidebar() {
                           aria-current={active ? "page" : undefined}
                           className="flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1.5 text-[15px] pointer-coarse:min-h-11 pointer-coarse:py-2.5"
                           data-channel-type={channel.type}
+                          {...(channel.type === "voice" ? prewarm({ serverId: server.id, serverName: server.name, channelId: channel.id, channelName: channel.name }) : {})}
                         >
                           <Icon className="size-4 shrink-0 opacity-70" aria-hidden />
                           <span className="truncate">{channel.name}</span>
@@ -251,7 +263,9 @@ export function ChannelSidebar() {
       <UserPanel />
 
       <InviteDialog open={dialog?.kind === "invite"} onClose={() => setDialog(null)} />
-      <ServerSettingsDialog open={dialog?.kind === "settings"} onClose={() => setDialog(null)} initialTab={dialog?.kind === "settings" ? (dialog.tab ?? (myRole === "admin" ? "overview" : "audit")) : "overview"} />
+      {settingsLoaded && (
+        <ServerSettingsDialog open={dialog?.kind === "settings"} onClose={() => setDialog(null)} initialTab={dialog?.kind === "settings" ? (dialog.tab ?? (myRole === "admin" ? "overview" : "audit")) : "overview"} />
+      )}
       <SupportDialog open={dialog?.kind === "support"} onClose={() => setDialog(null)} />
       <ChannelDialog
         open={dialog?.kind === "channel"}

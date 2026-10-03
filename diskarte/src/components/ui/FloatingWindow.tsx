@@ -162,10 +162,28 @@ function WindowFrame({ onClose, title, id, remember = true, icon, anchor, classN
   useEffect(() => {
     token.current = pushOverlay();
     const previouslyFocused = document.activeElement as HTMLElement | null;
+    const target = () => {
+      const el = frame.current;
+      return el?.querySelector<HTMLElement>("[data-autofocus]") ?? el?.querySelector("[data-window-body]")?.querySelector<HTMLElement>(FOCUSABLE) ?? null;
+    };
+    // A lazily loaded body may not be there yet: focus the Close button meanwhile, and move into the
+    // content when it arrives — unless the user has already moved focus themselves.
+    let observer: MutationObserver | null = null;
     const frameId = requestAnimationFrame(() => {
       const el = frame.current;
+      const first = target();
+      if (first) return first.focus();
+      const fallback = el?.querySelector<HTMLElement>("[data-window-close]");
+      fallback?.focus();
       const body = el?.querySelector("[data-window-body]");
-      (el?.querySelector<HTMLElement>("[data-autofocus]") ?? body?.querySelector<HTMLElement>(FOCUSABLE) ?? el?.querySelector<HTMLElement>("[data-window-close]"))?.focus();
+      if (!body || typeof MutationObserver === "undefined") return;
+      observer = new MutationObserver(() => {
+        const next = target();
+        if (!next) return;
+        if (document.activeElement === fallback) next.focus();
+        observer?.disconnect();
+      });
+      observer.observe(body, { childList: true, subtree: true });
     });
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || !token.current || !isTopOverlay(token.current)) return;
@@ -176,6 +194,7 @@ function WindowFrame({ onClose, title, id, remember = true, icon, anchor, classN
     document.addEventListener("keydown", onKey);
     return () => {
       cancelAnimationFrame(frameId);
+      observer?.disconnect();
       document.removeEventListener("keydown", onKey);
       if (token.current) removeOverlay(token.current);
       if (previouslyFocused?.isConnected) previouslyFocused.focus?.();

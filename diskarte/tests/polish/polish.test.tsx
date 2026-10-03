@@ -198,15 +198,18 @@ describe("mobile interactions", () => {
   it("swipes the navigation drawer open from the left edge and closed again", async () => {
     setCoarsePointer(true);
     const { AppShell, DrawerPanel } = await import("@/components/shell/AppShell");
+    const { SessionProviders } = await import("@/components/shell/SessionProviders");
     const { server } = await import("../fixtures/server");
     const { RuntimeConfigProvider } = await import("@/components/providers/RuntimeConfig");
     render(
       <RuntimeConfigProvider value={RUNTIME}>
-        <AppShell profile={MEMBERS[0].profile} account={ACCOUNT} servers={[server]}>
+        <SessionProviders profile={MEMBERS[0].profile} account={ACCOUNT}>
+          <AppShell servers={[server]}>
           <DrawerPanel>
             <aside aria-label="Drawer content">x</aside>
           </DrawerPanel>
-        </AppShell>
+          </AppShell>
+        </SessionProviders>
       </RuntimeConfigProvider>,
     );
     const shell = screen.getByTestId("shell");

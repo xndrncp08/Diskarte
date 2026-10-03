@@ -202,7 +202,7 @@ describe("profile & status triggers", () => {
       [/LFG/, "🎮 LFG"],
     ] as const) {
       await user.click(within(panel).getByRole("button", { name: /Set status/ }));
-      await user.click(await screen.findByRole("menuitem", { name: item }));
+      await user.click(await screen.findByRole("menuitemradio", { name: item }));
       await vi.waitFor(() => expect(panel).toHaveTextContent(shown));
     }
   });

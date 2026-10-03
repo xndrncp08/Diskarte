@@ -4,7 +4,7 @@ import type { ConnectionQuality, DisconnectReason, LocalTrackPublication, Partic
 import dynamic from "next/dynamic";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { useServerPresence, useVoicePresence } from "@/components/providers/PresenceProvider";
+import { useBroadcastSpeaking, useServerPresence, useVoicePresence } from "@/components/providers/PresenceProvider";
 import type { SignalLevel } from "@/components/retro/SignalBars";
 import { getLowDataMode, subscribeLowDataMode } from "@/lib/low-data";
 import { playSfx } from "@/lib/sfx";
@@ -43,6 +43,8 @@ export interface CallContextValue extends CallState {
   /** Identities LiveKit currently reports as speaking (active speaker detection). */
   speaking: string[];
   join: (target: CallTarget) => Promise<void>;
+  /** Warm up a likely join (hover/focus on a voice channel): load the SDK and mint a token ahead of time. */
+  prewarm: (target: CallTarget) => void;
   leave: () => void;
   toggleMute: () => Promise<void>;
   toggleDeafen: () => Promise<void>;
@@ -115,7 +117,32 @@ function readNoiseSuppression() {
   }
 }
 
+// ---- voice pre-warming ------------------------------------------------------------------------
+type TokenResponse = { ok: boolean; body: { token?: string; url?: string; error?: string } | null };
+
+/** A pre-minted token is used at most this long after it was fetched (tokens themselves last an hour). */
+export const PREWARM_FRESH_MS = 2 * 60_000;
+/** Global spacing between pre-warm fetches, so sweeping the mouse over a channel list can't burn the
+    voice-token rate limit (20/min). */
+export const PREWARM_GAP_MS = 2_000;
+
+const targetKey = (target: CallTarget) => `${target.kind === "dm" ? "dm" : "channel"}:${target.channelId}`;
+
+function requestToken(target: CallTarget): Promise<TokenResponse> {
+  return fetch("/api/livekit/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(target.kind === "dm" ? { conversationId: target.channelId } : { channelId: target.channelId }),
+  })
+    .then(async (res) => ({ ok: res.ok, body: (await res.json().catch(() => null)) as TokenResponse["body"] }))
+    .catch(() => ({ ok: false, body: null }));
+}
+
 const MIX_KEY = "diskarte:audio-mix";
+/** Don't let a hung disconnect block joining the next room. */
+const DISCONNECT_TIMEOUT_MS = 2500;
+/** Re-announce "still talking" well inside the observers' SPEAKING_TTL_MS. */
+const SPEAKING_HEARTBEAT_MS = 2000;
 const clampVolume = (v: number) => (Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1);
 
 function readMix(): AudioMix {
@@ -161,13 +188,20 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const [room, setRoom] = useState<Room | null>(null);
   const [speaking, setSpeaking] = useState<string[]>([]);
   const roomRef = useRef<Room | null>(null);
+  const current = useRef<CallTarget | null>(null);
   const leaving = useRef(false);
   const mutedBeforeDeafen = useRef(false);
   const dataHandlers = useRef(new Map<string, Set<DataHandler>>());
   const [mix, setMix] = useState<AudioMix>(readMix);
+  const warmed = useRef(new Map<string, { at: number; request: Promise<TokenResponse> }>());
+  const lastWarm = useRef(0);
   const mixRef = useRef(mix);
   const setVoice = useVoicePresence();
   const isDm = state.target?.kind === "dm";
+
+  useEffect(() => {
+    current.current = state.target;
+  }, [state.target]);
 
   // Keep the presence channel for the call's server open even while browsing other servers.
   useServerPresence(isDm ? undefined : state.target?.serverId);
@@ -189,29 +223,39 @@ export function CallProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...IDLE, noiseSuppression: s.noiseSuppression }));
   }, []);
 
-  const leave = useCallback(() => {
+  /** Disconnects the room; resolves once LiveKit has closed it (or after a short safety timeout). */
+  const disconnect = useCallback(() => {
     const current = roomRef.current;
-    if (!current) return;
+    if (!current) return Promise.resolve();
     leaving.current = true;
     playSfx("leave");
-    void current.disconnect();
+    // Tell everyone watching the server right away that we left the voice channel, instead of waiting
+    // for the next render's presence effect.
+    setVoice(null);
+    const closed = Promise.resolve(current.disconnect()).catch(() => undefined);
     teardown();
-  }, [teardown]);
+    return Promise.race([closed, new Promise<void>((r) => setTimeout(r, DISCONNECT_TIMEOUT_MS))]).then(() => undefined);
+  }, [teardown, setVoice]);
+
+  const leave = useCallback(() => void disconnect(), [disconnect]);
 
   const join = useCallback(
     async (target: CallTarget) => {
       if (roomRef.current && state.target?.channelId === target.channelId) return;
-      if (roomRef.current) leave();
-      leaving.current = false;
+      // Switching rooms: show "connecting" for the new one now, but fully close the old room (and drop
+      // its voice presence) before connecting, so we never sit in two rooms or two rosters at once.
+      const previous = roomRef.current ? disconnect() : null;
       setState((s) => ({ ...s, status: "connecting", target, camera: false, screen: false }));
+      if (previous) await previous;
+      leaving.current = false;
 
-      const res = await fetch("/api/livekit/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(target.kind === "dm" ? { conversationId: target.channelId } : { channelId: target.channelId }),
-      }).catch(() => null);
-      const body = (await res?.json().catch(() => null)) as { token?: string; url?: string; error?: string } | null;
-      if (!res?.ok || !body?.token || !body.url) {
+      // A token minted on hover saves the round trip; a stale or failed one falls back to a fresh request.
+      const cached = warmed.current.get(targetKey(target));
+      warmed.current.delete(targetKey(target));
+      let response = cached && Date.now() - cached.at < PREWARM_FRESH_MS ? await cached.request : null;
+      if (!response?.ok || !response.body?.token) response = await requestToken(target);
+      const body = response.body;
+      if (!response.ok || !body?.token || !body.url) {
         playSfx("error");
         toast.error(body?.error ?? "Couldn't connect to voice. Try again.");
         setState((s) => ({ ...IDLE, noiseSuppression: s.noiseSuppression }));
@@ -297,8 +341,24 @@ export function CallProvider({ children }: { children: ReactNode }) {
         setState((s) => ({ ...s, muted: true }));
       }
     },
-    [leave, teardown, state.target?.channelId],
+    [disconnect, teardown, state.target?.channelId],
   );
+
+  const prewarm = useCallback((target: CallTarget) => {
+    void loadLivekit(); // the ~650 KB SDK starts downloading now instead of on click
+    const key = targetKey(target);
+    const now = Date.now();
+    if (roomRef.current && current.current?.channelId === target.channelId) return;
+    const cached = warmed.current.get(key);
+    if (cached && now - cached.at < PREWARM_FRESH_MS) return;
+    if (now - lastWarm.current < PREWARM_GAP_MS) return;
+    lastWarm.current = now;
+    const request = requestToken(target);
+    warmed.current.set(key, { at: now, request });
+    void request.then((r) => {
+      if (!r.ok && warmed.current.get(key)?.request === request) warmed.current.delete(key);
+    });
+  }, []);
 
   const toggleMute = useCallback(async () => {
     const current = roomRef.current;
@@ -393,6 +453,22 @@ export function CallProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Voice activity for people *watching* the server (sidebar rosters): an ephemeral Realtime Broadcast
+  // on the server's presence channel — on start/stop plus a heartbeat while talking — never stored.
+  const broadcastSpeaking = useBroadcastSpeaking();
+  const speakingServer = state.status === "connected" && state.target && state.target.kind !== "dm" ? state.target.serverId : null;
+  const localIdentity = room?.localParticipant?.identity;
+  const meSpeaking = !!localIdentity && !state.muted && speaking.includes(localIdentity);
+  useEffect(() => {
+    if (!speakingServer || !meSpeaking) return;
+    broadcastSpeaking(speakingServer, true);
+    const heartbeat = setInterval(() => broadcastSpeaking(speakingServer, true), SPEAKING_HEARTBEAT_MS);
+    return () => {
+      clearInterval(heartbeat);
+      broadcastSpeaking(speakingServer, false);
+    };
+  }, [speakingServer, meSpeaking, broadcastSpeaking]);
+
   // Mixer: apply levels to everyone in the room and remember them on this device.
   useEffect(() => {
     mixRef.current = mix;
@@ -425,6 +501,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
       room,
       speaking,
       join,
+      prewarm,
       leave,
       toggleMute,
       toggleDeafen,
@@ -438,7 +515,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
       setParticipantVolume,
       switchDevice,
     }),
-    [state, room, speaking, join, leave, toggleMute, toggleDeafen, toggleCamera, toggleScreen, toggleNoiseSuppression, sendData, onData, mix, setMasterVolume, setParticipantVolume, switchDevice],
+    [state, room, speaking, join, prewarm, leave, toggleMute, toggleDeafen, toggleCamera, toggleScreen, toggleNoiseSuppression, sendData, onData, mix, setMasterVolume, setParticipantVolume, switchDevice],
   );
 
   return (
@@ -447,6 +524,35 @@ export function CallProvider({ children }: { children: ReactNode }) {
       {room && state.status !== "idle" && <CallAudio room={room} muted={state.deafened} />}
       {room && state.status === "connected" && <SoundboardReceiver />}
     </CallContext.Provider>
+  );
+}
+
+/**
+ * Returns `handlersFor(target)`: pointer/focus/touch handlers that pre-warm a voice join once the user
+ * shows intent (a short hover, keyboard focus or a touch), never on a mouse merely sweeping past.
+ */
+export function usePrewarm() {
+  const call = useContext(CallContext);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
+  return useCallback(
+    (target: CallTarget) => {
+      if (!call) return {};
+      const warm = () => call.prewarm(target);
+      const cancel = () => {
+        if (timer.current) clearTimeout(timer.current);
+      };
+      return {
+        onPointerEnter: () => {
+          cancel();
+          timer.current = setTimeout(warm, 150);
+        },
+        onPointerLeave: cancel,
+        onFocus: warm,
+        onTouchStart: warm,
+      };
+    },
+    [call],
   );
 }
 

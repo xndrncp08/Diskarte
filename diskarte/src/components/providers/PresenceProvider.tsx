@@ -5,6 +5,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { flattenPresence, type PresencePayload, type PresenceState } from "@/lib/presence";
+import { removeChannelSafely, whenTopicFree } from "@/lib/realtime";
 
 export interface VoicePresence {
   serverId: string;
@@ -21,13 +22,24 @@ interface Entry {
   state: Map<string, PresencePayload>;
   listeners: Set<() => void>;
   subscribed: boolean;
+  /** Who is talking in this server's voice channels (user id → when the claim lapses), from broadcasts. */
+  speakingUntil: Map<string, number>;
+  speaking: ReadonlySet<string>;
+  speakingTimer: ReturnType<typeof setTimeout> | null;
 }
+
+/** A "speaking" claim lapses unless refreshed — covers a missed stop event or a dropped tab. */
+export const SPEAKING_TTL_MS = 3500;
+const NOBODY: ReadonlySet<string> = new Set();
 
 interface PresenceContextValue {
   acquire: (serverId: string) => () => void;
   subscribe: (serverId: string, listener: () => void) => () => void;
   snapshot: (serverId: string) => Map<string, PresencePayload>;
+  speakingSnapshot: (serverId: string) => ReadonlySet<string>;
   setVoice: (voice: VoicePresence | null) => void;
+  /** Ephemeral voice activity for everyone watching the server (Realtime Broadcast, never stored). */
+  broadcastSpeaking: (serverId: string, speaking: boolean) => void;
 }
 
 const EMPTY = new Map<string, PresencePayload>();
@@ -77,24 +89,55 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
     (serverId: string) => {
       let entry = entries.current.get(serverId);
       if (!entry) {
-        const created: Entry = { channel: null, refs: 0, state: EMPTY, listeners: new Set(), subscribed: false };
+        const created: Entry = {
+          channel: null,
+          refs: 0,
+          state: EMPTY,
+          listeners: new Set(),
+          subscribed: false,
+          speakingUntil: new Map(),
+          speaking: NOBODY,
+          speakingTimer: null,
+        };
+        // Rebuild the speaking set (dropping lapsed claims) and wake up for the next expiry.
+        const settleSpeaking = () => {
+          const now = Date.now();
+          for (const [id, until] of created.speakingUntil) if (until <= now) created.speakingUntil.delete(id);
+          const next = new Set(created.speakingUntil.keys());
+          const changed = next.size !== created.speaking.size || [...next].some((id) => !created.speaking.has(id));
+          if (changed) {
+            created.speaking = next.size ? next : NOBODY;
+            created.listeners.forEach((l) => l());
+          }
+          if (created.speakingTimer) clearTimeout(created.speakingTimer);
+          created.speakingTimer = created.speakingUntil.size ? setTimeout(settleSpeaking, Math.max(0, Math.min(...created.speakingUntil.values()) - now) + 20) : null;
+        };
         entry = created;
         entries.current.set(serverId, created);
         authReady.current ??= supabase.realtime.setAuth();
-        void authReady.current.then(() => {
-          if (entries.current.get(serverId) !== created || created.refs === 0) return;
-          const channel = supabase.channel(`server:${serverId}`, { config: { private: true, presence: { key: me.id } } });
-          created.channel = channel;
-          channel
-            .on("presence", { event: "sync" }, () => {
-              created.state = flattenPresence(channel.presenceState<PresencePayload>() as unknown as PresenceState);
-              created.listeners.forEach((l) => l());
-            })
-            .subscribe((status) => {
-              created.subscribed = status === "SUBSCRIBED";
-              if (created.subscribed) void channel.track(payloadFor(serverId));
-            });
-        });
+        void authReady.current
+          .then(() => whenTopicFree(`server:${serverId}`))
+          .then(() => {
+            if (entries.current.get(serverId) !== created || created.refs === 0) return;
+            const channel = supabase.channel(`server:${serverId}`, { config: { private: true, presence: { key: me.id } } });
+            created.channel = channel;
+            channel
+              .on("presence", { event: "sync" }, () => {
+                created.state = flattenPresence(channel.presenceState<PresencePayload>() as unknown as PresenceState);
+                created.listeners.forEach((l) => l());
+              })
+              .on("broadcast", { event: "speaking" }, ({ payload }) => {
+                const event = payload as { user_id?: unknown; speaking?: unknown } | null;
+                if (typeof event?.user_id !== "string" || event.user_id === me.id) return;
+                if (event.speaking === true) created.speakingUntil.set(event.user_id, Date.now() + SPEAKING_TTL_MS);
+                else created.speakingUntil.delete(event.user_id);
+                settleSpeaking();
+              })
+              .subscribe((status) => {
+                created.subscribed = status === "SUBSCRIBED";
+                if (created.subscribed) void channel.track(payloadFor(serverId));
+              });
+          });
       }
       entry.refs += 1;
       const held = entry;
@@ -102,7 +145,8 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
         held.refs -= 1;
         if (held.refs > 0) return;
         entries.current.delete(serverId);
-        if (held.channel) void supabase.removeChannel(held.channel);
+        if (held.speakingTimer) clearTimeout(held.speakingTimer);
+        if (held.channel) void removeChannelSafely(supabase, `server:${serverId}`, held.channel);
       };
     },
     [supabase, me.id, payloadFor],
@@ -116,6 +160,16 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const snapshot = useCallback((serverId: string) => entries.current.get(serverId)?.state ?? EMPTY, []);
+  const speakingSnapshot = useCallback((serverId: string) => entries.current.get(serverId)?.speaking ?? NOBODY, []);
+
+  const broadcastSpeaking = useCallback(
+    (serverId: string, speaking: boolean) => {
+      const entry = entries.current.get(serverId);
+      if (!entry?.channel || !entry.subscribed) return;
+      void entry.channel.send({ type: "broadcast", event: "speaking", payload: { user_id: me.id, speaking } });
+    },
+    [me.id],
+  );
 
   const setVoice = useCallback(
     (next: VoicePresence | null) => {
@@ -135,12 +189,18 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const all = entries.current;
     return () => {
-      for (const entry of all.values()) if (entry.channel) void supabase.removeChannel(entry.channel);
+      for (const [serverId, entry] of all) {
+        if (entry.speakingTimer) clearTimeout(entry.speakingTimer);
+        if (entry.channel) void removeChannelSafely(supabase, `server:${serverId}`, entry.channel);
+      }
       all.clear();
     };
   }, [supabase]);
 
-  const value = useMemo(() => ({ acquire, subscribe, snapshot, setVoice }), [acquire, subscribe, snapshot, setVoice]);
+  const value = useMemo(
+    () => ({ acquire, subscribe, snapshot, speakingSnapshot, setVoice, broadcastSpeaking }),
+    [acquire, subscribe, snapshot, speakingSnapshot, setVoice, broadcastSpeaking],
+  );
   return <PresenceContext.Provider value={value}>{children}</PresenceContext.Provider>;
 }
 
@@ -166,4 +226,22 @@ export function useServerPresence(serverId: string | null | undefined): Map<stri
 
 export function useVoicePresence() {
   return usePresenceContext().setVoice;
+}
+
+/** Who is talking in this server's voice channels right now, as seen by anyone watching the server. */
+export function useServerSpeaking(serverId: string | null | undefined): ReadonlySet<string> {
+  const ctx = usePresenceContext();
+  useEffect(() => {
+    if (!serverId) return;
+    return ctx.acquire(serverId);
+  }, [ctx, serverId]);
+  return useSyncExternalStore(
+    useCallback((listener) => (serverId ? ctx.subscribe(serverId, listener) : () => undefined), [ctx, serverId]),
+    () => (serverId ? ctx.speakingSnapshot(serverId) : NOBODY),
+    () => NOBODY,
+  );
+}
+
+export function useBroadcastSpeaking() {
+  return usePresenceContext().broadcastSpeaking;
 }

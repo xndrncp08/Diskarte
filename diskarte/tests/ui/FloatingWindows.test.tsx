@@ -14,6 +14,7 @@ vi.mock("sonner", async () => (await import("../mocks/actions")).toastMock);
 
 const { FloatingWindow } = await import("@/components/ui/FloatingWindow");
 const { AppShell } = await import("@/components/shell/AppShell");
+const { SessionProviders } = await import("@/components/shell/SessionProviders");
 const { useCall } = await import("@/components/voice/CallProvider");
 const { MixerButton } = await import("@/components/voice/AudioMixer");
 const { MediaViewerProvider } = await import("@/components/chat/MediaViewer");
@@ -132,7 +133,7 @@ describe("media viewer window", () => {
     );
     await user.click(await screen.findByRole("link", { name: "Open photo-2.png" }));
     const viewer = await screen.findByRole("dialog", { name: "photo-2.png" });
-    expect(within(viewer).getByText("2 / 3")).toBeInTheDocument();
+    expect(await within(viewer).findByText("2 / 3")).toBeInTheDocument(); // the gallery body loads on first open
     await user.click(within(viewer).getByRole("button", { name: "Next" }));
     expect(await screen.findByRole("dialog", { name: "photo-3.png" })).toBeInTheDocument();
     await user.keyboard("{ArrowRight}");
@@ -177,9 +178,11 @@ describe("audio mixer window", () => {
     const user = userEvent.setup();
     render(
       <RuntimeConfigProvider value={RUNTIME}>
-        <AppShell profile={MEMBERS[0].profile} account={ACCOUNT} servers={[server]}>
+        <SessionProviders profile={MEMBERS[0].profile} account={ACCOUNT}>
+          <AppShell servers={[server]}>
           <CallHarness />
-        </AppShell>
+          </AppShell>
+        </SessionProviders>
       </RuntimeConfigProvider>,
     );
     await user.click(screen.getByRole("button", { name: "Join voice" }));
@@ -190,7 +193,7 @@ describe("audio mixer window", () => {
 
     await user.click(screen.getByRole("button", { name: "Audio mixer" }));
     const mixer = await screen.findByRole("dialog", { name: "Audio mixer" });
-    expect(within(mixer).getAllByTestId("mixer-person")).toHaveLength(1);
+    expect(await within(mixer).findAllByTestId("mixer-person")).toHaveLength(1); // the panel loads on first open
 
     fireEvent.change(within(mixer).getByRole("slider", { name: "Volume for Maria" }), { target: { value: "50" } });
     expect(maria.setVolume).toHaveBeenLastCalledWith(0.5, "screen_share_audio");
@@ -214,9 +217,11 @@ describe("audio mixer window", () => {
     const user = userEvent.setup();
     render(
       <RuntimeConfigProvider value={RUNTIME}>
-        <AppShell profile={MEMBERS[0].profile} account={ACCOUNT} servers={[server]}>
+        <SessionProviders profile={MEMBERS[0].profile} account={ACCOUNT}>
+          <AppShell servers={[server]}>
           <MixerButton />
-        </AppShell>
+          </AppShell>
+        </SessionProviders>
       </RuntimeConfigProvider>,
     );
     await user.click(screen.getByRole("button", { name: "Audio mixer" }));

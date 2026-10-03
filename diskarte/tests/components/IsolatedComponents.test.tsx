@@ -430,6 +430,7 @@ describe("mobile drawer stacking", () => {
   it("drawer panels are never trapped under the drawer backdrop by an ancestor stacking context", async () => {
     const user = userEvent.setup();
     const { AppShell, DrawerPanel } = await import("@/components/shell/AppShell");
+    const { SessionProviders } = await import("@/components/shell/SessionProviders");
     const { useShellUI } = await import("@/components/shell/ShellUI");
     const { RuntimeConfigProvider } = await import("@/components/providers/RuntimeConfig");
     const { server } = await import("../fixtures/server");
@@ -447,9 +448,11 @@ describe("mobile drawer stacking", () => {
     }
     render(
       <RuntimeConfigProvider value={RUNTIME}>
-        <AppShell profile={MEMBERS[0].profile} account={ACCOUNT} servers={[server]}>
+        <SessionProviders profile={MEMBERS[0].profile} account={ACCOUNT}>
+          <AppShell servers={[server]}>
           <OpenNav />
-        </AppShell>
+          </AppShell>
+        </SessionProviders>
       </RuntimeConfigProvider>,
     );
     await user.click(screen.getByRole("button", { name: "Open navigation" }));

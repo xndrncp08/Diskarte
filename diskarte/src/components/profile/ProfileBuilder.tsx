@@ -45,6 +45,15 @@ export function ProfileBuilder({ profile, mode }: { profile: Profile; mode: "onb
   const [customStatus, setCustomStatus] = useState(profile.custom_status ?? "");
   const [customEmoji, setCustomEmoji] = useState(profile.custom_status_emoji ?? "");
   const [uploading, setUploading] = useState<"avatar" | "banner" | null>(null);
+  // Status can change elsewhere while this form is open (the user panel's switcher, another tab):
+  // adopt it, so the picker never shows — or saves back — a stale "Online".
+  const [statusSeed, setStatusSeed] = useState({ status: profile.status, text: profile.custom_status, emoji: profile.custom_status_emoji });
+  if (statusSeed.status !== profile.status || statusSeed.text !== profile.custom_status || statusSeed.emoji !== profile.custom_status_emoji) {
+    setStatusSeed({ status: profile.status, text: profile.custom_status, emoji: profile.custom_status_emoji });
+    setStatus(profile.status);
+    setCustomStatus(profile.custom_status ?? "");
+    setCustomEmoji(profile.custom_status_emoji ?? "");
+  }
   const avatarInput = useRef<HTMLInputElement>(null);
   const bannerInput = useRef<HTMLInputElement>(null);
 
@@ -230,6 +239,7 @@ export function ProfileBuilder({ profile, mode }: { profile: Profile; mode: "onb
                     } else {
                       setCustomStatus(t.text);
                       setCustomEmoji(t.emoji);
+                      setStatus(t.status);
                     }
                   }}
                   className={cn(

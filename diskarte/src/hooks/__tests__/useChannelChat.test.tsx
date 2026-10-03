@@ -5,7 +5,8 @@ import type { MessageWithAuthor } from "@/lib/messages";
 import { createFakeSupabase } from "../../../tests/fixtures/fake-supabase";
 import { MEMBER_ID, MOD_ID, OWNER_ID, ServerFixture, makeMember } from "../../../tests/fixtures/server";
 
-const fake = createFakeSupabase();
+const tables: Record<string, unknown[]> = {};
+const fake = createFakeSupabase(tables);
 vi.mock("@/components/providers/RuntimeConfig", () => ({ useSupabase: () => fake.client }));
 const sfx = vi.fn();
 vi.mock("@/lib/sfx", () => ({ playSfx: (name: string) => sfx(name) }));
@@ -112,6 +113,24 @@ describe("useChannelChat realtime", () => {
     await waitFor(() => expect(result.current.reactions.get("m1")).toHaveLength(1));
     act(() => fake.emitDb("reactions", "DELETE", { message_id: "m1", user_id: MEMBER_ID, emoji: ":lodi:" }));
     await waitFor(() => expect(result.current.reactions.get("m1")).toHaveLength(0));
+  });
+});
+
+describe("useChannelChat history", () => {
+  // Keyset pagination on (created_at, id) — the order of the messages_channel_created_idx index —
+  // so a message sharing the oldest loaded timestamp is never skipped at a page boundary.
+  it("loads older messages with a tie-safe (created_at, id) cursor", async () => {
+    const T1 = "2026-09-26T00:59:00.000Z";
+    const top = (id: string, at: string) => ({ ...msg(id, MOD_ID, id, at), thread_id: null });
+    tables.messages = [top("a", T1), top("b", T1), top("c", "2026-09-26T00:58:00.000Z"), top("m1", "2026-09-26T01:00:00Z")];
+    tables.reactions = [];
+    const { result } = renderHook(() => useChannelChat(CHANNEL, { messages: [msg("b", MOD_ID, "b", T1), msg("m1", MOD_ID, "hello", "2026-09-26T01:00:00Z")], reactions: [], hasMore: true }), { wrapper });
+    await act(async () => {
+      await result.current.loadOlder();
+    });
+    expect(result.current.messages.map((m) => m.id)).toEqual(["c", "a", "b", "m1"]);
+    expect(result.current.hasMore).toBe(false);
+    delete tables.messages;
   });
 });
 

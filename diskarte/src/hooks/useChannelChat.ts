@@ -6,7 +6,7 @@ import { deleteMessageAction, editMessageAction, sendMessageAction, setPinnedAct
 import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { useServer } from "@/components/providers/ServerProvider";
-import { AUTHOR_COLUMNS, MESSAGE_SELECT, PAGE_SIZE, type Attachment, type Message, type MessageAuthor, type MessageWithAuthor, type Reaction } from "@/lib/messages";
+import { AUTHOR_COLUMNS, MESSAGE_SELECT, olderThan, PAGE_SIZE, type Attachment, type Message, type MessageAuthor, type MessageWithAuthor, type Reaction } from "@/lib/messages";
 import { dequeue, enqueue, isNetworkError, outboxFor, type OutboxEntry } from "@/lib/outbox";
 import { subscribeDbChanges } from "@/lib/realtime";
 import { playSfx } from "@/lib/sfx";
@@ -153,9 +153,9 @@ export function useChannelChat(
     if (!oldest) return;
     setLoadingOlder(true);
     try {
-      let query = supabase.from("messages").select(MESSAGE_SELECT).eq("channel_id", channelId).lt("created_at", oldest.created_at);
+      let query = supabase.from("messages").select(MESSAGE_SELECT).eq("channel_id", channelId).or(olderThan(oldest));
       query = threadId ? query.eq("thread_id", threadId) : query.is("thread_id", null);
-      const { data, error } = await query.order("created_at", { ascending: false }).limit(PAGE_SIZE + 1);
+      const { data, error } = await query.order("created_at", { ascending: false }).order("id", { ascending: false }).limit(PAGE_SIZE + 1);
       if (error) throw error;
       const rows = (data ?? []) as unknown as MessageWithAuthor[];
       setHasMore(rows.length > PAGE_SIZE);

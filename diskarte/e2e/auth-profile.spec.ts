@@ -10,7 +10,7 @@ test.describe("registration and profile customisation", () => {
 
     // Profile card on the home screen reflects the onboarding choices.
     await page.getByTestId("user-panel").getByRole("button", { name: /Set status/ }).click();
-    await page.getByRole("menuitem", { name: "Do Not Disturb" }).click();
+    await page.getByRole("menuitemradio", { name: "Do Not Disturb" }).click();
     await expect(page.getByTestId("user-panel")).toContainText("Nagluto ng Canton");
 
     await page.goto("/settings/profile");

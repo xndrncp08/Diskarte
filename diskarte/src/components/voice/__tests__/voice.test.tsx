@@ -1,6 +1,6 @@
 import { act, fireEvent, render, renderHook, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { bestGrid } from "@/lib/voice-layout";
 
 // ---- livekit-client mock -------------------------------------------------------------
@@ -33,12 +33,12 @@ vi.mock("@livekit/components-react", () => ({
   RoomAudioRenderer: ({ muted }: { muted: boolean }) => <div data-testid="audio-renderer" data-muted={String(muted)} />,
 }));
 const setVoice = vi.fn();
-vi.mock("@/components/providers/PresenceProvider", () => ({ useVoicePresence: () => setVoice, useServerPresence: () => new Map() }));
+vi.mock("@/components/providers/PresenceProvider", () => ({ useVoicePresence: () => setVoice, useServerPresence: () => new Map(), useBroadcastSpeaking: () => () => undefined }));
 const sfx = vi.fn();
 vi.mock("@/lib/sfx", () => ({ playSfx: (n: string) => sfx(n) }));
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }) }));
 
-const { CallProvider, useCall, qualityToLevel } = await import("@/components/voice/CallProvider");
+const { CallProvider, useCall, usePrewarm, qualityToLevel, PREWARM_FRESH_MS, PREWARM_GAP_MS } = await import("@/components/voice/CallProvider");
 const { CallDock } = await import("@/components/voice/CallDock");
 const { ConnectionQuality } = await import("livekit-client");
 
@@ -53,6 +53,136 @@ beforeEach(() => {
     "fetch",
     vi.fn(async () => new Response(JSON.stringify({ token: "jwt", url: "wss://proj.livekit.cloud", room: "voice:x" }), { status: 200 })),
   );
+});
+
+describe("switching and leaving voice channels", () => {
+  const other = { ...target, channelId: "20000000-0000-4000-8000-000000000004", channelName: "Chill & Music" };
+  afterEach(() => vi.useRealTimers());
+
+  it("disconnects the old room before connecting the new one, and moves my voice presence", async () => {
+    const { result } = renderHook(() => useCall(), { wrapper });
+    await act(async () => {
+      await result.current.join(target);
+    });
+    await act(async () => {
+      await result.current.join(other);
+    });
+    const [oldRoom, newRoom] = roomInstances;
+    expect(roomInstances).toHaveLength(2);
+    expect(oldRoom.disconnect).toHaveBeenCalledTimes(1);
+    // Clean sequence: the old room is closed before the new one starts connecting.
+    expect(oldRoom.disconnect.mock.invocationCallOrder[0]).toBeLessThan(newRoom.connect.mock.invocationCallOrder[0]);
+    expect(newRoom.disconnect).not.toHaveBeenCalled();
+    expect(result.current).toMatchObject({ status: "connected", target: other });
+
+    // Watchers see me leave the old channel before I appear in the new one.
+    const calls = setVoice.mock.calls.map(([v]) => (v as { channelId?: string } | null)?.channelId ?? null);
+    const inOld = calls.lastIndexOf(target.channelId);
+    const cleared = calls.indexOf(null, inOld);
+    expect(inOld).toBeGreaterThanOrEqual(0);
+    expect(cleared).toBeGreaterThan(inOld);
+    expect(calls.indexOf(other.channelId, cleared)).toBeGreaterThan(cleared);
+  });
+
+  it("drops my voice presence the moment I leave", async () => {
+    const { result } = renderHook(() => useCall(), { wrapper });
+    await act(async () => {
+      await result.current.join(target);
+    });
+    setVoice.mockClear();
+    result.current.leave(); // synchronously — before any re-render or effect
+    expect(setVoice).toHaveBeenCalledWith(null);
+    expect(roomInstances[0].disconnect).toHaveBeenCalledTimes(1);
+    await act(async () => undefined);
+    expect(result.current.status).toBe("idle");
+  });
+
+  it("doesn't let a hung disconnect block switching", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { result } = renderHook(() => useCall(), { wrapper });
+    await act(async () => {
+      await result.current.join(target);
+    });
+    roomInstances[0].disconnect.mockImplementation(() => new Promise<undefined>(() => undefined));
+    let switching!: Promise<void>;
+    act(() => {
+      switching = result.current.join(other);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2600);
+      await switching;
+    });
+    expect(roomInstances[1].connect).toHaveBeenCalled();
+    expect(result.current.status).toBe("connected");
+  });
+});
+
+describe("voice pre-warming", () => {
+  const other = { ...target, channelId: "20000000-0000-4000-8000-000000000004", channelName: "Chill & Music" };
+  const tokenCalls = () => vi.mocked(fetch).mock.calls.filter(([url]) => url === "/api/livekit/token");
+  afterEach(() => vi.useRealTimers());
+
+  it("mints the token on intent, so joining connects without another round trip", async () => {
+    const { result } = renderHook(() => useCall(), { wrapper });
+    act(() => result.current.prewarm(target));
+    act(() => result.current.prewarm(target)); // deduped
+    expect(tokenCalls()).toHaveLength(1);
+    await act(async () => {
+      await result.current.join(target);
+    });
+    expect(tokenCalls()).toHaveLength(1);
+    expect(roomInstances[0].connect).toHaveBeenCalledWith("wss://proj.livekit.cloud", "jwt", { autoSubscribe: true });
+  });
+
+  it("spaces pre-warms out so sweeping over channels can't burn the token rate limit", () => {
+    vi.useFakeTimers({ now: new Date("2026-10-02T10:00:00Z") });
+    const { result } = renderHook(() => useCall(), { wrapper });
+    act(() => result.current.prewarm(target));
+    act(() => result.current.prewarm(other));
+    expect(tokenCalls()).toHaveLength(1);
+    act(() => vi.advanceTimersByTime(PREWARM_GAP_MS));
+    act(() => result.current.prewarm(other));
+    expect(tokenCalls()).toHaveLength(2);
+  });
+
+  it("falls back to a fresh token when the warmed one is stale or failed", async () => {
+    vi.useFakeTimers({ now: new Date("2026-10-02T10:00:00Z"), shouldAdvanceTime: true });
+    const { result } = renderHook(() => useCall(), { wrapper });
+    act(() => result.current.prewarm(target));
+    vi.setSystemTime(Date.now() + PREWARM_FRESH_MS + 1);
+    await act(async () => {
+      await result.current.join(target);
+    });
+    expect(tokenCalls()).toHaveLength(2);
+
+    act(() => result.current.leave());
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ error: "rate limited" }), { status: 429 }));
+    vi.setSystemTime(Date.now() + PREWARM_GAP_MS);
+    act(() => result.current.prewarm(other));
+    await act(async () => {
+      await result.current.join(other);
+    });
+    expect(tokenCalls()).toHaveLength(4);
+    expect(result.current.status).toBe("connected");
+  });
+
+  it("warms on a deliberate hover, focus or touch — not a mouse sweeping past", () => {
+    vi.useFakeTimers({ now: new Date("2026-10-02T10:00:00Z") });
+    const { result } = renderHook(() => usePrewarm(), { wrapper });
+    const handlers = result.current(target) as { onPointerEnter: () => void; onPointerLeave: () => void; onFocus: () => void };
+    act(() => {
+      handlers.onPointerEnter();
+      vi.advanceTimersByTime(100);
+      handlers.onPointerLeave();
+      vi.advanceTimersByTime(500);
+    });
+    expect(tokenCalls()).toHaveLength(0);
+    act(() => {
+      handlers.onPointerEnter();
+      vi.advanceTimersByTime(150);
+    });
+    expect(tokenCalls()).toHaveLength(1);
+  });
 });
 
 describe("CallProvider", () => {

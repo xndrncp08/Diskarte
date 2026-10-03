@@ -11,6 +11,7 @@ import { useMe } from "@/components/providers/MeProvider";
 import { useServer } from "@/components/providers/ServerProvider";
 import { ProfileCard } from "@/components/profile/ProfileCard";
 import { UserAvatar } from "@/components/profile/UserAvatar";
+import { STATUS_RING } from "@/components/retro/PixelStatus";
 import { Button } from "@/components/ui/Button";
 import { FloatingPortal, useFloating } from "@/components/ui/floating";
 import { FloatingWindow } from "@/components/ui/FloatingWindow";
@@ -289,7 +290,10 @@ function MemberRow({ member, presence, dim }: { member: MemberWithProfile; prese
         className={cn("flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-white/5", dim && "opacity-45 hover:opacity-100")}
         data-testid="member-row"
       >
-        <UserAvatar profile={member.profile} size={32} status={status} ring="#0b1020" />
+        {/* Live presence drives the dot and the ring: other members see a status change instantly. */}
+        <span data-status-ring={status} className={cn("shrink-0 rounded-full ring-2 ring-offset-2 ring-offset-[#0b1020] transition-shadow duration-300", STATUS_RING[status])}>
+          <UserAvatar profile={member.profile} size={32} status={status} ring="#0b1020" />
+        </span>
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1">
             <span className={cn("truncate text-sm font-medium", member.role === "admin" ? "text-red-200" : member.role === "moderator" ? "text-sky-200" : "text-slate-200")}>
