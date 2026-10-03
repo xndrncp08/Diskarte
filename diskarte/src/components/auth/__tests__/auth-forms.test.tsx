@@ -64,7 +64,7 @@ describe("SignupForm", () => {
     expect(screen.getByRole("button", { name: "Sign up" })).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Confirm password"), { target: { value: "Kape-Muna-2026" } });
     expect(screen.queryByRole("alert")).toBeNull();
-    expect(screen.getByText("Passwords match ✓")).toBeInTheDocument();
+    expect(screen.getByText("Passwords match")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sign up" })).toBeEnabled();
   });
 });

@@ -1,4 +1,6 @@
-import { forwardRef, type ButtonHTMLAttributes } from "react";
+"use client";
+
+import { forwardRef, type ButtonHTMLAttributes, useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,10 +28,39 @@ const sizes: Record<Size, string> = {
   icon: "h-9 w-9 pointer-coarse:size-11",
 };
 
+/** A spinner, once shown, stays at least this long so quick responses don't flash it. */
+export const MIN_LOADING_MS = 300;
+
+function useMinimumLoading(loading: boolean) {
+  const [held, setHeld] = useState(loading);
+  // When the current loading run started (set in the effect; reading the clock during render is impure).
+  const since = useRef<number | null>(null);
+  useEffect(() => {
+    if (loading) {
+      since.current ??= Date.now();
+      // Syncing with the clock (an external system): when loading started decides how long to hold.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setHeld(true);
+      return;
+    }
+    if (since.current === null) return;
+    const remaining = MIN_LOADING_MS - (Date.now() - since.current);
+    since.current = null;
+    if (remaining <= 0) {
+      setHeld(false);
+      return;
+    }
+    const timer = setTimeout(() => setHeld(false), remaining);
+    return () => clearTimeout(timer);
+  }, [loading]);
+  return loading || held;
+}
+
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = "primary", size = "md", loading = false, disabled, className, children, type = "button", ...props },
+  { variant = "primary", size = "md", loading: loadingProp = false, disabled, className, children, type = "button", ...props },
   ref,
 ) {
+  const loading = useMinimumLoading(loadingProp);
   return (
     <button
       ref={ref}

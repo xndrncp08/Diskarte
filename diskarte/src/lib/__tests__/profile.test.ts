@@ -25,7 +25,7 @@ const base = {
   bannerUrl: "",
   status: "online",
   customStatus: "Nagluto ng Canton",
-  customStatusEmoji: "🍜",
+  customStatusEmoji: ":canton:",
 };
 
 describe("presets", () => {
@@ -55,7 +55,12 @@ describe("usernameSchema", () => {
 describe("profileUpdateSchema", () => {
   it("normalises a valid update", () => {
     const parsed = profileUpdateSchema.parse(base);
-    expect(parsed).toMatchObject({ username: "juan.tamad", displayName: "Juan", avatarUrl: null, bannerUrl: null, customStatusEmoji: "🍜" });
+    expect(parsed).toMatchObject({ username: "juan.tamad", displayName: "Juan", avatarUrl: null, bannerUrl: null, customStatusEmoji: ":canton:" });
+  });
+
+  it("only takes a glyph code as the status icon, never an emoji", () => {
+    expect(profileUpdateSchema.safeParse({ ...base, customStatusEmoji: "🍜" }).success).toBe(false);
+    expect(profileUpdateSchema.safeParse({ ...base, customStatusEmoji: ":not_a_glyph:" }).success).toBe(false);
   });
 
   it("clears empty custom status", () => {

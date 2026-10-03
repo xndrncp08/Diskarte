@@ -1,6 +1,6 @@
 "use client";
 
-import { Volume1, Volume2, VolumeX } from "lucide-react";
+import { Play, Volume1, Volume2, VolumeX } from "lucide-react";
 import { useId } from "react";
 import { useSfxSettings } from "@/hooks/useSfxSettings";
 import { playSfx, setSfxSettings, type SfxName } from "@/lib/sfx";
@@ -84,7 +84,7 @@ export function SoundSettings({ className }: { className?: string }) {
               onClick={() => playSfx(cue, settings.enabled ? settings.volume : 0.6)}
               className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-slate-200 transition-colors hover:bg-white/10 active:scale-95 pointer-coarse:py-2.5"
             >
-              ▶ {label}
+              <Play className="size-3" aria-hidden /> {label}
             </button>
           ))}
         </div>

@@ -317,7 +317,7 @@ export function Composer({
             className="max-h-60 min-h-6 flex-1 resize-none bg-transparent px-1 py-1.5 text-[15px] text-slate-100 outline-none placeholder:text-slate-500"
             data-testid="composer"
           />
-          <EmojiPicker onPick={(value) => insert(value.startsWith(":") ? `${value} ` : value)} label="Insert emoji" triggerClassName="pointer-coarse:p-3.5" />
+          <EmojiPicker onPick={(value) => insert(value.startsWith(":") ? `${value} ` : value)} label="Insert icon" triggerClassName="pointer-coarse:p-3.5" />
           {onSticker && <StickerPicker onPick={onSticker} disabled={cooldown > 0} />}
           <button
             type="submit"

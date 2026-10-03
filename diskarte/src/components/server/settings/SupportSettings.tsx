@@ -29,7 +29,7 @@ export function SupportSettings() {
         return;
       }
       setErrors({});
-      toast.success("Support details saved. 💙");
+      toast.success("Support details saved.");
     });
   }
 

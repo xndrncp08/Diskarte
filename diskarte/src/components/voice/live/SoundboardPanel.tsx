@@ -11,6 +11,7 @@ import { BUILTIN_CLIPS, createThrottle, setSoundboardMuted, soundboardMuted, SOU
 import { cn } from "@/lib/utils";
 import { useCall } from "../CallProvider";
 import { playSoundboard } from "../soundboard-player";
+import { Glyph } from "@/components/ui/Glyph";
 
 /** Call toolbar soundboard: built-in 8-bit memes + the tambayan's uploaded clips, heard by everyone. */
 export function SoundboardPanel() {
@@ -38,7 +39,7 @@ export function SoundboardPanel() {
 
   function fire(message: SoundboardMessage) {
     if (!allow.current("me")) {
-      toast("Hold on — the soundboard is on cooldown. ⏳");
+      toast("Hold on — the soundboard is on cooldown.");
       return;
     }
     setCooling(true);
@@ -73,7 +74,7 @@ export function SoundboardPanel() {
           {BUILTIN_CLIPS.map((clip) => (
             <button key={clip.key} type="button" disabled={cooling} onClick={() => fire({ type: "play", kind: "builtin", key: clip.key })} className={tile}>
               <span className="text-xl" aria-hidden>
-                {clip.emoji}
+                <Glyph code={clip.emoji} className="size-5" />
               </span>
               <span className="w-full truncate text-center">{clip.name}</span>
             </button>
@@ -86,7 +87,7 @@ export function SoundboardPanel() {
               {clips.map((clip) => (
                 <button key={clip.id} type="button" disabled={cooling} onClick={() => fire({ type: "play", kind: "clip", clipId: clip.id })} className={tile}>
                   <span className="text-xl" aria-hidden>
-                    {clip.emoji}
+                    <Glyph code={clip.emoji} className="size-5" />
                   </span>
                   <span className="w-full truncate text-center">{clip.name}</span>
                 </button>

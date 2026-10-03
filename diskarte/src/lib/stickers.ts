@@ -1,3 +1,5 @@
+import type { GlyphCode } from "@/lib/glyphs";
+
 /** Built-in Pinoy sticker packs. Art lives in components/chat/Sticker.tsx; the DB stores only the id. */
 export interface StickerDef {
   id: string;
@@ -7,9 +9,9 @@ export interface StickerDef {
 
 export type StickerPackId = "salitang-kanto" | "tambayan";
 
-export const STICKER_PACKS: { id: StickerPackId; name: string; emoji: string }[] = [
-  { id: "salitang-kanto", name: "Salitang Kanto", emoji: "💬" },
-  { id: "tambayan", name: "Tambayan Classics", emoji: "🛺" },
+export const STICKER_PACKS: { id: StickerPackId; name: string; glyph: GlyphCode }[] = [
+  { id: "salitang-kanto", name: "Salitang Kanto", glyph: ":chat:" },
+  { id: "tambayan", name: "Tambayan Classics", glyph: ":jeep:" },
 ];
 
 export const STICKERS: StickerDef[] = [

@@ -1,0 +1,138 @@
+import {
+  Angry,
+  Annoyed,
+  Bomb,
+  BookOpen,
+  Brain,
+  Bus,
+  Check,
+  CloudLightning,
+  Coffee,
+  Coins,
+  Dices,
+  Drum,
+  Eye,
+  Flame,
+  Footprints,
+  Frown,
+  Gamepad2,
+  Gem,
+  Ghost,
+  Glasses,
+  Grid3x3,
+  HandCoins,
+  HandHeart,
+  HandMetal,
+  Heart,
+  HeartPulse,
+  IceCreamBowl,
+  Laugh,
+  Megaphone,
+  MessageSquare,
+  Moon,
+  Mountain,
+  Music,
+  Orbit,
+  PartyPopper,
+  PiggyBank,
+  Rocket,
+  Skull,
+  SmilePlus,
+  Soup,
+  Sparkles,
+  Star,
+  Sun,
+  ThumbsDown,
+  ThumbsUp,
+  Trophy,
+  Tv,
+  Utensils,
+  Volume2,
+  WandSparkles,
+  X,
+  Zap,
+  CircleHelp,
+  MinusCircle,
+  type LucideIcon,
+} from "lucide-react";
+import { GLYPH_LABELS, toGlyphCode, type GlyphCode } from "@/lib/glyphs";
+import { cn } from "@/lib/utils";
+
+/** Vector icon + tint for every glyph code (see lib/glyphs.ts). No emoji, anywhere. */
+const ICONS: Record<GlyphCode, { icon: LucideIcon; tint: string }> = {
+  ":petmalu:": { icon: Flame, tint: "text-orange-400" },
+  ":lodi:": { icon: HandMetal, tint: "text-sun" },
+  ":sana_all:": { icon: WandSparkles, tint: "text-violet-300" },
+  ":charot:": { icon: SmilePlus, tint: "text-sun" },
+  ":awit:": { icon: Annoyed, tint: "text-sky-300" },
+  ":g:": { icon: Zap, tint: "text-emerald-400" },
+  ":naol:": { icon: Gem, tint: "text-pink-300" },
+  ":kilig:": { icon: HeartPulse, tint: "text-pink-400" },
+  ":lutang:": { icon: Ghost, tint: "text-slate-300" },
+  ":ayos:": { icon: ThumbsUp, tint: "text-emerald-300" },
+  ":salamat:": { icon: HandHeart, tint: "text-rose-300" },
+  ":tara:": { icon: Footprints, tint: "text-cyan-300" },
+  ":mabuhay:": { icon: Sun, tint: "text-sun" },
+  ":canton:": { icon: Soup, tint: "text-amber-400" },
+  ":halo_halo:": { icon: IceCreamBowl, tint: "text-fuchsia-300" },
+  ":jeep:": { icon: Bus, tint: "text-cyan-300" },
+  ":lechon:": { icon: PiggyBank, tint: "text-rose-300" },
+  ":bahala_na:": { icon: Dices, tint: "text-violet-300" },
+  ":thumbs_up:": { icon: ThumbsUp, tint: "text-sun" },
+  ":thumbs_down:": { icon: ThumbsDown, tint: "text-slate-300" },
+  ":heart:": { icon: Heart, tint: "text-red-400" },
+  ":laugh:": { icon: Laugh, tint: "text-sun" },
+  ":sad:": { icon: Frown, tint: "text-sky-300" },
+  ":angry:": { icon: Angry, tint: "text-red-400" },
+  ":party:": { icon: PartyPopper, tint: "text-fuchsia-300" },
+  ":eyes:": { icon: Eye, tint: "text-cyan-300" },
+  ":check:": { icon: Check, tint: "text-emerald-400" },
+  ":cross:": { icon: X, tint: "text-red-400" },
+  ":skull:": { icon: Skull, tint: "text-slate-200" },
+  ":trophy:": { icon: Trophy, tint: "text-sun" },
+  ":thinking:": { icon: Brain, tint: "text-pink-300" },
+  ":cool:": { icon: Glasses, tint: "text-cyan-300" },
+  ":star:": { icon: Star, tint: "text-sun" },
+  ":hype:": { icon: Zap, tint: "text-cyan-300" },
+  ":afk:": { icon: Moon, tint: "text-amber-400" },
+  ":game:": { icon: Gamepad2, tint: "text-cyan-300" },
+  ":study:": { icon: BookOpen, tint: "text-sky-300" },
+  ":kumakain:": { icon: Utensils, tint: "text-amber-400" },
+  ":coffee:": { icon: Coffee, tint: "text-amber-500" },
+  ":brownout:": { icon: CloudLightning, tint: "text-slate-300" },
+  ":music:": { icon: Music, tint: "text-violet-300" },
+  ":busy:": { icon: MinusCircle, tint: "text-red-400" },
+  ":volume:": { icon: Volume2, tint: "text-slate-200" },
+  ":airhorn:": { icon: Megaphone, tint: "text-sun" },
+  ":drum:": { icon: Drum, tint: "text-amber-400" },
+  ":coins:": { icon: Coins, tint: "text-sun" },
+  ":warp:": { icon: Orbit, tint: "text-violet-300" },
+  ":boom:": { icon: Bomb, tint: "text-red-400" },
+  ":bruh:": { icon: Mountain, tint: "text-slate-300" },
+  ":booster:": { icon: Rocket, tint: "text-fuchsia-300" },
+  ":supporter:": { icon: Trophy, tint: "text-sun" },
+  ":donor:": { icon: HandCoins, tint: "text-sky-300" },
+  ":tv:": { icon: Tv, tint: "text-red-300" },
+  ":tictactoe:": { icon: Grid3x3, tint: "text-cyan-300" },
+  ":trivia:": { icon: CircleHelp, tint: "text-sun" },
+  ":chat:": { icon: MessageSquare, tint: "text-sky-300" },
+  ":sparkle:": { icon: Sparkles, tint: "text-sun" },
+};
+
+/**
+ * Renders a glyph code (or a legacy stored emoji) as a tinted vector icon. With `label` it is an
+ * accessible image; without, it is decorative (the surrounding text names it).
+ */
+export function Glyph({ code, className, label, tinted = true }: { code: string | null | undefined; className?: string; label?: boolean; tinted?: boolean }) {
+  const resolved = toGlyphCode(code);
+  if (!resolved) return null;
+  const { icon: Icon, tint } = ICONS[resolved];
+  return (
+    <Icon
+      className={cn("inline-block size-[1.1em] shrink-0 align-[-0.15em]", tinted && tint, className)}
+      strokeWidth={2.25}
+      data-glyph={resolved}
+      {...(label ? { role: "img", "aria-label": GLYPH_LABELS[resolved] } : { "aria-hidden": true })}
+    />
+  );
+}

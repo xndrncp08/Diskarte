@@ -13,6 +13,9 @@ import type { SoundboardClip } from "@/lib/community";
 import { BUILTIN_CLIPS, MAX_CLIP_BYTES, MAX_CLIP_MS } from "@/lib/soundboard";
 import { getSfxSettings, playCue } from "@/lib/sfx";
 import { sniffMatches } from "@/lib/uploads";
+import { Glyph } from "@/components/ui/Glyph";
+import { GLYPH_LABELS, SOUND_GLYPHS, type GlyphCode } from "@/lib/glyphs";
+import { cn } from "@/lib/utils";
 
 const MAX_CLIPS = 24;
 
@@ -31,6 +34,7 @@ export function SoundboardSettings() {
   const { server } = useServer();
   const [clips, setClips] = useState<SoundboardClip[]>([]);
   const [file, setFile] = useState<File | null>(null);
+  const [icon, setIcon] = useState<GlyphCode>(":volume:");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -75,7 +79,7 @@ export function SoundboardSettings() {
     setErrors({});
     setFile(null);
     form.reset();
-    toast.success("New sound added to the soundboard! 🔊");
+    toast.success("New sound added to the soundboard!");
     void load();
   }
 
@@ -107,7 +111,7 @@ export function SoundboardSettings() {
               onClick={() => playCue(clip.cue, getSfxSettings().volume || 0.5)}
               className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-200 hover:bg-white/10"
             >
-              {clip.emoji} {clip.name}
+              <Glyph code={clip.emoji} className="size-5" /> {clip.name}
             </button>
           ))}
         </div>
@@ -124,7 +128,7 @@ export function SoundboardSettings() {
             {clips.map((clip) => (
               <li key={clip.id} className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5">
                 <span className="text-lg" aria-hidden>
-                  {clip.emoji}
+                  <Glyph code={clip.emoji} className="size-5" />
                 </span>
                 <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">{clip.name}</span>
                 <button type="button" aria-label={`Preview ${clip.name}`} onClick={() => preview(urls[clip.storage_path])} className="touch-target relative rounded p-1.5 text-slate-300 hover:bg-white/10">
@@ -142,9 +146,31 @@ export function SoundboardSettings() {
       {clips.length < MAX_CLIPS && (
         <form onSubmit={upload} className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-3">
           <p className="text-sm font-semibold text-white">Upload a sound</p>
-          <div className="grid grid-cols-[1fr_5rem] gap-2">
-            <InputField label="Name" name="name" maxLength={32} required placeholder="Done!" error={errors.name} />
-            <InputField label="Emoji" name="emoji" maxLength={16} placeholder="🔊" />
+          <InputField label="Name" name="name" maxLength={32} required placeholder="Done!" error={errors.name} />
+          <input type="hidden" name="emoji" value={icon} />
+          <div>
+            <p id="sound-icon-label" className="mb-1.5 font-silk text-[11px] uppercase tracking-wider text-slate-300">
+              Icon
+            </p>
+            <div role="radiogroup" aria-labelledby="sound-icon-label" className="flex flex-wrap gap-1.5">
+              {SOUND_GLYPHS.map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  role="radio"
+                  aria-checked={icon === code}
+                  aria-label={GLYPH_LABELS[code]}
+                  title={GLYPH_LABELS[code]}
+                  onClick={() => setIcon(code)}
+                  className={cn(
+                    "flex size-9 items-center justify-center rounded-lg border transition-colors pointer-coarse:size-11",
+                    icon === code ? "border-sun bg-sun/15" : "border-white/10 bg-white/5 hover:bg-white/10",
+                  )}
+                >
+                  <Glyph code={code} className="size-5" />
+                </button>
+              ))}
+            </div>
           </div>
           <input
             ref={fileInput}

@@ -1,28 +1,33 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { isValidReaction, PINOY_REACTIONS, reactionDisplay, renderShortcodes } from "@/lib/emoji";
+import { CLASSIC_REACTIONS, isValidReaction, PINOY_REACTIONS, splitGlyphs } from "@/lib/emoji";
+import { glyphLabel, toGlyphCode } from "@/lib/glyphs";
 import { attachmentPrefix, parseAttachments, previewText } from "@/lib/messages";
 import { playSfx, SFX_NAMES, setSfxEnabled, sfxEnabled } from "@/lib/sfx";
 import { safeFileName, sniffMatches, validateAttachment } from "@/lib/uploads";
 
-describe("emoji", () => {
-  it("keeps every custom reaction valid for the database check", () => {
-    for (const r of PINOY_REACTIONS) {
-      expect(r.code).toMatch(/^(:[a-z0-9_]{2,32}:|[^\s]{1,16})$/);
+describe("reactions and glyphs (no emoji, ever)", () => {
+  it("keeps every reaction a glyph code valid for the database check", () => {
+    for (const r of [...PINOY_REACTIONS, ...CLASSIC_REACTIONS]) {
+      expect(r.code).toMatch(/^:[a-z0-9_]{1,32}:$/);
       expect(isValidReaction(r.code)).toBe(true);
     }
-    expect(isValidReaction("👍")).toBe(true);
+    // New reactions can't be emoji or unknown codes.
+    expect(isValidReaction("👍")).toBe(false);
     expect(isValidReaction(":not_real:")).toBe(false);
     expect(isValidReaction("<script>")).toBe(false);
   });
 
-  it("describes reactions", () => {
-    expect(reactionDisplay(":petmalu:")).toEqual({ emoji: "🔥", label: "Petmalu", custom: true });
-    expect(reactionDisplay("😂")).toEqual({ emoji: "😂", label: "😂", custom: false });
+  it("maps codes and legacy stored emoji to icon codes, never back to emoji", () => {
+    expect(toGlyphCode(":petmalu:")).toBe(":petmalu:");
+    expect(toGlyphCode("🍜")).toBe(":canton:");
+    expect(toGlyphCode("👍")).toBe(":thumbs_up:");
+    expect(toGlyphCode("🦖")).toBe(":sparkle:"); // anything unknown still renders as an icon
+    expect(glyphLabel("🔥")).toBe("Petmalu");
+    expect(toGlyphCode(null)).toBeNull();
   });
 
-  it("renders shortcodes outside code", () => {
-    expect(renderShortcodes("Tara :canton: `:canton:`\n```\n:lodi:\n```")).toBe("Tara 🍜 `:canton:`\n```\n:lodi:\n```");
-    expect(renderShortcodes(":unknown: stays")).toBe(":unknown: stays");
+  it("splits known glyph codes out of text and leaves unknown ones alone", () => {
+    expect(splitGlyphs("Tara :canton: na! :unknown:")).toEqual(["Tara ", { code: ":canton:" }, " na! :unknown:"]);
   });
 });
 

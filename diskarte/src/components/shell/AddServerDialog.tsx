@@ -34,7 +34,7 @@ export function AddServerDialog({ open, onClose, initialTab = "create" }: { open
         if (result.error) toast.error(result.error);
         return;
       }
-      toast.success("Server created! 🎉");
+      toast.success("Server created!");
       close();
       router.push(`/tambayan/${result.data.serverId}`);
       router.refresh();

@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
-import { BadgeCheck, ChevronDown, Hash, HeadphoneOff, Heart, LogOut, MicOff, Pencil, Plus, Radio, Settings, ShieldCheck, UserPlus, Video, Volume2 } from "lucide-react";
+import { BadgeCheck, ChevronDown, Hash, HeadphoneOff, Heart, LogOut, MicOff, Pencil, Plus, Radio, Rocket, Settings, ShieldCheck, UserPlus, Video, Volume2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { leaveServerAction } from "@/actions/servers";
@@ -161,7 +161,8 @@ export function ChannelSidebar() {
               {server.is_system && <BadgeCheck className="size-4 shrink-0 fill-sun text-abyss" aria-label="Official server" />}
               {boost > 0 && (
                 <span className="shrink-0 rounded bg-fuchsia-500/20 px-1 font-pixel text-[8px] text-fuchsia-200" title={`Boost level ${boost}`}>
-                  🚀{boost}
+                  <Rocket className="mr-0.5 inline size-2.5" aria-hidden />
+                  {boost}
                 </span>
               )}
             </span>

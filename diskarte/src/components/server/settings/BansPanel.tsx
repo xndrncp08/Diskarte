@@ -52,7 +52,7 @@ export function BansPanel() {
     );
   }
   if (bans.length === 0) {
-    return <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-slate-400">No bans. All peaceful here. ✌️</p>;
+    return <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-slate-400">No bans. All peaceful here.</p>;
   }
   return (
     <ul className="space-y-2" data-testid="bans-list">

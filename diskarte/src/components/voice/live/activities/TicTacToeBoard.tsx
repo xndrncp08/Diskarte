@@ -42,8 +42,8 @@ export function TicTacToeBoard({ game, me, nameOf, onChange }: { game: TicTacToe
 
   const status = game.winner
     ? game.winner === "draw"
-      ? "Tabla! 🤝"
-      : `${nameOf(game.players[game.winner])} wins! 🏆`
+      ? "It's a draw!"
+      : `${nameOf(game.players[game.winner])} wins!`
     : waiting
       ? "Waiting for an opponent…"
       : `${nameOf(game.players[game.turn])}'s turn (${game.turn})`;

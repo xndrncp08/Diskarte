@@ -15,7 +15,7 @@ const SHORT: Record<SignalLevel, string> = { 0: "Offline", 1: "Mahina", 2: "Okay
 function colorFor(level: SignalLevel) {
   if (level <= 1) return "#EF4444";
   if (level === 2) return "#F59E0B";
-  return "#22C55E";
+  return "#10B981";
 }
 
 /** Arcade-style signal meter: four stepped pixel bars, blinking red when disconnected. */

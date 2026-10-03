@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
+import { useShellEntrance } from "@/components/motion/useShellEntrance";
 import { useSwipeDrawer } from "@/hooks/useSwipeDrawer";
 import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
@@ -31,8 +32,10 @@ function MembershipWatcher({ userId }: { userId: string }) {
 function Frame({ servers, children }: { servers: Server[]; children: ReactNode }) {
   const { navOpen, setNavOpen } = useShellUI();
   const swipe = useSwipeDrawer(navOpen, setNavOpen);
+  const frame = useRef<HTMLDivElement>(null);
+  useShellEntrance(frame);
   return (
-    <div className="diskarte-backdrop relative flex h-dvh overflow-hidden md:gap-3 md:p-3" data-testid="shell" {...swipe}>
+    <div ref={frame} className="diskarte-backdrop relative flex h-dvh overflow-hidden md:gap-3 md:p-3" data-testid="shell" {...swipe}>
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-lg focus:bg-sun focus:px-4 focus:py-2 focus:font-semibold focus:text-abyss"

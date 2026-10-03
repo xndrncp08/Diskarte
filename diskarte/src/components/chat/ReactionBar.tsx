@@ -1,6 +1,7 @@
 "use client";
 
-import { reactionDisplay } from "@/lib/emoji";
+import { Glyph } from "@/components/ui/Glyph";
+import { glyphLabel } from "@/lib/glyphs";
 import type { Reaction } from "@/lib/messages";
 import { cn } from "@/lib/utils";
 import { EmojiPicker } from "./EmojiPicker";
@@ -23,7 +24,8 @@ export function ReactionBar({ reactions, meId, onToggle, names }: { reactions: R
   return (
     <div className="mt-1 flex flex-wrap items-center gap-1" data-testid="reactions">
       {summary.map((r) => {
-        const { emoji, label, custom } = reactionDisplay(r.emoji);
+        // Stored as a :code: (or a legacy emoji) — always drawn as a vector icon.
+        const label = glyphLabel(r.emoji);
         const who = reactions
           .filter((x) => x.emoji === r.emoji)
           .map((x) => names(x.user_id))
@@ -35,15 +37,15 @@ export function ReactionBar({ reactions, meId, onToggle, names }: { reactions: R
             type="button"
             aria-pressed={r.mine}
             aria-label={`${label}: ${r.count} ${r.count === 1 ? "reaction" : "reactions"}`}
-            title={`${custom ? label : emoji} — ${who}${r.count > 5 ? "…" : ""}`}
+            title={`${label} — ${who}${r.count > 5 ? "…" : ""}`}
             onClick={() => onToggle(r.emoji)}
             className={cn(
               "touch-target relative flex h-7 items-center gap-1 rounded-lg border px-2 text-sm transition-[color,background-color,border-color,transform] active:scale-95",
               r.mine ? "border-sun/60 bg-sun/15 text-sun" : "border-white/10 bg-white/5 text-slate-300 hover:border-white/25",
             )}
           >
-            <span className="leading-none">{emoji}</span>
-            {custom && <span className="font-silk text-[9px] uppercase">{label}</span>}
+            <Glyph code={r.emoji} className="size-4" />
+            <span className="font-silk text-[9px] uppercase">{label}</span>
             <span className="text-xs font-semibold tabular-nums">{r.count}</span>
           </button>
         );

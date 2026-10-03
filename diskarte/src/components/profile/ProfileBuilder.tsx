@@ -8,6 +8,8 @@ import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { PixelStatus } from "@/components/retro/PixelStatus";
 import { Button } from "@/components/ui/Button";
 import { InputField, TextareaField } from "@/components/ui/Field";
+import { Glyph } from "@/components/ui/Glyph";
+import { GLYPH_LABELS, STATUS_GLYPHS, toGlyphCode } from "@/lib/glyphs";
 import {
   AVATAR_PRESETS,
   AVATAR_PRESET_KEYS,
@@ -43,7 +45,8 @@ export function ProfileBuilder({ profile, mode }: { profile: Profile; mode: "onb
   const [bannerUrl, setBannerUrl] = useState(profile.banner_url ?? "");
   const [status, setStatus] = useState<PresenceStatus>(profile.status);
   const [customStatus, setCustomStatus] = useState(profile.custom_status ?? "");
-  const [customEmoji, setCustomEmoji] = useState(profile.custom_status_emoji ?? "");
+  // Status icons are glyph codes; an older emoji converts to its icon on the next save.
+  const [customEmoji, setCustomEmoji] = useState<string>(toGlyphCode(profile.custom_status_emoji) ?? "");
   const [uploading, setUploading] = useState<"avatar" | "banner" | null>(null);
   // Status can change elsewhere while this form is open (the user panel's switcher, another tab):
   // adopt it, so the picker never shows — or saves back — a stale "Online".
@@ -52,13 +55,13 @@ export function ProfileBuilder({ profile, mode }: { profile: Profile; mode: "onb
     setStatusSeed({ status: profile.status, text: profile.custom_status, emoji: profile.custom_status_emoji });
     setStatus(profile.status);
     setCustomStatus(profile.custom_status ?? "");
-    setCustomEmoji(profile.custom_status_emoji ?? "");
+    setCustomEmoji(toGlyphCode(profile.custom_status_emoji) ?? "");
   }
   const avatarInput = useRef<HTMLInputElement>(null);
   const bannerInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (state.ok) toast.success("Profile saved! 🎉");
+    if (state.ok) toast.success("Profile saved!");
     else if (state.error) toast.error(state.error);
   }, [state]);
 
@@ -226,7 +229,7 @@ export function ProfileBuilder({ profile, mode }: { profile: Profile; mode: "onb
           <p className="mb-2 font-silk text-[11px] uppercase tracking-wider text-slate-300">Pinoy status triggers</p>
           <div className="mb-4 flex flex-wrap gap-2">
             {STATUS_TRIGGERS.map((t) => {
-              const active = customStatus === t.text && customEmoji === t.emoji;
+              const active = customStatus === t.text && customEmoji === t.glyph;
               return (
                 <button
                   key={t.text}
@@ -238,22 +241,46 @@ export function ProfileBuilder({ profile, mode }: { profile: Profile; mode: "onb
                       setCustomEmoji("");
                     } else {
                       setCustomStatus(t.text);
-                      setCustomEmoji(t.emoji);
+                      setCustomEmoji(t.glyph);
                       setStatus(t.status);
                     }
                   }}
                   className={cn(
-                    "rounded-full border px-3 py-1 text-sm transition-colors",
+                    "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors pointer-coarse:min-h-11",
                     active ? "border-sun bg-sun text-abyss" : "border-white/10 bg-white/5 text-slate-200 hover:bg-white/10",
                   )}
                 >
-                  {t.emoji} {t.text}
+                  <Glyph code={t.glyph} className="size-4" tinted={!active} /> {t.text}
                 </button>
               );
             })}
           </div>
-          <div className="grid gap-4 sm:grid-cols-[6rem_1fr]">
-            <InputField label="Emoji" name="customStatusEmoji" value={customEmoji} onChange={(e) => setCustomEmoji(e.target.value)} maxLength={16} placeholder="🍜" />
+          <div className="grid gap-4">
+            <input type="hidden" name="customStatusEmoji" value={customEmoji} />
+            <div>
+              <p id="status-icon-label" className="mb-1.5 font-silk text-[11px] uppercase tracking-wider text-slate-300">
+                Status icon
+              </p>
+              <div role="radiogroup" aria-labelledby="status-icon-label" className="flex flex-wrap gap-1.5">
+                {STATUS_GLYPHS.map((code) => (
+                  <button
+                    key={code}
+                    type="button"
+                    role="radio"
+                    aria-checked={customEmoji === code}
+                    aria-label={GLYPH_LABELS[code]}
+                    title={GLYPH_LABELS[code]}
+                    onClick={() => setCustomEmoji(customEmoji === code ? "" : code)}
+                    className={cn(
+                      "flex size-9 items-center justify-center rounded-lg border transition-colors pointer-coarse:size-11",
+                      customEmoji === code ? "border-sun bg-sun/15" : "border-white/10 bg-white/5 hover:bg-white/10",
+                    )}
+                  >
+                    <Glyph code={code} className="size-5" />
+                  </button>
+                ))}
+              </div>
+            </div>
             <InputField
               label="Custom status"
               name="customStatus"

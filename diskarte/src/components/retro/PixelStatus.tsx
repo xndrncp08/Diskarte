@@ -2,7 +2,7 @@ import type { PresenceStatus } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
 
 const COLORS: Record<PresenceStatus | "offline", string> = {
-  online: "#22C55E",
+  online: "#10B981",
   idle: "#F59E0B",
   dnd: "#EF4444",
   invisible: "#64748B",

@@ -3,6 +3,11 @@ import { expect, type Browser, type Page } from "@playwright/test";
 export const FULL = process.env.E2E_FULL === "1";
 export const FULL_REASON = "needs Supabase + LiveKit (set E2E_FULL=1; CI starts both locally)";
 
+/** Waits for the sign-in entrance timeline (if the page has one) to finish before measuring or auditing. */
+export async function settleEntrance(page: Page) {
+  if (await page.locator("[data-entrance]").count()) await page.locator('[data-entrance="done"]').waitFor({ timeout: 15_000 });
+}
+
 export interface TestUser {
   displayName: string;
   username: string;

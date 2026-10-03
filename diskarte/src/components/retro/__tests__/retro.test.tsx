@@ -18,7 +18,7 @@ describe("PixelStatus", () => {
 describe("SignalBars", () => {
   it("lights the right number of bars", () => {
     const { container } = render(<SignalBars level={3} />);
-    const lit = Array.from(container.querySelectorAll("rect")).filter((r) => r.getAttribute("fill") === "#22C55E");
+    const lit = Array.from(container.querySelectorAll("rect")).filter((r) => r.getAttribute("fill") === "#10B981");
     expect(lit).toHaveLength(3);
   });
 

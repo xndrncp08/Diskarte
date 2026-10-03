@@ -62,8 +62,9 @@ describe("status indicator", () => {
     await pick(user, /AFK \/ Tulog/);
     await waitFor(() => expect(badge()).toHaveAttribute("data-status", "idle"));
     expect(panel().querySelector("[data-status-ring]")).toHaveAttribute("data-status-ring", "idle");
-    expect(within(panel()).getByTestId("status-label")).toHaveTextContent("😴 AFK / Tulog");
-    expect(profileActions.setStatusAction).toHaveBeenLastCalledWith({ status: "idle", customStatus: "AFK / Tulog", customStatusEmoji: "😴" });
+    expect(within(panel()).getByTestId("status-label")).toHaveTextContent("AFK / Tulog");
+    expect(within(panel()).getByTestId("status-label").querySelector('[data-glyph=":afk:"]')).not.toBeNull();
+    expect(profileActions.setStatusAction).toHaveBeenLastCalledWith({ status: "idle", customStatus: "AFK / Tulog", customStatusEmoji: ":afk:" });
 
     await pick(user, /Nag-aaral pa boffum/);
     await waitFor(() => expect(badge()).toHaveAttribute("data-status", "dnd"));
@@ -118,7 +119,7 @@ describe("status indicator", () => {
     const track = vi.mocked(fake.joined(`server:${SERVER_ID}`)!.handle.track);
     await pick(user, /AFK \/ Tulog/);
     await waitFor(() =>
-      expect(track).toHaveBeenLastCalledWith(expect.objectContaining({ user_id: ME.id, status: "idle", custom_status: "AFK / Tulog", custom_status_emoji: "😴" })),
+      expect(track).toHaveBeenLastCalledWith(expect.objectContaining({ user_id: ME.id, status: "idle", custom_status: "AFK / Tulog", custom_status_emoji: ":afk:" })),
     );
   });
 });
@@ -152,7 +153,7 @@ describe("profile builder status picker", () => {
   it("follows status changes made elsewhere instead of keeping a stale 'Online'", () => {
     const { rerender } = render(builder(ME));
     expect(screen.getByRole("radio", { name: /^Online/ })).toHaveAttribute("aria-checked", "true");
-    rerender(builder({ ...ME, status: "dnd", custom_status: "Nag-aaral pa boffum", custom_status_emoji: "📚" }));
+    rerender(builder({ ...ME, status: "dnd", custom_status: "Nag-aaral pa boffum", custom_status_emoji: ":study:" }));
     expect(screen.getByRole("radio", { name: /Do Not Disturb/ })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("radio", { name: /^Online/ })).toHaveAttribute("aria-checked", "false");
     expect(screen.getByLabelText("Custom status")).toHaveValue("Nag-aaral pa boffum");

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { AutomodCategory, BadgeKind, Json, Tables } from "@/lib/supabase/database.types";
+import type { GlyphCode } from "@/lib/glyphs";
 
 export type AuditEntry = Tables<"audit_logs">;
 export type LfgBeacon = Tables<"lfg_beacons">;
@@ -10,10 +11,10 @@ export type ServerBadge = Tables<"server_badges">;
 // Support badges & server boosts
 // ---------------------------------------------------------------------------------------
 
-export const BADGES: Record<BadgeKind, { label: string; emoji: string; description: string; className: string }> = {
-  booster: { label: "Server Booster", emoji: "🚀", description: "Boosted the server", className: "border-fuchsia-400/40 bg-fuchsia-500/15 text-fuchsia-200" },
-  lodi_supporter: { label: "Lodi Supporter", emoji: "🏆", description: "Supports the server monthly", className: "border-sun/50 bg-sun/15 text-sun" },
-  gcash_contributor: { label: "Gcash Contributor", emoji: "💙", description: "Donated via GCash / Maya", className: "border-sky-400/40 bg-sky-500/15 text-sky-200" },
+export const BADGES: Record<BadgeKind, { label: string; glyph: GlyphCode; description: string; className: string }> = {
+  booster: { label: "Server Booster", glyph: ":booster:", description: "Boosted the server", className: "border-fuchsia-400/40 bg-fuchsia-500/15 text-fuchsia-200" },
+  lodi_supporter: { label: "Lodi Supporter", glyph: ":supporter:", description: "Supports the server monthly", className: "border-sun/50 bg-sun/15 text-sun" },
+  gcash_contributor: { label: "Gcash Contributor", glyph: ":donor:", description: "Donated via GCash / Maya", className: "border-sky-400/40 bg-sky-500/15 text-sky-200" },
 };
 
 export const BADGE_KINDS = Object.keys(BADGES) as BadgeKind[];
@@ -135,13 +136,13 @@ export function describeAudit(entry: Pick<AuditEntry, "action" | "actor_id" | "t
     case "member.role_update":
       return `${actor} changed ${target}'s role: ${str(m.from)} → ${str(m.to)}`;
     case "channel.create":
-      return `${actor} created ${m.type === "voice" ? "🔊" : "#"}${str(m.name)}`;
+      return `${actor} created ${m.type === "voice" ? "voice channel " : "#"}${str(m.name)}`;
     case "channel.update": {
       const changed = Array.isArray(m.changed) ? m.changed.join(", ") : "";
       return `${actor} updated #${str(m.name)} (${changed})`;
     }
     case "channel.delete":
-      return `${actor} deleted ${m.type === "voice" ? "🔊" : "#"}${str(m.name)}`;
+      return `${actor} deleted ${m.type === "voice" ? "voice channel " : "#"}${str(m.name)}`;
     case "message.delete":
       return `${actor} deleted a message by ${name(str(m.author_id))}`;
     case "message.pin":
@@ -227,7 +228,7 @@ const COMMUNITY_ERRORS: Record<string, string> = {
   SOUNDBOARD_FULL: "Up to 24 sounds per server.",
   INVALID_CLIP_PATH: "Something's wrong with the sound file. Upload it again.",
   USER_NOT_FOUND: "No user has that username.",
-  CANNOT_FRIEND_SELF: "You can't add yourself. 😅",
+  CANNOT_FRIEND_SELF: "You can't add yourself.",
   TOO_MANY_REQUESTS: "You have too many pending friend requests.",
   REQUEST_NOT_FOUND: "That friend request no longer exists.",
   DM_NOT_ALLOWED: "Only friends can DM each other.",

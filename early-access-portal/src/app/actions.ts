@@ -42,7 +42,7 @@ export async function submitApplicationAction(_prev: ApplyState, form: FormData)
   if (honeypotTripped(form.get(HONEYPOT_FIELD))) return { status: "success", firstName: "kabayan" };
 
   const tokenProblem = checkFormToken(form.get("formToken"), env.secret);
-  if (tokenProblem === "too_fast") return { status: "error", error: "Ang bilis mo naman! Basahin muna ang form bago mag-submit. 😉", values };
+  if (tokenProblem === "too_fast") return { status: "error", error: "Ang bilis mo naman! Basahin muna ang form bago mag-submit.", values };
   if (tokenProblem) return { status: "error", error: "Na-expire ang form. I-refresh ang page at subukan ulit.", values };
 
   if (env.turnstile && !(await verifyTurnstile(form.get(TURNSTILE_FIELD), { secretKey: env.turnstile.secretKey, ip }))) {

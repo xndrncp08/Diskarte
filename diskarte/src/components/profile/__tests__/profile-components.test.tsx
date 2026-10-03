@@ -79,7 +79,7 @@ describe("ProfileBuilder", () => {
     render(<ProfileBuilder profile={profile} mode="onboarding" />);
     fireEvent.click(screen.getByRole("button", { name: /Nagluto ng Canton/ }));
     const card = screen.getByTestId("profile-card");
-    expect(card).toHaveTextContent("🍜");
+    expect(card.querySelector('[data-glyph=":canton:"]')).not.toBeNull();
     expect(card).toHaveTextContent("Nagluto ng Canton");
 
     fireEvent.click(screen.getByRole("radio", { name: "Ube" }));

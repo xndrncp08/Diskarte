@@ -228,7 +228,7 @@ function IncomingCallCard({
   const voicePing = card.ring.kind === "voice";
   const headline = voicePing ? `${name} wants you in voice` : card.ring.video ? `${name} is video calling you` : `${name} is calling you`;
   const detail = voicePing
-    ? `🔊 ${card.context.channelName ?? "Voice"} · ${card.context.serverName ?? "Server"}`
+    ? `${card.context.channelName ?? "Voice"} · ${card.context.serverName ?? "Server"}`
     : card.context.groupName
       ? `in ${card.context.groupName}`
       : card.ring.video
@@ -273,7 +273,9 @@ function IncomingCallCard({
           {card.caller ? (
             <UserAvatar profile={card.caller} size={80} ring="#0b1020" />
           ) : (
-            <span className="flex size-20 items-center justify-center rounded-full bg-white/10 text-2xl">📞</span>
+            <span className="flex size-20 items-center justify-center rounded-full bg-white/10">
+              <Phone className="size-8 text-signal-green" aria-hidden />
+            </span>
           )}
         </motion.div>
       </div>

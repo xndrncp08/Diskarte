@@ -10,7 +10,7 @@ import { InertWhenExiting } from "@/components/ui/InertWhenExiting";
 /** The reaction grid is its own chunk, fetched the first time any picker opens. */
 const EmojiPickerPanel = dynamic(() => import("./EmojiPickerPanel").then((m) => m.EmojiPickerPanel), {
   ssr: false,
-  loading: () => <div className="h-72 w-full animate-pulse rounded-lg bg-white/5" aria-busy="true" aria-label="Loading emoji" data-testid="emoji-skeleton" />,
+  loading: () => <div className="h-72 w-full animate-pulse rounded-lg bg-white/5" aria-busy="true" aria-label="Loading icons" data-testid="emoji-skeleton" />,
 });
 import { cn } from "@/lib/utils";
 
@@ -85,7 +85,7 @@ export function EmojiPicker({
               ref={panel}
               id={panelId}
               role="dialog"
-              aria-label="Emoji picker"
+              aria-label="Icon picker"
               data-side={side}
               data-floating="emoji-picker"
               style={style}

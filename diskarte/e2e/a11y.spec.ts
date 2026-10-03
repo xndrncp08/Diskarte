@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { createServer, FULL, FULL_REASON, makeUser, sendMessage, signUpAndOnboard } from "./helpers";
+import { createServer, FULL, FULL_REASON, makeUser, sendMessage, signUpAndOnboard, settleEntrance } from "./helpers";
 
 /** Real-browser axe audits (includes color-contrast, which jsdom can't evaluate). */
 async function audit(page: import("@playwright/test").Page) {
@@ -13,12 +13,14 @@ test.describe("accessibility audit — public pages", () => {
     test(`no WCAG 2.1 AA violations on ${path}`, async ({ page }) => {
       await page.goto(path);
       await page.waitForLoadState("load");
+      await settleEntrance(page);
       expect(await audit(page)).toEqual([]);
     });
   }
 
   test("keyboard: skip-free tab order reaches the primary action with a visible focus ring", async ({ page }) => {
     await page.goto("/login");
+    await settleEntrance(page);
     await page.getByLabel("Email").focus();
     await page.keyboard.press("Tab");
     await expect(page.getByLabel("Password", { exact: true })).toBeFocused();

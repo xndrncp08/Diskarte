@@ -1,6 +1,7 @@
 import { isTicTacToe, type TicTacToe } from "@/lib/games/tictactoe";
 import { isTrivia, type Trivia } from "@/lib/games/trivia";
 import { isWatchState, type WatchState } from "@/lib/youtube";
+import type { GlyphCode } from "@/lib/glyphs";
 
 /**
  * Voice-room activities (watch party, mini-games) are synced over the LiveKit data channel as
@@ -61,8 +62,8 @@ export function bump(activity: Activity, game: ActivityGame, author: string): Ac
   return { ...activity, game, rev: activity.rev + 1, author };
 }
 
-export const ACTIVITY_LABEL: Record<ActivityGame["kind"], { name: string; emoji: string; blurb: string }> = {
-  watch: { name: "Watch Party", emoji: "📺", blurb: "Watch YouTube together." },
-  tictactoe: { name: "Tic-Tac-Toe", emoji: "❌", blurb: "8-bit X at O, isang laban." },
-  trivia: { name: "Pinoy Trivia", emoji: "🇵🇭", blurb: "5 tanong, 15 segundo bawat isa." },
+export const ACTIVITY_LABEL: Record<ActivityGame["kind"], { name: string; glyph: GlyphCode; blurb: string }> = {
+  watch: { name: "Watch Party", glyph: ":tv:", blurb: "Watch YouTube together." },
+  tictactoe: { name: "Tic-Tac-Toe", glyph: ":tictactoe:", blurb: "8-bit X and O, best of one." },
+  trivia: { name: "Pinoy Trivia", glyph: ":trivia:", blurb: "5 questions, 15 seconds each." },
 };

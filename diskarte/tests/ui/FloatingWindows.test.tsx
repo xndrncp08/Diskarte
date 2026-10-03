@@ -100,6 +100,27 @@ describe("FloatingWindow", () => {
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Test window" })).toBeNull());
   });
 
+  it("keeps Tab inside the window, and F6 hops between the window and the page", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    const inside = screen.getByRole("button", { name: "Inside" });
+    await waitFor(() => expect(inside).toHaveFocus());
+    // Last focusable → Tab wraps to the first (the Move button), Shift+Tab wraps back.
+    await user.tab();
+    expect(screen.getByRole("button", { name: "Move window" })).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(inside).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();
+    // F6: out to the page (where focus was before the window), and back into the window.
+    screen.getByLabelText("Chat box").focus();
+    inside.focus();
+    await user.keyboard("{F6}");
+    expect(frame()).not.toContainElement(document.activeElement as HTMLElement);
+    await user.keyboard("{F6}");
+    expect(frame()).toContainElement(document.activeElement as HTMLElement);
+  });
+
   it("brings the clicked window to the front", async () => {
     render(
       <>

@@ -15,7 +15,7 @@ test.describe("servers, channels and real-time chat", () => {
     for (const name of ["general", "chika", "lfg-valorant", "Tambayan 1", "Chill & Music"]) await expect(channels.getByRole("link", { name })).toBeVisible();
     await sendMessage(page, "Mabuhay! **Welcome** sa tambayan :petmalu:");
     await expect(messageItem(page, "Mabuhay!").locator("strong")).toHaveText("Welcome");
-    await expect(messageItem(page, "Mabuhay!")).toContainText("🔥");
+    await expect(messageItem(page, "Mabuhay!").locator('[data-glyph=":petmalu:"]')).toBeVisible(); // drawn as an icon, never an emoji
 
     await channels.getByRole("link", { name: "chika" }).click();
     await expect(page.getByTestId("channel-title")).toHaveText("chika");
@@ -40,7 +40,7 @@ test.describe("servers, channels and real-time chat", () => {
     await sendMessage(friend.page, "Salamat sa invite!");
     await expect(messageItem(page, "Salamat sa invite!")).toBeVisible();
     await messageAction(page, "Salamat sa invite!", "Add reaction");
-    await page.getByRole("dialog", { name: "Emoji picker" }).getByRole("button", { name: "Lodi" }).click();
+    await page.getByRole("dialog", { name: "Icon picker" }).getByRole("button", { name: "Lodi" }).click();
     await expect(messageItem(friend.page, "Salamat sa invite!").getByRole("button", { name: "Lodi: 1 reaction" })).toBeVisible();
 
     // Edit, pin and delete.

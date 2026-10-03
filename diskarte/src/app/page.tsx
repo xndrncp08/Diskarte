@@ -1,13 +1,15 @@
 import Link from "next/link";
-import { Code2, Gamepad2, Headphones, MessagesSquare, MonitorUp, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { Code2, Gamepad2, Headphones, MessagesSquare, MonitorUp, ShieldCheck, Sparkles, Users, Volume2 } from "lucide-react";
 import { DiskarteLogo } from "@/components/brand/DiskarteLogo";
 import { GithubMark } from "@/components/icons/BrandIcons";
 import { DiskarteWordmark } from "@/components/brand/DiskarteWordmark";
 import { PixelStatus } from "@/components/retro/PixelStatus";
 import { SignalBars } from "@/components/retro/SignalBars";
+import { Glyph } from "@/components/ui/Glyph";
+import { ScrollReveal } from "@/components/motion/ScrollReveal";
 
 const FEATURES = [
-  { icon: MessagesSquare, title: "Real-time chat", body: "Instant messages with Markdown, code blocks, pins, edits at Pinoy reactions." },
+  { icon: MessagesSquare, title: "Real-time chat", body: "Instant messages with Markdown, code blocks, pins, edits and Pinoy reactions." },
   { icon: Headphones, title: "Lag-free voice", body: "LiveKit WebRTC rooms with noise suppression, active speaker glow at call HUD." },
   { icon: MonitorUp, title: "Screen share & video", body: "Share your ranked game or your thesis slides — an adaptive grid for the whole crew." },
   { icon: Users, title: "Community servers", body: "Invite codes, categorized channels, and Admin / Moderator / Member roles." },
@@ -94,7 +96,7 @@ export default function LandingPage() {
                   </p>
                 ))}
                 <p className="mb-1 mt-3 font-silk text-[10px] uppercase text-slate-500">Voice Channels</p>
-                <p className="px-2 py-1 text-sm text-slate-400">🔊 Tambayan 1</p>
+                <p className="flex items-center gap-1.5 px-2 py-1 text-sm text-slate-400"><Volume2 className="size-4" aria-hidden /> Tambayan 1</p>
                 <div className="ml-5 flex items-center gap-1.5 text-xs text-slate-300">
                   <PixelStatus status="online" size={10} /> Juan
                 </div>
@@ -104,13 +106,13 @@ export default function LandingPage() {
                   <p className="text-xs font-semibold text-sun">
                     Maria <span className="font-normal text-slate-500">ngayon</span>
                   </p>
-                  <p className="text-sm text-slate-200">Tara ranked mamaya? 🎮</p>
+                  <p className="text-sm text-slate-200">Tara ranked mamaya? <Glyph code=":game:" /></p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-sky-300">
                     Juan <span className="font-normal text-slate-500">ngayon</span>
                   </p>
-                  <p className="text-sm text-slate-200">G! Nagluto lang ng Canton 🍜</p>
+                  <p className="text-sm text-slate-200">G! Nagluto lang ng Canton <Glyph code=":canton:" /></p>
                 </div>
                 <div className="flex items-center justify-between rounded-lg bg-black/40 px-3 py-2 text-xs text-slate-500">
                   Message #general <SignalBars level={4} />
@@ -121,18 +123,20 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="relative z-10 mx-auto max-w-6xl px-5 pb-24">
-        <h2 className="mb-8 font-pixel text-sm leading-relaxed text-sun sm:text-base">▶ LEVEL SELECT</h2>
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map(({ icon: Icon, title, body }) => (
-            <li key={title} className="glass rounded-2xl p-5 transition-colors hover:border-sun/30">
-              <Icon className="mb-3 size-6 text-sun" aria-hidden />
-              <h3 className="font-bold text-white">{title}</h3>
-              <p className="mt-1 text-sm text-slate-400">{body}</p>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <ScrollReveal className="relative z-10 mx-auto max-w-6xl px-5 pb-24">
+        <section>
+          <h2 className="mb-8 font-pixel text-sm leading-relaxed text-sun sm:text-base">LEVEL SELECT</h2>
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {FEATURES.map(({ icon: Icon, title, body }) => (
+              <li key={title} data-scroll-reveal className="glass rounded-2xl p-5 transition-colors hover:border-sun/30">
+                <Icon className="mb-3 size-6 text-sun" aria-hidden />
+                <h3 className="font-bold text-white">{title}</h3>
+                <p className="mt-1 text-sm text-slate-400">{body}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </ScrollReveal>
 
       <footer className="relative z-10 border-t border-white/5 py-8 text-center text-xs text-slate-500">
         <p>

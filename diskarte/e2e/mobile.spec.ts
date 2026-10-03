@@ -1,5 +1,5 @@
 import { devices, expect, test, type Locator, type Page } from "@playwright/test";
-import { createServer, FULL, FULL_REASON, makeUser, signUpAndOnboard } from "./helpers";
+import { createServer, FULL, FULL_REASON, makeUser, signUpAndOnboard, settleEntrance } from "./helpers";
 
 test.use({ ...devices["Pixel 7"], permissions: ["microphone", "camera"] });
 
@@ -43,6 +43,7 @@ test.describe("mobile — public pages", () => {
   for (const path of ["/login", "/signup"]) {
     test(`${path}: every control is a 44px touch target and nothing overflows`, async ({ page }) => {
       await page.goto(path);
+      await settleEntrance(page);
       await expectAllTouchTargets(page, page.locator("main"));
       await expectFitsViewport(page);
     });
@@ -72,7 +73,7 @@ test.describe("mobile — app shell", () => {
     // The composer sits fully inside the dynamic viewport (100dvh), not under the URL bar.
     const composer = await page.getByTestId("composer").boundingBox();
     expect(composer!.y + composer!.height).toBeLessThanOrEqual(viewport.height);
-    for (const name of ["Attach files", "Insert emoji", "Open navigation", "Pinned messages"]) {
+    for (const name of ["Attach files", "Insert icon", "Open navigation", "Pinned messages"]) {
       await expectTouchTarget(page.locator(`button[aria-label="${name}"]:visible`).first());
     }
 

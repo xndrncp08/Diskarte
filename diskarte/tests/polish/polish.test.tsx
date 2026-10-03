@@ -256,7 +256,7 @@ describe("mobile interactions", () => {
     render(<DiskarteLayout history={{ [GENERAL.id]: [messageFixture("m1", GENERAL.id, MOD_ID, "Hi")] }} />);
     const small = [
       screen.getByRole("button", { name: "Attach files" }),
-      screen.getByRole("button", { name: "Insert emoji" }),
+      screen.getByRole("button", { name: "Insert icon" }),
       screen.getByRole("button", { name: "Send message" }),
       screen.getByRole("button", { name: "Pinned messages" }),
       screen.getByRole("button", { name: "Sound settings" }),

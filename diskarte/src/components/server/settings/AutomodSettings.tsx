@@ -33,7 +33,7 @@ export function AutomodSettings() {
         return;
       }
       setError(undefined);
-      toast.success("Bantay-Bayan settings saved. 🛡️");
+      toast.success("Bantay-Bayan settings saved.");
     });
   }
 
