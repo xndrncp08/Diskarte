@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { signInAction, type AuthFormState } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/Button";
 import { InputField } from "@/components/ui/Field";
+import { markEntering } from "@/components/motion/useShellEntrance";
 
 export function LoginForm({ next, initialError, initialEmail }: { next: string; initialError?: string | null; initialEmail?: string | null }) {
   const [state, action, pending] = useActionState<AuthFormState, FormData>(signInAction, {
@@ -13,7 +14,7 @@ export function LoginForm({ next, initialError, initialEmail }: { next: string; 
   });
 
   return (
-    <form action={action} className="space-y-4" noValidate>
+    <form action={action} onSubmit={markEntering} className="space-y-4" noValidate>
       <input type="hidden" name="next" value={next} />
       <InputField
         label="Email"

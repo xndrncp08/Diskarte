@@ -382,3 +382,16 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* Sign-in entrance: stages stay hidden until the GSAP timeline takes them over. If scripts never run,
+   a failsafe reveals them after 2.5s so the form is always reachable. */
+[data-entrance="pending"] [data-reveal] {
+  visibility: hidden;
+  animation: entrance-failsafe 0s 2.5s forwards;
+}
+
+@keyframes entrance-failsafe {
+  to {
+    visibility: visible;
+  }
+}

@@ -6,9 +6,10 @@ import { DiskarteWordmark } from "@/components/brand/DiskarteWordmark";
 import { PixelStatus } from "@/components/retro/PixelStatus";
 import { SignalBars } from "@/components/retro/SignalBars";
 import { Glyph } from "@/components/ui/Glyph";
+import { ScrollReveal } from "@/components/motion/ScrollReveal";
 
 const FEATURES = [
-  { icon: MessagesSquare, title: "Real-time chat", body: "Instant messages with Markdown, code blocks, pins, edits at Pinoy reactions." },
+  { icon: MessagesSquare, title: "Real-time chat", body: "Instant messages with Markdown, code blocks, pins, edits and Pinoy reactions." },
   { icon: Headphones, title: "Lag-free voice", body: "LiveKit WebRTC rooms with noise suppression, active speaker glow at call HUD." },
   { icon: MonitorUp, title: "Screen share & video", body: "Share your ranked game or your thesis slides — an adaptive grid for the whole crew." },
   { icon: Users, title: "Community servers", body: "Invite codes, categorized channels, and Admin / Moderator / Member roles." },
@@ -122,18 +123,20 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="relative z-10 mx-auto max-w-6xl px-5 pb-24">
-        <h2 className="mb-8 font-pixel text-sm leading-relaxed text-sun sm:text-base">LEVEL SELECT</h2>
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map(({ icon: Icon, title, body }) => (
-            <li key={title} className="glass rounded-2xl p-5 transition-colors hover:border-sun/30">
-              <Icon className="mb-3 size-6 text-sun" aria-hidden />
-              <h3 className="font-bold text-white">{title}</h3>
-              <p className="mt-1 text-sm text-slate-400">{body}</p>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <ScrollReveal className="relative z-10 mx-auto max-w-6xl px-5 pb-24">
+        <section>
+          <h2 className="mb-8 font-pixel text-sm leading-relaxed text-sun sm:text-base">LEVEL SELECT</h2>
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {FEATURES.map(({ icon: Icon, title, body }) => (
+              <li key={title} data-scroll-reveal className="glass rounded-2xl p-5 transition-colors hover:border-sun/30">
+                <Icon className="mb-3 size-6 text-sun" aria-hidden />
+                <h3 className="font-bold text-white">{title}</h3>
+                <p className="mt-1 text-sm text-slate-400">{body}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </ScrollReveal>
 
       <footer className="relative z-10 border-t border-white/5 py-8 text-center text-xs text-slate-500">
         <p>

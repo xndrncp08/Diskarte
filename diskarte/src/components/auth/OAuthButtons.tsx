@@ -12,7 +12,7 @@ export function OAuthButtons({ providers, next }: { providers: OAuthProvider[]; 
   if (providers.length === 0) return null;
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-3 text-xs text-slate-500">
+      <div className="flex items-center gap-3 text-xs text-slate-400">
         <span className="h-px flex-1 bg-white/10" />
         <span className="font-silk uppercase tracking-wider">or</span>
         <span className="h-px flex-1 bg-white/10" />
