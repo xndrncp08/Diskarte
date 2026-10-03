@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
-import { ChevronDown, Hash, HeadphoneOff, Heart, LogOut, MicOff, Pencil, Plus, Radio, Settings, ShieldCheck, UserPlus, Video, Volume2 } from "lucide-react";
+import { BadgeCheck, ChevronDown, Hash, HeadphoneOff, Heart, LogOut, MicOff, Pencil, Plus, Radio, Settings, ShieldCheck, UserPlus, Video, Volume2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { leaveServerAction } from "@/actions/servers";
@@ -116,7 +116,8 @@ export function ChannelSidebar() {
       <Menu
         label="Server menu"
         items={[
-          { label: "Invite people", icon: <UserPlus className="size-4" aria-hidden />, onSelect: () => setDialog({ kind: "invite" }) },
+          // Everyone is already in Diskarte HQ.
+          { label: "Invite people", icon: <UserPlus className="size-4" aria-hidden />, onSelect: () => setDialog({ kind: "invite" }), hidden: server.is_system },
           {
             label: "Server settings",
             icon: <Settings className="size-4" aria-hidden />,
@@ -141,7 +142,8 @@ export function ChannelSidebar() {
             icon: <LogOut className="size-4" aria-hidden />,
             onSelect: () => setDialog({ kind: "leave" }),
             danger: true,
-            hidden: isOwner,
+            // Nobody leaves Diskarte HQ; owners leave by deleting their server.
+            hidden: isOwner || server.is_system,
           },
         ]}
         trigger={({ toggle, open, id }) => (
@@ -156,6 +158,7 @@ export function ChannelSidebar() {
           >
             <span className="flex min-w-0 items-center gap-1.5">
               <span className="truncate">{server.name}</span>
+              {server.is_system && <BadgeCheck className="size-4 shrink-0 fill-sun text-abyss" aria-label="Official server" />}
               {boost > 0 && (
                 <span className="shrink-0 rounded bg-fuchsia-500/20 px-1 font-pixel text-[8px] text-fuchsia-200" title={`Boost level ${boost}`}>
                   🚀{boost}

@@ -40,6 +40,7 @@ export const server: Server = {
   name: "Barkada HQ",
   description: "Tambayan ng tropa",
   icon_url: null,
+  is_system: false,
   owner_id: OWNER_ID,
   invite_code: "ABCDEFGH23",
   automod_enabled: true,
@@ -53,7 +54,7 @@ export const server: Server = {
 };
 
 export function makeChannel(id: string, name: string, type: "text" | "voice", position: number, category = type === "text" ? "Text Channels" : "Voice Channels"): Channel {
-  return { id, server_id: SERVER_ID, name, type, category, topic: "", position, slowmode_seconds: 0, requires_verification: false, created_at: "2026-09-01T00:00:00Z" };
+  return { id, server_id: SERVER_ID, name, type, category, topic: "", position, slowmode_seconds: 0, requires_verification: false, read_only: false, created_at: "2026-09-01T00:00:00Z" };
 }
 
 export const channels: Channel[] = [

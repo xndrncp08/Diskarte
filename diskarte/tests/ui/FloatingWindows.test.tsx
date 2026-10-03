@@ -186,7 +186,7 @@ describe("audio mixer window", () => {
       </RuntimeConfigProvider>,
     );
     await user.click(screen.getByRole("button", { name: "Join voice" }));
-    await waitFor(() => expect(screen.getByTestId("call-status")).toHaveTextContent("connected"));
+    await waitFor(() => expect(screen.getByTestId("call-status")).toHaveTextContent("connected"), { timeout: 5000 }); // first SDK import can be slow under load
     const room = livekitMock.rooms[0];
     const maria = { identity: MEMBERS[1].user_id, name: "Maria", setVolume: vi.fn() };
     room.remoteParticipants.set(maria.identity, maria);

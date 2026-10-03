@@ -78,6 +78,7 @@ export async function sendMessageAction(input: z.input<typeof sendSchema>): Prom
     return { ok: false, error: `Slow mode — you can send again in ${retryAfter}s.`, code: "SLOWMODE", retryAfter };
   }
   if (error?.message?.includes("VERIFICATION_REQUIRED")) return { ok: false, error: messageError(error.message), code: "VERIFICATION_REQUIRED" };
+  if (error?.message?.includes("READ_ONLY_CHANNEL")) return { ok: false, error: messageError(error.message), code: "READ_ONLY_CHANNEL" };
   return { ok: false, error: messageError(error?.message) };
 }
 

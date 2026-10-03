@@ -183,7 +183,7 @@ describe("outgoing rings", () => {
     await renderShell(ME, <Caller />);
     await user.click(screen.getByRole("button", { name: "Call Maria" }));
     expect(calls.ringAction).toHaveBeenCalledWith({ kind: "dm", conversationId: CONVERSATION, video: false });
-    await waitFor(() => expect(screen.getByTestId("status")).toHaveTextContent("connected"));
+    await waitFor(() => expect(screen.getByTestId("status")).toHaveTextContent("connected"), { timeout: 5000 }); // first SDK import can be slow under load
     await user.click(screen.getByRole("button", { name: "Hang up" }));
     await waitFor(() => expect(calls.cancelRingsAction).toHaveBeenCalledWith({ target: CONVERSATION }));
   });

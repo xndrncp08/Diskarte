@@ -90,3 +90,8 @@ export function previewText(content: string, max = 120): string {
 export function olderThan(cursor: { created_at: string; id: string }) {
   return `created_at.lt."${cursor.created_at}",and(created_at.eq."${cursor.created_at}",id.lt."${cursor.id}")`;
 }
+
+/** Composer notice in a verification-gated channel. */
+export const VERIFY_NOTICE = "Only verified accounts can chat here. Confirm your email or phone number first.";
+/** Composer notice in a read-only channel (Diskarte HQ's #announcements) for everyone but its admins. */
+export const READ_ONLY_NOTICE = "Only creators can post in this channel.";

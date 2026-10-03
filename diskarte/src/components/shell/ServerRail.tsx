@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Plus } from "lucide-react";
+import { BadgeCheck, Plus } from "lucide-react";
 import { useState } from "react";
 import { DiskarteLogo } from "@/components/brand/DiskarteLogo";
 import { useOptionalSocial } from "@/components/providers/SocialProvider";
@@ -30,6 +30,9 @@ export function ServerRail({ servers }: { servers: Server[] }) {
   const activeId = params.serverId;
   const [adding, setAdding] = useState(false);
   const attention = useOptionalSocial()?.attention ?? 0;
+  // Diskarte HQ, the global server everyone belongs to, is pinned first with a gold ring.
+  const hq = servers.find((s) => s.is_system);
+  const others = servers.filter((s) => !s.is_system);
 
   return (
     <nav
@@ -51,8 +54,19 @@ export function ServerRail({ servers }: { servers: Server[] }) {
         </Link>
       </Tooltip>
       <div className="mx-auto h-0.5 w-8 rounded bg-white/10" />
+      {hq && (
+        <Tooltip label={`${hq.name} · Official`}>
+          <Link href={`/tambayan/${hq.id}`} aria-label={`${hq.name} (official)`} aria-current={activeId === hq.id ? "page" : undefined} className="group relative flex" data-testid="pinned-server">
+            <Pill active={activeId === hq.id} />
+            <span className="rounded-[50%] ring-2 ring-sun ring-offset-2 ring-offset-[#0b1020] transition-[border-radius] group-hover:rounded-2xl">
+              <ServerIcon server={hq} active={activeId === hq.id} />
+            </span>
+            <BadgeCheck className="absolute -bottom-1 -right-1 size-5 rounded-full bg-abyss fill-sun text-abyss" aria-hidden />
+          </Link>
+        </Tooltip>
+      )}
       <ul className="flex flex-col items-center gap-2" data-testid="server-list">
-        {servers.map((server) => (
+        {others.map((server) => (
           <li key={server.id}>
             <Tooltip label={server.name}>
               <Link href={`/tambayan/${server.id}`} aria-label={server.name} aria-current={activeId === server.id ? "page" : undefined} className="group relative flex">

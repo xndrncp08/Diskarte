@@ -11,8 +11,20 @@ function colorFor(id: string) {
   return PALETTE[Math.abs(hash) % PALETTE.length];
 }
 
-export function ServerIcon({ server, size = 48, active = false, className }: { server: { id: string; name: string; icon_url: string | null }; size?: number; active?: boolean; className?: string }) {
-  const bg = colorFor(server.id);
+export function ServerIcon({
+  server,
+  size = 48,
+  active = false,
+  className,
+}: {
+  server: { id: string; name: string; icon_url: string | null; is_system?: boolean };
+  size?: number;
+  active?: boolean;
+  className?: string;
+}) {
+  // Diskarte HQ gets its own 8-bit "HQ" mark (the mascot is already the Home button) unless an admin uploads an icon.
+  const official = server.is_system && !server.icon_url;
+  const bg = official ? "#0F172A" : colorFor(server.id);
   const dark = bg === "#FFB800";
   return (
     <span
@@ -26,6 +38,10 @@ export function ServerIcon({ server, size = 48, active = false, className }: { s
     >
       {server.icon_url ? (
         <SmartImage src={server.icon_url} alt="" width={size} height={size} className="size-full object-cover" />
+      ) : official ? (
+        <span className="font-pixel text-sun" style={{ fontSize: size * 0.24 }}>
+          HQ
+        </span>
       ) : (
         serverInitials(server.name)
       )}

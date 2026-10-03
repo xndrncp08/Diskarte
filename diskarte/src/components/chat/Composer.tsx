@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Loader2, Paperclip, SendHorizontal, ShieldAlert, Turtle, X } from "lucide-react";
+import { FileText, Loader2, Lock, Paperclip, SendHorizontal, ShieldAlert, Turtle, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent } from "react";
 import { toast } from "sonner";
 import { useMe } from "@/components/providers/MeProvider";
@@ -50,6 +50,7 @@ export function Composer({
   cooldownUntil,
   slowmodeSeconds = 0,
   locked,
+  lockKind = "verification",
 }: {
   channelName: string;
   /** Attachments upload under this server/channel; omit it (DMs) to hide the attach button. */
@@ -69,6 +70,8 @@ export function Composer({
   slowmodeSeconds?: number;
   /** Replaces the input with a notice (e.g. verification required). */
   locked?: string | null;
+  /** "read-only": a creators-only channel (lock icon); "verification": confirm your account first. */
+  lockKind?: "read-only" | "verification";
 }) {
   const supabase = useSupabase();
   const { me } = useMe();
@@ -196,8 +199,8 @@ export function Composer({
   if (locked) {
     return (
       <div className="px-4 pb-safe">
-        <p className="glass mb-6 flex items-center gap-3 rounded-xl px-4 py-3 text-sm text-slate-300" role="status" data-testid="composer-locked">
-          <ShieldAlert className="size-5 shrink-0 text-sun" aria-hidden />
+        <p className="glass mb-6 flex items-center gap-3 rounded-xl px-4 py-3 text-sm text-slate-300" role="status" data-testid="composer-locked" data-lock={lockKind}>
+          {lockKind === "read-only" ? <Lock className="size-5 shrink-0 text-sun" aria-hidden /> : <ShieldAlert className="size-5 shrink-0 text-sun" aria-hidden />}
           {locked}
         </p>
       </div>
