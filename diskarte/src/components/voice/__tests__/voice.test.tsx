@@ -55,6 +55,68 @@ beforeEach(() => {
   );
 });
 
+describe("switching and leaving voice channels", () => {
+  const other = { ...target, channelId: "20000000-0000-4000-8000-000000000004", channelName: "Chill & Music" };
+  afterEach(() => vi.useRealTimers());
+
+  it("disconnects the old room before connecting the new one, and moves my voice presence", async () => {
+    const { result } = renderHook(() => useCall(), { wrapper });
+    await act(async () => {
+      await result.current.join(target);
+    });
+    await act(async () => {
+      await result.current.join(other);
+    });
+    const [oldRoom, newRoom] = roomInstances;
+    expect(roomInstances).toHaveLength(2);
+    expect(oldRoom.disconnect).toHaveBeenCalledTimes(1);
+    // Clean sequence: the old room is closed before the new one starts connecting.
+    expect(oldRoom.disconnect.mock.invocationCallOrder[0]).toBeLessThan(newRoom.connect.mock.invocationCallOrder[0]);
+    expect(newRoom.disconnect).not.toHaveBeenCalled();
+    expect(result.current).toMatchObject({ status: "connected", target: other });
+
+    // Watchers see me leave the old channel before I appear in the new one.
+    const calls = setVoice.mock.calls.map(([v]) => (v as { channelId?: string } | null)?.channelId ?? null);
+    const inOld = calls.lastIndexOf(target.channelId);
+    const cleared = calls.indexOf(null, inOld);
+    expect(inOld).toBeGreaterThanOrEqual(0);
+    expect(cleared).toBeGreaterThan(inOld);
+    expect(calls.indexOf(other.channelId, cleared)).toBeGreaterThan(cleared);
+  });
+
+  it("drops my voice presence the moment I leave", async () => {
+    const { result } = renderHook(() => useCall(), { wrapper });
+    await act(async () => {
+      await result.current.join(target);
+    });
+    setVoice.mockClear();
+    result.current.leave(); // synchronously — before any re-render or effect
+    expect(setVoice).toHaveBeenCalledWith(null);
+    expect(roomInstances[0].disconnect).toHaveBeenCalledTimes(1);
+    await act(async () => undefined);
+    expect(result.current.status).toBe("idle");
+  });
+
+  it("doesn't let a hung disconnect block switching", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { result } = renderHook(() => useCall(), { wrapper });
+    await act(async () => {
+      await result.current.join(target);
+    });
+    roomInstances[0].disconnect.mockImplementation(() => new Promise<undefined>(() => undefined));
+    let switching!: Promise<void>;
+    act(() => {
+      switching = result.current.join(other);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2600);
+      await switching;
+    });
+    expect(roomInstances[1].connect).toHaveBeenCalled();
+    expect(result.current.status).toBe("connected");
+  });
+});
+
 describe("voice pre-warming", () => {
   const other = { ...target, channelId: "20000000-0000-4000-8000-000000000004", channelName: "Chill & Music" };
   const tokenCalls = () => vi.mocked(fetch).mock.calls.filter(([url]) => url === "/api/livekit/token");

@@ -139,6 +139,8 @@ function requestToken(target: CallTarget): Promise<TokenResponse> {
 }
 
 const MIX_KEY = "diskarte:audio-mix";
+/** Don't let a hung disconnect block joining the next room. */
+const DISCONNECT_TIMEOUT_MS = 2500;
 /** Re-announce "still talking" well inside the observers' SPEAKING_TTL_MS. */
 const SPEAKING_HEARTBEAT_MS = 2000;
 const clampVolume = (v: number) => (Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1);
@@ -221,21 +223,31 @@ export function CallProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...IDLE, noiseSuppression: s.noiseSuppression }));
   }, []);
 
-  const leave = useCallback(() => {
+  /** Disconnects the room; resolves once LiveKit has closed it (or after a short safety timeout). */
+  const disconnect = useCallback(() => {
     const current = roomRef.current;
-    if (!current) return;
+    if (!current) return Promise.resolve();
     leaving.current = true;
     playSfx("leave");
-    void current.disconnect();
+    // Tell everyone watching the server right away that we left the voice channel, instead of waiting
+    // for the next render's presence effect.
+    setVoice(null);
+    const closed = Promise.resolve(current.disconnect()).catch(() => undefined);
     teardown();
-  }, [teardown]);
+    return Promise.race([closed, new Promise<void>((r) => setTimeout(r, DISCONNECT_TIMEOUT_MS))]).then(() => undefined);
+  }, [teardown, setVoice]);
+
+  const leave = useCallback(() => void disconnect(), [disconnect]);
 
   const join = useCallback(
     async (target: CallTarget) => {
       if (roomRef.current && state.target?.channelId === target.channelId) return;
-      if (roomRef.current) leave();
-      leaving.current = false;
+      // Switching rooms: show "connecting" for the new one now, but fully close the old room (and drop
+      // its voice presence) before connecting, so we never sit in two rooms or two rosters at once.
+      const previous = roomRef.current ? disconnect() : null;
       setState((s) => ({ ...s, status: "connecting", target, camera: false, screen: false }));
+      if (previous) await previous;
+      leaving.current = false;
 
       // A token minted on hover saves the round trip; a stale or failed one falls back to a fresh request.
       const cached = warmed.current.get(targetKey(target));
@@ -329,7 +341,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
         setState((s) => ({ ...s, muted: true }));
       }
     },
-    [leave, teardown, state.target?.channelId],
+    [disconnect, teardown, state.target?.channelId],
   );
 
   const prewarm = useCallback((target: CallTarget) => {
