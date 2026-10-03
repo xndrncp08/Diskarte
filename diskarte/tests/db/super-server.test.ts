@@ -9,6 +9,7 @@ const LOUNGE = "d15ca47e-0000-4000-8000-0000000000a2";
 let db: Db;
 let creator: string;
 let juan: string;
+let portalAdmin: string;
 
 async function post(userId: string, channelId: string, content: string) {
   await asUser(db, userId);
@@ -19,8 +20,12 @@ beforeAll(async () => {
   db = await createDb();
   creator = await signUp(db, "creator@diskarte.ph", { username: "creator" });
   await asService(db);
-  await db.query("insert into public.platform_admins (user_id) values ($1)", [creator]);
+  await db.query("insert into public.system_creators (user_id) values ($1)", [creator]);
   juan = await signUp(db, "juan@diskarte.ph", { username: "juan" });
+  // An early-access platform admin who is *not* a creator.
+  portalAdmin = await signUp(db, "portal@diskarte.ph", { username: "portaladmin" });
+  await asService(db);
+  await db.query("insert into public.platform_admins (user_id) values ($1)", [portalAdmin]);
 }, 60_000);
 
 describe("Diskarte HQ (global super server)", () => {
@@ -56,6 +61,7 @@ describe("Diskarte HQ (global super server)", () => {
 
   it("only creators post in #announcements; everyone chats in #global-lounge", async () => {
     expect(await post(juan, ANNOUNCEMENTS, "Pa-shoutout po")).toMatch(/READ_ONLY_CHANNEL/);
+    expect(await post(portalAdmin, ANNOUNCEMENTS, "Portal admins aren't creators")).toMatch(/READ_ONLY_CHANNEL/);
     expect(await post(creator, ANNOUNCEMENTS, "v1.4: floating windows are here!")).toBeNull();
     expect(await post(juan, LOUNGE, "Mabuhay, Diskarte!")).toBeNull();
     await asUser(db, juan);
@@ -75,9 +81,15 @@ describe("Diskarte HQ (global super server)", () => {
     expect(await rows(db, "select 1 from public.servers where id = $1 and owner_id is null", [HQ])).toHaveLength(1);
   });
 
+  it("the creators list is invisible to clients and can't be self-granted", async () => {
+    await asUser(db, juan);
+    expect(await failure(db, "select * from public.system_creators")).toMatch(/permission denied/);
+    expect(await failure(db, "insert into public.system_creators (user_id) values ($1)", [juan])).toMatch(/permission denied/);
+  });
+
   it("revoking a creator demotes them to a regular member", async () => {
     await asService(db);
-    await db.query("delete from public.platform_admins where user_id = $1", [creator]);
+    await db.query("delete from public.system_creators where user_id = $1", [creator]);
     expect(await one(db, "select role from public.members where server_id = $1 and user_id = $2", [HQ, creator])).toEqual({ role: "member" });
     expect(await post(creator, ANNOUNCEMENTS, "one more")).toMatch(/READ_ONLY_CHANNEL/);
   });

@@ -3,7 +3,8 @@
 --
 --   * one system-managed server (is_system, no owner — so nobody can delete or transfer it);
 --   * every new profile joins it automatically, and the existing ones are backfilled;
---   * platform super-admins (public.platform_admins) are its admins — the "creators";
+--   * its admins are the "creators" listed in public.system_creators (seeded with the app owner,
+--     supremo.der) — separate from the early-access platform admins;
 --   * #announcements is read-only: only server admins (here: the creators) can post;
 --   * #global-lounge is open to everyone, behind slow mode, auto-mod and verified accounts;
 --   * nobody can leave it (moderators can still kick or ban).
@@ -157,6 +158,23 @@ insert into public.channels (id, server_id, name, type, category, topic, positio
   ('d15ca47e-0000-4000-8000-0000000000a2', public.system_server_id(), 'global-lounge', 'text', 'Diskarte HQ', 'Chika with everyone on Diskarte. Be kind — slow mode is on.', 1, false, 5, true)
 on conflict (id) do nothing;
 
+/**
+ * The creators: the only people who post in HQ's #announcements (they are HQ's admins). Managed from the
+ * SQL Editor only — clients can neither read nor change it. Adding or removing a row promotes or demotes
+ * that person in HQ.
+ */
+create table public.system_creators (
+  user_id uuid primary key references public.profiles (id) on delete cascade,
+  added_at timestamptz not null default now()
+);
+alter table public.system_creators enable row level security;
+revoke all on public.system_creators from anon, authenticated;
+
+-- The app owner: Der (@supremo.der). Skipped where that account doesn't exist (local, CI).
+insert into public.system_creators (user_id)
+select p.id from public.profiles p where p.id = '7097605b-dbf8-4c88-808b-f60691750564'
+on conflict (user_id) do nothing;
+
 /** Puts every profile in the global server (creators as admins). Idempotent; used for the backfill. */
 create or replace function public.join_everyone_to_system_server()
 returns integer
@@ -169,7 +187,7 @@ declare
 begin
   insert into public.members (server_id, user_id, role)
   select public.system_server_id(), p.id,
-         case when exists (select 1 from public.platform_admins a where a.user_id = p.id) then 'admin'::public.member_role else 'member'::public.member_role end
+         case when exists (select 1 from public.system_creators c where c.user_id = p.id) then 'admin'::public.member_role else 'member'::public.member_role end
   from public.profiles p
   on conflict (server_id, user_id) do nothing;
   get diagnostics added = row_count;
@@ -190,7 +208,7 @@ as $$
 begin
   insert into public.members (server_id, user_id, role)
   select public.system_server_id(), new.id,
-         case when exists (select 1 from public.platform_admins a where a.user_id = new.id) then 'admin'::public.member_role else 'member'::public.member_role end
+         case when exists (select 1 from public.system_creators c where c.user_id = new.id) then 'admin'::public.member_role else 'member'::public.member_role end
   where exists (select 1 from public.servers s where s.id = public.system_server_id())
   on conflict (server_id, user_id) do nothing;
   return new;
@@ -201,8 +219,8 @@ create trigger profiles_join_system_server
   after insert on public.profiles
   for each row execute function public.profiles_join_system_server();
 
-/** Creators: granting or revoking platform super-admin makes someone an HQ admin, or a member again. */
-create or replace function public.platform_admins_sync_system_role()
+/** Adding someone to system_creators makes them an HQ admin; removing them makes them a member again. */
+create or replace function public.system_creators_sync_role()
 returns trigger
 language plpgsql
 security definer
@@ -221,9 +239,9 @@ begin
 end;
 $$;
 
-create trigger platform_admins_sync_system_role
-  after insert or delete on public.platform_admins
-  for each row execute function public.platform_admins_sync_system_role();
+create trigger system_creators_sync_role
+  after insert or delete on public.system_creators
+  for each row execute function public.system_creators_sync_role();
 
 /** Read-only channels (#announcements): only server admins post, reply in threads, or stick stickers. */
 create or replace function public.messages_read_only_guard()
