@@ -5,6 +5,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { flattenPresence, type PresencePayload, type PresenceState } from "@/lib/presence";
+import { removeChannelSafely, whenTopicFree } from "@/lib/realtime";
 
 export interface VoicePresence {
   serverId: string;
@@ -114,27 +115,29 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
         entry = created;
         entries.current.set(serverId, created);
         authReady.current ??= supabase.realtime.setAuth();
-        void authReady.current.then(() => {
-          if (entries.current.get(serverId) !== created || created.refs === 0) return;
-          const channel = supabase.channel(`server:${serverId}`, { config: { private: true, presence: { key: me.id } } });
-          created.channel = channel;
-          channel
-            .on("presence", { event: "sync" }, () => {
-              created.state = flattenPresence(channel.presenceState<PresencePayload>() as unknown as PresenceState);
-              created.listeners.forEach((l) => l());
-            })
-            .on("broadcast", { event: "speaking" }, ({ payload }) => {
-              const event = payload as { user_id?: unknown; speaking?: unknown } | null;
-              if (typeof event?.user_id !== "string" || event.user_id === me.id) return;
-              if (event.speaking === true) created.speakingUntil.set(event.user_id, Date.now() + SPEAKING_TTL_MS);
-              else created.speakingUntil.delete(event.user_id);
-              settleSpeaking();
-            })
-            .subscribe((status) => {
-              created.subscribed = status === "SUBSCRIBED";
-              if (created.subscribed) void channel.track(payloadFor(serverId));
-            });
-        });
+        void authReady.current
+          .then(() => whenTopicFree(`server:${serverId}`))
+          .then(() => {
+            if (entries.current.get(serverId) !== created || created.refs === 0) return;
+            const channel = supabase.channel(`server:${serverId}`, { config: { private: true, presence: { key: me.id } } });
+            created.channel = channel;
+            channel
+              .on("presence", { event: "sync" }, () => {
+                created.state = flattenPresence(channel.presenceState<PresencePayload>() as unknown as PresenceState);
+                created.listeners.forEach((l) => l());
+              })
+              .on("broadcast", { event: "speaking" }, ({ payload }) => {
+                const event = payload as { user_id?: unknown; speaking?: unknown } | null;
+                if (typeof event?.user_id !== "string" || event.user_id === me.id) return;
+                if (event.speaking === true) created.speakingUntil.set(event.user_id, Date.now() + SPEAKING_TTL_MS);
+                else created.speakingUntil.delete(event.user_id);
+                settleSpeaking();
+              })
+              .subscribe((status) => {
+                created.subscribed = status === "SUBSCRIBED";
+                if (created.subscribed) void channel.track(payloadFor(serverId));
+              });
+          });
       }
       entry.refs += 1;
       const held = entry;
@@ -143,7 +146,7 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
         if (held.refs > 0) return;
         entries.current.delete(serverId);
         if (held.speakingTimer) clearTimeout(held.speakingTimer);
-        if (held.channel) void supabase.removeChannel(held.channel);
+        if (held.channel) void removeChannelSafely(supabase, `server:${serverId}`, held.channel);
       };
     },
     [supabase, me.id, payloadFor],
@@ -186,9 +189,9 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const all = entries.current;
     return () => {
-      for (const entry of all.values()) {
+      for (const [serverId, entry] of all) {
         if (entry.speakingTimer) clearTimeout(entry.speakingTimer);
-        if (entry.channel) void supabase.removeChannel(entry.channel);
+        if (entry.channel) void removeChannelSafely(supabase, `server:${serverId}`, entry.channel);
       }
       all.clear();
     };

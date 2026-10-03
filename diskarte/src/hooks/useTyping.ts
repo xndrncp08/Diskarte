@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
+import { removeChannelSafely, whenTopicFree } from "@/lib/realtime";
 
 const TYPING_TTL_MS = 6000;
 const SEND_EVERY_MS = 2500;
@@ -24,28 +25,32 @@ export function useTyping(channelId: string) {
   useEffect(() => {
     let cancelled = false;
     let channel: RealtimeChannel | null = null;
-    void supabase.realtime.setAuth().then(() => {
-      if (cancelled) return;
-      channel = supabase.channel(`channel:${channelId}`, { config: { private: true, broadcast: { self: false } } });
-      channelRef.current = channel;
-      channel
-        .on("broadcast", { event: "typing" }, ({ payload }) => {
-          const event = payload as TypingEvent;
-          if (!event?.user_id || event.user_id === me.id) return;
-          setTyping((prev) => ({ ...prev, [event.user_id]: { name: String(event.name).slice(0, 32), until: Date.now() + TYPING_TTL_MS } }));
-        })
-        .on("broadcast", { event: "stop" }, ({ payload }) => {
-          const id = (payload as TypingEvent)?.user_id;
-          if (!id) return;
-          setTyping((prev) => {
-            if (!prev[id]) return prev;
-            const next = { ...prev };
-            delete next[id];
-            return next;
-          });
-        })
-        .subscribe();
-    });
+    const topic = `channel:${channelId}`;
+    void supabase.realtime
+      .setAuth()
+      .then(() => whenTopicFree(topic))
+      .then(() => {
+        if (cancelled) return;
+        channel = supabase.channel(`channel:${channelId}`, { config: { private: true, broadcast: { self: false } } });
+        channelRef.current = channel;
+        channel
+          .on("broadcast", { event: "typing" }, ({ payload }) => {
+            const event = payload as TypingEvent;
+            if (!event?.user_id || event.user_id === me.id) return;
+            setTyping((prev) => ({ ...prev, [event.user_id]: { name: String(event.name).slice(0, 32), until: Date.now() + TYPING_TTL_MS } }));
+          })
+          .on("broadcast", { event: "stop" }, ({ payload }) => {
+            const id = (payload as TypingEvent)?.user_id;
+            if (!id) return;
+            setTyping((prev) => {
+              if (!prev[id]) return prev;
+              const next = { ...prev };
+              delete next[id];
+              return next;
+            });
+          })
+          .subscribe();
+      });
 
     const sweep = setInterval(() => {
       setTyping((prev) => {
@@ -59,7 +64,7 @@ export function useTyping(channelId: string) {
       cancelled = true;
       clearInterval(sweep);
       channelRef.current = null;
-      if (channel) supabase.removeChannel(channel);
+      if (channel) void removeChannelSafely(supabase, topic, channel);
     };
   }, [supabase, channelId, me.id]);
 
