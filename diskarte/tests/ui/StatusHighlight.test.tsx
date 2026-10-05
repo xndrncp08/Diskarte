@@ -41,7 +41,7 @@ function renderPanel() {
 }
 
 const panel = () => screen.getByTestId("user-panel");
-const badge = () => within(panel()).getByRole("img", { name: /Online|Idle|Do Not Disturb|Invisible|Offline/ });
+const badge = () => within(panel()).getByRole("img", { name: /Online|Idle|Custom|Do Not Disturb|Invisible|Offline/ });
 async function pick(user: ReturnType<typeof userEvent.setup>, item: RegExp) {
   await user.click(within(panel()).getByRole("button", { name: /Set status/ }));
   await user.click(await screen.findByRole("menuitemradio", { name: item }));
@@ -66,10 +66,16 @@ describe("status indicator", () => {
     expect(within(panel()).getByTestId("status-label").querySelector('[data-glyph=":afk:"]')).not.toBeNull();
     expect(profileActions.setStatusAction).toHaveBeenLastCalledWith({ status: "idle", customStatus: "AFK / Tulog", customStatusEmoji: ":afk:" });
 
+    // Busy (DND) outranks the custom tone…
     await pick(user, /Nag-aaral pa boffum/);
     await waitFor(() => expect(badge()).toHaveAttribute("data-status", "dnd"));
+    // …while custom statuses other than AFK / Tulog get their own blue tone, ring included.
+    await pick(user, /Nagluto ng Canton/);
+    await waitFor(() => expect(badge()).toHaveAttribute("data-status", "custom"));
+    expect(panel().querySelector("[data-status-ring]")).toHaveAttribute("data-status-ring", "custom");
     await pick(user, /LFG \/ Pa-carry/);
-    await waitFor(() => expect(badge()).toHaveAttribute("data-status", "online"));
+    await waitFor(() => expect(badge()).toHaveAttribute("data-status", "custom"));
+    expect(profileActions.setStatusAction).toHaveBeenLastCalledWith({ status: "online", customStatus: "LFG / Pa-carry", customStatusEmoji: ":game:" });
   });
 
   it("highlights the active presence and trigger in the status menu", async () => {

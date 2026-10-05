@@ -33,7 +33,7 @@ export function ChannelHeader({ channel, actions }: { channel: Channel; actions?
             onClick={() => setMembersOpen(!membersOpen)}
             aria-pressed={membersOpen}
             aria-label="Toggle member list"
-            className={cn("touch-target relative hidden rounded-md p-1.5 transition-colors hover:bg-white/10 lg:inline-flex", membersOpen ? "text-white" : "text-slate-400")}
+            className={cn("touch-target relative hidden rounded-md p-1.5 transition-colors hover:bg-white/10 md:inline-flex", membersOpen ? "text-white" : "text-slate-400")}
           >
             <Users className="size-5" aria-hidden />
           </button>

@@ -5,17 +5,24 @@ import { PresenceProvider } from "@/components/providers/PresenceProvider";
 import { RuntimeConfigProvider } from "@/components/providers/RuntimeConfig";
 import { useServer } from "@/components/providers/ServerProvider";
 import { ChannelSidebar } from "@/components/server/ChannelSidebar";
-import { DrawerPanel } from "@/components/shell/AppShell";
+import { MemberList } from "@/components/server/MemberList";
+import { ShellUIBridge } from "@/components/shell/AppShell";
 import { ServerRail } from "@/components/shell/ServerRail";
+import { RosterDrawer } from "@/components/workspace/RosterDrawer";
+import { WorkspaceCanvas } from "@/components/workspace/WorkspaceCanvas";
+import { WorkspacePanel } from "@/components/workspace/WorkspacePanel";
+import { WorkspaceProvider } from "@/components/workspace/WorkspaceProvider";
 import { CallProvider } from "@/components/voice/CallProvider";
 import { FloatingCallHUD } from "@/components/voice/FloatingCallHUD";
 import { VoiceChannelView } from "@/components/voice/VoiceChannelView";
 import type { MessageWithAuthor } from "@/lib/messages";
+import { defaultWorkspace } from "@/lib/workspace";
 import { MEMBER_ID, MOD_ID, OWNER_ID, SERVER_ID, ServerFixture, makeChannel, makeMember, presenceFor, server } from "./server";
 
 /**
- * The real shell (server rail, channel sidebar, active view) wired to fixtures, mirroring
- * app/(app)/tambayan/[serverId]/[channelId]/page.tsx. Test files provide the module mocks.
+ * The real shell (command rail, workspace canvas with the channel and main panels, roster drawer)
+ * wired to fixtures, mirroring app/(app)/tambayan/[serverId]/layout.tsx and its channel page. Test
+ * files provide the module mocks.
  */
 export const CHANNELS = [
   makeChannel("20000000-0000-4000-8000-000000000001", "general", "text", 0),
@@ -44,6 +51,9 @@ export const ACCOUNT = { email: "kapitan@diskarte.ph", providers: ["email"] };
 
 export const channelUrl = (id: string) => `/tambayan/${SERVER_ID}/${id}`;
 
+/** A saved layout with the roster open; its timestamp outranks anything earlier tests left in storage. */
+export const ROSTER_OPEN = { ...defaultWorkspace({ x: 0, y: 0, w: 1360, h: 820 }, Number.MAX_SAFE_INTEGER), roster: "open" as const };
+
 function ChannelRoute({ history }: { history: Record<string, MessageWithAuthor[]> }) {
   const { channelId } = useParams<{ channelId?: string }>();
   const { channels } = useServer();
@@ -62,19 +72,30 @@ export function DiskarteLayout({ children, history = {} }: { children?: ReactNod
       <ServerFixture members={MEMBERS} overrides={{ channels: CHANNELS }} presence={new Map([[MOD_ID, presenceFor(MOD_ID, { voice_channel_id: TAMBAYAN.id })]])}>
         <PresenceProvider>
           <CallProvider>
-            <div className="flex h-dvh overflow-hidden" data-testid="shell">
-              <div data-testid="rail-column">
-                <ServerRail servers={[server]} />
-              </div>
-              <DrawerPanel>
-                <ChannelSidebar />
-              </DrawerPanel>
-              <main data-testid="active-view" className="flex min-w-0 flex-1">
-                <ChannelRoute history={history} />
-              </main>
-              <FloatingCallHUD />
-              {children}
-            </div>
+            <WorkspaceProvider remote={ROSTER_OPEN}>
+              <ShellUIBridge>
+                <div className="flex h-dvh overflow-hidden" data-testid="shell">
+                  <div data-testid="rail-column">
+                    <ServerRail servers={[server]} />
+                  </div>
+                  <WorkspaceCanvas>
+                    <WorkspacePanel id="nav" title="Channels">
+                      <ChannelSidebar />
+                    </WorkspacePanel>
+                    <WorkspacePanel id="main" title={server.name}>
+                      <div data-testid="active-view" className="flex min-w-0 flex-1">
+                        <ChannelRoute history={history} />
+                      </div>
+                    </WorkspacePanel>
+                    <RosterDrawer count={MEMBERS.length}>
+                      <MemberList />
+                    </RosterDrawer>
+                  </WorkspaceCanvas>
+                  <FloatingCallHUD />
+                  {children}
+                </div>
+              </ShellUIBridge>
+            </WorkspaceProvider>
           </CallProvider>
         </PresenceProvider>
       </ServerFixture>

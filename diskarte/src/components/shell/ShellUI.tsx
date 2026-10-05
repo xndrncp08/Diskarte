@@ -11,11 +11,17 @@ interface ShellUIValue {
 
 const ShellUIContext = createContext<ShellUIValue | null>(null);
 
-/** Responsive shell toggles: the mobile nav drawer (rail + channels) and the member list. */
-export function ShellUIProvider({ children }: { children: ReactNode }) {
+/**
+ * Responsive shell toggles: the mobile nav drawer (rail + channels) and the member roster. Inside the
+ * app shell the roster's state belongs to the workspace (it's saved with the layout), so the shell
+ * passes it in; standalone renders keep it locally.
+ */
+export function ShellUIProvider({ children, members }: { children: ReactNode; members?: { open: boolean; setOpen: (open: boolean) => void } }) {
   const [navOpen, setNavOpen] = useState(false);
-  const [membersOpen, setMembersOpen] = useState(true);
-  const value = useMemo(() => ({ navOpen, setNavOpen, membersOpen, setMembersOpen }), [navOpen, membersOpen]);
+  const [localMembers, setLocalMembers] = useState(false);
+  const membersOpen = members?.open ?? localMembers;
+  const setMembersOpen = members?.setOpen ?? setLocalMembers;
+  const value = useMemo(() => ({ navOpen, setNavOpen, membersOpen, setMembersOpen }), [navOpen, membersOpen, setMembersOpen]);
   return <ShellUIContext.Provider value={value}>{children}</ShellUIContext.Provider>;
 }
 

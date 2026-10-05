@@ -1,5 +1,5 @@
 import { PixelStatus } from "@/components/retro/PixelStatus";
-import type { PresenceStatus } from "@/lib/supabase/database.types";
+import type { StatusTone } from "@/lib/presence";
 import { cn } from "@/lib/utils";
 import { SmartImage } from "@/components/ui/SmartImage";
 import { SalakotAvatar } from "./SalakotAvatar";
@@ -20,7 +20,7 @@ export function UserAvatar({
 }: {
   profile: AvatarProfile;
   size?: number;
-  status?: PresenceStatus | "offline";
+  status?: StatusTone;
   speaking?: boolean;
   className?: string;
   ring?: string;

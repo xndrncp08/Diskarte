@@ -15,7 +15,7 @@ export function markEntering() {
 }
 
 /**
- * The dock and the floating cards rise in, staggered, the first time the shell mounts after sign-in.
+ * The command rail and the workspace panels come in, staggered, the first time the shell mounts after sign-in.
  * It mounts through a client-side navigation, so this runs before the first paint (no flash).
  */
 export function useShellEntrance(scope: RefObject<HTMLElement | null>) {
@@ -29,8 +29,11 @@ export function useShellEntrance(scope: RefObject<HTMLElement | null>) {
         return;
       }
       if (!entering || prefersReducedMotion()) return;
-      const cards = gsap.utils.toArray<HTMLElement>("[data-testid='micro-dock'], #main-content > *", scope.current);
-      gsap.from(cards, { autoAlpha: 0, y: 24, scale: 0.97, duration: 0.6, ease: "power4.out", stagger: 0.07, clearProps: "opacity,visibility,transform" });
+      // The rail rises in; panels only fade (their position is a CSS transform GSAP must not overwrite).
+      const rail = gsap.utils.toArray<HTMLElement>("[data-testid='micro-dock']", scope.current);
+      const panels = gsap.utils.toArray<HTMLElement>("[data-panel]:not([data-minimized])", scope.current);
+      gsap.from(rail, { autoAlpha: 0, y: 24, duration: 0.6, ease: "power4.out", clearProps: "opacity,visibility,transform" });
+      gsap.from(panels, { autoAlpha: 0, duration: 0.6, ease: "power2.out", stagger: 0.08, delay: 0.1, clearProps: "opacity,visibility" });
     },
     { scope },
   );

@@ -16,6 +16,7 @@ import { Menu } from "@/components/ui/Menu";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { PRESENCE_OPTIONS, STATUS_TRIGGERS } from "@/lib/profile";
 import type { PresenceStatus } from "@/lib/supabase/database.types";
+import { statusTone } from "@/lib/presence";
 import { cn } from "@/lib/utils";
 
 /** Bottom-left identity panel with the quick status switcher; `controls` slot hosts voice buttons. */
@@ -43,7 +44,7 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
   }
 
   // What everyone sees: the badge, ring and label all derive from this one value.
-  const shown: PresenceStatus | "offline" = me.status === "invisible" ? "offline" : me.status;
+  const shown = statusTone(me.status === "invisible" ? "offline" : me.status, me.custom_status);
   const label = me.custom_status ?? STATUS_LABELS[me.status];
 
   const items = [

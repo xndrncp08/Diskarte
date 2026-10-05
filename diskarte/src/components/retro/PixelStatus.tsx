@@ -1,26 +1,29 @@
-import type { PresenceStatus } from "@/lib/supabase/database.types";
+import type { StatusTone } from "@/lib/presence";
 import { cn } from "@/lib/utils";
 
-const COLORS: Record<PresenceStatus | "offline", string> = {
+const COLORS: Record<StatusTone, string> = {
   online: "#10B981",
   idle: "#F59E0B",
+  custom: "#3B82F6",
   dnd: "#EF4444",
   invisible: "#64748B",
   offline: "#64748B",
 };
 
 /** Highlight ring around an avatar, matching its status colour. */
-export const STATUS_RING: Record<PresenceStatus | "offline", string> = {
+export const STATUS_RING: Record<StatusTone, string> = {
   online: "ring-signal-green/80",
   idle: "ring-signal-idle/80",
+  custom: "ring-signal-custom/80",
   dnd: "ring-signal-dnd/80",
   invisible: "ring-slate-500/70",
   offline: "ring-slate-500/70",
 };
 
-export const STATUS_LABELS: Record<PresenceStatus | "offline", string> = {
+export const STATUS_LABELS: Record<StatusTone, string> = {
   online: "Online",
   idle: "Idle",
+  custom: "Custom",
   dnd: "Do Not Disturb",
   invisible: "Invisible",
   offline: "Offline",
@@ -28,7 +31,8 @@ export const STATUS_LABELS: Record<PresenceStatus | "offline", string> = {
 
 /**
  * 8-bit presence indicator: a chunky pixel "plus" drawn on a 5×5 grid with crisp edges.
- * Idle shows a moon notch, DND a bar, offline a hollow ring — same silhouettes as Discord, pixelated.
+ * Idle shows a moon notch, DND a bar, offline a hollow ring, a custom status two "speech" dots — so
+ * the tones differ in shape as well as colour.
  */
 export function PixelStatus({
   status,
@@ -36,7 +40,7 @@ export function PixelStatus({
   className,
   ring = "#020617",
 }: {
-  status: PresenceStatus | "offline";
+  status: StatusTone;
   size?: number;
   className?: string;
   ring?: string;
@@ -62,6 +66,7 @@ export function PixelStatus({
       {status === "idle" && <path d="M2 1h2v1h-1v1h-2v-1h1z" fill={ring} />}
       {status === "dnd" && <rect x="2" y="3" width="3" height="1" fill={ring} />}
       {status === "online" && <rect x="2" y="2" width="1" height="1" fill="#86EFAC" />}
+      {status === "custom" && <path d="M2 3h1v1h-1zM4 3h1v1h-1z" fill={ring} />}
     </svg>
   );
 }
