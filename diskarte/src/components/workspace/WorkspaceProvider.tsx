@@ -11,10 +11,12 @@ import {
   raisePanel,
   reflowPanels,
   toFraction,
+  visibleRectsOf,
   type PanelId,
   type PanelState,
   type Preset,
   type Rect,
+  type Rects,
   type RosterMode,
   type WorkspaceState,
 } from "@/lib/workspace";
@@ -40,6 +42,10 @@ export interface WorkspaceStore {
   subscribeMounted: (l: Listener) => () => void;
 
   commitRect: (id: PanelId, px: Rect) => void;
+  /** Several panels at once (a coupled resize): one change, one save. */
+  commitRects: (px: Rects) => void;
+  /** Pixel rectangles of the panels currently on the canvas (mounted, not minimized or closed). */
+  visibleRects: () => Rects;
   raise: (id: PanelId) => void;
   setMinimized: (id: PanelId, minimized: boolean) => void;
   setClosed: (id: PanelId, closed: boolean) => void;
@@ -109,6 +115,17 @@ export function createWorkspaceStore(initial: WorkspaceState, onChange?: (s: Wor
       // Moving or resizing by hand turns the active preset into a custom layout.
       patchPanel(id, { rect: toFraction(px, bounds) }, { clearPreset: true });
     },
+    commitRects: (px) => {
+      if (!bounds) return;
+      const b = bounds;
+      const panels = { ...state.panels };
+      for (const id of PANEL_IDS) {
+        const r = px[id];
+        if (r) panels[id] = { ...panels[id], rect: toFraction(r, b) };
+      }
+      set({ ...state, panels, preset: null, t: Date.now() });
+    },
+    visibleRects: () => (bounds ? visibleRectsOf(state.panels, bounds, mounted) : {}),
     raise: (id) => set(raisePanel(state, id), false),
     setMinimized: (id, minimized) => {
       const current = state.panels[id];

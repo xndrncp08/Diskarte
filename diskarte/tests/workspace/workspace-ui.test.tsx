@@ -184,6 +184,103 @@ describe("floating workspace canvas", () => {
   });
 });
 
+describe("coupled resizing", () => {
+  const num = (v: string) => parseInt(v, 10);
+  const seamGap = () => num(geometry("main").x) - (num(geometry("nav").x) + num(geometry("nav").w));
+
+  it("dragging a shared edge resizes the docked neighbour by the same amount — no gap, no overlap", async () => {
+    await ready();
+    const mainRight = num(geometry("main").x) + num(geometry("main").w);
+    drag(handle("nav", "e"), [320, 400], [400, 400]);
+    await waitFor(() => expect(geometry("nav").w).toBe("400px"));
+    expect(geometry("main")).toMatchObject({ x: "412px", w: "788px" });
+    expect(num(geometry("main").x) + num(geometry("main").w)).toBe(mainRight);
+    expect(seamGap()).toBe(12);
+    // Shrinking gives the neighbour exactly the space back.
+    drag(handle("main", "w"), [412, 400], [372, 400]);
+    await waitFor(() => expect(geometry("nav").w).toBe("360px"));
+    expect(geometry("main")).toMatchObject({ x: "372px", w: "828px" });
+  });
+
+  it("stops at the neighbour's 320 px minimum against the canvas edge", async () => {
+    await ready();
+    drag(handle("nav", "e"), [320, 400], [5000, 400]);
+    await waitFor(() => expect(geometry("main").w).toBe("320px"));
+    expect(geometry("main").x).toBe(`${CANVAS.w - 320}px`);
+    expect(geometry("nav").w).toBe(`${CANVAS.w - 320 - 12}px`);
+  });
+
+  it("the seam between docked panels is a keyboard-operable splitter that moves both", async () => {
+    const user = userEvent.setup();
+    await ready();
+    const seam = screen.getByRole("separator", { name: "Resize Channels and Barkada HQ" });
+    expect(seam).toHaveAttribute("aria-orientation", "vertical");
+    expect(seam).toHaveAttribute("aria-valuenow", "320");
+    expect(seam).toHaveAttribute("aria-valuemin", "320");
+    expect(seam).toHaveAttribute("aria-valuemax", `${CANVAS.w - 320 - 12}`);
+    seam.focus();
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() => expect(seam).toHaveAttribute("aria-valuenow", "336"));
+    expect(geometry("main")).toMatchObject({ x: "348px", w: "852px" });
+    await user.keyboard("{Shift>}{ArrowLeft}{/Shift}");
+    await waitFor(() => expect(geometry("nav").w).toBe("320px")); // can't go below the minimum
+    expect(geometry("main").x).toBe("332px");
+  });
+
+  it("dragging the seam resizes both panels, without re-rendering what's inside them", async () => {
+    await ready();
+    const before = { ...renders };
+    const seam = screen.getByRole("separator", { name: "Resize Channels and Barkada HQ" });
+    fireEvent.pointerDown(seam, { clientX: 326, clientY: 400, button: 0, pointerId: 7 });
+    fireEvent.pointerMove(seam, { clientX: 426, clientY: 400, pointerId: 7 });
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    // Mid-drag: painted straight to the panels' CSS variables, nothing committed or re-rendered yet.
+    expect(geometry("nav").w).toBe("420px");
+    expect(geometry("main").x).toBe("432px");
+    expect(panelEl("main")).toHaveAttribute("data-coupled");
+    expect(renders).toEqual(before);
+    expect(localStorage.getItem("diskarte:workspace:v1")).toBeNull();
+    fireEvent.pointerUp(seam, { clientX: 426, clientY: 400, pointerId: 7 });
+    await waitFor(() => expect(JSON.parse(localStorage.getItem("diskarte:workspace:v1")!).panels.nav.rect.w).toBeCloseTo(420 / 1200, 3));
+    expect(panelEl("main")).not.toHaveAttribute("data-coupled");
+    expect(renders).toEqual(before);
+  });
+
+  it("holding Alt / Option detaches: only the grabbed panel resizes", async () => {
+    await ready();
+    const main = geometry("main");
+    fireEvent.pointerDown(handle("nav", "e"), { clientX: 320, clientY: 400, button: 0, pointerId: 3, altKey: true });
+    fireEvent.pointerMove(handle("nav", "e"), { clientX: 380, clientY: 400, pointerId: 3, altKey: true });
+    fireEvent.pointerUp(handle("nav", "e"), { clientX: 380, clientY: 400, pointerId: 3, altKey: true });
+    await waitFor(() => expect(geometry("nav").w).toBe("380px"));
+    expect(geometry("main")).toMatchObject({ x: main.x, w: main.w });
+  });
+
+  it("the keyboard Resize button carries docked neighbours too", async () => {
+    const user = userEvent.setup();
+    await ready();
+    await user.click(screen.getByRole("button", { name: "Resize Channels panel" }));
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() => expect(geometry("nav").w).toBe("336px"));
+    expect(geometry("main")).toMatchObject({ x: "348px", w: "852px" });
+  });
+
+  it("dragging a panel away by its header breaks the coupling", async () => {
+    await ready();
+    expect(screen.getByRole("separator", { name: "Resize Channels and Barkada HQ" })).toBeInTheDocument();
+    // Moves are never coupled: the main panel stays put while the navigator leaves the seam.
+    const main = geometry("main");
+    drag(bar("nav"), [100, 10], [200, 10]);
+    await waitFor(() => expect(geometry("nav").x).toBe("104px"));
+    expect(geometry("main")).toMatchObject({ x: main.x, w: main.w });
+    expect(screen.queryByRole("separator", { name: "Resize Channels and Barkada HQ" })).toBeNull();
+    // …and resizing it no longer drags the old neighbour along.
+    drag(handle("nav", "w"), [104, 400], [64, 400]);
+    await waitFor(() => expect(geometry("nav")).toMatchObject({ x: "64px", w: "360px" }));
+    expect(geometry("main")).toMatchObject({ x: main.x, w: main.w });
+  });
+});
+
 describe("workspace presets on the command rail", () => {
   it("Minimal dock tucks every panel into the tray; Focus centres the active view; Multitask tiles and docks the roster", async () => {
     const user = userEvent.setup();
