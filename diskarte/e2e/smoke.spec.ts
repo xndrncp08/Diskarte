@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { settleEntrance } from "./helpers";
 
 test.describe("smoke (no backend required)", () => {
   test("landing page shows the brand and calls to action", async ({ page }) => {
@@ -6,6 +7,28 @@ test.describe("smoke (no backend required)", () => {
     await expect(page.getByRole("img", { name: "Diskarte" }).first()).toBeVisible();
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Walang Shutdown-Shutdown");
     await expect(page.getByRole("link", { name: /Create an account/ })).toHaveAttribute("href", "/signup");
+  });
+
+  test("the 3D hero stays decorative: hidden from assistive tech, never in the way of a click", async ({ page }) => {
+    await page.goto("/");
+    await settleEntrance(page);
+    const layer = page.locator("[data-scene]").first();
+    await expect(layer).toHaveAttribute("aria-hidden", "true");
+    expect(await layer.evaluate((el) => getComputedStyle(el).pointerEvents)).toBe("none");
+    await page.getByRole("link", { name: /Create an account/ }).click();
+    await expect(page).toHaveURL(/\/signup$/);
+  });
+
+  test("reduced motion gets the static sun and never downloads the WebGL scene", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const scripts: string[] = [];
+    page.on("response", (res) => res.request().resourceType() === "script" && scripts.push(res.url()));
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+    await expect(page.locator("[data-scene]").first()).toHaveAttribute("data-scene", "static");
+    await expect(page.locator("canvas")).toHaveCount(0);
+    const bodies = await Promise.all(scripts.map((url) => page.request.get(url).then((r) => r.text())));
+    expect(bodies.some((js) => js.includes("WebGLRenderer"))).toBe(false);
   });
 
   test("health endpoint reports liveness", async ({ request }) => {
