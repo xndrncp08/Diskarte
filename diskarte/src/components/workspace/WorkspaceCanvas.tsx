@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { CallOverlay } from "./CallOverlay";
 import { ROSTER_WIDTH } from "./RosterDrawer";
 import { VoicePanel } from "./VoicePanel";
+import { WorkspaceSeams } from "./WorkspaceSeams";
 import { setCanvasActive, useIsCanvas, useMountedPanels, useWorkspace, useWorkspaceStore } from "./WorkspaceProvider";
 
 const TRAY_HEIGHT = 56;
@@ -90,10 +91,11 @@ export function WorkspaceCanvas({ children }: { children: ReactNode }) {
       ref={canvas}
       data-workspace=""
       style={{ "--tray": tray ? `${TRAY_HEIGHT + GAP}px` : "0px" } as CSSProperties}
-      className="relative flex min-w-0 flex-1 md:isolate md:block"
+      className="group/ws relative flex min-w-0 flex-1 md:isolate md:block"
     >
       {children}
       <VoicePanel />
+      {isCanvas && <WorkspaceSeams />}
       {isCanvas && (
         <section
           aria-label="Workspace tray"

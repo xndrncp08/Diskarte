@@ -167,10 +167,185 @@ export function snapResize(r: Rect, edge: Edge, others: Rect[], bounds: Rect, th
   return clampRect({ x, y, w, h }, bounds);
 }
 
+/** The rectangle after dragging one edge or corner of `start` by (dx, dy), before constraints. */
+export function resizeFrom(start: Rect, edge: Edge, dx: number, dy: number): Rect {
+  let { x, y, w, h } = start;
+  if (edge.includes("e")) w += dx;
+  if (edge.includes("s")) h += dy;
+  if (edge.includes("w")) {
+    x += dx;
+    w -= dx;
+  }
+  if (edge.includes("n")) {
+    y += dy;
+    h -= dy;
+  }
+  return { x, y, w, h };
+}
+
 /** Free (unsnapped) axes settle on the 8 px grid when a drag ends. */
 export function settleOnGrid(r: Rect, snapped: { x: boolean; y: boolean }, bounds: Rect): Rect {
   const g = (v: number, origin: number) => origin + Math.round((v - origin) / GRID) * GRID;
   return clampRect({ ...r, x: snapped.x ? r.x : g(r.x, bounds.x), y: snapped.y ? r.y : g(r.y, bounds.y) }, bounds);
+}
+
+// ---- coupled (linked) resizing ---------------------------------------------------------------
+
+export type Rects = Partial<Record<PanelId, Rect>>;
+type Side = "n" | "s" | "e" | "w";
+
+const AXIS: Record<Side, "x" | "y"> = { e: "x", w: "x", s: "y", n: "y" };
+const SIZE = { x: "w", y: "h" } as const;
+const MIN = { x: MIN_W, y: MIN_H };
+
+/** Panels overlapping `r` by more than a sliver on the axis perpendicular to `axis`. */
+function overlapsAcross(a: Rect, b: Rect, axis: "x" | "y") {
+  const [p, s] = axis === "x" ? (["y", "h"] as const) : (["x", "w"] as const);
+  return Math.min(a[p] + a[s], b[p] + b[s]) - Math.max(a[p], b[p]) > SNAP;
+}
+
+/**
+ * Panels docked to one side of `id`: their facing edge sits across a seam no wider than the docking
+ * gap plus the 8 px snap threshold (touching, or slightly overlapping, counts too), and they share
+ * some length of that edge. These move together when the shared edge is resized.
+ */
+export function coupledNeighbours(rects: Rects, id: PanelId, side: Side, threshold = SNAP): PanelId[] {
+  const a = rects[id];
+  if (!a) return [];
+  const axis = AXIS[side];
+  const size = SIZE[axis];
+  const trailing = side === "e" || side === "s";
+  return PANEL_IDS.filter((other) => {
+    const b = rects[other];
+    if (other === id || !b || !overlapsAcross(a, b, axis)) return false;
+    const seam = trailing ? b[axis] - (a[axis] + a[size]) : a[axis] - (b[axis] + b[size]);
+    return seam >= -threshold && seam <= GAP + threshold;
+  });
+}
+
+/** Mirror rectangles across the canvas on one axis, so leading-edge cases reuse the trailing logic. */
+function mirror(rects: Rects, axis: "x" | "y", bounds: Rect): Rects {
+  const size = SIZE[axis];
+  const out: Rects = {};
+  for (const id of PANEL_IDS) {
+    const r = rects[id];
+    if (r) out[id] = { ...r, [axis]: 2 * bounds[axis] + bounds[size] - (r[axis] + r[size]) };
+  }
+  return out;
+}
+
+/** How far a panel's leading edge can be pushed: compress it to its minimum, then push what's beyond it. */
+function absorbable(rects: Rects, id: PanelId, axis: "x" | "y", bounds: Rect, seen: Set<PanelId>): number {
+  const r = rects[id]!;
+  const size = SIZE[axis];
+  const next = coupledNeighbours(rects, id, axis === "x" ? "e" : "s").filter((n) => !seen.has(n));
+  const beyond = next.length
+    ? Math.min(...next.map((n) => absorbable(rects, n, axis, bounds, new Set([...seen, n]))))
+    : bounds[axis] + bounds[size] - (r[axis] + r[size]);
+  return Math.max(0, r[size] - MIN[axis]) + Math.max(0, beyond);
+}
+
+/** Moves a docked panel's leading edge by `d` (> 0 compresses then pushes; < 0 lets it grow back). */
+function shove(rects: Rects, id: PanelId, d: number, axis: "x" | "y", seen: Set<PanelId>) {
+  const r = rects[id]!;
+  const size = SIZE[axis];
+  if (d <= 0) {
+    rects[id] = { ...r, [axis]: r[axis] + d, [size]: r[size] - d };
+    return;
+  }
+  const compress = Math.min(d, Math.max(0, r[size] - MIN[axis]));
+  const push = d - compress;
+  // Find the next links before this panel moves, while its trailing edge still meets them.
+  const next = push > 0 ? coupledNeighbours(rects, id, axis === "x" ? "e" : "s").filter((n) => !seen.has(n)) : [];
+  rects[id] = { ...r, [axis]: r[axis] + d, [size]: r[size] - compress };
+  for (const n of next) shove(rects, n, push, axis, new Set([...seen, n]));
+}
+
+/** One axis of a coupled resize, for a trailing edge ("e"/"s") moved by `d`. */
+function resizeTrailing(rects: Rects, id: PanelId, d: number, axis: "x" | "y", bounds: Rect): Rects {
+  const out = { ...rects };
+  const a = out[id]!;
+  const size = SIZE[axis];
+  const linked = coupledNeighbours(out, id, axis === "x" ? "e" : "s");
+  const seen = new Set<PanelId>([id, ...linked]);
+  let delta = Math.max(d, Math.min(MIN[axis], bounds[size]) - a[size]); // the panel itself keeps its minimum
+  if (delta > 0) {
+    const room = linked.length
+      ? Math.min(...linked.map((n) => absorbable(out, n, axis, bounds, new Set([...seen]))))
+      : bounds[axis] + bounds[size] - (a[axis] + a[size]);
+    delta = Math.min(delta, room); // everything downstream is at its minimum against the canvas edge
+  }
+  for (const n of linked) shove(out, n, delta, axis, seen);
+  out[id] = { ...a, [size]: a[size] + delta };
+  return out;
+}
+
+/**
+ * Linked resizing: dragging an edge that other panels are docked to moves them with it. Growing a
+ * panel compresses its docked neighbours (and, once they reach 320 × 240, pushes the whole docked
+ * block toward the canvas edge); shrinking it lets them grow by exactly the same amount — so the
+ * seams keep their width and nothing overlaps or leaves a gap. `start` is the layout when the drag
+ * began and (dx, dy) the pointer's total movement since then.
+ */
+export function coupledResize(start: Rects, id: PanelId, edge: Edge, dx: number, dy: number, bounds: Rect): Rects {
+  let rects = { ...start };
+  for (const side of ["e", "w", "s", "n"] as const) {
+    if (!edge.includes(side)) continue;
+    const axis = AXIS[side];
+    const d = axis === "x" ? dx : dy;
+    if (side === "e" || side === "s") {
+      rects = resizeTrailing(rects, id, d, axis, bounds);
+    } else {
+      // Leading edges are trailing edges in a mirrored canvas.
+      rects = mirror(resizeTrailing(mirror(rects, axis, bounds), id, -d, axis, bounds), axis, bounds);
+    }
+  }
+  return rects;
+}
+
+/** Pixel rectangles of the panels on the canvas: mounted, and neither minimized nor closed. */
+export function visibleRectsOf(panels: Record<PanelId, PanelState>, bounds: Rect, mounted: { has: (id: string) => boolean }): Rects {
+  const out: Rects = {};
+  for (const id of PANEL_IDS) {
+    const p = panels[id];
+    if (mounted.has(id) && !p.minimized && !p.closed) out[id] = fromFraction(p.rect, bounds);
+  }
+  return out;
+}
+
+/** A draggable joint between two docked panels: dragging it resizes both at once. */
+export interface Seam {
+  /** The panel before the seam (left of a vertical seam, above a horizontal one). */
+  a: PanelId;
+  b: PanelId;
+  orientation: "vertical" | "horizontal";
+  /** Hit area in canvas pixels: the gap between the panels (at least 8 px wide), along their shared length. */
+  rect: Rect;
+}
+
+const SEAM_MIN = 8;
+
+export function findSeams(rects: Rects): Seam[] {
+  const seams: Seam[] = [];
+  for (const a of PANEL_IDS) {
+    const ra = rects[a];
+    if (!ra) continue;
+    for (const b of coupledNeighbours(rects, a, "e")) {
+      const rb = rects[b]!;
+      const gap = Math.max(0, rb.x - (ra.x + ra.w));
+      const w = Math.max(gap, SEAM_MIN);
+      const y = Math.max(ra.y, rb.y);
+      seams.push({ a, b, orientation: "vertical", rect: { x: ra.x + ra.w + (gap - w) / 2, y, w, h: Math.min(ra.y + ra.h, rb.y + rb.h) - y } });
+    }
+    for (const b of coupledNeighbours(rects, a, "s")) {
+      const rb = rects[b]!;
+      const gap = Math.max(0, rb.y - (ra.y + ra.h));
+      const h = Math.max(gap, SEAM_MIN);
+      const x = Math.max(ra.x, rb.x);
+      seams.push({ a, b, orientation: "horizontal", rect: { x, y: ra.y + ra.h + (gap - h) / 2, w: Math.min(ra.x + ra.w, rb.x + rb.w) - x, h } });
+    }
+  }
+  return seams;
 }
 
 /**

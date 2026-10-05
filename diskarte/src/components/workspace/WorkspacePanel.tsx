@@ -3,7 +3,8 @@
 import { GripHorizontal, Minus, MoveDiagonal2 } from "lucide-react";
 import { useEffect, useRef, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { useShellUI } from "@/components/shell/ShellUI";
-import { clampRect, fromFraction, PANEL_IDS, settleOnGrid, snapMove, snapResize, type Edge, type PanelId, type Rect } from "@/lib/workspace";
+import { useCoupledResize } from "@/hooks/useCoupledResize";
+import { clampRect, fromFraction, PANEL_IDS, settleOnGrid, snapMove, type Edge, type PanelId, type Rect } from "@/lib/workspace";
 import { cn } from "@/lib/utils";
 import { useIsCanvas, useOptionalWorkspaceStore, useWorkspace, useWorkspaceBounds, useWorkspaceStore } from "./WorkspaceProvider";
 
@@ -19,23 +20,8 @@ const EDGES: { edge: Edge; className: string }[] = [
   { edge: "se", className: "-bottom-1 -right-1 size-4 cursor-nwse-resize" },
 ];
 
-function resizeFrom(start: Rect, edge: Edge, dx: number, dy: number): Rect {
-  let { x, y, w, h } = start;
-  if (edge.includes("e")) w += dx;
-  if (edge.includes("s")) h += dy;
-  if (edge.includes("w")) {
-    x += dx;
-    w -= dx;
-  }
-  if (edge.includes("n")) {
-    y += dy;
-    h -= dy;
-  }
-  return { x, y, w, h };
-}
-
+/** A header drag. Moves are always uncoupled: dragging a panel away is how it leaves a docked block. */
 interface Gesture {
-  mode: "move" | Edge;
   start: Rect;
   pointer: { x: number; y: number };
   others: Rect[];
@@ -53,7 +39,8 @@ export interface WorkspacePanelProps {
 
 /**
  * A glass panel on the floating canvas (tablet and up): drag it by its bar, resize from any edge or
- * corner (min 320 × 240), and it snaps magnetically to the canvas and its neighbours. Clicking or
+ * corner (min 320 × 240) — panels docked to that edge resize with it (Alt / Option detaches; see
+ * useCoupledResize) — and moves snap magnetically to the canvas and its neighbours. Clicking or
  * focusing it raises it — only its frame re-renders, never its content, so chat streams and video
  * keep running. Keyboard: the Move and Resize buttons take the arrow keys (Shift for bigger steps).
  * The main panel is the page's <main> landmark (the skip link's target); the others are labelled regions.
@@ -96,6 +83,7 @@ function CanvasPanel({ id, title, children, className }: WorkspacePanelProps) {
   const isCanvas = useIsCanvas();
   const frame = useRef<HTMLDivElement>(null);
   const gesture = useRef<Gesture | null>(null);
+  const resize = useCoupledResize();
 
   useEffect(() => store.mount(id, title), [store, id, title]);
 
@@ -120,16 +108,14 @@ function CanvasPanel({ id, title, children, className }: WorkspacePanelProps) {
     el.toggleAttribute("data-snapped", snapped);
   }
 
-  function begin(mode: Gesture["mode"], e: ReactPointerEvent<HTMLElement>) {
+  function begin(e: ReactPointerEvent<HTMLElement>) {
     if (!rect || e.button !== 0) return;
-    if (mode === "move") {
-      const target = e.target as HTMLElement;
-      if (target.closest("button,a,input") && !target.closest("[data-move]")) return;
-    }
+    const target = e.target as HTMLElement;
+    if (target.closest("button,a,input") && !target.closest("[data-move]")) return;
     // No text selection while dragging — but a press on the Move button still focuses it for the arrow keys.
     if (!(e.target as HTMLElement).closest("button")) e.preventDefault();
     e.currentTarget.setPointerCapture?.(e.pointerId);
-    gesture.current = { mode, start: rect, pointer: { x: e.clientX, y: e.clientY }, others: visibleOthers(), last: rect, snapped: { x: false, y: false } };
+    gesture.current = { start: rect, pointer: { x: e.clientX, y: e.clientY }, others: visibleOthers(), last: rect, snapped: { x: false, y: false } };
     frame.current?.setAttribute("data-dragging", "");
   }
 
@@ -138,16 +124,10 @@ function CanvasPanel({ id, title, children, className }: WorkspacePanelProps) {
     if (!g || !bounds) return;
     const dx = e.clientX - g.pointer.x;
     const dy = e.clientY - g.pointer.y;
-    if (g.mode === "move") {
-      const { rect: next, snapped } = snapMove({ ...g.start, x: g.start.x + dx, y: g.start.y + dy }, g.others, bounds);
-      g.last = next;
-      g.snapped = snapped;
-      paint(next, snapped.x || snapped.y);
-    } else {
-      g.last = snapResize(resizeFrom(g.start, g.mode, dx, dy), g.mode, g.others, bounds);
-      g.snapped = { x: true, y: true };
-      paint(g.last, false);
-    }
+    const { rect: next, snapped } = snapMove({ ...g.start, x: g.start.x + dx, y: g.start.y + dy }, g.others, bounds);
+    g.last = next;
+    g.snapped = snapped;
+    paint(next, snapped.x || snapped.y);
   }
 
   function end() {
@@ -166,11 +146,12 @@ function CanvasPanel({ id, title, children, className }: WorkspacePanelProps) {
     if (!delta || !rect || !bounds) return;
     e.preventDefault();
     const step = e.shiftKey ? STEP * 4 : STEP;
-    const next =
-      kind === "move"
-        ? clampRect({ ...rect, x: rect.x + delta[0] * step, y: rect.y + delta[1] * step }, bounds)
-        : clampRect({ ...rect, w: rect.w + delta[0] * step, h: rect.h + delta[1] * step }, bounds);
-    store.commitRect(id, next);
+    if (kind === "resize") {
+      // Grows or shrinks the right / bottom edge, carrying docked neighbours along (Alt detaches).
+      resize.nudge(id, "se", delta[0] * step, delta[1] * step, e.altKey);
+      return;
+    }
+    store.commitRect(id, clampRect({ ...rect, x: rect.x + delta[0] * step, y: rect.y + delta[1] * step }, bounds));
   }
 
   const Tag = id === "main" ? "main" : "div";
@@ -200,7 +181,7 @@ function CanvasPanel({ id, title, children, className }: WorkspacePanelProps) {
         id === "voice" && "max-md:hidden",
         // Tablet and up: a glass panel on the canvas.
         "md:absolute md:left-0 md:top-0 md:z-[var(--pz)] md:h-[var(--ph)] md:w-[var(--pw)] md:flex-col md:overflow-hidden md:rounded-3xl md:border md:border-white/10 md:bg-slate-900/60 md:shadow-2xl md:shadow-black/50 md:backdrop-blur-2xl md:[transform:translate3d(var(--px),var(--py),0)]",
-        "md:transition-[opacity,transform,scale,border-color] md:duration-300 md:ease-[cubic-bezier(0.23,1,0.32,1)] md:data-[dragging]:transition-none md:data-[snapped]:border-sun/50",
+        "md:transition-[opacity,transform,scale,border-color] md:duration-300 md:ease-[cubic-bezier(0.23,1,0.32,1)] md:data-[dragging]:transition-none md:group-data-[resizing]/ws:transition-none md:data-[coupled]:border-sun/40 md:data-[snapped]:border-sun/50",
         !rect && "md:invisible",
         hidden && "md:pointer-events-none md:invisible md:scale-95 md:opacity-0",
         className,
@@ -208,7 +189,7 @@ function CanvasPanel({ id, title, children, className }: WorkspacePanelProps) {
     >
       <div
         className="flex h-8 shrink-0 cursor-grab items-center gap-1 border-b border-white/[0.06] bg-white/[0.03] pl-1.5 pr-1 active:cursor-grabbing max-md:hidden"
-        onPointerDown={(e) => begin("move", e)}
+        onPointerDown={begin}
         onPointerMove={track}
         onPointerUp={end}
         onPointerCancel={end}
@@ -228,7 +209,7 @@ function CanvasPanel({ id, title, children, className }: WorkspacePanelProps) {
         <button
           type="button"
           aria-label={`Resize ${title} panel`}
-          title="Use the arrow keys to resize, or drag any edge or corner."
+          title="Use the arrow keys to resize, or drag any edge or corner. Docked panels follow; hold Alt (Option) to resize this one alone."
           onKeyDown={(e) => nudge(e, "resize")}
           className="flex size-6 items-center justify-center rounded-md text-slate-500 hover:bg-white/10 hover:text-slate-200"
         >
@@ -252,10 +233,10 @@ function CanvasPanel({ id, title, children, className }: WorkspacePanelProps) {
           aria-hidden
           data-resize={edge}
           className={cn("absolute z-10 touch-none max-md:hidden", pos)}
-          onPointerDown={(e) => begin(edge, e)}
-          onPointerMove={track}
-          onPointerUp={end}
-          onPointerCancel={end}
+          onPointerDown={(e) => resize.begin(id, edge, e)}
+          onPointerMove={resize.move}
+          onPointerUp={resize.end}
+          onPointerCancel={resize.end}
         />
       ))}
     </Tag>
