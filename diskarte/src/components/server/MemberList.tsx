@@ -20,7 +20,7 @@ import { InertWhenExiting } from "@/components/ui/InertWhenExiting";
 import { CallContext } from "@/components/voice/CallProvider";
 import { useRinger } from "@/components/voice/IncomingCalls";
 import { BADGES, BADGE_KINDS } from "@/lib/community";
-import { visibleStatus, type PresencePayload } from "@/lib/presence";
+import { statusTone, visibleStatus, type PresencePayload } from "@/lib/presence";
 import { canManageMember, ROLE_LABEL, ROLE_RANK, type MemberWithProfile } from "@/lib/servers";
 import type { BadgeKind, MemberRole } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
@@ -279,6 +279,7 @@ function MemberRow({ member, presence, dim }: { member: MemberWithProfile; prese
   const status = visibleStatus(presence);
   const customStatus = presence?.custom_status ?? member.profile.custom_status;
   const customEmoji = presence?.custom_status_emoji ?? member.profile.custom_status_emoji;
+  const tone = statusTone(status, customStatus);
 
   return (
     <li className="relative">
@@ -292,8 +293,8 @@ function MemberRow({ member, presence, dim }: { member: MemberWithProfile; prese
         data-testid="member-row"
       >
         {/* Live presence drives the dot and the ring: other members see a status change instantly. */}
-        <span data-status-ring={status} className={cn("shrink-0 rounded-full ring-2 ring-offset-2 ring-offset-[#0b1020] transition-shadow duration-300", STATUS_RING[status])}>
-          <UserAvatar profile={member.profile} size={32} status={status} ring="#0b1020" />
+        <span data-status-ring={tone} className={cn("shrink-0 rounded-full ring-2 ring-offset-2 ring-offset-[#0b1020] transition-shadow duration-300", STATUS_RING[tone])}>
+          <UserAvatar profile={member.profile} size={32} status={tone} ring="#0b1020" />
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1">
@@ -363,7 +364,7 @@ export function MemberList() {
   if (offline.length) groups.push({ label: `Offline — ${offline.length}`, list: offline, dim: true });
 
   return (
-    <aside aria-label="Members" className="glass scrollbar-thin h-full w-60 shrink-0 overflow-y-auto px-2 py-4 max-lg:border-y-0 max-lg:border-r-0 lg:float-card" data-testid="member-list">
+    <aside aria-label="Members" className="scrollbar-thin h-full w-full overflow-y-auto px-2 py-4" data-testid="member-list">
       {groups.map((group) => (
         <section key={group.label} className="mb-4">
           <h3 className="mb-1 px-2 font-silk text-[11px] uppercase tracking-wider text-slate-400">{group.label}</h3>

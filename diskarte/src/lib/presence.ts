@@ -44,6 +44,22 @@ export function visibleStatus(p: PresencePayload | undefined): PresenceStatus | 
   return p.status;
 }
 
+/** The colour a status badge shows: presence, with custom statuses getting their own blue tone. */
+export type StatusTone = PresenceStatus | "offline" | "custom";
+
+/** The one custom status that keeps the amber AFK tone instead of the blue custom one. */
+const AFK_STATUS = "AFK / Tulog";
+
+/**
+ * Badge tone for a status: offline/invisible and Busy (DND) always win; any custom status other than
+ * "AFK / Tulog" (e.g. "Nagluto ng Canton") is blue; then Idle amber and Online green.
+ */
+export function statusTone(status: PresenceStatus | "offline", customStatus?: string | null): StatusTone {
+  if (status === "offline" || status === "invisible" || status === "dnd") return status;
+  if (customStatus && customStatus !== AFK_STATUS) return "custom";
+  return status;
+}
+
 export type RealtimeHealth = "connecting" | "connected" | "degraded" | "offline";
 
 export function signalLevel(health: RealtimeHealth, online: boolean): SignalLevel {

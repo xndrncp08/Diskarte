@@ -12,9 +12,10 @@
   --color-cream: #fff8ec;
   --color-bayan-blue: #0038a8;
   --color-bayan-red: #ce1126;
-  /* Status palette: online / away (AFK, Canton, custom) / busy / offline. */
+  /* Status palette: online / AFK–idle / custom (Nagluto ng Canton…) / busy / offline. */
   --color-signal-green: #10b981;
   --color-signal-idle: #f59e0b;
+  --color-signal-custom: #3b82f6;
   --color-signal-dnd: #ef4444;
   --color-signal-offline: #64748b;
 

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { statusTone } from "@/lib/presence";
 import { resolveBannerCss } from "@/lib/profile";
 import type { PresenceStatus } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
@@ -28,7 +29,7 @@ export function ProfileCard({ profile, className, footer, role }: { profile: Pro
       </div>
       <div className="relative px-4 pb-4">
         <div className="-mt-10 mb-2 inline-block rounded-full border-4 border-abyss">
-          <UserAvatar profile={profile} size={72} status={profile.status} />
+          <UserAvatar profile={profile} size={72} status={statusTone(profile.status, profile.custom_status)} />
         </div>
         <div className="rounded-xl bg-black/40 p-3">
           <p className="text-lg font-bold leading-tight text-white">{profile.display_name}</p>
