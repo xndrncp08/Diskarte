@@ -1,18 +1,22 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { DiskarteLogo } from "@/components/brand/DiskarteLogo";
+import { HeroCanvas } from "@/components/three/HeroCanvas";
+import { useStageBus } from "@/components/three/stage-bus";
+import { cn } from "@/lib/utils";
 import { gsap, prefersReducedMotion, useGSAP } from "./gsap";
 
 const WORD = "DISKARTE";
 const SEEN_KEY = "diskarte:entrance-seen";
-// A 12 × 6 grid of light points: the "particle grid" drifting behind the logo.
+// A 12 × 6 grid of light points behind the logo: the fallback when the WebGL solar field can't render.
 const PARTICLES = Array.from({ length: 72 }, (_, i) => ({ x: ((i % 12) + 0.5) / 12, y: (Math.floor(i / 12) + 0.5) / 6 }));
 
 /**
  * "Flaunting Diskarte": the sign-in entrance. One GSAP timeline, compositor-only (opacity and
  * transforms, plus SVG stroke drawing):
- *   1. midnight viewport, ambient radial backlight and a particle grid fading up;
+ *   1. midnight viewport, ambient radial backlight and the solar particle field spiralling out (WebGL,
+ *      driven through the stage bus; a CSS particle grid without it);
  *   2. the salakot mascot scales in while its outlines draw themselves, with a golden glow pulse;
  *   3. "DISKARTE" rises letter by letter (stagger 0.04, power4.out);
  *   4. the glass card lifts in (autoAlpha, y, scale 0.95 → 1).
@@ -21,6 +25,9 @@ const PARTICLES = Array.from({ length: 72 }, (_, i) => ({ x: ((i % 12) + 0.5) / 
  */
 export function AuthEntrance({ tagline, children }: { tagline: string; children: ReactNode }) {
   const root = useRef<HTMLDivElement>(null);
+  const logo = useRef<HTMLDivElement>(null);
+  const stageRef = useStageBus();
+  const [live, setLive] = useState(false);
 
   useGSAP(
     () => {
@@ -38,6 +45,7 @@ export function AuthEntrance({ tagline, children }: { tagline: string; children:
 
       if (prefersReducedMotion()) {
         gsap.set(q("[data-reveal]"), { autoAlpha: 1 });
+        stageRef.current.intro = 1;
         gsap.fromTo(el, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.2, onComplete: done });
         return;
       }
@@ -50,6 +58,7 @@ export function AuthEntrance({ tagline, children }: { tagline: string; children:
       }
       const tl = gsap.timeline({ defaults: { ease: "power4.out" } });
       if (seen) tl.timeScale(2.5);
+      tl.to(stageRef.current, { intro: 1, duration: 1.6, ease: "power3.out" }, 0);
 
       // Stage 1 — backlight + particles.
       tl.fromTo(q("[data-backlight]"), { autoAlpha: 0, scale: 0.6 }, { autoAlpha: 1, scale: 1, duration: 1, ease: "power2.out" }).fromTo(
@@ -95,13 +104,19 @@ export function AuthEntrance({ tagline, children }: { tagline: string; children:
     <div ref={root} data-entrance="pending" className="relative isolate flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-abyss px-4 py-10">
       {/* Stage 1 */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+        <HeroCanvas bus={stageRef} anchor={logo} emblem={false} onSceneChange={setLive} glowClassName="hidden" />
         {/* Particles fade out around the logo and wordmark so they never cross the text. */}
         <div
           data-reveal
           data-backlight
           className="absolute left-1/2 top-[22%] size-[46rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(255,184,0,0.28)_0%,rgba(245,158,11,0.12)_32%,rgba(6,182,212,0.06)_55%,transparent_70%)] will-change-transform"
         />
-        <div className="absolute inset-0 [mask-image:radial-gradient(ellipse_70%_55%_at_50%_24%,transparent_35%,black_75%)]">
+        <div
+          className={cn(
+            "absolute inset-0 transition-opacity duration-700 [mask-image:radial-gradient(ellipse_70%_55%_at_50%_24%,transparent_35%,black_75%)]",
+            live && "opacity-0",
+          )}
+        >
         {PARTICLES.map((p, i) => (
           <span
             key={i}
@@ -117,7 +132,7 @@ export function AuthEntrance({ tagline, children }: { tagline: string; children:
       {/* Stage 2 */}
       <div className="relative mb-4 flex justify-center">
         <span data-reveal data-glow aria-hidden className="absolute inset-0 -z-10 rounded-full bg-sun/30 blur-2xl" />
-        <div data-reveal data-logo>
+        <div ref={logo} data-reveal data-logo>
           <DiskarteLogo size={112} title="Diskarte" />
         </div>
       </div>

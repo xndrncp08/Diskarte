@@ -40,7 +40,7 @@ async function expectFitsViewport(page: Page) {
 }
 
 test.describe("mobile — public pages", () => {
-  for (const path of ["/login", "/signup"]) {
+  for (const path of ["/", "/login", "/signup"]) {
     test(`${path}: every control is a 44px touch target and nothing overflows`, async ({ page }) => {
       await page.goto(path);
       await settleEntrance(page);
