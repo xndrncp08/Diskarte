@@ -7,8 +7,8 @@ import { refreshSession } from "@/lib/supabase/proxy";
 /** Pages that need a signed-in user (server components re-check with getUser()). */
 const PROTECTED_PREFIXES = ["/tambayan", "/settings", "/onboarding", "/reset-password"];
 const GUEST_ONLY = ["/login", "/signup", "/forgot-password"];
-/** Pages whose POSTs are auth attempts (Server Actions post to the page URL). */
-const AUTH_POST_PATHS = ["/login", "/signup", "/forgot-password", "/reset-password", "/settings/account"];
+/** Pages whose POSTs are auth attempts (Server Actions post to the page URL; "/" hosts a sign-in card). */
+const AUTH_POST_PATHS = ["/", "/login", "/signup", "/forgot-password", "/reset-password", "/settings/account"];
 const AUTH_CALLBACK_PATHS = ["/auth/callback", "/auth/confirm"];
 const FIRST_LOGIN_PATH = "/reset-password";
 /** API routes reachable without a session. */

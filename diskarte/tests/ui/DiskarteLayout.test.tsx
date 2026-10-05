@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { audioMock } from "../mocks/audio";
@@ -63,12 +63,17 @@ describe("branding & vector logo", () => {
     expect(container.querySelector("clipPath[id$='-cone']")).not.toBeNull(); // mascot included
   });
 
-  it("shows the tagline on the welcome page", () => {
-    render(<LandingPage />);
+  it("shows the tagline on the welcome page", async () => {
+    vi.stubEnv("SUPABASE_URL", "https://proj.supabase.co");
+    vi.stubEnv("SUPABASE_ANON_KEY", "anon-key-that-is-long-enough");
+    vi.stubEnv("LIVEKIT_URL", "wss://proj.livekit.cloud");
+    const { container } = render(await LandingPage());
+    await waitFor(() => expect(container.querySelector("[data-entrance]")).toHaveAttribute("data-entrance", "done"), { timeout: 8000 });
     const heading = screen.getByRole("heading", { level: 1 });
     // Rendered as two lines of one heading: "Walang Shutdown-Shutdown." / "Ang Bagong Istambayan ng Bayan."
     expect(heading).toHaveTextContent(/^Walang Shutdown-Shutdown\.\s*Ang Bagong Istambayan ng Bayan\.$/);
     expect(screen.getByRole("link", { name: /Create an account/ })).toHaveAttribute("href", "/signup");
+    vi.unstubAllEnvs();
   });
 });
 
