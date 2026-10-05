@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ServerProvider } from "@/components/providers/ServerProvider";
 import { ChannelSidebar } from "@/components/server/ChannelSidebar";
-import { DrawerPanel } from "@/components/shell/AppShell";
+import { MemberList } from "@/components/server/MemberList";
+import { RosterDrawer } from "@/components/workspace/RosterDrawer";
+import { WorkspacePanel } from "@/components/workspace/WorkspacePanel";
 import { requireProfile } from "@/lib/auth";
 import { getServerBundle } from "@/lib/data/servers";
 
@@ -21,10 +23,15 @@ export default async function ServerLayout({ children, params }: LayoutProps<"/t
 
   return (
     <ServerProvider server={bundle.server} channels={bundle.channels} members={bundle.members} badges={bundle.badges} myRole={bundle.myRole}>
-      <DrawerPanel>
+      <WorkspacePanel id="nav" title="Channels">
         <ChannelSidebar />
-      </DrawerPanel>
-      <div className="flex min-w-0 flex-1">{children}</div>
+      </WorkspacePanel>
+      <WorkspacePanel id="main" title={bundle.server.name}>
+        {children}
+      </WorkspacePanel>
+      <RosterDrawer count={bundle.members.length}>
+        <MemberList />
+      </RosterDrawer>
     </ServerProvider>
   );
 }

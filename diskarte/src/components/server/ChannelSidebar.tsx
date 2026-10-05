@@ -18,6 +18,7 @@ import { UserPanel } from "@/components/shell/UserPanel";
 import { useShellUI } from "@/components/shell/ShellUI";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CallDock } from "@/components/voice/CallDock";
+import { useIsCanvas } from "@/components/workspace/WorkspaceProvider";
 import { useCall, usePrewarm } from "@/components/voice/CallProvider";
 import { Menu } from "@/components/ui/Menu";
 import { useOnline } from "@/hooks/useOnline";
@@ -81,6 +82,8 @@ export function ChannelSidebar() {
   const { server, channels, myRole, health, members, badges } = useServer();
   const { me } = useMe();
   const { setNavOpen } = useShellUI();
+  // Phones keep the call dock in the drawer; on the canvas the call controls float in the tray.
+  const isCanvas = useIsCanvas();
   const prewarm = usePrewarm();
   const params = useParams<{ channelId?: string }>();
   const pathname = usePathname();
@@ -112,7 +115,7 @@ export function ChannelSidebar() {
   }
 
   return (
-    <aside aria-label={`${server.name} channels`} className="glass flex h-full w-60 shrink-0 flex-col max-md:border-y-0 max-md:border-l-0 md:overflow-hidden md:float-card">
+    <aside aria-label={`${server.name} channels`} className="flex h-full w-60 shrink-0 flex-col max-md:glass max-md:border-y-0 max-md:border-l-0 md:w-full md:overflow-hidden">
       <Menu
         label="Server menu"
         items={[
@@ -259,7 +262,7 @@ export function ChannelSidebar() {
         ))}
       </nav>
 
-      <CallDock />
+      {!isCanvas && <CallDock />}
       <div className="flex items-center justify-between border-t border-white/5 px-3 py-1.5">
         <span className="font-silk text-[10px] uppercase tracking-wider text-slate-500">Realtime</span>
         <SignalBars level={signalLevel(health, online)} showLabel />

@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { createGroupDmAction } from "@/actions/social";
 import { useSocial } from "@/components/providers/SocialProvider";
 import { UserAvatar } from "@/components/profile/UserAvatar";
-import { DrawerPanel } from "@/components/shell/AppShell";
+import { WorkspacePanel } from "@/components/workspace/WorkspacePanel";
 import { ServerIcon } from "@/components/shell/ServerIcon";
 import { useShellUI } from "@/components/shell/ShellUI";
 import { UserPanel } from "@/components/shell/UserPanel";
@@ -49,8 +49,8 @@ export function HomeSidebar({ servers = [] }: { servers?: Server[] }) {
   const accepted = (friends ?? []).filter((f) => f.status === "accepted");
 
   return (
-    <DrawerPanel>
-      <aside aria-label="Home" className="glass flex h-full w-60 flex-col max-md:border-y-0 max-md:border-l-0 md:overflow-hidden md:float-card">
+    <WorkspacePanel id="nav" title="Direct messages">
+      <aside aria-label="Home" className="flex h-full w-60 flex-col max-md:glass max-md:border-y-0 max-md:border-l-0 md:w-full md:overflow-hidden">
         <div className="flex h-12 items-center border-b border-white/5 px-4 font-bold text-white">Home</div>
         <nav aria-label="Direct messages" className="scrollbar-thin flex-1 overflow-y-auto px-2 py-3">
           <Link
@@ -143,7 +143,7 @@ export function HomeSidebar({ servers = [] }: { servers?: Server[] }) {
       <Modal open={groupOpen} onClose={() => setGroupOpen(false)} title="New group DM">
         <GroupDmForm friendIds={accepted.map((f) => f.userId)} profiles={profiles} onDone={() => setGroupOpen(false)} />
       </Modal>
-    </DrawerPanel>
+    </WorkspacePanel>
   );
 }
 

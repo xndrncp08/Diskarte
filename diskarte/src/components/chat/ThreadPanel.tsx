@@ -55,7 +55,7 @@ export function ThreadPanel({ channel, root, onClose, locked }: { channel: Chann
       initial={{ opacity: 0, x: 24 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
-      className="glass fixed inset-0 z-40 flex flex-col border-y-0 border-r-0 bg-abyss/95 md:static md:z-auto md:w-[26rem] md:shrink-0 md:overflow-hidden md:float-card"
+      className="glass fixed inset-0 z-40 flex flex-col border-y-0 border-r-0 bg-abyss/95 md:static md:z-auto md:w-[min(26rem,45%)] md:min-w-72 md:shrink-0 md:overflow-hidden md:border-y-0 md:border-r-0 md:border-l md:border-white/10 md:bg-black/20 md:backdrop-blur-none"
       data-testid="thread-panel"
     >
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-white/5 px-3">

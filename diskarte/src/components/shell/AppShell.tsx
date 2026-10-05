@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useShellEntrance } from "@/components/motion/useShellEntrance";
 import { useSwipeDrawer } from "@/hooks/useSwipeDrawer";
 import { useMe } from "@/components/providers/MeProvider";
@@ -10,6 +10,9 @@ import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { subscribeDbChanges } from "@/lib/realtime";
 import type { Server } from "@/lib/servers";
 import { cn } from "@/lib/utils";
+import { DiskarteCanvasBackground } from "@/components/workspace/DiskarteCanvasBackground";
+import { WorkspaceCanvas } from "@/components/workspace/WorkspaceCanvas";
+import { useWorkspace, useWorkspaceStore, WorkspaceProvider } from "@/components/workspace/WorkspaceProvider";
 import { ServerRail } from "./ServerRail";
 import { ShellUIProvider, useShellUI } from "./ShellUI";
 
@@ -36,6 +39,7 @@ function Frame({ servers, children }: { servers: Server[]; children: ReactNode }
   useShellEntrance(frame);
   return (
     <div ref={frame} className="diskarte-backdrop relative flex h-dvh overflow-hidden md:gap-3 md:p-3" data-testid="shell" {...swipe}>
+      <DiskarteCanvasBackground />
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-lg focus:bg-sun focus:px-4 focus:py-2 focus:font-semibold focus:text-abyss"
@@ -58,33 +62,45 @@ function Frame({ servers, children }: { servers: Server[]; children: ReactNode }
       </AnimatePresence>
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-40 transition-transform duration-200 ease-out md:static md:z-auto md:flex md:max-h-full md:translate-x-0 md:flex-col md:justify-center",
+          "fixed inset-y-0 left-0 z-40 transition-transform duration-200 ease-out md:relative md:z-10 md:flex md:translate-x-0",
           navOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <ServerRail servers={servers} />
       </div>
-      {/* No z-index here: a stacking context would trap the mobile drawer panels (z-40) beneath the
-          drawer backdrop (z-30), making the channel sidebar untappable on phones. */}
-      <div id="main-content" tabIndex={-1} className="relative flex min-w-0 flex-1 outline-none md:gap-3">
-        {children}
-      </div>
+      {/* The floating canvas. On phones it is a plain flex row with no z-index: a stacking context
+          would trap the drawer panels (z-40) beneath the drawer backdrop (z-30). */}
+      <WorkspaceCanvas>{children}</WorkspaceCanvas>
     </div>
   );
 }
 
-/** The signed-in app frame: micro-dock, drawers and the active view. Session state lives above it in <SessionProviders>. */
-export function AppShell({ servers, children }: { servers: Server[]; children: ReactNode }) {
+/** Bridges the shell's member toggle to the workspace roster (open/docked/closed, saved with the layout). */
+export function ShellUIBridge({ children }: { children: ReactNode }) {
+  const store = useWorkspaceStore();
+  const roster = useWorkspace((s) => s.roster);
+  const setOpen = useCallback((open: boolean) => store.setRoster(open ? "open" : "closed"), [store]);
+  const members = useMemo(() => ({ open: roster !== "closed", setOpen }), [roster, setOpen]);
+  return <ShellUIProvider members={members}>{children}</ShellUIProvider>;
+}
+
+/**
+ * The signed-in app frame: the command rail and the floating workspace canvas. Session state (the
+ * call, presence, friends) lives above it in <SessionProviders>; the layout itself in <WorkspaceProvider>.
+ */
+export function AppShell({ servers, workspace, children }: { servers: Server[]; workspace?: unknown; children: ReactNode }) {
   const { me } = useMe();
   return (
-    <ShellUIProvider>
-      <MembershipWatcher userId={me.id} />
-      <Frame servers={servers}>{children}</Frame>
-    </ShellUIProvider>
+    <WorkspaceProvider remote={workspace}>
+      <ShellUIBridge>
+        <MembershipWatcher userId={me.id} />
+        <Frame servers={servers}>{children}</Frame>
+      </ShellUIBridge>
+    </WorkspaceProvider>
   );
 }
 
-/** Wraps a secondary sidebar so it joins the rail in the mobile drawer. */
+/** Wraps a secondary sidebar so it joins the rail in the mobile drawer (standalone layouts; the app uses WorkspacePanel). */
 export function DrawerPanel({ children }: { children: ReactNode }) {
   const { navOpen } = useShellUI();
   return (

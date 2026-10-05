@@ -10,6 +10,9 @@ import { useOptionalSocial } from "@/components/providers/SocialProvider";
 import { Tooltip } from "@/components/ui/Tooltip";
 import type { Server } from "@/lib/servers";
 import { cn } from "@/lib/utils";
+import { NotificationHub } from "@/components/workspace/NotificationHub";
+import { WorkspacePresets } from "@/components/workspace/WorkspacePresets";
+import { useOptionalWorkspaceStore } from "@/components/workspace/WorkspaceProvider";
 import { AddServerDialog } from "./AddServerDialog";
 import { ServerIcon } from "./ServerIcon";
 
@@ -25,70 +28,81 @@ function Pill({ active }: { active: boolean }) {
   );
 }
 
+/**
+ * The floating command rail: the mascot (Home), quick server-switcher nodes, the notification hub and
+ * workspace layout presets. A glass column on tablets and up; the left part of the drawer on phones.
+ */
 export function ServerRail({ servers }: { servers: Server[] }) {
   const params = useParams<{ serverId?: string }>();
   const activeId = params.serverId;
   const [adding, setAdding] = useState(false);
   const attention = useOptionalSocial()?.attention ?? 0;
+  const workspace = useOptionalWorkspaceStore();
   // Diskarte HQ, the global server everyone belongs to, is pinned first with a gold ring.
   const hq = servers.find((s) => s.is_system);
   const others = servers.filter((s) => !s.is_system);
 
   return (
-    <nav
-      aria-label="Servers"
-      className="pt-safe flex h-full w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto pb-3 scrollbar-none max-md:bg-abyss md:h-auto md:max-h-full md:rounded-[2rem] md:py-3 md:float-card"
+    <div
+      className="pt-safe flex h-full w-[72px] shrink-0 flex-col items-center gap-2 pb-3 max-md:bg-abyss md:rounded-[2rem] md:border md:border-white/10 md:bg-slate-900/60 md:py-3 md:shadow-2xl md:shadow-black/50 md:backdrop-blur-2xl"
       data-testid="micro-dock"
     >
-      <Tooltip label="Home">
-        <Link href="/tambayan" aria-label={attention ? `Home (${attention} new)` : "Home"} aria-current={!activeId ? "page" : undefined} className="group relative flex">
-          <Pill active={!activeId} />
-          <span className={cn("flex size-12 items-center justify-center bg-midnight transition-[border-radius,background-color] duration-200", !activeId ? "rounded-2xl bg-sun/15" : "rounded-[50%] group-hover:rounded-2xl")}>
-            <DiskarteLogo size={40} title="Diskarte home" />
-          </span>
-          {attention > 0 && (
-            <span className="absolute -bottom-0.5 -right-0.5 flex min-w-5 items-center justify-center rounded-full border-2 border-abyss bg-red-600 px-1 font-silk text-[10px] font-bold text-white" aria-hidden data-testid="home-badge">
-              {attention > 9 ? "9+" : attention}
+      <nav aria-label="Servers" className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 overflow-y-auto scrollbar-none">
+        <Tooltip label="Home">
+          <Link href="/tambayan" aria-label={attention ? `Home (${attention} new)` : "Home"} aria-current={!activeId ? "page" : undefined} className="group relative flex">
+            <Pill active={!activeId} />
+            <span className={cn("flex size-12 items-center justify-center bg-midnight transition-[border-radius,background-color] duration-200", !activeId ? "rounded-2xl bg-sun/15" : "rounded-[50%] group-hover:rounded-2xl")}>
+              <DiskarteLogo size={40} title="Diskarte home" />
             </span>
-          )}
-        </Link>
-      </Tooltip>
-      <div className="mx-auto h-0.5 w-8 rounded bg-white/10" />
-      {hq && (
-        <Tooltip label={`${hq.name} · Official`}>
-          <Link href={`/tambayan/${hq.id}`} aria-label={`${hq.name} (official)`} aria-current={activeId === hq.id ? "page" : undefined} className="group relative flex" data-testid="pinned-server">
-            <Pill active={activeId === hq.id} />
-            <span className="rounded-[50%] ring-2 ring-sun ring-offset-2 ring-offset-[#0b1020] transition-[border-radius] group-hover:rounded-2xl">
-              <ServerIcon server={hq} active={activeId === hq.id} />
-            </span>
-            <BadgeCheck className="absolute -bottom-1 -right-1 size-5 rounded-full bg-abyss fill-sun text-abyss" aria-hidden />
+            {attention > 0 && (
+              <span className="absolute -bottom-0.5 -right-0.5 flex min-w-5 items-center justify-center rounded-full border-2 border-abyss bg-red-600 px-1 font-silk text-[10px] font-bold tabular-nums text-white" aria-hidden data-testid="home-badge">
+                {attention > 9 ? "9+" : attention}
+              </span>
+            )}
           </Link>
         </Tooltip>
-      )}
-      <ul className="flex flex-col items-center gap-2" data-testid="server-list">
-        {others.map((server) => (
-          <li key={server.id}>
-            <Tooltip label={server.name}>
-              <Link href={`/tambayan/${server.id}`} aria-label={server.name} aria-current={activeId === server.id ? "page" : undefined} className="group relative flex">
-                <Pill active={activeId === server.id} />
-                <ServerIcon server={server} active={activeId === server.id} />
-              </Link>
-            </Tooltip>
-          </li>
-        ))}
-      </ul>
-      <Tooltip label="Create or join a server">
-        <button
-          type="button"
-          onClick={() => setAdding(true)}
-          aria-label="Add a server"
-          aria-haspopup="dialog"
-          className="group flex size-12 items-center justify-center rounded-[50%] bg-midnight text-signal-green transition-[border-radius,background-color,color] duration-200 hover:rounded-2xl hover:bg-signal-green hover:text-white"
-        >
-          <Plus className="size-6" aria-hidden />
-        </button>
-      </Tooltip>
+        <div className="mx-auto h-0.5 w-8 shrink-0 rounded bg-white/10" />
+        {hq && (
+          <Tooltip label={`${hq.name} · Official`}>
+            <Link href={`/tambayan/${hq.id}`} aria-label={`${hq.name} (official)`} aria-current={activeId === hq.id ? "page" : undefined} className="group relative flex" data-testid="pinned-server">
+              <Pill active={activeId === hq.id} />
+              <span className="rounded-[50%] ring-2 ring-sun ring-offset-2 ring-offset-[#0b1020] transition-[border-radius] group-hover:rounded-2xl">
+                <ServerIcon server={hq} active={activeId === hq.id} />
+              </span>
+              <BadgeCheck className="absolute -bottom-1 -right-1 size-5 rounded-full bg-abyss fill-sun text-abyss" aria-hidden />
+            </Link>
+          </Tooltip>
+        )}
+        <ul className="flex flex-col items-center gap-2" data-testid="server-list">
+          {others.map((server) => (
+            <li key={server.id}>
+              <Tooltip label={server.name}>
+                <Link href={`/tambayan/${server.id}`} aria-label={server.name} aria-current={activeId === server.id ? "page" : undefined} className="group relative flex">
+                  <Pill active={activeId === server.id} />
+                  <ServerIcon server={server} active={activeId === server.id} />
+                </Link>
+              </Tooltip>
+            </li>
+          ))}
+        </ul>
+        <Tooltip label="Create or join a server">
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            aria-label="Add a server"
+            aria-haspopup="dialog"
+            className="group flex size-12 shrink-0 items-center justify-center rounded-[50%] bg-midnight text-signal-green transition-[border-radius,background-color,color] duration-200 hover:rounded-2xl hover:bg-signal-green hover:text-white"
+          >
+            <Plus className="size-6" aria-hidden />
+          </button>
+        </Tooltip>
+      </nav>
+
+      <section aria-label="Workspace controls" className="flex shrink-0 flex-col items-center gap-1.5 border-t border-white/[0.06] pt-2">
+        <NotificationHub />
+        {workspace && <WorkspacePresets />}
+      </section>
       <AddServerDialog open={adding} onClose={() => setAdding(false)} />
-    </nav>
+    </div>
   );
 }

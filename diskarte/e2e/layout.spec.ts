@@ -110,7 +110,11 @@ test.describe("overlay layout regression", () => {
     await expectFullyVisible(page, picker);
     await page.keyboard.press("Escape");
 
-    // Member popover escapes the member list's scroll box.
+    // The micro-roster slides out on demand (floating over the panels, so nothing shifts)…
+    await page.getByRole("button", { name: "Toggle member list" }).click();
+    await expect(page.getByRole("complementary", { name: "Member roster" })).toBeInViewport();
+    expect(await columnBoxes(page)).toEqual(before);
+    // …and a member popover escapes the member list's scroll box.
     await page.getByTestId("member-row").first().click();
     const popover = page.getByRole("dialog", { name: /'s profile$/ });
     await expectFullyVisible(page, popover);
@@ -127,7 +131,7 @@ test.describe("overlay layout regression", () => {
     expect(await columnBoxes(page)).toEqual(before);
   });
 
-  test("the call dock sits above the user panel without covering it or moving the channel list", async ({ page }) => {
+  test("the floating call overlay rides in the canvas tray: it never covers the chat, the user panel or the channel list", async ({ page }) => {
     await signUpAndOnboard(page, makeUser("Dock"));
     await createServer(page, `Dock ${Date.now().toString(36)}`);
     const channels = page.getByRole("navigation", { name: "Channels" });
@@ -140,15 +144,30 @@ test.describe("overlay layout regression", () => {
     await channels.getByRole("link", { name: "general" }).click();
     await expect(page.getByTestId("channel-title")).toHaveText("general");
 
+    // Away from the call's page, the call also gets its own panel on the canvas.
+    const voice = page.getByRole("region", { name: /^Voice · Tambayan 1/ });
+    await expect(voice.getByTestId("participant-tile")).toHaveCount(1, { timeout: 30_000 });
+
     const dockBox = (await dock.boundingBox())!;
-    const panelBox = (await page.getByTestId("user-panel").boundingBox())!;
-    expect(intersects(dockBox, panelBox), "dock overlaps the user panel").toBe(false);
-    expect(dockBox.y + dockBox.height).toBeLessThanOrEqual(panelBox.y);
+    for (const covered of [page.getByTestId("user-panel"), page.getByTestId("composer"), page.getByTestId("message-list")]) {
+      expect(intersects(dockBox, (await covered.boundingBox())!), "the call overlay covers part of the workspace").toBe(false);
+    }
     expect(await channels.getByRole("link", { name: "general" }).boundingBox()).toEqual(generalBefore);
     await expectFullyVisible(page, dock);
     await expectFullyVisible(page, page.getByTestId("user-panel"));
     await expectNoPageOverflow(page);
+
+    // Minimal dock tucks every panel into the tray; the call keeps going.
+    await page.getByRole("group", { name: "Workspace layout" }).getByRole("button", { name: "Minimal dock" }).click();
+    await expect(page.getByTestId("panel-pill")).toHaveCount(3);
+    await expect(dock).toContainText("Voice Connected");
+    await page.getByRole("button", { name: "Restore Channels" }).click();
+    await expect(channels.getByRole("link", { name: "general" })).toBeInViewport();
+    await page.getByRole("button", { name: "Reset layout" }).click();
+
     await dock.getByRole("button", { name: "Disconnect" }).click();
+    await expect(dock).toHaveCount(0);
+    await expect(voice).toHaveCount(0);
   });
 
   test("mobile drawer menus stay on screen", async ({ page }) => {

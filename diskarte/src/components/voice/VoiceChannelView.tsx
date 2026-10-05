@@ -33,7 +33,7 @@ export function VoiceChannelView({ channel }: { channel: Channel }) {
 
   return (
     <motion.section
-      className="flex min-w-0 flex-1 flex-col md:overflow-hidden md:float-card"
+      className="flex min-w-0 flex-1 flex-col md:overflow-hidden"
       aria-label={channel.name}
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}

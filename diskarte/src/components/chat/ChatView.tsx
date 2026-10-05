@@ -7,8 +7,6 @@ import { toast } from "sonner";
 import { useMe } from "@/components/providers/MeProvider";
 import { useServer } from "@/components/providers/ServerProvider";
 import { ChannelHeader } from "@/components/server/ChannelHeader";
-import { MemberList } from "@/components/server/MemberList";
-import { useShellUI } from "@/components/shell/ShellUI";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { mentionsUser, useChannelChat, type ChatMessage } from "@/hooks/useChannelChat";
@@ -31,7 +29,6 @@ const NO_REACTIONS: Reaction[] = [];
 export function ChatView({ channel: initialChannel, initial }: { channel: Channel; initial: { messages: MessageWithAuthor[]; reactions: Reaction[]; hasMore: boolean } }) {
   const { me, verified } = useMe();
   const { server, myRole, members, channels } = useServer();
-  const { membersOpen } = useShellUI();
   // Slow mode / verification settings change live (ServerProvider keeps channels current).
   const channel = channels.find((c) => c.id === initialChannel.id) ?? initialChannel;
   const canModerate = hasRole(myRole, "moderator");
@@ -140,9 +137,9 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
   }
 
   return (
-    <div className="flex min-w-0 flex-1 md:gap-3">
+    <div className="flex min-w-0 flex-1">
       <motion.section
-        className="relative flex min-w-0 flex-1 flex-col md:overflow-hidden md:float-card"
+        className="relative flex min-w-0 flex-1 flex-col md:overflow-hidden"
         aria-label={`#${channel.name}`}
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
@@ -264,13 +261,7 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
         />
       </motion.section>
 
-      {threadRoot ? (
-        <ThreadPanel key={threadRoot.id} channel={channel} root={threadRoot} onClose={() => setThreadRootId(null)} locked={locked} />
-      ) : membersOpen && (
-        <div className="hidden lg:flex">
-          <MemberList />
-        </div>
-      )}
+      {threadRoot && <ThreadPanel key={threadRoot.id} channel={channel} root={threadRoot} onClose={() => setThreadRootId(null)} locked={locked} />}
 
       <ConfirmDialog
         open={confirmDelete !== null}
