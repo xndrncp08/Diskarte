@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Code2, Gamepad2, Headphones, MessagesSquare, MonitorUp, ShieldCheck, Sparkles, Users, Volume2 } from "lucide-react";
+import { Code2, Gamepad2, Headphones, MessagesSquare, MonitorUp, ShieldCheck, Users, Volume2 } from "lucide-react";
 import { DiskarteLogo } from "@/components/brand/DiskarteLogo";
 import { GithubMark } from "@/components/icons/BrandIcons";
 import { DiskarteWordmark } from "@/components/brand/DiskarteWordmark";
@@ -9,6 +9,12 @@ import { Glyph } from "@/components/ui/Glyph";
 import { ScrollReveal } from "@/components/motion/ScrollReveal";
 import { ScrollTilt } from "@/components/motion/ScrollTilt";
 import { LandingHero } from "@/components/landing/LandingHero";
+import { LoginForm } from "@/components/auth/LoginForm";
+import { OAuthButtons } from "@/components/auth/OAuthButtons";
+import { ConfigNotice } from "@/components/ConfigNotice";
+import { tryGetPublicEnv } from "@/lib/env";
+import { enabledOAuthProviders } from "@/lib/profile";
+import { createClient } from "@/lib/supabase/server";
 
 const FEATURES = [
   { icon: MessagesSquare, title: "Real-time chat", body: "Instant messages with Markdown, code blocks, pins, edits and Pinoy reactions." },
@@ -21,10 +27,24 @@ const FEATURES = [
 
 const PREVIEW_CHANNELS = ["general", "chika", "lfg-valorant"];
 
-const SIGNUP_BUTTON =
-  "inline-flex h-12 items-center gap-2 rounded-xl bg-sun px-6 text-base font-bold text-abyss shadow-[0_4px_0_0_#b45309] transition-transform active:translate-y-[4px] active:shadow-none";
+const PRIMARY_BUTTON =
+  "inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-sun px-6 text-base font-bold text-abyss shadow-[0_4px_0_0_#b45309] transition-transform active:translate-y-[4px] active:shadow-none";
 
-export default function LandingPage() {
+/** Signed-in visitors get "Open Diskarte" instead of a sign-in form (verified JWT claims, no round trip). */
+async function isSignedIn() {
+  if (!tryGetPublicEnv()) return false;
+  try {
+    const { data } = await (await createClient()).auth.getClaims();
+    return typeof data?.claims?.sub === "string";
+  } catch {
+    return false;
+  }
+}
+
+export default async function LandingPage() {
+  const configured = Boolean(tryGetPublicEnv());
+  const signedIn = await isSignedIn();
+
   return (
     <main className="diskarte-backdrop relative min-h-dvh overflow-hidden">
       <LandingHero
@@ -34,46 +54,43 @@ export default function LandingPage() {
               <DiskarteWordmark height={40} />
             </Link>
             <nav aria-label="Account" className="flex items-center gap-2">
-              <Link href="/login" className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/10 pointer-coarse:py-3">
-                Log in
-              </Link>
-              <Link
-                href="/signup"
-                className="rounded-lg bg-sun px-4 py-2 text-sm font-semibold text-abyss shadow-[0_3px_0_0_#b45309] transition-transform active:translate-y-[3px] active:shadow-none pointer-coarse:py-3"
-              >
-                Sign up
-              </Link>
+              {signedIn ? (
+                <Link href="/tambayan" className="rounded-lg bg-sun px-4 py-2 text-sm font-semibold text-abyss shadow-[0_3px_0_0_#b45309] transition-transform active:translate-y-[3px] active:shadow-none pointer-coarse:py-3">
+                  Open app
+                </Link>
+              ) : (
+                <>
+                  <a href="#sign-in" className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/10 pointer-coarse:py-3">
+                    Log in
+                  </a>
+                  <Link
+                    href="/signup"
+                    className="rounded-lg bg-sun px-4 py-2 text-sm font-semibold text-abyss shadow-[0_3px_0_0_#b45309] transition-transform active:translate-y-[3px] active:shadow-none pointer-coarse:py-3"
+                  >
+                    Sign up
+                  </Link>
+                </>
+              )}
             </nav>
           </header>
         }
+        card={signedIn ? <SignedInCard /> : configured ? <SignInCard /> : <ConfigNotice />}
       >
-        <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-sun/30 bg-sun/10 px-3 py-1 font-silk text-[11px] uppercase tracking-widest text-sun">
-          <Sparkles className="size-3.5" aria-hidden /> Press start, kabayan
-        </p>
-        <h1 className="text-balance text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl">
-          Walang Shutdown-Shutdown.
-          <span className="mt-2 block text-sun">Ang Bagong Istambayan ng Bayan.</span>
+        <h1 className="text-balance text-3xl font-extrabold leading-[1.08] tracking-tight text-white sm:text-4xl lg:text-[2.75rem]">
+          Walang <span className="whitespace-nowrap">Shutdown-Shutdown.</span>
+          <span className="mt-1 block text-sun">Ang Bagong Istambayan ng Bayan.</span>
         </h1>
-        <p className="mt-6 max-w-xl text-pretty text-lg text-slate-300">
-          Even if others shut down, we&apos;ve got <strong className="text-white">diskarte</strong>. Chat, voice, video and screen share for gamers,
-          students and whole communities — open-source, free, and made in the Philippines.
+        <p className="mt-5 max-w-xl text-pretty text-base text-slate-300 sm:text-lg">
+          Chat, voice, video and screen share for gamers, students and whole communities — open-source, free, and made in the Philippines.
         </p>
-        <div className="mt-8 flex flex-wrap items-center gap-3">
-          <Link href="/signup" className={SIGNUP_BUTTON}>
-            <Gamepad2 className="size-5" aria-hidden /> Create an account
-          </Link>
-          <Link href="/login" className="glass inline-flex h-12 items-center rounded-xl px-6 text-base font-semibold text-white transition-colors hover:bg-white/10">
-            I already have an account
-          </Link>
-          <a
-            href="https://github.com/xndrncp08/Diskorte"
-            className="inline-flex h-12 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-slate-300 transition-colors hover:text-white"
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            <GithubMark className="size-4" /> Source code
-          </a>
-        </div>
+        <a
+          href="https://github.com/xndrncp08/Diskorte"
+          className="mt-5 inline-flex h-11 items-center gap-2 rounded-xl px-1 text-sm font-semibold text-slate-300 transition-colors hover:text-white"
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          <GithubMark className="size-4" /> Source code on GitHub
+        </a>
       </LandingHero>
 
       <div className="relative">
@@ -106,28 +123,41 @@ export default function LandingPage() {
           </section>
         </ScrollReveal>
 
-        <section aria-labelledby="cta-heading" className="relative z-10 mx-auto max-w-3xl px-5 pb-24">
-          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/50 p-8 text-center shadow-[0_1px_0_0_rgb(255_255_255/0.06)_inset,0_30px_60px_-30px_rgb(0_0_0/0.8),0_0_80px_-40px_rgb(255_184_0/0.35)] backdrop-blur-2xl sm:p-10">
-            <DiskarteLogo size={64} className="mx-auto mb-4" aria-hidden />
-            <h2 id="cta-heading" className="text-balance text-2xl font-extrabold text-white sm:text-3xl">
-              Ready, player one?
-            </h2>
-            <p className="mx-auto mt-3 max-w-md text-pretty text-slate-300">Make an account, start a server and send the invite code to the group chat.</p>
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <Link href="/signup" className={SIGNUP_BUTTON}>
-                <Gamepad2 className="size-5" aria-hidden /> Start your server
-              </Link>
-            </div>
-          </div>
-        </section>
-
         <footer className="relative z-10 border-t border-white/5 py-8 text-center text-xs text-slate-500">
           <p>
-            Diskarte is open-source software. Gawa ng komunidad, para sa komunidad. <span className="font-silk">© {new Date().getFullYear()}</span>
+            Diskarte is open-source software. Gawa ng komunidad, para sa komunidad. <span className="font-silk tabular-nums">© {new Date().getFullYear()}</span>
           </p>
         </footer>
       </div>
     </main>
+  );
+}
+
+function SignInCard() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-extrabold text-white">Press start</h2>
+        <p className="mt-1 text-sm text-slate-400">Sign in to get back to your servers and friends.</p>
+      </div>
+      <LoginForm next="/tambayan" />
+      <OAuthButtons providers={enabledOAuthProviders()} next="/tambayan" />
+    </div>
+  );
+}
+
+function SignedInCard() {
+  return (
+    <div className="space-y-5 text-center">
+      <Gamepad2 className="mx-auto size-10 text-sun" aria-hidden />
+      <div>
+        <h2 className="text-2xl font-extrabold text-white">You&apos;re signed in</h2>
+        <p className="mt-1 text-sm text-slate-400">Your servers, friends and calls are waiting.</p>
+      </div>
+      <Link href="/tambayan" className={`${PRIMARY_BUTTON} w-full`}>
+        Open Diskarte
+      </Link>
+    </div>
   );
 }
 

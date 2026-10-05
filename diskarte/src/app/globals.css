@@ -227,16 +227,15 @@ body {
   );
 }
 
-/* Extruded 3D vector type: stacked offsets fall from Solar Gold to deep amber, then a soft drop. */
-@utility kinetic-word {
-  text-shadow:
-    0 1px 0 #f59e0b,
-    0 2px 0 #e08e0b,
-    0 3px 0 #d97706,
-    0 4px 0 #b45309,
-    0 5px 0 #92400e,
-    0 10px 18px rgb(0 0 0 / 0.55),
-    0 0 32px rgb(255 184 0 / 0.25);
+/* A plain opacity fade that stays on under reduced motion (it moves nothing): the static logo fallback. */
+.fade-soft {
+  animation: fade-soft 500ms ease-out both !important;
+}
+
+@keyframes fade-soft {
+  from {
+    opacity: 0;
+  }
 }
 
 /* Ambient page backdrop: Philippine-sun glow over midnight with a pixel grid. */

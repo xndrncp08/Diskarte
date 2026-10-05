@@ -51,6 +51,14 @@ describe("anti-brute-force", () => {
     expect((await proxy(req("/login", { method: "POST", ip: "192.0.2.99" }))).status).not.toBe(429);
   });
 
+  it("counts sign-ins from the landing page's card against the same budget", async () => {
+    const ip = `198.51.100.${ipCounter}`;
+    for (let i = 0; i < 5; i++) await proxy(req("/", { method: "POST", ip }));
+    expect((await proxy(req("/login", { method: "POST", ip }))).status).toBe(429);
+    // Viewing the landing page is never limited.
+    expect((await proxy(req("/", { ip: "192.0.2.98" }))).status).not.toBe(429);
+  });
+
   it("limits auth callback hammering", async () => {
     const ip = `198.51.100.${ipCounter}`;
     let last = 0;
