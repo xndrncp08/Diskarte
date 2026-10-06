@@ -4,10 +4,10 @@ import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
-import { BadgeCheck, ChevronDown, Hash, HeadphoneOff, Heart, LogOut, MicOff, Pencil, Plus, Radio, Rocket, Settings, ShieldCheck, UserPlus, Video, Volume2 } from "lucide-react";
+import { BadgeCheck, ChevronDown, ChevronsDownUp, ChevronsUpDown, Hash, HeadphoneOff, Heart, Link2, LogOut, MicOff, Pencil, Plus, Radio, Rocket, Settings, ShieldCheck, Trash2, UserPlus, Video, Volume2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { leaveServerAction } from "@/actions/servers";
+import { deleteChannelAction, leaveServerAction } from "@/actions/servers";
 import { SupportDialog } from "@/components/community/SupportDialog";
 import { useMe } from "@/components/providers/MeProvider";
 import { useServerSpeaking } from "@/components/providers/PresenceProvider";
@@ -16,15 +16,18 @@ import { UserAvatar } from "@/components/profile/UserAvatar";
 import { SignalBars } from "@/components/retro/SignalBars";
 import { UserPanel } from "@/components/shell/UserPanel";
 import { useShellUI } from "@/components/shell/ShellUI";
+import { PersonContextMenu } from "@/components/social/PersonMenu";
+import { confirmAction } from "@/components/ui/ConfirmHost";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ContextMenu, ContextMenuItems, copyText, useContextMenu } from "@/components/ui/ContextMenu";
 import { CallDock } from "@/components/voice/CallDock";
 import { useIsCanvas } from "@/components/workspace/WorkspaceProvider";
 import { useCall, usePrewarm } from "@/components/voice/CallProvider";
-import { Menu } from "@/components/ui/Menu";
+import { Menu, type MenuItem } from "@/components/ui/Menu";
 import { useOnline } from "@/hooks/useOnline";
 import { boostLevel } from "@/lib/community";
-import { signalLevel } from "@/lib/presence";
-import { groupChannels, hasRole, type Channel } from "@/lib/servers";
+import { signalLevel, type PresencePayload } from "@/lib/presence";
+import { groupChannels, hasRole, type Channel, type MemberWithProfile } from "@/lib/servers";
 import { cn } from "@/lib/utils";
 import { ChannelDialog } from "./ChannelDialog";
 import { InviteDialog } from "./InviteDialog";
@@ -56,25 +59,168 @@ function OccupantList({ channelId, speaking }: { channelId: string; speaking: Re
   if (inRoom.length === 0) return null;
   return (
     <ul className="mb-1 ml-7 space-y-0.5" aria-label="In voice">
-      {inRoom.map((m) => {
-        const p = presence.get(m.user_id);
-        return (
-          <li key={m.user_id} className="flex items-center gap-2 rounded px-1.5 py-0.5 text-[13px] text-slate-300">
-            <UserAvatar profile={m.profile} size={20} speaking={speaking?.has(m.user_id) ?? false} />
-            <span className="truncate">{m.nickname ?? m.profile.display_name}</span>
-            <span className="ml-auto flex items-center gap-1 text-slate-500">
-              {p?.screen && <span className="rounded bg-red-500/80 px-1 font-silk text-[9px] text-white">LIVE</span>}
-              {p?.video && <Video className="size-3.5" aria-label="Camera on" />}
-              {p?.deafened ? (
-                <HeadphoneOff className="size-3.5 text-red-400" aria-label="Deafened" />
-              ) : p?.muted ? (
-                <MicOff className="size-3.5 text-red-400" aria-label="Muted" />
-              ) : null}
-            </span>
-          </li>
-        );
-      })}
+      {inRoom.map((m) => (
+        <Occupant key={m.user_id} member={m} presence={presence.get(m.user_id)} speaking={speaking?.has(m.user_id) ?? false} />
+      ))}
     </ul>
+  );
+}
+
+function Occupant({ member, presence: p, speaking }: { member: MemberWithProfile; presence: PresencePayload | undefined; speaking: boolean }) {
+  const menu = useContextMenu();
+  return (
+    <li className="flex items-center gap-2 rounded px-1.5 py-0.5 text-[13px] text-slate-300" {...menu.triggerProps}>
+      <UserAvatar profile={member.profile} size={20} speaking={speaking} />
+      <span className="truncate">{member.nickname ?? member.profile.display_name}</span>
+      <span className="ml-auto flex items-center gap-1 text-slate-500">
+        {p?.screen && <span className="rounded bg-red-500/80 px-1 font-silk text-[9px] text-white">LIVE</span>}
+        {p?.video && <Video className="size-3.5" aria-label="Camera on" />}
+        {p?.deafened ? (
+          <HeadphoneOff className="size-3.5 text-red-400" aria-label="Deafened" />
+        ) : p?.muted ? (
+          <MicOff className="size-3.5 text-red-400" aria-label="Muted" />
+        ) : null}
+      </span>
+      <PersonContextMenu menu={menu} person={member.profile} />
+    </li>
+  );
+}
+
+/** Right-click on a channel: copy its link, invite people, edit or delete it (managers). */
+function ChannelRow({ channel, active, canManage, onDialog }: { channel: Channel; active: boolean; canManage: boolean; onDialog: (dialog: DialogState) => void }) {
+  const { server, removeChannel } = useServer();
+  const { setNavOpen } = useShellUI();
+  const prewarm = usePrewarm();
+  const router = useRouter();
+  const menu = useContextMenu();
+  const Icon = channel.type === "voice" ? Volume2 : Hash;
+  const label = `${channel.type === "text" ? "#" : ""}${channel.name}`;
+  const icon = "size-4";
+  const items: MenuItem[] = [
+    { label: "Copy link", icon: <Link2 className={icon} aria-hidden />, onSelect: () => void copyText(`${window.location.origin}/tambayan/${server.id}/${channel.id}`, "Channel link") },
+    { label: "Invite people", icon: <UserPlus className={icon} aria-hidden />, onSelect: () => onDialog({ kind: "invite" }), hidden: server.is_system },
+    { label: "Edit channel", icon: <Pencil className={icon} aria-hidden />, onSelect: () => onDialog({ kind: "channel", channel }), hidden: !canManage },
+    {
+      label: "Delete channel",
+      icon: <Trash2 className={icon} aria-hidden />,
+      danger: true,
+      hidden: !canManage,
+      onSelect: () =>
+        confirmAction({
+          title: `Delete ${label}?`,
+          body: "Its messages go with it. This can't be undone.",
+          confirmLabel: "Delete",
+          onConfirm: async () => {
+            const result = await deleteChannelAction({ channelId: channel.id });
+            if (!result.ok) {
+              toast.error(result.error ?? "Couldn't delete.");
+              return false;
+            }
+            removeChannel(channel.id);
+            toast.success(`Deleted ${label}.`);
+            if (active) router.push(`/tambayan/${server.id}`);
+          },
+        }),
+    },
+  ];
+
+  return (
+    <li>
+      <div
+        className={cn("group relative flex items-center rounded-md transition-colors", active ? "bg-white/10 text-white" : "text-slate-400 hover:bg-white/5 hover:text-slate-200")}
+        {...menu.triggerProps}
+      >
+        {active && (
+          <motion.span
+            layoutId={`channel-pill-${server.id}`}
+            className="absolute -left-2 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r bg-sun"
+            transition={{ type: "spring", stiffness: 520, damping: 38 }}
+            aria-hidden
+          />
+        )}
+        <Link
+          href={`/tambayan/${server.id}/${channel.id}`}
+          onClick={() => setNavOpen(false)}
+          aria-current={active ? "page" : undefined}
+          className="flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1.5 text-[15px] pointer-coarse:min-h-11 pointer-coarse:py-2.5"
+          data-channel-type={channel.type}
+          {...(channel.type === "voice" ? prewarm({ serverId: server.id, serverName: server.name, channelId: channel.id, channelName: channel.name }) : {})}
+        >
+          <Icon className="size-4 shrink-0 opacity-70" aria-hidden />
+          <span className="truncate">{channel.name}</span>
+        </Link>
+        {canManage && (
+          <button
+            type="button"
+            aria-label={`Edit ${channel.name}`}
+            onClick={() => onDialog({ kind: "channel", channel })}
+            className="touch-target relative mr-1 rounded p-1 text-slate-400 opacity-0 transition-opacity hover:text-white focus:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"
+          >
+            <Pencil className="size-3.5" aria-hidden />
+          </button>
+        )}
+      </div>
+      {channel.type === "voice" && <VoiceOccupants channelId={channel.id} />}
+      <ContextMenu menu={menu} label={`${label} options`}>
+        <ContextMenuItems items={items} />
+      </ContextMenu>
+    </li>
+  );
+}
+
+/** A category heading: click folds it; right-click also offers fold-all and "Create channel". */
+function CategoryHeader({
+  category,
+  collapsed,
+  allCollapsed,
+  onToggle,
+  onToggleAll,
+  onCreate,
+}: {
+  category: string;
+  collapsed: boolean;
+  allCollapsed: boolean;
+  onToggle: () => void;
+  onToggleAll: () => void;
+  onCreate?: () => void;
+}) {
+  const menu = useContextMenu();
+  const icon = "size-4";
+  return (
+    <div className="group mb-1 flex items-center justify-between pr-1" {...menu.triggerProps}>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={!collapsed}
+        className="touch-target relative flex items-center gap-1 font-silk text-[11px] uppercase tracking-wider text-slate-400 hover:text-slate-200"
+      >
+        <ChevronDown className={cn("size-3 transition-transform", collapsed && "-rotate-90")} aria-hidden />
+        {category}
+      </button>
+      {onCreate && (
+        <button
+          type="button"
+          aria-label={`Create channel in ${category}`}
+          onClick={onCreate}
+          className="touch-target relative rounded p-0.5 text-slate-400 opacity-0 transition-opacity hover:text-white focus:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"
+        >
+          <Plus className="size-4" aria-hidden />
+        </button>
+      )}
+      <ContextMenu menu={menu} label={`${category} options`}>
+        <ContextMenuItems
+          items={[
+            { label: collapsed ? "Expand category" : "Collapse category", icon: <ChevronDown className={cn(icon, collapsed && "-rotate-90")} aria-hidden />, onSelect: onToggle },
+            {
+              label: allCollapsed ? "Expand all categories" : "Collapse all categories",
+              icon: allCollapsed ? <ChevronsUpDown className={icon} aria-hidden /> : <ChevronsDownUp className={icon} aria-hidden />,
+              onSelect: onToggleAll,
+            },
+            { label: "Create channel", icon: <Plus className={icon} aria-hidden />, onSelect: () => onCreate?.(), hidden: !onCreate },
+          ]}
+        />
+      </ContextMenu>
+    </div>
   );
 }
 
@@ -84,7 +230,6 @@ export function ChannelSidebar() {
   const { setNavOpen } = useShellUI();
   // Phones keep the call dock in the drawer; on the canvas the call controls float in the tray.
   const isCanvas = useIsCanvas();
-  const prewarm = usePrewarm();
   const params = useParams<{ channelId?: string }>();
   const pathname = usePathname();
   const onLfg = pathname === `/tambayan/${server.id}/lfg`;
@@ -114,41 +259,46 @@ export function ChannelSidebar() {
     });
   }
 
+  const serverItems: MenuItem[] = [
+    // Everyone is already in Diskarte HQ.
+    { label: "Invite people", icon: <UserPlus className="size-4" aria-hidden />, onSelect: () => setDialog({ kind: "invite" }), hidden: server.is_system },
+    {
+      label: "Server settings",
+      icon: <Settings className="size-4" aria-hidden />,
+      onSelect: () => setDialog({ kind: "settings" }),
+      hidden: myRole !== "admin",
+    },
+    {
+      label: "Bantay-Bayan",
+      icon: <ShieldCheck className="size-4" aria-hidden />,
+      onSelect: () => setDialog({ kind: "settings", tab: "audit" }),
+      hidden: !canManageChannels,
+    },
+    { label: "Support this server", icon: <Heart className="size-4" aria-hidden />, onSelect: () => setDialog({ kind: "support" }) },
+    {
+      label: "Create channel",
+      icon: <Plus className="size-4" aria-hidden />,
+      onSelect: () => setDialog({ kind: "channel" }),
+      hidden: !canManageChannels,
+    },
+    {
+      label: "Leave server",
+      icon: <LogOut className="size-4" aria-hidden />,
+      onSelect: () => setDialog({ kind: "leave" }),
+      danger: true,
+      // Nobody leaves Diskarte HQ; owners leave by deleting their server.
+      hidden: isOwner || server.is_system,
+    },
+  ];
+  const headerMenu = useContextMenu();
+  const categories = groupChannels(channels);
+  const allCollapsed = categories.length > 0 && categories.every(({ category }) => collapsed[category]);
+
   return (
     <aside aria-label={`${server.name} channels`} className="flex h-full w-60 shrink-0 flex-col max-md:glass max-md:border-y-0 max-md:border-l-0 md:w-full md:overflow-hidden">
       <Menu
         label="Server menu"
-        items={[
-          // Everyone is already in Diskarte HQ.
-          { label: "Invite people", icon: <UserPlus className="size-4" aria-hidden />, onSelect: () => setDialog({ kind: "invite" }), hidden: server.is_system },
-          {
-            label: "Server settings",
-            icon: <Settings className="size-4" aria-hidden />,
-            onSelect: () => setDialog({ kind: "settings" }),
-            hidden: myRole !== "admin",
-          },
-          {
-            label: "Bantay-Bayan",
-            icon: <ShieldCheck className="size-4" aria-hidden />,
-            onSelect: () => setDialog({ kind: "settings", tab: "audit" }),
-            hidden: !canManageChannels,
-          },
-          { label: "Support this server", icon: <Heart className="size-4" aria-hidden />, onSelect: () => setDialog({ kind: "support" }) },
-          {
-            label: "Create channel",
-            icon: <Plus className="size-4" aria-hidden />,
-            onSelect: () => setDialog({ kind: "channel" }),
-            hidden: !canManageChannels,
-          },
-          {
-            label: "Leave server",
-            icon: <LogOut className="size-4" aria-hidden />,
-            onSelect: () => setDialog({ kind: "leave" }),
-            danger: true,
-            // Nobody leaves Diskarte HQ; owners leave by deleting their server.
-            hidden: isOwner || server.is_system,
-          },
-        ]}
+        items={serverItems}
         trigger={({ toggle, open, id }) => (
           <button
             type="button"
@@ -158,6 +308,7 @@ export function ChannelSidebar() {
             aria-haspopup="menu"
             className="flex h-12 w-full items-center justify-between border-b border-white/5 px-4 text-left font-bold text-white transition-colors hover:bg-white/5"
             data-testid="server-menu"
+            {...headerMenu.triggerProps}
           >
             <span className="flex min-w-0 items-center gap-1.5">
               <span className="truncate">{server.name}</span>
@@ -173,6 +324,9 @@ export function ChannelSidebar() {
           </button>
         )}
       />
+      <ContextMenu menu={headerMenu} label="Server menu">
+        <ContextMenuItems items={serverItems} />
+      </ContextMenu>
 
       <nav aria-label="Channels" className="scrollbar-thin flex-1 overflow-y-auto px-2 py-3">
         <Link
@@ -186,77 +340,22 @@ export function ChannelSidebar() {
         >
           <Radio className="size-4" aria-hidden /> LFG Board
         </Link>
-        {groupChannels(channels).map(({ category, channels: list }) => (
+        {categories.map(({ category, channels: list }) => (
           <section key={category} className="mb-4">
-            <div className="group mb-1 flex items-center justify-between pr-1">
-              <button
-                type="button"
-                onClick={() => setCollapsed((c) => ({ ...c, [category]: !c[category] }))}
-                aria-expanded={!collapsed[category]}
-                className="touch-target relative flex items-center gap-1 font-silk text-[11px] uppercase tracking-wider text-slate-400 hover:text-slate-200"
-              >
-                <ChevronDown className={cn("size-3 transition-transform", collapsed[category] && "-rotate-90")} aria-hidden />
-                {category}
-              </button>
-              {canManageChannels && (
-                <button
-                  type="button"
-                  aria-label={`Create channel in ${category}`}
-                  onClick={() => setDialog({ kind: "channel", category, type: list[0]?.type ?? "text" })}
-                  className="touch-target relative rounded p-0.5 text-slate-400 opacity-0 transition-opacity hover:text-white focus:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"
-                >
-                  <Plus className="size-4" aria-hidden />
-                </button>
-              )}
-            </div>
+            <CategoryHeader
+              category={category}
+              collapsed={Boolean(collapsed[category])}
+              allCollapsed={allCollapsed}
+              onToggle={() => setCollapsed((c) => ({ ...c, [category]: !c[category] }))}
+              onToggleAll={() => setCollapsed(Object.fromEntries(categories.map((g) => [g.category, !allCollapsed])))}
+              onCreate={canManageChannels ? () => setDialog({ kind: "channel", category, type: list[0]?.type ?? "text" }) : undefined}
+            />
             <ul className="space-y-0.5">
               {list
                 .filter((c) => !collapsed[category] || c.id === params.channelId)
-                .map((channel) => {
-                  const active = channel.id === params.channelId;
-                  const Icon = channel.type === "voice" ? Volume2 : Hash;
-                  return (
-                    <li key={channel.id}>
-                      <div
-                        className={cn(
-                          "group relative flex items-center rounded-md transition-colors",
-                          active ? "bg-white/10 text-white" : "text-slate-400 hover:bg-white/5 hover:text-slate-200",
-                        )}
-                      >
-                        {active && (
-                          <motion.span
-                            layoutId={`channel-pill-${server.id}`}
-                            className="absolute -left-2 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r bg-sun"
-                            transition={{ type: "spring", stiffness: 520, damping: 38 }}
-                            aria-hidden
-                          />
-                        )}
-                        <Link
-                          href={`/tambayan/${server.id}/${channel.id}`}
-                          onClick={() => setNavOpen(false)}
-                          aria-current={active ? "page" : undefined}
-                          className="flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1.5 text-[15px] pointer-coarse:min-h-11 pointer-coarse:py-2.5"
-                          data-channel-type={channel.type}
-                          {...(channel.type === "voice" ? prewarm({ serverId: server.id, serverName: server.name, channelId: channel.id, channelName: channel.name }) : {})}
-                        >
-                          <Icon className="size-4 shrink-0 opacity-70" aria-hidden />
-                          <span className="truncate">{channel.name}</span>
-                        </Link>
-                        {canManageChannels && (
-                          <button
-                            type="button"
-                            aria-label={`Edit ${channel.name}`}
-                            onClick={() => setDialog({ kind: "channel", channel })}
-                            className="touch-target relative mr-1 rounded p-1 text-slate-400 opacity-0 transition-opacity hover:text-white focus:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"
-                          >
-                            <Pencil className="size-3.5" aria-hidden />
-                          </button>
-                        )}
-                      </div>
-                      {channel.type === "voice" && <VoiceOccupants channelId={channel.id} />}
-                    </li>
-                  );
-                })}
+                .map((channel) => (
+                  <ChannelRow key={channel.id} channel={channel} active={channel.id === params.channelId} canManage={canManageChannels} onDialog={setDialog} />
+                ))}
             </ul>
           </section>
         ))}

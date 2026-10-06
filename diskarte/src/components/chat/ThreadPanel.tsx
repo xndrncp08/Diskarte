@@ -11,6 +11,7 @@ import { isGroupedWithPrevious } from "@/lib/chat-format";
 import { MESSAGE_SELECT, previewText, READ_ONLY_NOTICE, type MessageWithAuthor, type Reaction } from "@/lib/messages";
 import { hasRole, type Channel } from "@/lib/servers";
 import { Composer } from "./Composer";
+import { openMemberProfile } from "@/components/server/memberProfiles";
 import { MessageItem, type MessageActions } from "./MessageItem";
 
 const NO_REACTIONS: Reaction[] = [];
@@ -78,7 +79,8 @@ export function ThreadPanel({ channel, root, onClose, locked }: { channel: Chann
           mentioned={false}
           editing={false}
           setEditing={() => undefined}
-          actions={{ onReply: () => undefined, onEdit: async () => false, onDelete: () => undefined, onRetry: () => undefined, onDiscard: () => undefined, onJump: () => undefined, nameOf: () => "" }}
+          actions={{ onReply: () => undefined, onEdit: async () => false, onDelete: () => undefined, onRetry: () => undefined, onDiscard: () => undefined, onJump: () => undefined, nameOf: () => "", onOpenProfile: openMemberProfile }}
+          interactive={false}
         />
       </div>
       {history ? (
@@ -116,6 +118,7 @@ function ThreadBody({ channel, root, initial, locked }: { channel: Channel; root
     onDiscard: (id) => chat.discard(id),
     onJump: (id) => document.getElementById(`thread-message-${id}`)?.scrollIntoView({ block: "center", behavior: "smooth" }),
     nameOf: (userId) => names.get(userId) ?? "Someone",
+    onOpenProfile: openMemberProfile,
   };
   const byId = new Map(chat.messages.map((m) => [m.id, m]));
 

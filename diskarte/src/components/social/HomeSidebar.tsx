@@ -2,17 +2,22 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Plus, Users } from "lucide-react";
+import { CheckCheck, LogOut, Plus, Users } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { createGroupDmAction } from "@/actions/social";
+import { createGroupDmAction, leaveDmAction } from "@/actions/social";
 import { useSocial } from "@/components/providers/SocialProvider";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { WorkspacePanel } from "@/components/workspace/WorkspacePanel";
+import { ServerContextMenu } from "@/components/shell/ServerContextMenu";
 import { ServerIcon } from "@/components/shell/ServerIcon";
 import { useShellUI } from "@/components/shell/ShellUI";
 import { UserPanel } from "@/components/shell/UserPanel";
 import { Button } from "@/components/ui/Button";
+import { confirmAction } from "@/components/ui/ConfirmHost";
+import { ContextMenu, ContextMenuItems, useContextMenu } from "@/components/ui/ContextMenu";
+import type { MenuItem } from "@/components/ui/Menu";
+import { PersonMenuItems } from "./PersonMenu";
 import { InputField } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { CallDock } from "@/components/voice/CallDock";
@@ -38,6 +43,86 @@ function ConversationAvatar({ conversation, size = 32 }: { conversation: Convers
 }
 
 export { ConversationAvatar };
+
+/** A DM in the Home list; right-click: mark read, the person's menu (1:1) or leave (group). */
+function DmRow({ conversation: c, active }: { conversation: ConversationSummary; active: boolean }) {
+  const { setNavOpen } = useShellUI();
+  const { markRead, reloadConversations } = useSocial();
+  const router = useRouter();
+  const menu = useContextMenu();
+  const href = `/tambayan/dm/${c.id}`;
+  const unread = !active && isUnread(c);
+  const other = c.kind === "direct" ? c.others[0] : undefined;
+  const before: MenuItem[] = [{ label: "Mark as read", icon: <CheckCheck className="size-4" aria-hidden />, onSelect: () => markRead(c.id), hidden: !unread }];
+  const leave: MenuItem = {
+    label: "Leave group",
+    icon: <LogOut className="size-4" aria-hidden />,
+    danger: true,
+    onSelect: () =>
+      confirmAction({
+        title: `Leave ${conversationTitle(c)}?`,
+        body: "You won't get its messages any more unless someone adds you back.",
+        confirmLabel: "Leave",
+        onConfirm: async () => {
+          const result = await leaveDmAction({ conversationId: c.id });
+          if (!result.ok) {
+            toast.error(result.error ?? "Couldn't leave.");
+            return false;
+          }
+          await reloadConversations();
+          if (active) router.replace("/tambayan");
+        },
+      }),
+  };
+
+  return (
+    <li>
+      <Link
+        href={href}
+        onClick={() => setNavOpen(false)}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors pointer-coarse:py-2.5",
+          active ? "bg-white/10 text-white" : unread ? "font-semibold text-white hover:bg-white/5" : "text-slate-400 hover:bg-white/5 hover:text-slate-200",
+        )}
+        {...menu.triggerProps}
+      >
+        <ConversationAvatar conversation={c} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate">{conversationTitle(c)}</span>
+          {c.kind === "group" && <span className="block text-[11px] font-normal text-slate-500">{c.others.length + 1} members</span>}
+        </span>
+        {unread && (
+          <span className="size-2 shrink-0 rounded-full bg-sun">
+            <span className="sr-only">Unread</span>
+          </span>
+        )}
+      </Link>
+      <ContextMenu menu={menu} label={`${conversationTitle(c)} options`}>
+        {other ? <PersonMenuItems person={other} anchor={menu.target} before={before} /> : <ContextMenuItems items={[...before, leave]} />}
+      </ContextMenu>
+    </li>
+  );
+}
+
+function ServerRow({ server }: { server: Server }) {
+  const { setNavOpen } = useShellUI();
+  const menu = useContextMenu();
+  return (
+    <li>
+      <Link
+        href={`/tambayan/${server.id}`}
+        onClick={() => setNavOpen(false)}
+        className="group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-slate-300 hover:bg-white/5 hover:text-white"
+        {...menu.triggerProps}
+      >
+        <ServerIcon server={server} size={28} />
+        <span className="truncate">{server.name}</span>
+      </Link>
+      <ServerContextMenu menu={menu} server={server} />
+    </li>
+  );
+}
 
 /** Home column: Friends, direct messages and group DMs, then your tambayans. */
 export function HomeSidebar({ servers = [] }: { servers?: Server[] }) {
@@ -89,35 +174,7 @@ export function HomeSidebar({ servers = [] }: { servers?: Server[] }) {
             ) : conversations.length === 0 ? (
               <li className="px-2 py-1 text-xs text-slate-500">No DMs yet. Add some friends!</li>
             ) : (
-              conversations.map((c) => {
-                const href = `/tambayan/dm/${c.id}`;
-                const active = pathname === href;
-                const unread = !active && isUnread(c);
-                return (
-                  <li key={c.id}>
-                    <Link
-                      href={href}
-                      onClick={() => setNavOpen(false)}
-                      aria-current={active ? "page" : undefined}
-                      className={cn(
-                        "flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors pointer-coarse:py-2.5",
-                        active ? "bg-white/10 text-white" : unread ? "font-semibold text-white hover:bg-white/5" : "text-slate-400 hover:bg-white/5 hover:text-slate-200",
-                      )}
-                    >
-                      <ConversationAvatar conversation={c} />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate">{conversationTitle(c)}</span>
-                        {c.kind === "group" && <span className="block text-[11px] font-normal text-slate-500">{c.others.length + 1} members</span>}
-                      </span>
-                      {unread && (
-                        <span className="size-2 shrink-0 rounded-full bg-sun">
-                          <span className="sr-only">Unread</span>
-                        </span>
-                      )}
-                    </Link>
-                  </li>
-                );
-              })
+              conversations.map((c) => <DmRow key={c.id} conversation={c} active={pathname === `/tambayan/dm/${c.id}`} />)
             )}
           </ul>
 
@@ -126,12 +183,7 @@ export function HomeSidebar({ servers = [] }: { servers?: Server[] }) {
               <p className="mb-1 mt-5 px-2 font-silk text-[11px] uppercase tracking-wider text-slate-400">Your servers</p>
               <ul className="space-y-0.5">
                 {servers.map((s) => (
-                  <li key={s.id}>
-                    <Link href={`/tambayan/${s.id}`} onClick={() => setNavOpen(false)} className="group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-slate-300 hover:bg-white/5 hover:text-white">
-                      <ServerIcon server={s} size={28} />
-                      <span className="truncate">{s.name}</span>
-                    </Link>
-                  </li>
+                  <ServerRow key={s.id} server={s} />
                 ))}
               </ul>
             </>

@@ -19,7 +19,7 @@ import { joinTicTacToe, newTicTacToe, outcome, playMove, rematch, type TicTacToe
 import { answerTrivia, currentQuestion, leaderboard, newTrivia, nextTrivia, revealTrivia, ROUND_SECONDS, shuffledOrder, TRIVIA_QUESTIONS } from "@/lib/games/trivia";
 import { getLowDataMode, imageQuality, resetLowDataCache, setLowDataMode, subscribeLowDataMode } from "@/lib/low-data";
 import { dequeue, enqueue, isNetworkError, outboxFor, outboxSize, type OutboxEntry } from "@/lib/outbox";
-import { classifyFriendships, conversationTitle, isUnread, sortConversations, type Friendship } from "@/lib/social";
+import { classifyFriendships, conversationTitle, friendStatus, isUnread, sortConversations, type Friendship } from "@/lib/social";
 import { BUILTIN_CLIPS, builtinClip, createThrottle, parseSoundboardMessage } from "@/lib/soundboard";
 import { cueDuration } from "@/lib/sfx";
 import { getSticker, isStickerId, STICKERS, STICKER_PACKS } from "@/lib/stickers";
@@ -310,6 +310,21 @@ describe("friends & DMs", () => {
       { userId: "z", status: "outgoing", since: "2026-09-27T00:00:00Z" },
       { userId: "b", status: "accepted", since: "2026-09-27T01:00:00Z" },
     ]);
+  });
+
+  it("tells the Add Friend control what to offer", () => {
+    const friends = [
+      { userId: "a", status: "incoming" as const, since: "" },
+      { userId: "z", status: "outgoing" as const, since: "" },
+      { userId: "b", status: "accepted" as const, since: "" },
+    ];
+    expect(friendStatus("me", "me", friends, [])).toBe("self");
+    expect(friendStatus("me", "a", friends, [])).toBe("incoming");
+    expect(friendStatus("me", "z", friends, [])).toBe("outgoing");
+    expect(friendStatus("me", "b", friends, [])).toBe("accepted");
+    expect(friendStatus("me", "new", friends, [])).toBe("none");
+    expect(friendStatus("me", "b", friends, ["b"])).toBe("blocked");
+    expect(friendStatus("me", "new", null, [])).toBeNull(); // still loading
   });
 
   it("titles, unread state and ordering for conversations", () => {

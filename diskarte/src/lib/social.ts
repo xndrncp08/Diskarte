@@ -21,6 +21,17 @@ export function classifyFriendships(rows: Friendship[], meId: string): FriendEnt
   });
 }
 
+/** How I relate to someone: what an "Add Friend" control should offer. */
+export type FriendStatus = "self" | "blocked" | "none" | "outgoing" | "incoming" | "accepted";
+
+/** `null` while my friends list is still loading. */
+export function friendStatus(meId: string, userId: string, friends: FriendEntry[] | null, blocked: readonly string[]): FriendStatus | null {
+  if (userId === meId) return "self";
+  if (blocked.includes(userId)) return "blocked";
+  if (!friends) return null;
+  return friends.find((f) => f.userId === userId)?.status ?? "none";
+}
+
 export interface ConversationSummary {
   id: string;
   kind: DmKind;

@@ -9,6 +9,7 @@ import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { subscribeDbChanges } from "@/lib/realtime";
 import type { Server } from "@/lib/servers";
+import { ConfirmHost } from "@/components/ui/ConfirmHost";
 import { cn } from "@/lib/utils";
 import { DiskarteCanvasBackground } from "@/components/workspace/DiskarteCanvasBackground";
 import { WorkspaceCanvas } from "@/components/workspace/WorkspaceCanvas";
@@ -95,6 +96,7 @@ export function AppShell({ servers, workspace, children }: { servers: Server[]; 
       <ShellUIBridge>
         <MembershipWatcher userId={me.id} />
         <Frame servers={servers}>{children}</Frame>
+        <ConfirmHost />
       </ShellUIBridge>
     </WorkspaceProvider>
   );

@@ -160,6 +160,15 @@ body {
   }
 }
 
+/* Long-press opens our context menu on touch screens: no iOS link callout or text selection fighting it. */
+@media (pointer: coarse) {
+  [data-context-menu] {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
 /* iOS notch / home-indicator padding for fixed chrome (composer, panels, call controls). */
 @utility pb-safe {
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));

@@ -4,14 +4,14 @@ import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { useConversations, useFriends } from "@/hooks/useSocial";
 import { isUnread } from "@/lib/social";
 
-type SocialValue = ReturnType<typeof useFriends> &
+export type SocialValue = ReturnType<typeof useFriends> &
   Omit<ReturnType<typeof useConversations>, "reload"> & {
     reloadConversations: () => Promise<void>;
     /** Incoming friend requests + unread conversations (for the Home badge). */
     attention: number;
   };
 
-const SocialContext = createContext<SocialValue | null>(null);
+export const SocialContext = createContext<SocialValue | null>(null);
 
 /**
  * One app-wide subscription to friendships and DM conversations, shared by the home sidebar,

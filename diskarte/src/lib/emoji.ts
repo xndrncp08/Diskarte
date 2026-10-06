@@ -16,6 +16,9 @@ export const CLASSIC_REACTIONS = (
   [":thumbs_up:", ":thumbs_down:", ":heart:", ":laugh:", ":sad:", ":angry:", ":party:", ":eyes:", ":check:", ":cross:", ":skull:", ":trophy:", ":thinking:", ":cool:", ":star:", ":hype:", ":coffee:", ":game:"] as const
 ).map(reaction);
 
+/** The one-tap row at the top of a message's right-click menu. */
+export const QUICK_REACTIONS = ([":thumbs_up:", ":heart:", ":laugh:", ":petmalu:"] as const).map(reaction);
+
 const REACTION_CODES = new Set<string>([...PINOY_REACTIONS, ...CLASSIC_REACTIONS].map((r) => r.code));
 
 /** New reactions must be one of the icon codes above. */
