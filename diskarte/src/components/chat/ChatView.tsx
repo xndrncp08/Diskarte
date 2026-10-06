@@ -17,6 +17,7 @@ import { hasRole, type Channel } from "@/lib/servers";
 import { cn } from "@/lib/utils";
 import { Composer } from "./Composer";
 import { VirtualMessageList, type VirtualMessageListHandle } from "./VirtualMessageList";
+import { openMemberProfile } from "@/components/server/memberProfiles";
 import { MessageItem, type MessageActions } from "./MessageItem";
 import { OfflineBanner } from "./OfflineBanner";
 import { PinsDrawer } from "./PinsDrawer";
@@ -127,6 +128,7 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
       onDiscard: (id) => chat.discard(id),
       onJump: jumpTo,
       nameOf: (userId) => names.get(userId) ?? "Someone",
+      onOpenProfile: openMemberProfile,
     }),
     [chat, jumpTo, names],
   );

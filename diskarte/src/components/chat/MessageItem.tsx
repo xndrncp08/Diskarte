@@ -1,9 +1,14 @@
 "use client";
 
-import { Clock, CornerUpLeft, MessagesSquare, Pencil, Pin, PinOff, RotateCw, Trash2, X } from "lucide-react";
-import { memo, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { Clock, Copy, CornerUpLeft, MessagesSquare, Pencil, Pin, PinOff, RotateCw, Trash2, X } from "lucide-react";
+import { memo, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { UserAvatar } from "@/components/profile/UserAvatar";
+import { PersonContextMenu } from "@/components/social/PersonMenu";
+import { ContextMenu, ContextMenuItems, copyText, useContextMenu, useContextMenuPick } from "@/components/ui/ContextMenu";
+import { Glyph } from "@/components/ui/Glyph";
+import type { MenuItem } from "@/components/ui/Menu";
 import type { ChatMessage } from "@/hooks/useChannelChat";
+import { QUICK_REACTIONS } from "@/lib/emoji";
 import { parseAttachments, previewText, type Reaction } from "@/lib/messages";
 import { cn } from "@/lib/utils";
 import { Attachments } from "./Attachments";
@@ -25,6 +30,8 @@ export interface MessageActions {
   onDiscard: (id: string) => void;
   onJump: (id: string) => void;
   nameOf: (userId: string) => string;
+  /** Opens an author's profile (servers only: DMs have no member profiles). */
+  onOpenProfile?: (userId: string, anchor: HTMLElement) => void;
 }
 
 function ToolbarButton({ label, onClick, children, danger = false }: { label: string; onClick: (e: React.MouseEvent) => void; children: React.ReactNode; danger?: boolean }) {
@@ -82,6 +89,103 @@ function EditBox({ initial, onSave, onCancel }: { initial: string; onSave: (valu
   );
 }
 
+/** An author's avatar or name: click opens their profile (in servers); right-click, the person menu. */
+function Author({
+  message,
+  actions,
+  className,
+  decorative = false,
+  children,
+}: {
+  message: ChatMessage;
+  actions: MessageActions;
+  className?: string;
+  /** The avatar repeats the name: a mouse shortcut only, kept out of the tab order and the a11y tree. */
+  decorative?: boolean;
+  children: ReactNode;
+}) {
+  const author = message.author;
+  const menu = useContextMenu({ disabled: !author });
+  const open = author && actions.onOpenProfile;
+  return (
+    <>
+      {open ? (
+        <button
+          type="button"
+          onClick={(e) => open(author.id, e.currentTarget)}
+          tabIndex={decorative ? -1 : undefined}
+          aria-hidden={decorative || undefined}
+          className={cn("cursor-pointer text-left hover:underline", className)}
+          {...menu.triggerProps}
+        >
+          {children}
+        </button>
+      ) : (
+        <span className={className} {...menu.triggerProps}>
+          {children}
+        </span>
+      )}
+      {author && <PersonContextMenu menu={menu} person={author} />}
+    </>
+  );
+}
+
+function QuickReactions({ onReact }: { onReact: (code: string) => void }) {
+  const pick = useContextMenuPick();
+  return (
+    <div role="group" aria-label="Quick reactions" className="mb-1 flex justify-between gap-1 border-b border-white/10 px-1 pb-1.5">
+      {QUICK_REACTIONS.map((r) => (
+        <button
+          key={r.code}
+          type="button"
+          role="menuitem"
+          aria-label={`React with ${r.label}`}
+          title={r.label}
+          onClick={() => {
+            pick();
+            onReact(r.code);
+          }}
+          className="rounded-lg p-2 outline-none transition-colors hover:bg-white/10 focus-visible:bg-sun/90 pointer-coarse:p-3"
+        >
+          <Glyph code={r.code} className="size-5" />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** A message's right-click menu: the toolbar's actions plus quick reactions and copy. */
+function MessageMenuItems({ message, mine, canModerate, actions, setEditing }: { message: ChatMessage; mine: boolean; canModerate: boolean; actions: MessageActions; setEditing: (id: string | null) => void }) {
+  const icon = "size-4";
+  const settled = !message.pending && !message.failed && !message.queued;
+  const items: MenuItem[] = [
+    { label: "Retry", icon: <RotateCw className={icon} aria-hidden />, onSelect: () => actions.onRetry(message), hidden: !message.failed },
+    { label: message.queued ? "Cancel send" : "Discard", icon: <X className={icon} aria-hidden />, onSelect: () => actions.onDiscard(message.id), hidden: !message.failed && !message.queued },
+    { label: "Reply", icon: <CornerUpLeft className={icon} aria-hidden />, onSelect: () => actions.onReply(message), hidden: !settled },
+    {
+      label: message.thread_reply_count > 0 ? "Open thread" : "Start thread",
+      icon: <MessagesSquare className={icon} aria-hidden />,
+      onSelect: () => actions.onOpenThread?.(message),
+      hidden: !settled || !actions.onOpenThread || Boolean(message.thread_id),
+    },
+    { label: "Edit message", icon: <Pencil className={icon} aria-hidden />, onSelect: () => setEditing(message.id), hidden: !settled || !mine || Boolean(message.sticker) },
+    {
+      label: message.pinned ? "Unpin message" : "Pin message",
+      icon: message.pinned ? <PinOff className={icon} aria-hidden /> : <Pin className={icon} aria-hidden />,
+      onSelect: () => actions.onPin?.(message.id, !message.pinned),
+      hidden: !settled || !canModerate || !actions.onPin,
+    },
+    { label: "Copy text", icon: <Copy className={icon} aria-hidden />, onSelect: () => void copyText(message.content, "Message"), hidden: !message.content },
+    { label: "Delete message", icon: <Trash2 className={icon} aria-hidden />, danger: true, onSelect: () => actions.onDelete(message, false), hidden: !settled || !(mine || canModerate) },
+  ];
+  return (
+    <>
+      {settled && actions.onReact && <QuickReactions onReact={(code) => actions.onReact?.(message.id, code)} />}
+      <ContextMenuItems items={items} />
+    </>
+  );
+}
+
 export const MessageItem = memo(function MessageItem({
   message,
   grouped,
@@ -95,6 +199,7 @@ export const MessageItem = memo(function MessageItem({
   onActivate,
   setEditing,
   actions,
+  interactive = true,
 }: {
   message: ChatMessage;
   grouped: boolean;
@@ -109,8 +214,11 @@ export const MessageItem = memo(function MessageItem({
   active?: boolean;
   onActivate?: (id: string | null) => void;
   actions: MessageActions;
+  /** False for a read-only preview (a thread's root message): no right-click menu. */
+  interactive?: boolean;
 }) {
   const mine = message.author_id === meId;
+  const menu = useContextMenu({ disabled: !interactive || editing });
   const attachments = parseAttachments(message.attachments);
   const name = message.author?.display_name ?? "Deleted user";
 
@@ -121,6 +229,7 @@ export const MessageItem = memo(function MessageItem({
       data-testid="message"
       data-message-id={message.id}
       data-active={active || undefined}
+      {...menu.triggerProps}
       onClick={(e) => {
         // Touch screens have no hover: tapping a message (not one of its controls) toggles its actions.
         if (!onActivate || !window.matchMedia?.("(pointer: coarse)").matches) return;
@@ -138,7 +247,9 @@ export const MessageItem = memo(function MessageItem({
         {grouped ? (
           <Timestamp iso={message.created_at} variant="time" className="invisible block pt-1 text-right text-[10px] text-slate-500 group-hover:visible" />
         ) : message.author ? (
-          <UserAvatar profile={message.author} size={40} />
+          <Author message={message} actions={actions} decorative className="block rounded-full no-underline!">
+            <UserAvatar profile={message.author} size={40} />
+          </Author>
         ) : (
           <span className="block size-10 rounded-full bg-white/10" />
         )}
@@ -164,7 +275,9 @@ export const MessageItem = memo(function MessageItem({
         )}
         {!grouped && (
           <p className="flex min-w-0 items-baseline gap-2">
-            <span className="truncate font-semibold text-white">{name}</span>
+            <Author message={message} actions={actions} className="truncate font-semibold text-white">
+              {name}
+            </Author>
             <Timestamp iso={message.created_at} className="shrink-0 whitespace-nowrap text-xs text-slate-500" />
             {message.pinned && <Pin className="size-3 shrink-0 text-sun" aria-label="Pinned" />}
           </p>
@@ -276,6 +389,9 @@ export const MessageItem = memo(function MessageItem({
           )}
         </div>
       )}
+      <ContextMenu menu={menu} label="Message options">
+        <MessageMenuItems message={message} mine={mine} canModerate={canModerate} actions={actions} setEditing={setEditing} />
+      </ContextMenu>
     </article>
   );
 });

@@ -10,20 +10,23 @@ import { UserAvatar } from "@/components/profile/UserAvatar";
 import { useShellUI } from "@/components/shell/ShellUI";
 import { Button } from "@/components/ui/Button";
 import { InputField } from "@/components/ui/Field";
+import { useContextMenu } from "@/components/ui/ContextMenu";
 import { Menu } from "@/components/ui/Menu";
 import type { Server } from "@/lib/servers";
 import type { SocialProfile } from "@/lib/social";
 import { cn } from "@/lib/utils";
 import { HomeSidebar } from "./HomeSidebar";
+import { PersonContextMenu } from "./PersonMenu";
 import { Glyph } from "@/components/ui/Glyph";
 import { WorkspacePanel } from "@/components/workspace/WorkspacePanel";
 
 type Tab = "all" | "pending" | "blocked" | "add";
 
 function PersonRow({ profile, children }: { profile: SocialProfile | undefined; children: React.ReactNode }) {
+  const menu = useContextMenu({ disabled: !profile });
   if (!profile) return null;
   return (
-    <li className="flex items-center gap-3 border-t border-white/5 px-2 py-2.5 first:border-t-0" data-testid="friend-row">
+    <li className="flex items-center gap-3 border-t border-white/5 px-2 py-2.5 first:border-t-0" data-testid="friend-row" {...menu.triggerProps}>
       <UserAvatar profile={profile} size={36} />
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold text-white">{profile.display_name}</p>
@@ -38,6 +41,7 @@ function PersonRow({ profile, children }: { profile: SocialProfile | undefined; 
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-1">{children}</div>
+      <PersonContextMenu menu={menu} person={profile} />
     </li>
   );
 }

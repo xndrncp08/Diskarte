@@ -2,7 +2,7 @@
 
 import { AnimatePresence } from "framer-motion";
 import { Check } from "lucide-react";
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useEffectEvent, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 import { cn } from "@/lib/utils";
 import { FloatingPortal, useFloating, type Side } from "./floating";
 import { InertWhenExiting } from "./InertWhenExiting";
@@ -19,7 +19,7 @@ export interface MenuItem {
   group?: string;
 }
 
-const ITEM_SELECTOR = "[role=menuitem],[role=menuitemradio]";
+export const ITEM_SELECTOR = "[role=menuitem],[role=menuitemradio]";
 
 /**
  * Popover menu (server menu, status switcher…). The panel is portalled to <body> with fixed
@@ -56,44 +56,8 @@ export function Menu({
     if (restoreFocus) root.current?.querySelector<HTMLElement>("button, [href], [tabindex]")?.focus();
   }, []);
 
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: PointerEvent | MouseEvent) => {
-      const target = e.target as Node;
-      if (!root.current?.contains(target) && !panel.current?.contains(target)) close(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        close(true);
-        return;
-      }
-      const nodes = Array.from(panel.current?.querySelectorAll<HTMLElement>(ITEM_SELECTOR) ?? []);
-      if (nodes.length === 0) return;
-      const index = nodes.indexOf(document.activeElement as HTMLElement);
-      let next = -1;
-      if (e.key === "ArrowDown") next = (index + 1) % nodes.length;
-      else if (e.key === "ArrowUp") next = (index - 1 + nodes.length) % nodes.length;
-      else if (e.key === "Home") next = 0;
-      else if (e.key === "End") next = nodes.length - 1;
-      else if (e.key === "Tab") close(false);
-      if (next >= 0) {
-        e.preventDefault();
-        nodes[next].focus();
-      }
-    };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    // Open on the current choice (a checked item) rather than always on the first row.
-    const frame = requestAnimationFrame(() =>
-      (panel.current?.querySelector<HTMLElement>("[aria-checked=true]") ?? panel.current?.querySelector<HTMLElement>(ITEM_SELECTOR))?.focus(),
-    );
-    return () => {
-      cancelAnimationFrame(frame);
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open, close]);
+  useMenuDismiss(open, [root, panel], () => close(false));
+  useMenuKeyboard(open, panel, () => close(true), () => close(false));
 
   return (
     <div ref={root} className={cn("relative", className)}>
@@ -115,29 +79,92 @@ export function Menu({
               transition={{ duration: 0.12 }}
               className="glass-strong z-50 min-w-52 max-w-[calc(100vw-1rem)] rounded-xl bg-slate-950! p-1.5 shadow-xl shadow-black/50"
             >
-              {sections(visible).map((section, i) =>
-                section.group ? (
-                  <div key={section.group} role="group" aria-label={section.group} className={cn(i > 0 && "mt-1 border-t border-white/10 pt-1")}>
-                    <p className="px-2.5 pb-0.5 pt-1 font-silk text-[10px] uppercase tracking-wider text-slate-500" aria-hidden>
-                      {section.group}
-                    </p>
-                    {section.items.map((item) => (
-                      <MenuRow key={item.label} item={item} onPick={() => close(true)} />
-                    ))}
-                  </div>
-                ) : (
-                  <div key={`plain-${i}`} className={cn(i > 0 && "mt-1 border-t border-white/10 pt-1")}>
-                    {section.items.map((item) => (
-                      <MenuRow key={item.label} item={item} onPick={() => close(true)} />
-                    ))}
-                  </div>
-                ),
-              )}
+              <MenuItems items={visible} onPick={() => close(true)} />
             </InertWhenExiting>
           )}
         </AnimatePresence>
       </FloatingPortal>
     </div>
+  );
+}
+
+/**
+ * Closes the menu on a press outside every element in `inside` (the trigger and the panel).
+ * `mousedown` rather than click, so pressing another control closes the menu before it acts.
+ */
+export function useMenuDismiss(open: boolean, inside: readonly RefObject<HTMLElement | null>[], onDismiss: () => void) {
+  const dismiss = useEffectEvent(onDismiss);
+  const refs = useRef(inside);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (!refs.current.some((r) => r.current?.contains(target))) dismiss();
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+}
+
+/**
+ * Menu keyboard: arrows move, Home/End jump, Tab leaves, Escape closes. Focus lands on the checked
+ * item (a status switcher opens on the current choice) or else the first one.
+ */
+export function useMenuKeyboard(open: boolean, panel: RefObject<HTMLElement | null>, onEscape: () => void, onTab: () => void = onEscape) {
+  const escape = useEffectEvent(onEscape);
+  const tab = useEffectEvent(onTab);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        escape();
+        return;
+      }
+      const nodes = Array.from(panel.current?.querySelectorAll<HTMLElement>(ITEM_SELECTOR) ?? []);
+      if (nodes.length === 0) return;
+      const index = nodes.indexOf(document.activeElement as HTMLElement);
+      let next = -1;
+      if (e.key === "ArrowDown") next = (index + 1) % nodes.length;
+      else if (e.key === "ArrowUp") next = (index - 1 + nodes.length) % nodes.length;
+      else if (e.key === "Home") next = 0;
+      else if (e.key === "End") next = nodes.length - 1;
+      else if (e.key === "Tab") tab();
+      if (next >= 0) {
+        e.preventDefault();
+        nodes[next].focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    const frame = requestAnimationFrame(() =>
+      (panel.current?.querySelector<HTMLElement>("[aria-checked=true]") ?? panel.current?.querySelector<HTMLElement>(ITEM_SELECTOR))?.focus(),
+    );
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, panel]);
+}
+
+/** The rows of a menu panel, split into labelled sections; shared by <Menu> and <ContextMenu>. */
+export function MenuItems({ items, onPick }: { items: MenuItem[]; onPick: () => void }) {
+  return sections(items.filter((i) => !i.hidden)).map((section, i) =>
+    section.group ? (
+      <div key={section.group} role="group" aria-label={section.group} className={cn(i > 0 && "mt-1 border-t border-white/10 pt-1")}>
+        <p className="px-2.5 pb-0.5 pt-1 font-silk text-[10px] uppercase tracking-wider text-slate-500" aria-hidden>
+          {section.group}
+        </p>
+        {section.items.map((item) => (
+          <MenuRow key={item.label} item={item} onPick={onPick} />
+        ))}
+      </div>
+    ) : (
+      <div key={`plain-${i}`} className={cn(i > 0 && "mt-1 border-t border-white/10 pt-1")}>
+        {section.items.map((item) => (
+          <MenuRow key={item.label} item={item} onPick={onPick} />
+        ))}
+      </div>
+    ),
   );
 }
 

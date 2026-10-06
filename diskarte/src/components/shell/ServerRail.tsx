@@ -13,7 +13,9 @@ import { cn } from "@/lib/utils";
 import { NotificationHub } from "@/components/workspace/NotificationHub";
 import { WorkspacePresets } from "@/components/workspace/WorkspacePresets";
 import { useOptionalWorkspaceStore } from "@/components/workspace/WorkspaceProvider";
+import { useContextMenu } from "@/components/ui/ContextMenu";
 import { AddServerDialog } from "./AddServerDialog";
+import { ServerContextMenu } from "./ServerContextMenu";
 import { ServerIcon } from "./ServerIcon";
 
 function Pill({ active }: { active: boolean }) {
@@ -25,6 +27,41 @@ function Pill({ active }: { active: boolean }) {
         <span className="h-0 w-1 rounded-r bg-white transition-[height] duration-150 group-hover:h-5" />
       )}
     </span>
+  );
+}
+
+/** A server node on the rail; right-click for its menu (copy invite, leave…). */
+function RailServer({ server, active, official = false }: { server: Server; active: boolean; official?: boolean }) {
+  const menu = useContextMenu();
+  return (
+    <>
+      {official ? (
+        <Tooltip label={`${server.name} · Official`}>
+          <Link
+            href={`/tambayan/${server.id}`}
+            aria-label={`${server.name} (official)`}
+            aria-current={active ? "page" : undefined}
+            className="group relative flex"
+            data-testid="pinned-server"
+            {...menu.triggerProps}
+          >
+            <Pill active={active} />
+            <span className="rounded-[50%] ring-2 ring-sun ring-offset-2 ring-offset-[#0b1020] transition-[border-radius] group-hover:rounded-2xl">
+              <ServerIcon server={server} active={active} />
+            </span>
+            <BadgeCheck className="absolute -bottom-1 -right-1 size-5 rounded-full bg-abyss fill-sun text-abyss" aria-hidden />
+          </Link>
+        </Tooltip>
+      ) : (
+        <Tooltip label={server.name}>
+          <Link href={`/tambayan/${server.id}`} aria-label={server.name} aria-current={active ? "page" : undefined} className="group relative flex" {...menu.triggerProps}>
+            <Pill active={active} />
+            <ServerIcon server={server} active={active} />
+          </Link>
+        </Tooltip>
+      )}
+      <ServerContextMenu menu={menu} server={server} />
+    </>
   );
 }
 
@@ -62,26 +99,11 @@ export function ServerRail({ servers }: { servers: Server[] }) {
           </Link>
         </Tooltip>
         <div className="mx-auto h-0.5 w-8 shrink-0 rounded bg-white/10" />
-        {hq && (
-          <Tooltip label={`${hq.name} · Official`}>
-            <Link href={`/tambayan/${hq.id}`} aria-label={`${hq.name} (official)`} aria-current={activeId === hq.id ? "page" : undefined} className="group relative flex" data-testid="pinned-server">
-              <Pill active={activeId === hq.id} />
-              <span className="rounded-[50%] ring-2 ring-sun ring-offset-2 ring-offset-[#0b1020] transition-[border-radius] group-hover:rounded-2xl">
-                <ServerIcon server={hq} active={activeId === hq.id} />
-              </span>
-              <BadgeCheck className="absolute -bottom-1 -right-1 size-5 rounded-full bg-abyss fill-sun text-abyss" aria-hidden />
-            </Link>
-          </Tooltip>
-        )}
+        {hq && <RailServer server={hq} active={activeId === hq.id} official />}
         <ul className="flex flex-col items-center gap-2" data-testid="server-list">
           {others.map((server) => (
             <li key={server.id}>
-              <Tooltip label={server.name}>
-                <Link href={`/tambayan/${server.id}`} aria-label={server.name} aria-current={activeId === server.id ? "page" : undefined} className="group relative flex">
-                  <Pill active={activeId === server.id} />
-                  <ServerIcon server={server} active={activeId === server.id} />
-                </Link>
-              </Tooltip>
+              <RailServer server={server} active={activeId === server.id} />
             </li>
           ))}
         </ul>
