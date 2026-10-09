@@ -1,6 +1,5 @@
 # Render Blueprint — 1-click free deployment of the Diskarte app (diskarte/) as a Docker web
-# service. The Early Access portal (early-access-portal/) deploys to Vercel instead — see
-# early-access-portal/DEPLOYMENT.md.
+# service. Platform administration lives inside the app (the Super Admin Control Center).
 # Dashboard → New → Blueprint → pick this repo. You'll be prompted for the secret values below.
 services:
   - type: web
@@ -31,13 +30,10 @@ services:
         sync: false
       # Optional: comma-separated Supabase OAuth providers you enabled
       - key: AUTH_OAUTH_PROVIDERS
-        value: github,google
+        value: google
       # SITE_URL defaults to RENDER_EXTERNAL_URL; set it when you add a custom domain.
       - key: NODE_OPTIONS
         value: --max-old-space-size=384
-      # Early Access: `invite` closes public sign-up and links /signup to the portal below.
+      # `invite` pauses public sign-up; remove it (or set it empty) to open registrations.
       - key: SIGNUP_MODE
         value: invite
-      # The Vercel URL of the Early Access portal (e.g. https://early.diskarte.ph)
-      - key: EARLY_ACCESS_URL
-        sync: false

@@ -7,39 +7,33 @@ An open-source Discord alternative for the Philippines: chat, voice, video and s
 
 ---
 
-## Monorepo
+## Repository
 
-Two independently deployed Next.js 16 apps that share one Supabase project. Each app folder is **self-contained**, with its own `package.json`, `package-lock.json`, Dockerfile and config, so a host can build it with only that folder as its Root Directory:
-
-- **Render:** Root Directory `diskarte`
-- **Vercel:** Root Directory `early-access-portal`
+The Diskarte app and its Supabase migrations. The app folder is **self-contained** (own `package.json`, `package-lock.json`, Dockerfile and config), so Render builds it with Root Directory `diskarte`.
 
 ```
 .
 ├── diskarte/               The Diskarte app: Tambayans, realtime chat, LiveKit voice/video,
-│                           Bantay-Bayan moderation, friends & DMs  → Render (Docker)
-├── early-access-portal/    Early Access waitlist + super-admin review dashboard  → Vercel
-├── supabase/               Shared migrations (schema, RLS, triggers, RPCs) + local config
-├── package.json            Orchestrator: scripts that run in both apps (no shared lockfile)
-├── docker-compose.yml      Local containers (app, portal, LiveKit)
+│                           Bantay-Bayan moderation, friends & DMs, and the Super Admin
+│                           Control Center  → Render (Docker)
+├── supabase/               Migrations (schema, RLS, triggers, RPCs) + local config
+├── package.json            Orchestrator: scripts that run in the app (no shared lockfile)
+├── docker-compose.yml      Local containers (app, LiveKit)
 ├── render.yaml             Render Blueprint (rootDir: diskarte)
-└── SECURITY.md             Threat model and controls for both apps
+└── SECURITY.md             Threat model and controls
 ```
 
 | | Docs | Deploys to |
 | --- | --- | --- |
 | **Diskarte app** | [diskarte/README.md](diskarte/README.md) · [diskarte/DEPLOYMENT.md](diskarte/DEPLOYMENT.md) | Render (Docker), with Supabase + LiveKit Cloud |
-| **Early Access portal** | [early-access-portal/README.md](early-access-portal/README.md) · [early-access-portal/DEPLOYMENT.md](early-access-portal/DEPLOYMENT.md) | Vercel (Root Directory `early-access-portal`) |
 | **Database** | [`supabase/migrations/`](supabase/migrations) | Supabase (`npx supabase db push` from this folder) |
 
 ## Quick start
 
 ```bash
-npm install                                          # runs `npm ci` inside each app folder
+npm install                                          # runs `npm ci` inside diskarte/
 cp diskarte/.env.example diskarte/.env.local          # Supabase + LiveKit credentials
-cp early-access-portal/.env.example early-access-portal/.env
 npm run dev                                          # Diskarte → http://localhost:3000
-npm run dev:portal                                   # Early Access portal → http://localhost:3100
 ```
 
 Local Supabase: `npx supabase start` (needs Docker). It applies `supabase/migrations` and prints the local keys.
@@ -48,26 +42,22 @@ Local Supabase: `npx supabase start` (needs Docker). It applies `supabase/migrat
 
 | Command | What it does |
 | --- | --- |
-| `npm run dev` / `npm run dev:portal` | Dev server for the app / the portal |
-| `npm run build` | Production builds of both apps |
-| `npm run lint` · `npm run typecheck` · `npm test` | Lint, type-check and Vitest suites in both apps |
-| `npm run test:e2e` | Playwright suite (the app, plus the cross-app Early Access journey when `E2E_FULL=1`) |
-| `npm run brand:assets` | Re-render icons and OG cards, and export the portal's brand art |
-| `npm run admin:grant -- you@example.com` | Grant the Early Access `super_admin` role (service role key required) |
+| `npm run dev` | Dev server |
+| `npm run build` | Production build |
+| `npm run lint` · `npm run typecheck` · `npm test` | Lint, type-check and the Vitest suite (unit, component and PGlite RLS tests) |
+| `npm run test:e2e` | Playwright suite (journeys run when `E2E_FULL=1`) |
+| `npm run brand:assets` | Re-render icons and OG cards |
+| `npm run admin:grant -- you@example.com` | Make the first Super Admin (service role key required); after that, roles are managed in the Control Center |
 
-Run any app script directly with `--prefix`, e.g. `npm test --prefix early-access-portal`, or `cd` into the app folder. Add dependencies inside the app folder (`cd diskarte && npm install <pkg>`) so its own lockfile is updated.
+## Super Admin Control Center
 
-## Early Access flow
+The old Early Access waitlist portal is retired; its admin role table, routes and dashboard were recycled into a Control Center inside the signed-in workspace:
 
-1. Someone applies on the portal. The form is protected by Zod, a honeypot, a signed timing token, rate limits and optional Turnstile, and success shows retro confetti.
-2. A `super_admin` approves them on `/admin`, singly or in bulk.
-3. The portal creates their Supabase account with a one-time temporary password and emails **"Maligayang Pagdating sa Diskarte!"** (via Resend).
-4. The email links to `<APP_URL>/login?from=early-access&email=…` on the Render app, which greets them and prefills their email.
-5. On first login, the Diskarte app makes them choose their own password, then onboard.
-
-The Diskarte app treats `EARLY_ACCESS_URL` as a trusted origin for `/api/*` (CORS + CSRF), and the portal's CSP allows `connect-src` to `APP_URL`, which it uses to show whether the app is awake.
-
-With `SIGNUP_MODE=invite` on the app, public sign-up stays closed until launch.
+- **Access:** `/admin` (and `/tambayan/admin`) for platform `super_admin`s only. The proxy, the page and every Server Action / API route verify the role in the database (`is_super_admin()`); everyone else is redirected to the canvas before anything renders, and the Control Center code is only downloaded by super admins.
+- **On the canvas** it's a glass panel that docks to the right edge, snaps magnetically and shares coupled resizing with neighbouring panels; on phones it's a full-screen page.
+- **Network roster & presence inspector:** every account with live presence (Online, AFK / Tulog, Nagluto ng Canton, Busy, Offline), LiveKit stage connections, device fingerprints, sessions and last-active times; instant client-side filters plus server-side search.
+- **Moderation:** roles (Super Admin, Moderator, Standard Member — mirrored into Diskarte HQ), forced status overrides, session revocation and temporary or permanent bans, all written to `admin_audit_logs`.
+- **Global Announcement Dispatcher:** compose with headers, callout boxes (`> [!INFO]`, `[!SUCCESS]`, `[!WARNING]`, `[!CRITICAL]`) and code blocks, preview, and broadcast to HQ's #announcements and/or #global-lounge. Connected canvases update live; flag it sticky to pin a banner on every canvas.
 
 ## License & security
 

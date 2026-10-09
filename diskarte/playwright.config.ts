@@ -1,13 +1,7 @@
-import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
 const PORT = Number(process.env.E2E_PORT ?? 3000);
 const baseURL = process.env.E2E_BASE_URL || `http://localhost:${PORT}`;
-// Early Access portal wiring. Mirrored in e2e/portal.ts for the spec: this file can't import from
-// e2e/, which is excluded from the Docker build context (where `next build` type-checks this file).
-const PORTAL_PORT = Number(process.env.E2E_PORTAL_PORT ?? 3100);
-const PORTAL_URL = `http://localhost:${PORTAL_PORT}`;
-const EMAIL_OUTBOX = path.resolve(__dirname, ".e2e-email-outbox");
 
 /**
  * E2E suite.
@@ -46,28 +40,5 @@ export default defineConfig({
           timeout: 120_000,
           env: { PORT: String(PORT) },
         },
-        // The Early Access portal (separate app) joins full runs: its journey spans both apps.
-        ...(process.env.E2E_FULL === "1"
-          ? [
-              {
-                command: "npm --prefix ../early-access-portal run start:standalone",
-                url: `${PORTAL_URL}/api/health`,
-                reuseExistingServer: !process.env.CI,
-                timeout: 120_000,
-                env: {
-                  PORT: String(PORTAL_PORT),
-                  SITE_URL: PORTAL_URL,
-                  APP_URL: baseURL,
-                  SUPABASE_URL: process.env.SUPABASE_URL ?? "",
-                  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ?? "",
-                  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
-                  PORTAL_SECRET: "e2e-portal-secret-0123456789abcdef0123456789",
-                  EMAIL_TRANSPORT: "file",
-                  EMAIL_OUTBOX_DIR: EMAIL_OUTBOX,
-                  RATE_LIMIT_APPLY_PER_HOUR: "100",
-                },
-              },
-            ]
-          : []),
       ],
 });

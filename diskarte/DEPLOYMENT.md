@@ -22,24 +22,24 @@ All configuration is read **at runtime**, so the same Docker image works locally
 
 1. Create a project at [supabase.com](https://supabase.com) → **New project**. Pick the **Southeast Asia (Singapore)** region for the lowest latency from the Philippines.
 2. **Apply the schema.** Either:
-   - **SQL editor:** run each file in the repo's `supabase/migrations/` **in filename order** (`…_schema.sql`, `…_security_hardening.sql`, `…_community.sql`, then `…_early_access.sql`) via *SQL Editor → New query*; or
+   - **SQL editor:** run each file in the repo's `supabase/migrations/` **in filename order** (`…_schema.sql`, `…_security_hardening.sql`, `…_community.sql`, `…_early_access.sql`, … through `…_admin_control_center.sql`) via *SQL Editor → New query*; or
    - **CLI (from the repository root):** `npx supabase link --project-ref <your-ref>` then `npx supabase db push`.
 
    This creates every table, including the community ones (`audit_logs`, `server_bans`, `server_badges`, `lfg_beacons`, `soundboard_clips`, `friendships`, `user_blocks`, `dm_conversations`, `direct_messages`…). It also sets up all RLS policies, guard triggers, RPCs, the Realtime publication, private-channel authorisation and the `avatars` / `attachments` / `soundboard` Storage buckets. No new environment variables are needed.
 3. **Auth → URL Configuration**
-   - *Site URL*: your Render URL, e.g. `https://diskarte.onrender.com`
-   - *Redirect URLs*: `https://diskarte.onrender.com/auth/callback` (add `http://localhost:3000/auth/callback` for local dev)
+   - *Site URL*: your Render URL, e.g. `https://diskarte-pzg6.onrender.com`
+   - *Redirect URLs*: `https://diskarte-pzg6.onrender.com/auth/callback` (add `http://localhost:3000/auth/callback` for local dev)
 4. **Auth → Providers**
    - *Email*: keep **Confirm email** on for production.
    - *Password security* (Auth → Providers → Email): minimum length **10** and require **lowercase, uppercase, digits and symbols** — the same policy the app enforces.
-   - *GitHub / Google / Discord* (optional): create an OAuth app with the callback `https://<project-ref>.supabase.co/auth/v1/callback`, paste the client id/secret into Supabase, and list the enabled providers in `AUTH_OAUTH_PROVIDERS`.
+   - *GitHub / Google / Discord* (optional): create an OAuth app whose only authorized redirect URI is `https://<project-ref>.supabase.co/auth/v1/callback` (never the app URL or localhost), paste the client id/secret into Supabase, and list the enabled providers in `AUTH_OAUTH_PROVIDERS`.
 5. **Realtime → Settings**: turn **off** “Allow public access” so only the private, RLS-authorised channels (`server:<id>` presence, `channel:<id>` typing) are allowed.
 6. *(Optional)* **Auth → Email Templates → Confirm signup**: to use the token-hash flow, set the link to
    `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/onboarding`.
    The default PKCE link (`/auth/callback`) also works.
 7. Copy **Project Settings → API**: the *Project URL* → `SUPABASE_URL`, and the *anon / publishable* key → `SUPABASE_ANON_KEY`.
 
-> The anon key is public by design. Data is protected by Row-Level Security; the main Diskarte app **never** needs the service-role key, so don't give it one. Only the Early Access portal's server uses it, to create accounts for approved applicants (section 4).
+> The anon key is public by design. Data is protected by Row-Level Security; the Diskarte app **never** needs the service-role key, so don't give it one. Only the one-off `npm run admin:grant` script uses it, from your machine (section 4).
 
 ## 2. LiveKit Cloud (voice, video, screen share)
 
@@ -62,16 +62,15 @@ All configuration is read **at runtime**, so the same Docker image works locally
 - Supabase free projects pause after a week without activity. Resume them from the dashboard.
 - `NODE_OPTIONS=--max-old-space-size=384` keeps Node inside the 512 MB free instance.
 
-## 4. Early Access portal (waitlist + admin approvals)
+## 4. Super Admin Control Center
 
-`early-access-portal/` is this app's sibling in the monorepo. It holds the public waitlist form and the `/admin` review dashboard, and it deploys to **Vercel** on its own. Follow **[early-access-portal/DEPLOYMENT.md](../early-access-portal/DEPLOYMENT.md)**, which covers the Vercel root directory, environment variables, domain routing and the admin bootstrap.
+The Control Center (`/admin`) is part of this app; there is nothing extra to deploy.
 
-What it needs from this app:
-
-- **Database:** nothing extra. `…_early_access.sql` is part of `supabase/migrations` (the `waitlist_applications` and `platform_admins` tables, RLS and the review state machine).
-- **Close public sign-up:** the Render service ships with `SIGNUP_MODE=invite`, which turns `/signup` into a link to the portal. Set `EARLY_ACCESS_URL` to the portal's URL. Also turn off **Auth → Providers → Allow new users to sign up** in Supabase: the portal's admin API still creates accounts, but OAuth and direct Auth API calls can no longer create accounts on their own. Remove `SIGNUP_MODE` (and turn that setting back on) on launch day.
-- **Cross-app routing:** set `EARLY_ACCESS_URL` to the portal's exact origin (e.g. `https://early.diskarte.ph`). Besides the `/signup` link, it is added to the CORS/CSRF allow-list for `/api/*`, so the portal can check `/api/health`. Approval emails link to `/login?from=early-access&email=…`, which shows a welcome banner and prefills the email.
-- **First login:** accounts the portal creates carry `must_change_password`, and this app sends them to `/reset-password?first=1` until they choose their own password. The login action, the proxy and every protected page enforce it.
+- **Database:** `…_admin_control_center.sql` (in `supabase/migrations`) recycles `platform_admins` as the platform role table (`super_admin` / `moderator`), archives the old waitlist applications into `admin_audit_logs` and drops the waitlist, and adds `system_broadcasts`, `account_controls`, `user_devices` and the admin RPCs. On a hosted project that you update through the SQL Editor, run it after the earlier files.
+- **First super admin:** sign up in the app, then from `diskarte/` run `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… npm run admin:grant -- you@example.com`. Reload the app: the shield button on the command rail opens the Control Center. Further roles are managed inside it.
+- **Retired portal:** if you deployed the old `early-access-portal/` to Vercel, delete that Vercel project (its Root Directory no longer exists) and remove `EARLY_ACCESS_URL` from the Render service.
+- **Sign-up:** the Render service ships with `SIGNUP_MODE=invite`, which pauses public sign-up. Remove it (and turn **Auth → Providers → Allow new users to sign up** back on in Supabase) to open registrations.
+- **Temporary passwords:** accounts carrying `must_change_password` (e.g. created by the old portal) are still sent to `/reset-password?first=1` until they choose their own password.
 
 ## Environment variables
 
@@ -88,8 +87,7 @@ What it needs from this app:
 | `RATE_LIMIT_AUTH_PER_MINUTE` | — | proxy | per-IP auth attempts per minute (default **5**) |
 | `RATE_LIMIT_API_PER_MINUTE` | — | proxy | per-IP `/api/*` requests per minute (default 120) |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | — | proxy | share rate-limit counters across instances (free Upstash tier) |
-| `SIGNUP_MODE` | — | server | `invite` closes public sign-up during Early Access |
-| `EARLY_ACCESS_URL` | — | server + proxy | waitlist portal URL: linked from `/signup` in invite mode and trusted for CORS/CSRF on `/api/*` |
+| `SIGNUP_MODE` | — | server | `invite` pauses public sign-up |
 | `PORT` / `HOSTNAME` | — | container | set by the Dockerfile (Render injects `PORT`) |
 
 ## Local development
@@ -99,7 +97,7 @@ cd diskarte                  # self-contained app with its own package-lock.json
 npm ci
 cp .env.example .env.local   # fill in values (hosted or local services)
 npm run dev                  # http://localhost:3000
-# or, from the repository root: npm install && npm run dev   (npm run dev:portal → :3100)
+# or, from the repository root: npm install && npm run dev
 ```
 
 **Local Supabase** (needs Docker): `npx supabase start` (from the repository root) applies `supabase/migrations` automatically and prints a local URL (`http://127.0.0.1:54321`) and anon key. Email confirmation is disabled locally (`supabase/config.toml`), so sign-ups log straight in.
@@ -122,7 +120,7 @@ The multi-stage `diskarte/Dockerfile` installs from the app's own lockfile (`npm
 ## CI/CD
 
 `.github/workflows/ci.yml` runs on every pull request and push to `main`:
-lint → type-check → unit/DB tests → Docker build (size check + container health smoke test) → the Early Access portal's own lint/type-check/tests/Vercel build/image → Playwright E2E against a throwaway local Supabase stack and a LiveKit dev server. The E2E suite includes the cross-app journey: apply, admin approval, the emailed credentials, and the forced password change. No repository secrets are required. Render auto-deploys `main` once it's green.
+lint → type-check → unit/DB tests → Docker build (size check + container health smoke test) → Playwright E2E against a throwaway local Supabase stack and a LiveKit dev server. The E2E suite includes the Control Center journey: non-admins are refused, and a super admin broadcasts a sticky announcement that reaches another member's open canvas live, changes their role and bans them. No repository secrets are required. Render auto-deploys `main` once it's green.
 
 ## Security checklist
 

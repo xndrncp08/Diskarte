@@ -1,19 +1,18 @@
 {
   "name": "diskarte-monorepo",
   "private": true,
-  "description": "Diskarte monorepo — two independently deployed Next.js apps (diskarte/ on Render, early-access-portal/ on Vercel) sharing supabase/",
+  "description": "Diskarte \u2014 the Next.js app (diskarte/, deployed on Render) and its Supabase migrations (supabase/)",
   "scripts": {
-    "install:all": "npm ci --prefix diskarte && npm ci --prefix early-access-portal",
+    "install:all": "npm ci --prefix diskarte",
     "postinstall": "npm run install:all",
     "dev": "npm run dev --prefix diskarte",
-    "dev:portal": "npm run dev --prefix early-access-portal",
-    "build": "npm run build --prefix diskarte && npm run build --prefix early-access-portal",
-    "lint": "npm run lint --prefix diskarte && npm run lint --prefix early-access-portal",
-    "typecheck": "npm run typecheck --prefix diskarte && npm run typecheck --prefix early-access-portal",
-    "test": "npm test --prefix diskarte && npm test --prefix early-access-portal",
+    "build": "npm run build --prefix diskarte",
+    "lint": "npm run lint --prefix diskarte",
+    "typecheck": "npm run typecheck --prefix diskarte",
+    "test": "npm test --prefix diskarte",
     "test:e2e": "npm run test:e2e --prefix diskarte",
     "brand:assets": "npm run brand:assets --prefix diskarte",
-    "admin:grant": "npm run admin:grant --prefix early-access-portal --"
+    "admin:grant": "npm run admin:grant --prefix diskarte --"
   },
   "engines": {
     "node": ">=20.9.0"
