@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
@@ -10,12 +11,18 @@ import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { subscribeDbChanges } from "@/lib/realtime";
 import type { Server } from "@/lib/servers";
 import { ConfirmHost } from "@/components/ui/ConfirmHost";
+import { AdminAccessProvider, usePlatformRole } from "@/components/admin/AdminAccess";
+import { BroadcastBanner } from "@/components/broadcast/BroadcastBanner";
+import type { PlatformRole } from "@/lib/admin";
 import { cn } from "@/lib/utils";
 import { DiskarteCanvasBackground } from "@/components/workspace/DiskarteCanvasBackground";
 import { WorkspaceCanvas } from "@/components/workspace/WorkspaceCanvas";
 import { useWorkspace, useWorkspaceStore, WorkspaceProvider } from "@/components/workspace/WorkspaceProvider";
 import { ServerRail } from "./ServerRail";
 import { ShellUIProvider, useShellUI } from "./ShellUI";
+
+// Only super admins ever download the Control Center.
+const AdminPanel = dynamic(() => import("@/components/admin/AdminPanel").then((m) => m.AdminPanel), { ssr: false });
 
 /** Refreshes the server list when this user joins/leaves/is kicked from any Tambayan (e.g. in another tab). */
 function MembershipWatcher({ userId }: { userId: string }) {
@@ -37,6 +44,7 @@ function Frame({ servers, children }: { servers: Server[]; children: ReactNode }
   const { navOpen, setNavOpen } = useShellUI();
   const swipe = useSwipeDrawer(navOpen, setNavOpen);
   const frame = useRef<HTMLDivElement>(null);
+  const role = usePlatformRole();
   useShellEntrance(frame);
   return (
     <div ref={frame} className="diskarte-backdrop relative flex h-dvh overflow-hidden md:gap-3 md:p-3" data-testid="shell" {...swipe}>
@@ -69,9 +77,13 @@ function Frame({ servers, children }: { servers: Server[]; children: ReactNode }
       >
         <ServerRail servers={servers} />
       </div>
-      {/* The floating canvas. On phones it is a plain flex row with no z-index: a stacking context
-          would trap the drawer panels (z-40) beneath the drawer backdrop (z-30). */}
-      <WorkspaceCanvas>{children}</WorkspaceCanvas>
+      {/* The sticky broadcast banner sits above the floating canvas (which re-measures around it).
+          On phones the canvas is a plain flex row with no z-index: a stacking context would trap
+          the drawer panels (z-40) beneath the drawer backdrop (z-30). */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col md:gap-3">
+        <BroadcastBanner />
+        <WorkspaceCanvas extra={role === "super_admin" ? <AdminPanel /> : null}>{children}</WorkspaceCanvas>
+      </div>
     </div>
   );
 }
@@ -89,16 +101,18 @@ export function ShellUIBridge({ children }: { children: ReactNode }) {
  * The signed-in app frame: the command rail and the floating workspace canvas. Session state (the
  * call, presence, friends) lives above it in <SessionProviders>; the layout itself in <WorkspaceProvider>.
  */
-export function AppShell({ servers, workspace, children }: { servers: Server[]; workspace?: unknown; children: ReactNode }) {
+export function AppShell({ servers, workspace, platformRole = "member", children }: { servers: Server[]; workspace?: unknown; platformRole?: PlatformRole; children: ReactNode }) {
   const { me } = useMe();
   return (
-    <WorkspaceProvider remote={workspace}>
-      <ShellUIBridge>
-        <MembershipWatcher userId={me.id} />
-        <Frame servers={servers}>{children}</Frame>
-        <ConfirmHost />
-      </ShellUIBridge>
-    </WorkspaceProvider>
+    <AdminAccessProvider role={platformRole}>
+      <WorkspaceProvider remote={workspace}>
+        <ShellUIBridge>
+          <MembershipWatcher userId={me.id} />
+          <Frame servers={servers}>{children}</Frame>
+          <ConfirmHost />
+        </ShellUIBridge>
+      </WorkspaceProvider>
+    </AdminAccessProvider>
   );
 }
 

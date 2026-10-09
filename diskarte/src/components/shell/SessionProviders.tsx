@@ -12,11 +12,12 @@ import { AudioMixerProvider } from "@/components/voice/AudioMixer";
 import { CallProvider } from "@/components/voice/CallProvider";
 import { FloatingCallHUD } from "@/components/voice/FloatingCallHUD";
 import { IncomingCallsProvider } from "@/components/voice/IncomingCalls";
+import { SessionGuard } from "@/components/session/SessionGuard";
 import type { Tables } from "@/lib/supabase/database.types";
 
 /**
  * Everything that must outlive a page: who I am, presence, friends/DMs, the LiveKit call, the
- * floating windows and incoming-call rings. Mounted once by the signed-in root layout
+ * floating windows, incoming-call rings and the session guard. Mounted once by the signed-in root layout
  * (app/(app)/layout.tsx), which Next keeps mounted across every navigation inside the app — between
  * channels, servers, DMs and the full-page /settings — so none of them can drop an active call.
  */
@@ -43,6 +44,8 @@ export function SessionProviders({
                   <MediaViewerProvider>
                     <IncomingCallsProvider>
                       {children}
+                      {/* Device heartbeat + live enforcement of bans, revoked sessions and status overrides. */}
+                      <SessionGuard />
                       {/* Picture-in-picture of the call on any page other than the call's own. */}
                       <FloatingCallHUD />
                     </IncomingCallsProvider>

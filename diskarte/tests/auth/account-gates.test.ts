@@ -5,16 +5,21 @@ import { limiters } from "@/lib/rate-limit";
 import { signupPolicy } from "@/lib/signup-mode";
 
 /**
- * The main app's half of Early Access: accounts created by the portal must change their emailed
- * temporary password before anything else, and SIGNUP_MODE=invite closes public sign-up.
+ * Account gates: accounts with a temporary password must change it before anything else,
+ * SIGNUP_MODE=invite closes public sign-up, the Control Center routes are super-admin only, and a
+ * session the auth server no longer accepts is cleared instead of looping between /login and the app.
  */
-const session = { userId: null as string | null, mustChangePassword: false };
+const session = { userId: null as string | null, mustChangePassword: false, superAdmin: false };
+const checked: boolean[] = [];
 vi.mock("@/lib/supabase/proxy", () => ({
-  refreshSession: async (_req: NextRequest, _env: unknown, make: () => NextResponse) => ({ response: make(), ...session }),
+  refreshSession: async (_req: NextRequest, _env: unknown, make: () => NextResponse, opts: { checkSuperAdmin?: boolean } = {}) => {
+    checked.push(!!opts.checkSuperAdmin);
+    return { response: make(), userId: session.userId, mustChangePassword: session.mustChangePassword, superAdmin: opts.checkSuperAdmin ? session.superAdmin : undefined };
+  },
 }));
 
 const auth = {
-  user: { id: "u1", user_metadata: { must_change_password: true } as Record<string, unknown> },
+  user: { id: "u1", user_metadata: { must_change_password: true } as Record<string, unknown> } as { id: string; user_metadata: Record<string, unknown> } | null,
   updateUser: vi.fn(async () => ({ data: {}, error: null })),
   refreshSession: vi.fn(async () => ({ data: {}, error: null })),
   signUp: vi.fn(async () => ({ data: { session: null }, error: null })),
@@ -51,6 +56,8 @@ const req = (path: string) => new NextRequest(`${SITE}${path}`, { headers: { hos
 beforeEach(() => {
   session.userId = null;
   session.mustChangePassword = false;
+  session.superAdmin = false;
+  checked.length = 0;
   for (const l of Object.values(limiters)) l.reset();
   vi.stubEnv("SUPABASE_URL", "https://proj.supabase.co");
   vi.stubEnv("SUPABASE_ANON_KEY", "anon-key-that-is-long-enough");
@@ -122,14 +129,16 @@ describe("first login with a temporary password", () => {
   });
 });
 
-describe("inter-app routing", () => {
-  it("lets the Early Access portal (and only it) read /api/health cross-origin", async () => {
+describe("cross-origin routing", () => {
+  it("only lets ALLOWED_ORIGINS read /api/health cross-origin (the retired portal's EARLY_ACCESS_URL no longer counts)", async () => {
+    vi.stubEnv("ALLOWED_ORIGINS", "https://status.diskarte.ph");
     vi.stubEnv("EARLY_ACCESS_URL", "https://early.diskarte.ph/");
     const from = (origin: string) =>
       proxy(new NextRequest(`${SITE}/api/health`, { headers: { host: "diskarte.onrender.com", "x-forwarded-proto": "https", origin } }));
-    const allowed = await from("https://early.diskarte.ph");
+    const allowed = await from("https://status.diskarte.ph");
     expect(allowed.status).toBe(200);
-    expect(allowed.headers.get("access-control-allow-origin")).toBe("https://early.diskarte.ph");
+    expect(allowed.headers.get("access-control-allow-origin")).toBe("https://status.diskarte.ph");
+    expect((await from("https://early.diskarte.ph")).headers.get("access-control-allow-origin")).toBeNull();
     expect((await from("https://evil.example")).headers.get("access-control-allow-origin")).toBeNull();
     const preflight = await proxy(
       new NextRequest(`${SITE}/api/health`, { method: "OPTIONS", headers: { host: "diskarte.onrender.com", origin: "https://evil.example" } }),
@@ -139,10 +148,10 @@ describe("inter-app routing", () => {
 });
 
 describe("invite-only sign-up", () => {
-  it("parses SIGNUP_MODE and EARLY_ACCESS_URL safely", () => {
-    expect(signupPolicy({})).toEqual({ inviteOnly: false, earlyAccessUrl: null });
-    expect(signupPolicy({ SIGNUP_MODE: " Invite ", EARLY_ACCESS_URL: "https://early.diskarte.ph/" })).toEqual({ inviteOnly: true, earlyAccessUrl: "https://early.diskarte.ph" });
-    expect(signupPolicy({ SIGNUP_MODE: "invite", EARLY_ACCESS_URL: "javascript:alert(1)" }).earlyAccessUrl).toBeNull();
+  it("parses SIGNUP_MODE", () => {
+    expect(signupPolicy({})).toEqual({ inviteOnly: false });
+    expect(signupPolicy({ SIGNUP_MODE: " Invite " })).toEqual({ inviteOnly: true });
+    expect(signupPolicy({ SIGNUP_MODE: "open" })).toEqual({ inviteOnly: false });
   });
 
   it("refuses sign-ups before touching Supabase", async () => {
@@ -150,8 +159,46 @@ describe("invite-only sign-up", () => {
     const form = new FormData();
     for (const [k, v] of Object.entries({ email: "a@b.ph", password: "Diskarte!2026x", confirmPassword: "Diskarte!2026x", username: "juan", displayName: "Juan" })) form.set(k, v);
     const result = await signUpAction({}, form);
-    expect(result.error).toMatch(/Early Access/);
+    expect(result.error).toMatch(/Sign-ups are paused/);
     expect(result.values?.email).toBe("a@b.ph");
     expect(auth.signUp).not.toHaveBeenCalled();
+  });
+});
+
+describe("Control Center routes", () => {
+  it("sends signed-out visitors to /login", async () => {
+    expect((await proxy(req("/admin"))).headers.get("location")).toBe(`${SITE}/login?next=%2Fadmin`);
+  });
+
+  it("redirects non-admins to the workspace canvas before anything renders, and refuses the API", async () => {
+    session.userId = "u2";
+    for (const path of ["/admin", "/tambayan/admin"]) {
+      const res = await proxy(req(path));
+      expect(res.headers.get("location"), path).toBe(`${SITE}/tambayan`);
+    }
+    const api = await proxy(req("/api/admin/snapshot"));
+    expect(api.status).toBe(403);
+    expect(await api.json()).toEqual({ error: "Forbidden" });
+  });
+
+  it("lets verified super admins through", async () => {
+    session.userId = "u1";
+    session.superAdmin = true;
+    expect((await proxy(req("/tambayan/admin"))).status).toBe(200);
+    expect((await proxy(req("/api/admin/snapshot"))).status).toBe(200);
+  });
+
+  it("only asks the database about the role on Control Center paths", async () => {
+    session.userId = "u1";
+    await proxy(req("/tambayan"));
+    await proxy(req("/tambayan/admin"));
+    expect(checked).toEqual([false, true]);
+  });
+});
+
+describe("rejected sessions", () => {
+  it("clears a token the auth server no longer accepts instead of bouncing between /login and the app", async () => {
+    auth.user = null;
+    await expect(requireProfile("/tambayan/abc")).rejects.toMatchObject({ url: "/auth/revoked?next=%2Ftambayan%2Fabc" });
   });
 });

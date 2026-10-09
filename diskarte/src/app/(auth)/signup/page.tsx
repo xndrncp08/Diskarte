@@ -18,21 +18,11 @@ export default async function SignupPage({ searchParams }: PageProps<"/signup">)
   if (policy.inviteOnly) {
     return (
       <div className="space-y-5" data-testid="invite-only">
-        <p className="font-pixel text-[9px] text-sun">EARLY ACCESS</p>
-        <h1 className="text-2xl font-extrabold text-white">Diskarte is invite-only for now</h1>
-        <p className="text-sm text-slate-400">
-          We&apos;re opening Diskarte gradually. Apply to the waitlist — once you&apos;re approved, we&apos;ll email your sign-in details.
-        </p>
-        {policy.earlyAccessUrl && (
-          <a
-            href={policy.earlyAccessUrl}
-            className="flex h-11 items-center justify-center rounded-xl bg-sun font-bold text-abyss shadow-[0_4px_0_0_#b45309] hover:brightness-110"
-          >
-            Apply for Early Access
-          </a>
-        )}
+        <p className="font-pixel text-[9px] text-sun">INVITE ONLY</p>
+        <h1 className="text-2xl font-extrabold text-white">Sign-ups are paused for now</h1>
+        <p className="text-sm text-slate-400">Diskarte isn&apos;t taking new registrations on this server right now. Check back soon, or ask the team for an invite.</p>
         <p className="text-center text-sm text-slate-400">
-          Already approved?{" "}
+          Already have an account?{" "}
           <Link href="/login" className="text-sky-300 hover:underline">
             Sign in
           </Link>

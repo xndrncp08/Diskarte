@@ -1,6 +1,6 @@
 "use client";
 
-import { GripHorizontal, Minus, MoveDiagonal2 } from "lucide-react";
+import { GripHorizontal, Minus, MoveDiagonal2, X } from "lucide-react";
 import { useEffect, useRef, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { useShellUI } from "@/components/shell/ShellUI";
 import { useCoupledResize } from "@/hooks/useCoupledResize";
@@ -35,6 +35,8 @@ export interface WorkspacePanelProps {
   title: string;
   children: ReactNode;
   className?: string;
+  /** Panels that can be dismissed entirely (the Control Center) get a Close button on their bar. */
+  closable?: boolean;
 }
 
 /**
@@ -55,7 +57,8 @@ export function WorkspacePanel(props: WorkspacePanelProps) {
 
 function StackedPanel({ id, title, children }: WorkspacePanelProps) {
   const { navOpen } = useShellUI();
-  if (id === "voice") return null;
+  // Voice and the Control Center are canvas-only panels; phones reach them through their pages.
+  if (id === "voice" || id === "admin") return null;
   const Tag = id === "main" ? "main" : "div";
   return (
     <Tag
@@ -75,7 +78,7 @@ function StackedPanel({ id, title, children }: WorkspacePanelProps) {
   );
 }
 
-function CanvasPanel({ id, title, children, className }: WorkspacePanelProps) {
+function CanvasPanel({ id, title, children, className, closable = false }: WorkspacePanelProps) {
   const store = useWorkspaceStore();
   const panel = useWorkspace((s) => s.panels[id]);
   const bounds = useWorkspaceBounds();
@@ -178,7 +181,7 @@ function CanvasPanel({ id, title, children, className }: WorkspacePanelProps) {
         // Phones: the stacked layout.
         id === "nav" && cn("max-md:fixed max-md:inset-y-0 max-md:left-[72px] max-md:z-40 max-md:transition-transform max-md:duration-200 max-md:ease-out", navOpen ? "max-md:translate-x-0" : "max-md:-translate-x-[calc(100%+72px)]"),
         id === "main" && "max-md:relative max-md:flex-1",
-        id === "voice" && "max-md:hidden",
+        (id === "voice" || id === "admin") && "max-md:hidden",
         // Tablet and up: a glass panel on the canvas.
         "md:absolute md:left-0 md:top-0 md:z-[var(--pz)] md:h-[var(--ph)] md:w-[var(--pw)] md:flex-col md:overflow-hidden md:rounded-3xl md:border md:border-white/10 md:bg-slate-900/60 md:shadow-2xl md:shadow-black/50 md:backdrop-blur-2xl md:[transform:translate3d(var(--px),var(--py),0)]",
         "md:transition-[opacity,transform,scale,border-color] md:duration-300 md:ease-[cubic-bezier(0.23,1,0.32,1)] md:data-[dragging]:transition-none md:group-data-[resizing]/ws:transition-none md:data-[coupled]:border-sun/40 md:data-[snapped]:border-sun/50",
@@ -223,6 +226,16 @@ function CanvasPanel({ id, title, children, className }: WorkspacePanelProps) {
         >
           <Minus className="size-3.5" aria-hidden />
         </button>
+        {closable && (
+          <button
+            type="button"
+            aria-label={`Close ${title}`}
+            onClick={() => store.setClosed(id, true)}
+            className="flex size-6 items-center justify-center rounded-md text-slate-400 hover:bg-white/10 hover:text-white"
+          >
+            <X className="size-3.5" aria-hidden />
+          </button>
+        )}
       </div>
 
       <div className="flex min-h-0 min-w-0 flex-1 max-md:h-full">{children}</div>

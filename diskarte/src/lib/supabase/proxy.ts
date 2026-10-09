@@ -13,7 +13,8 @@ export async function refreshSession(
   request: NextRequest,
   env: PublicEnv,
   makeResponse: () => NextResponse,
-): Promise<{ response: NextResponse; userId: string | null; mustChangePassword: boolean }> {
+  opts: { checkSuperAdmin?: boolean } = {},
+): Promise<{ response: NextResponse; userId: string | null; mustChangePassword: boolean; superAdmin?: boolean }> {
   let response = makeResponse();
 
   const secure = request.nextUrl.protocol === "https:" || request.headers.get("x-forwarded-proto") === "https";
@@ -35,7 +36,13 @@ export async function refreshSession(
   // getClaims() verifies the JWT signature (via JWKS when available) — never trust getSession() here.
   const { data } = await supabase.auth.getClaims();
   const userId = typeof data?.claims?.sub === "string" ? data.claims.sub : null;
-  // Set by the Early Access portal on accounts it creates with a temporary password.
+  // Set on accounts created with a temporary password (e.g. by the retired Early Access portal).
   const metadata = data?.claims?.user_metadata as Record<string, unknown> | undefined;
-  return { response, userId, mustChangePassword: Boolean(userId) && metadata?.must_change_password === true };
+  // Control Center routes only: the database decides (public.is_super_admin), never a client claim.
+  let superAdmin: boolean | undefined;
+  if (opts.checkSuperAdmin && userId) {
+    const { data: isAdmin, error } = await supabase.rpc("is_super_admin");
+    superAdmin = !error && isAdmin === true;
+  }
+  return { response, userId, mustChangePassword: Boolean(userId) && metadata?.must_change_password === true, superAdmin };
 }

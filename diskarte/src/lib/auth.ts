@@ -25,12 +25,21 @@ export function isVerified(user: { email_confirmed_at?: string | null; phone_con
   return Boolean(user.email_confirmed_at || user.phone_confirmed_at);
 }
 
-/** Early Access accounts must replace their emailed temporary password before anything else. */
+/** Accounts created with a temporary password must replace it before anything else. */
 export function mustChangePassword(user: { user_metadata?: Record<string, unknown> | null } | null | undefined) {
   return user?.user_metadata?.must_change_password === true;
 }
 
 export const FIRST_LOGIN_PATH = "/reset-password?first=1";
+
+/**
+ * Where a protected render goes without a verified user. The proxy already sent signed-out visitors
+ * to /login, so this means the cookie's token is no longer accepted (revoked, banned, deleted):
+ * /auth/revoked clears it first, or /login would bounce straight back.
+ */
+export function signedOutPath(nextPath: string) {
+  return `/auth/revoked?next=${encodeURIComponent(nextPath)}`;
+}
 
 /**
  * Redirects to /login when signed out, returns the user + profile otherwise. Accounts still on a
@@ -39,7 +48,7 @@ export const FIRST_LOGIN_PATH = "/reset-password?first=1";
  */
 export async function requireProfile(nextPath = "/tambayan") {
   const user = await getSessionUser();
-  if (!user) redirect(`/login?next=${encodeURIComponent(nextPath)}`);
+  if (!user) redirect(signedOutPath(nextPath));
   if (mustChangePassword(user) && nextPath !== "/reset-password") redirect(FIRST_LOGIN_PATH);
   const profile = await getCurrentProfile();
   if (!profile) {

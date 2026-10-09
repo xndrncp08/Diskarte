@@ -72,7 +72,7 @@ describe("workspace persistence", () => {
     const saved = JSON.parse(localStorage.getItem("diskarte:workspace:v1")!);
     expect(saved).toMatchObject({ roster: "docked", panels: { main: { minimized: true }, nav: { rect: { w: 0.3333, h: 0.75 } } } });
     // z values are stored compactly, in stacking order.
-    expect(Object.values(saved.panels as Record<string, { z: number }>).map((p) => p.z).sort()).toEqual([1, 2, 3]);
+    expect(Object.values(saved.panels as Record<string, { z: number }>).map((p) => p.z).sort()).toEqual([1, 2, 3, 4]);
 
     expect(updateUser).not.toHaveBeenCalled();
     act(() => vi.advanceTimersByTime(2600));
