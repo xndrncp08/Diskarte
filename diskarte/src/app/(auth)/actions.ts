@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { FIRST_LOGIN_PATH, mustChangePassword } from "@/lib/auth";
 import { friendlyAuthError } from "@/lib/auth-errors";
 import { getPublicEnv } from "@/lib/env";
@@ -44,7 +45,7 @@ export async function signInAction(_prev: AuthFormState, form: FormData): Promis
 
 export async function signUpAction(_prev: AuthFormState, form: FormData): Promise<AuthFormState> {
   const values = { email: text(form, "email"), username: text(form, "username"), displayName: text(form, "displayName") };
-  if (signupPolicy().inviteOnly) return { error: "Diskarte is in Early Access — apply to the waitlist first.", values };
+  if (signupPolicy().inviteOnly) return { error: "Sign-ups are paused on this server right now.", values };
   const result = await withMinimumDuration(AUTH_MIN_DURATION_MS, async (): Promise<AuthFormState | "session"> => {
     const parsed = signUpSchema.safeParse({
       email: text(form, "email"),
@@ -112,7 +113,9 @@ export async function requestPasswordResetAction(_prev: AuthFormState, form: For
 /** Sign out this browser, or every device when `scope=global` (revokes all refresh tokens). */
 export async function signOutAction(form: FormData): Promise<void> {
   const scope = text(form, "scope") === "global" ? "global" : "local";
+  const device = text(form, "device");
   const supabase = await createClient();
+  if (z.uuid().safeParse(device).success) await supabase.rpc("forget_device", { p_device_id: device }).then(undefined, () => undefined);
   await supabase.auth.signOut({ scope });
   redirect("/auth");
 }

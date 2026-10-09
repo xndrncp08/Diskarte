@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { BadgeCheck, Plus } from "lucide-react";
+import { BadgeCheck, Plus, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { DiskarteLogo } from "@/components/brand/DiskarteLogo";
 import { useOptionalSocial } from "@/components/providers/SocialProvider";
@@ -12,7 +12,8 @@ import type { Server } from "@/lib/servers";
 import { cn } from "@/lib/utils";
 import { NotificationHub } from "@/components/workspace/NotificationHub";
 import { WorkspacePresets } from "@/components/workspace/WorkspacePresets";
-import { useOptionalWorkspaceStore } from "@/components/workspace/WorkspaceProvider";
+import { useIsCanvas, useOptionalWorkspaceStore, useWorkspace, type WorkspaceStore } from "@/components/workspace/WorkspaceProvider";
+import { usePlatformRole } from "@/components/admin/AdminAccess";
 import { useContextMenu } from "@/components/ui/ContextMenu";
 import { AddServerDialog } from "./AddServerDialog";
 import { ServerContextMenu } from "./ServerContextMenu";
@@ -62,6 +63,43 @@ function RailServer({ server, active, official = false }: { server: Server; acti
       )}
       <ServerContextMenu menu={menu} server={server} />
     </>
+  );
+}
+
+const RAIL_BUTTON = "flex size-11 items-center justify-center rounded-2xl text-slate-300 transition-colors hover:bg-white/10 hover:text-white aria-pressed:bg-sun/15 aria-pressed:text-sun";
+
+/** Super admins: toggles the Control Center panel on the canvas. */
+function ControlCenterToggle({ store }: { store: WorkspaceStore }) {
+  const open = useWorkspace((s) => !s.panels.admin.closed && !s.panels.admin.minimized);
+  return (
+    <Tooltip label={open ? "Close the Control Center" : "Control Center"} side="right">
+      <button
+        type="button"
+        aria-label="Control Center"
+        aria-pressed={open}
+        onClick={() => (open ? store.setClosed("admin", true) : store.openPanel("admin"))}
+        className={RAIL_BUTTON}
+        data-testid="control-center-toggle"
+      >
+        <ShieldCheck className="size-5" aria-hidden />
+      </button>
+    </Tooltip>
+  );
+}
+
+/** The Control Center entry on the rail: a panel toggle on the canvas, a link to its page on phones. */
+function ControlCenterButton() {
+  const role = usePlatformRole();
+  const workspace = useOptionalWorkspaceStore();
+  const isCanvas = useIsCanvas();
+  if (role !== "super_admin") return null;
+  if (workspace && isCanvas) return <ControlCenterToggle store={workspace} />;
+  return (
+    <Tooltip label="Control Center" side="right">
+      <Link href="/tambayan/admin" aria-label="Control Center" className={RAIL_BUTTON} data-testid="control-center-toggle">
+        <ShieldCheck className="size-5" aria-hidden />
+      </Link>
+    </Tooltip>
   );
 }
 
@@ -121,6 +159,7 @@ export function ServerRail({ servers }: { servers: Server[] }) {
       </nav>
 
       <section aria-label="Workspace controls" className="flex shrink-0 flex-col items-center gap-1.5 border-t border-white/[0.06] pt-2">
+        <ControlCenterButton />
         <NotificationHub />
         {workspace && <WorkspacePresets />}
       </section>

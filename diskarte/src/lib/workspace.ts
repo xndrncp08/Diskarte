@@ -6,10 +6,10 @@ import { z } from "zod";
  * stores fractions of the canvas so an arrangement survives window resizes and other screens.
  */
 
-export const PANEL_IDS = ["nav", "main", "voice"] as const;
+export const PANEL_IDS = ["nav", "main", "voice", "admin"] as const;
 export type PanelId = (typeof PANEL_IDS)[number];
 
-export const PANEL_TITLES: Record<PanelId, string> = { nav: "Navigator", main: "Chat", voice: "Voice" };
+export const PANEL_TITLES: Record<PanelId, string> = { nav: "Navigator", main: "Chat", voice: "Voice", admin: "Control Center" };
 
 export const MIN_W = 320;
 export const MIN_H = 240;
@@ -374,16 +374,46 @@ function column(bounds: Rect, x: number, w: number): Rect {
   return { x, y: bounds.y, w, h: bounds.h };
 }
 
+/** Width of the Control Center when it docks against the right edge. */
+export function adminWidth(bounds: Rect) {
+  return Math.max(MIN_W, Math.min(640, bounds.w * 0.42));
+}
+
 /** The everyday arrangement: navigator on the left, the active view filling the rest, voice tucked right. */
 export function defaultRects(bounds: Rect): Record<PanelId, Rect> {
   const navW = Math.max(MIN_W, Math.min(320, bounds.w * 0.26));
   const voiceW = Math.max(MIN_W, Math.min(400, bounds.w * 0.3));
   const voiceH = Math.max(MIN_H, Math.min(300, bounds.h * 0.42));
+  const adminW = adminWidth(bounds);
   return {
     nav: column(bounds, bounds.x, navW),
     main: column(bounds, bounds.x + navW + GAP, bounds.w - navW - GAP),
     voice: { x: bounds.x + bounds.w - voiceW, y: bounds.y + bounds.h - voiceH, w: voiceW, h: voiceH },
+    admin: column(bounds, bounds.x + bounds.w - adminW, adminW),
   };
+}
+
+/**
+ * Opens the Control Center docked to the canvas's right edge, full height. Panels it would cover
+ * give way: their right edge pulls back to leave the 12 px docking gap (so they share a seam and
+ * resize together), and a panel that would drop below its minimum width slides left instead.
+ */
+export function dockAdmin(state: WorkspaceState, bounds: Rect, mounted: { has: (id: string) => boolean }, t = Date.now()): WorkspaceState {
+  const w = adminWidth(bounds);
+  const admin = column(bounds, bounds.x + bounds.w - w, w);
+  const edge = admin.x - GAP;
+  const panels = { ...state.panels };
+  for (const id of PANEL_IDS) {
+    const p = state.panels[id];
+    if (id === "admin" || !mounted.has(id) || p.minimized || p.closed) continue;
+    const r = fromFraction(p.rect, bounds);
+    if (r.x + r.w <= edge) continue;
+    const shrunk = edge - r.x;
+    const next = shrunk >= Math.min(MIN_W, bounds.w) ? { ...r, w: shrunk } : { ...r, x: Math.max(bounds.x, edge - r.w) };
+    panels[id] = { ...p, rect: toFraction(clampRect(next, bounds), bounds) };
+  }
+  panels.admin = { ...state.panels.admin, rect: toFraction(clampRect(admin, bounds), bounds), minimized: false, closed: false, z: topZ(state) + 1 };
+  return { ...state, panels, preset: null, t };
 }
 
 function panel(rect: Rect, bounds: Rect, z: number, minimized = false, closed = false): PanelState {
@@ -393,7 +423,7 @@ function panel(rect: Rect, bounds: Rect, z: number, minimized = false, closed = 
 export function defaultWorkspace(bounds: Rect, t = 0): WorkspaceState {
   const r = defaultRects(bounds);
   return {
-    panels: { nav: panel(r.nav, bounds, 1), main: panel(r.main, bounds, 2), voice: panel(r.voice, bounds, 3) },
+    panels: { nav: panel(r.nav, bounds, 1), main: panel(r.main, bounds, 2), voice: panel(r.voice, bounds, 3), admin: panel(r.admin, bounds, 4, false, true) },
     roster: "closed",
     preset: null,
     t,
@@ -412,7 +442,13 @@ export function applyPreset(state: WorkspaceState, preset: Preset, bounds: Rect,
   const keep = (id: PanelId, patch: Partial<PanelState>): PanelState => ({ ...state.panels[id], ...patch });
 
   if (preset === "minimal") {
-    return { ...state, preset, t, roster: "closed", panels: { nav: keep("nav", { minimized: true }), main: keep("main", { minimized: true }), voice: keep("voice", { minimized: true }) } };
+    return {
+      ...state,
+      preset,
+      t,
+      roster: "closed",
+      panels: { nav: keep("nav", { minimized: true }), main: keep("main", { minimized: true }), voice: keep("voice", { minimized: true }), admin: keep("admin", { minimized: !state.panels.admin.closed }) },
+    };
   }
   if (preset === "focus") {
     const w = Math.max(MIN_W, Math.min(bounds.w, Math.max(bounds.w * 0.7, Math.min(bounds.w, 960))));
@@ -422,7 +458,7 @@ export function applyPreset(state: WorkspaceState, preset: Preset, bounds: Rect,
       preset,
       t,
       roster: "closed",
-      panels: { nav: keep("nav", { minimized: true }), main: panel(main, bounds, top + 1), voice: keep("voice", { minimized: true }) },
+      panels: { nav: keep("nav", { minimized: true }), main: panel(main, bounds, top + 1), voice: keep("voice", { minimized: true }), admin: keep("admin", { minimized: !state.panels.admin.closed }) },
     };
   }
   // multitask
@@ -442,6 +478,8 @@ export function applyPreset(state: WorkspaceState, preset: Preset, bounds: Rect,
       nav: panel(nav, bounds, top + 1),
       main: panel(main, bounds, top + 2),
       voice: opts.voiceAvailable ? panel(voice, bounds, top + 3) : keep("voice", { minimized: false }),
+      // The Control Center isn't part of the tiling: it steps aside (minimized) if it was open.
+      admin: keep("admin", { minimized: !state.panels.admin.closed }),
     },
   };
 }
@@ -451,8 +489,10 @@ export function applyPreset(state: WorkspaceState, preset: Preset, bounds: Rect,
 const fraction = z.number().min(-1).max(2);
 const rectSchema = z.object({ x: fraction, y: fraction, w: z.number().min(0.01).max(1), h: z.number().min(0.01).max(1) });
 const panelSchema = z.object({ rect: rectSchema, z: z.number().int().min(0).max(1_000_000), minimized: z.boolean(), closed: z.boolean() });
+/** Layouts saved before the Control Center existed have no admin panel: it starts closed. */
+const CLOSED_ADMIN: PanelState = { rect: { x: 0.58, y: 0, w: 0.42, h: 1 }, z: 4, minimized: false, closed: true };
 const workspaceSchema = z.object({
-  panels: z.object({ nav: panelSchema, main: panelSchema, voice: panelSchema }),
+  panels: z.object({ nav: panelSchema, main: panelSchema, voice: panelSchema, admin: panelSchema.default(CLOSED_ADMIN) }),
   roster: z.enum(["closed", "open", "docked"]),
   preset: z.enum(["focus", "multitask", "minimal"]).nullable(),
   t: z.number().nonnegative(),

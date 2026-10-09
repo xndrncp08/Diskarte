@@ -60,14 +60,9 @@ cp .env.example .env.local                      # add Supabase + LiveKit credent
 npm run dev                                     # http://localhost:3000
 ```
 
-### Early Access portal
+### Super Admin Control Center
 
-Before the public launch, sign-ups go through **[`early-access-portal/`](../early-access-portal/README.md)**, this app's sibling in the monorepo, deployed to Vercel:
-- **Waitlist:** a public, bot-resistant form with retro confetti.
-- **`/admin` dashboard:** for `super_admin`s. It has stats, search, filters, detail views and bulk approve/decline.
-- **Approval:** creates the Diskarte account and emails a branded "Maligayang Pagdating sa Diskarte!" message with temporary credentials. The app then makes the user pick a new password on first login.
-
-Set `SIGNUP_MODE=invite` on the main app to close public sign-up in the meantime.
+Platform administration lives in the workspace: a glass Control Center panel for `super_admin`s (`/admin`), with the network roster and presence inspector, live LiveKit stages, moderation (roles, status overrides, session revocation, bans — all audited) and the Global Announcement Dispatcher for Diskarte HQ's #announcements and #global-lounge, including sticky banners on every canvas. Make the first super admin with `npm run admin:grant -- you@example.com`. Set `SIGNUP_MODE=invite` to pause public sign-up.
 
 For a free production deploy (Supabase + LiveKit Cloud + Render) and local Supabase/LiveKit, see **[DEPLOYMENT.md](DEPLOYMENT.md)**. The threat model, security controls and vulnerability reporting are in **[SECURITY.md](../SECURITY.md)**.
 
@@ -102,7 +97,7 @@ src/
   hooks/               useChannelChat, useTyping, useSignedUrls…
   lib/                 env, security (CSP/CSRF), rate limiting, validation, sfx, supabase clients
   proxy.ts             CSP nonce, session refresh, auth redirects, CSRF for /api
-../supabase/migrations/  complete schema, shared with the portal (tables, RLS, triggers, RPCs, realtime + storage policies)
+../supabase/migrations/  complete schema (tables, RLS, triggers, RPCs, realtime + storage policies)
 tests/                 PGlite database tests, fixtures
 e2e/                   Playwright specs
 ```

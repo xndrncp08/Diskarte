@@ -9,7 +9,7 @@ const LOUNGE = "d15ca47e-0000-4000-8000-0000000000a2";
 let db: Db;
 let creator: string;
 let juan: string;
-let portalAdmin: string;
+let platformMod: string;
 
 async function post(userId: string, channelId: string, content: string) {
   await asUser(db, userId);
@@ -22,10 +22,10 @@ beforeAll(async () => {
   await asService(db);
   await db.query("insert into public.system_creators (user_id) values ($1)", [creator]);
   juan = await signUp(db, "juan@diskarte.ph", { username: "juan" });
-  // An early-access platform admin who is *not* a creator.
-  portalAdmin = await signUp(db, "portal@diskarte.ph", { username: "portaladmin" });
+  // A platform moderator who is *not* a creator: an HQ moderator, but #announcements stays admins-only.
+  platformMod = await signUp(db, "mod@diskarte.ph", { username: "platformmod" });
   await asService(db);
-  await db.query("insert into public.platform_admins (user_id) values ($1)", [portalAdmin]);
+  await db.query("insert into public.platform_admins (user_id, role) values ($1, 'moderator')", [platformMod]);
 }, 60_000);
 
 describe("Diskarte HQ (global super server)", () => {
@@ -61,7 +61,7 @@ describe("Diskarte HQ (global super server)", () => {
 
   it("only creators post in #announcements; everyone chats in #global-lounge", async () => {
     expect(await post(juan, ANNOUNCEMENTS, "Pa-shoutout po")).toMatch(/READ_ONLY_CHANNEL/);
-    expect(await post(portalAdmin, ANNOUNCEMENTS, "Portal admins aren't creators")).toMatch(/READ_ONLY_CHANNEL/);
+    expect(await post(platformMod, ANNOUNCEMENTS, "Moderators aren't admins")).toMatch(/READ_ONLY_CHANNEL/);
     expect(await post(creator, ANNOUNCEMENTS, "v1.4: floating windows are here!")).toBeNull();
     expect(await post(juan, LOUNGE, "Mabuhay, Diskarte!")).toBeNull();
     await asUser(db, juan);

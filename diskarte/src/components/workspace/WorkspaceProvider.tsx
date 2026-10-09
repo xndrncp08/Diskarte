@@ -5,6 +5,7 @@ import { useOptionalSupabase } from "@/components/providers/RuntimeConfig";
 import {
   applyPreset,
   defaultWorkspace,
+  dockAdmin,
   newestWorkspace,
   parseWorkspace,
   PANEL_IDS,
@@ -49,6 +50,8 @@ export interface WorkspaceStore {
   raise: (id: PanelId) => void;
   setMinimized: (id: PanelId, minimized: boolean) => void;
   setClosed: (id: PanelId, closed: boolean) => void;
+  /** Shows a panel wherever it is: restores it from the tray, or (the Control Center) docks it right. */
+  openPanel: (id: PanelId) => void;
   setRoster: (mode: RosterMode) => void;
   applyPreset: (preset: Preset, opts: { voiceAvailable: boolean }) => void;
   reset: () => void;
@@ -135,6 +138,14 @@ export function createWorkspaceStore(initial: WorkspaceState, onChange?: (s: Wor
       set({ ...base, t: Date.now(), preset: null, panels: { ...base.panels, [id]: { ...base.panels[id], minimized, closed: false } } });
     },
     setClosed: (id, closed) => patchPanel(id, { closed, minimized: false }),
+    openPanel: (id) => {
+      const current = state.panels[id];
+      if (current.closed && id === "admin" && bounds) set(dockAdmin(state, bounds, mounted));
+      else if (current.closed || current.minimized) {
+        const base = raisePanel(state, id);
+        set({ ...base, t: Date.now(), preset: null, panels: { ...base.panels, [id]: { ...base.panels[id], minimized: false, closed: false } } });
+      } else set(raisePanel(state, id), false);
+    },
     setRoster: (roster) => roster !== state.roster && set({ ...state, roster, t: Date.now() }),
     applyPreset: (preset, opts) => set(applyPreset(state, preset, bounds ?? NOMINAL, opts)),
     reset: () => set({ ...defaultWorkspace(bounds ?? NOMINAL), t: Date.now() }),

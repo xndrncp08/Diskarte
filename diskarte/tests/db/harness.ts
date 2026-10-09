@@ -3,7 +3,7 @@ import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 
-/** Repository root: supabase/ is shared by diskarte/ and early-access-portal/. */
+/** Repository root: supabase/ lives beside diskarte/. */
 const root = path.resolve(__dirname, "../../..");
 const shim = fs.readFileSync(path.join(__dirname, "supabase-shim.sql"), "utf8");
 const migrationsDir = path.join(root, "supabase/migrations");

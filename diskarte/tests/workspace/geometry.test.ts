@@ -122,9 +122,10 @@ describe("presets", () => {
     expect(applyPreset(base, "multitask", B, { voiceAvailable: false }).roster).toBe("docked");
   });
 
-  it("minimal dock minimizes every panel into the tray", () => {
+  it("minimal dock minimizes every panel into the tray (a closed Control Center stays closed)", () => {
     const s = applyPreset(base, "minimal", B, { voiceAvailable: true });
-    expect(Object.values(s.panels).every((p) => p.minimized)).toBe(true);
+    expect([s.panels.nav, s.panels.main, s.panels.voice].every((p) => p.minimized)).toBe(true);
+    expect(s.panels.admin).toMatchObject({ closed: true, minimized: false });
   });
 });
 

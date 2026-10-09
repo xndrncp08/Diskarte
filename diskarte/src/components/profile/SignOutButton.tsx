@@ -1,8 +1,10 @@
 "use client";
 
 import { LogOut, ShieldAlert } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { signOutAction } from "@/app/(auth)/actions";
+import { existingDeviceId } from "@/lib/device";
 import { clearOutbox } from "@/lib/outbox";
 import { cn } from "@/lib/utils";
 
@@ -31,9 +33,17 @@ function Submit({ scope, className }: { scope: "local" | "global"; className?: s
  * `global`) and redirects to /auth; this device's unsent-message queue is cleared first.
  */
 export function SignOutButton({ scope = "local", className }: { scope?: "local" | "global"; className?: string }) {
+  // This browser's presence-inspector entry is forgotten with the session.
+  const [device, setDevice] = useState("");
+  useEffect(() => {
+    // localStorage is only readable after mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDevice(existingDeviceId() ?? "");
+  }, []);
   return (
     <form action={signOutAction} onSubmit={clearOutbox} className="contents">
       <input type="hidden" name="scope" value={scope} />
+      <input type="hidden" name="device" value={device} />
       <Submit scope={scope} className={className} />
     </form>
   );

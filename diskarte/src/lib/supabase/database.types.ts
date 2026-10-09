@@ -1,4 +1,4 @@
-// Types mirroring supabase/migrations/*.sql (schema, security hardening, community).
+// Types mirroring supabase/migrations/*.sql (schema, security hardening, community, admin control center).
 // Regenerate with `npx supabase gen types typescript --local > src/lib/supabase/database.types.ts`.
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
@@ -304,6 +304,54 @@ export interface Database {
         },
         never
       >;
+      platform_admins: TableDef<{ user_id: string; role: "super_admin" | "moderator"; note: string; granted_at: string; granted_by: string | null }, never>;
+      admin_audit_logs: TableDef<
+        { id: string; actor_id: string | null; action: string; target_user_id: string | null; details: Json; created_at: string },
+        never
+      >;
+      account_controls: TableDef<
+        {
+          user_id: string;
+          banned_until: string | null;
+          ban_reason: string | null;
+          banned_by: string | null;
+          sessions_revoked_at: string | null;
+          status_override: Json | null;
+          status_override_at: string | null;
+          updated_at: string;
+        },
+        never
+      >;
+      user_devices: TableDef<
+        {
+          user_id: string;
+          device_id: string;
+          fingerprint: string;
+          label: string;
+          status: PresenceStatus;
+          custom_status: string | null;
+          voice_channel_id: string | null;
+          first_seen_at: string;
+          last_seen_at: string;
+        },
+        never
+      >;
+      system_broadcasts: TableDef<
+        {
+          id: string;
+          author_id: string | null;
+          title: string;
+          body: string;
+          tone: "info" | "success" | "warning" | "critical";
+          targets: string[];
+          message_ids: string[];
+          sticky: boolean;
+          sticky_until: string | null;
+          retracted_at: string | null;
+          created_at: string;
+        },
+        never
+      >;
     };
     Views: { [_ in never]: never };
     Functions: {
@@ -344,6 +392,47 @@ export interface Database {
       rename_group_dm: { Args: { p_conversation_id: string; p_name: string }; Returns: undefined };
       leave_dm: { Args: { p_conversation_id: string }; Returns: undefined };
       mark_dm_read: { Args: { p_conversation_id: string }; Returns: undefined };
+      is_super_admin: { Args: Record<string, never>; Returns: boolean };
+      my_platform_role: { Args: Record<string, never>; Returns: string };
+      is_platform_banned: { Args: { p_user?: string | null }; Returns: boolean };
+      heartbeat_device: {
+        Args: { p_device_id: string; p_fingerprint: string; p_label: string; p_status: PresenceStatus; p_custom_status?: string | null; p_voice_channel_id?: string | null };
+        Returns: Json;
+      };
+      forget_device: { Args: { p_device_id: string }; Returns: undefined };
+      admin_overview: { Args: Record<string, never>; Returns: Json };
+      admin_list_users: {
+        Args: { p_query?: string | null; p_limit?: number };
+        Returns: {
+          id: string;
+          username: string;
+          display_name: string;
+          avatar_preset: string;
+          avatar_url: string | null;
+          status: PresenceStatus;
+          custom_status: string | null;
+          email: string | null;
+          created_at: string;
+          last_sign_in_at: string | null;
+          role: string;
+          banned_until: string | null;
+          ban_reason: string | null;
+          sessions: number;
+          last_seen_at: string | null;
+          devices: Json;
+        }[];
+      };
+      admin_channel_labels: { Args: { p_ids: string[] }; Returns: { id: string; name: string; server_id: string; server_name: string }[] };
+      admin_set_role: { Args: { p_user: string; p_role: string }; Returns: undefined };
+      admin_set_status: { Args: { p_user: string; p_status: PresenceStatus; p_custom_status?: string | null }; Returns: undefined };
+      admin_revoke_sessions: { Args: { p_user: string }; Returns: number };
+      admin_ban_user: { Args: { p_user: string; p_hours?: number | null; p_reason?: string | null }; Returns: string };
+      admin_unban_user: { Args: { p_user: string }; Returns: undefined };
+      admin_dispatch_broadcast: {
+        Args: { p_title: string; p_body: string; p_tone?: string; p_targets?: string[]; p_sticky?: boolean; p_sticky_hours?: number | null };
+        Returns: string;
+      };
+      admin_retract_broadcast: { Args: { p_broadcast: string }; Returns: undefined };
     };
     Enums: {
       member_role: MemberRole;

@@ -13,7 +13,8 @@
     "test:e2e": "playwright test",
     "brand:wordmark": "node scripts/build-wordmark-path.mjs",
     "brand:assets": "tsx scripts/generate-brand-assets.tsx",
-    "start:standalone": "node scripts/start-standalone.mjs"
+    "start:standalone": "node scripts/start-standalone.mjs",
+    "admin:grant": "node scripts/grant-admin.mjs"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

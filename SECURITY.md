@@ -83,26 +83,15 @@ Rate limits live in process memory by default (Diskarte runs as one container). 
 - Helpers that could reveal relationships between arbitrary users (`are_friends`, `is_blocked_between`, `automod_match`) are **not executable** by `anon` or `authenticated`.
 - Realtime `dm:<conversation>` broadcast topics are authorised by `can_access_realtime_topic` (participants only).
 
-#### Early Access (`20260928000000_early_access.sql` + `early-access-portal/`)
+#### Super Admin Control Center (`20261006000000_admin_control_center.sql`)
 
-- **`waitlist_applications`**:
-  - Anyone (`anon`/`authenticated`) may INSERT, but only the applicant columns (column-level grants). A trigger forces `status = 'pending'` and clears every review field, so nobody can self-approve.
-  - Only `super_admin`s may SELECT, UPDATE (review columns only) or DELETE.
-  - Applicant data is immutable. The trigger allows only `pending → approved|declined` and `declined → pending|approved`; `approved` is final.
-- **`platform_admins`** can't be written by any client. Roles are granted with the service role (`npm run admin:grant`) and checked in the database on every admin request (`is_super_admin()`), so revoking takes effect immediately.
-- **Spam:**
-  - The portal adds a per-IP limit, a honeypot, an HMAC-signed "form issued at" token (rejects replays and sub-3-second fills) and optional Cloudflare Turnstile.
-  - Because the table is directly insertable with the public anon key, the database also caps 5 applications per IP-hash per hour and 60 per minute overall.
-  - IPs are stored only as salted SHA-256 hashes. Duplicate emails get the same "you're on the list" answer, so the form can't be used to enumerate applicants.
-- **Approvals:**
-  - Run as Server Actions that re-verify `super_admin`. Review reads and writes use the admin's own RLS-bound session.
-  - Only Supabase Auth user creation and password resets use the service-role key. That key lives in the portal server's environment (`server-only`) and never in the main app.
-  - Temporary passwords are 16 characters from a CSPRNG (rejection sampling, all four character classes, no look-alikes). They exist only in memory and in the email, and are never stored, logged or returned to the dashboard.
-- **First login:** accounts carry `must_change_password` in `user_metadata`. The main app's proxy reads it from the verified JWT and allows nothing but `/reset-password` until the password is changed, which also clears the flag and refreshes the session.
-- **Portal hardening:**
-  - The admin session cookie is HttpOnly and separately named.
-  - A nonce CSP applies (`frame-src` only Cloudflare's challenge when Turnstile is on). `/admin` is `no-store` + `noindex`.
-  - Admin login is rate-limited, with padded timing and one generic error message. Non-admins are signed straight back out.
+- **Roles:** `platform_admins` (`super_admin` / `moderator`) can't be written by any client. The first super admin is granted with the service role (`npm run admin:grant`); after that only `admin_set_role` (super admins) changes roles, and nobody can change their own. Roles are mirrored into Diskarte HQ by a trigger (super admin → HQ admin, moderator → HQ moderator).
+- **Every admin request is checked three times:** the proxy asks the database (`is_super_admin()`) on `/admin`, `/tambayan/admin` and `/api/admin/*` and redirects or 403s anyone else before rendering; pages and Server Actions re-verify server-side; and every `admin_*` RPC is `SECURITY DEFINER` and raises `NOT_AUTHORIZED` unless the caller is a super admin. The Control Center bundle is only loaded for super admins.
+- **Audit:** `admin_audit_logs` is readable by super admins only and written only inside the RPCs (role changes, status overrides, session revocations, bans, broadcasts). The retired waitlist's applications were archived there before the table was dropped.
+- **Bans and revocations:** `account_controls` (readable by the account itself and super admins) records bans, revocations and status overrides. A ban sets `auth.users.banned_until`, deletes the account's `auth.sessions` (killing refresh tokens) and a restrictive RLS policy blocks posting messages or DMs while banned, even with an unexpired access token. Open canvases sign out within seconds via the private `db:account:<me>` topic and the device heartbeat. Super admins can't ban themselves or other super admins.
+- **Device heartbeats:** `user_devices` stores a hashed browser fingerprint (never the raw traits), a label, status and voice channel; each person reads only their own rows, super admins read all. Writes go through `heartbeat_device`, which only accepts voice channels the caller can see.
+- **Broadcasts:** `system_broadcasts` is readable by every signed-in user (for banners) and writable only through `admin_dispatch_broadcast` / `admin_retract_broadcast`. Posts are ordinary HQ messages, so they render through the same XSS-safe Markdown pipeline (raw HTML shown as text, URL allow-list).
+- **First login:** accounts with `must_change_password` in `user_metadata` are allowed nothing but `/reset-password` until they change it (proxy, login action and every protected render).
 
 ### 3. WebRTC & LiveKit
 
@@ -144,10 +133,10 @@ Rate limits live in process memory by default (Diskarte runs as one container). 
 
 ## Security testing
 
-Run `npm test` from the repository root (it runs both apps' suites). It includes:
+Run `npm test` from the repository root. It includes:
 
 - `diskarte/tests/db/schema.test.ts` and `diskarte/tests/db/security.test.ts`: the real migrations inside PGlite, attacked as different users (RLS bypass, role escalation, forged authors, injection payloads, hostile attachments and storage paths).
-- `diskarte/tests/db/early-access.test.ts`: public insert limits, super-admin-only reads, the review state machine and flood caps. `early-access-portal/tests/`: anti-spam, admin guards on the proxy and every action, credential generation and the approval workflow.
+- `diskarte/tests/db/admin-control-center.test.ts`: every Control Center RPC refused to non-admins, hidden audit/devices/controls, role mirroring, self-protection, bans blocking posts, session revocation, broadcasts and realtime topic authorisation. `diskarte/tests/auth/account-gates.test.ts`: proxy redirects/403s for the admin routes, first-login and rejected-session handling.
 - `diskarte/tests/db/community.test.ts`: audit logging, bans, auto-mod, slow mode, verification gates, threads, badges, LFG, the soundboard, friendships, blocks and DM privacy.
 - `diskarte/tests/security/proxy.test.ts`: rate limits (429 + `Retry-After`), CORS, CSRF, the API session guard, route guards and CSP.
 - `diskarte/tests/security/hardening.test.ts`: password policy, timing floor, cookie flags, the Upstash limiter, secret isolation and static headers.

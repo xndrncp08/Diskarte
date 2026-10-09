@@ -13,28 +13,16 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const params = await searchParams;
   const next = safeRedirectPath(typeof params.next === "string" ? params.next : null);
   const error = typeof params.error === "string" ? params.error.slice(0, 200) : null;
-  // Arriving from the Early Access approval email (or the portal): greet them and pre-fill the
-  // address the credentials were sent to. Only a syntactically valid email is ever echoed back.
-  const fromEarlyAccess = params.from === "early-access";
+  // Links may pre-fill the address (e.g. after an invite). Only a syntactically valid email is echoed back.
   const email = typeof params.email === "string" ? emailSchema.safeParse(params.email) : null;
   const deleted = params.deleted === "1";
 
   return (
     <div className="space-y-6">
-      {fromEarlyAccess ? (
-        <div data-testid="early-access-welcome">
-          <p className="font-pixel text-[9px] text-sun">EARLY ACCESS · APPROVED</p>
-          <h1 className="mt-2 text-2xl font-extrabold text-white">Welcome to Diskarte!</h1>
-          <p className="mt-1 text-sm text-slate-400">
-            Use the email and temporary password from your welcome email. Next, you&apos;ll create your own password.
-          </p>
-        </div>
-      ) : (
-        <div>
-          <h1 className="text-2xl font-extrabold text-white">Welcome back!</h1>
-          <p className="mt-1 text-sm text-slate-400">Sign in to get back to your servers and friends.</p>
-        </div>
-      )}
+      <div>
+        <h1 className="text-2xl font-extrabold text-white">Welcome back!</h1>
+        <p className="mt-1 text-sm text-slate-400">Sign in to get back to your servers and friends.</p>
+      </div>
       {deleted && (
         <p role="status" className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
           Your account and its data were deleted. Thanks for hanging out with us.

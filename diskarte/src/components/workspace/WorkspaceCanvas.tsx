@@ -1,6 +1,6 @@
 "use client";
 
-import { Compass, MessageSquare, Volume2 } from "lucide-react";
+import { Compass, MessageSquare, ShieldCheck, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useCall } from "@/components/voice/CallProvider";
 import { GAP, PANEL_IDS, PANEL_TITLES, type PanelId } from "@/lib/workspace";
@@ -16,6 +16,7 @@ const PILL_ICONS: Record<PanelId, ReactNode> = {
   nav: <Compass className="size-4" aria-hidden />,
   main: <MessageSquare className="size-4" aria-hidden />,
   voice: <Volume2 className="size-4" aria-hidden />,
+  admin: <ShieldCheck className="size-4" aria-hidden />,
 };
 
 /** F6 / Shift+F6 cycle focus between the command rail and the visible panels, left to right. */
@@ -50,7 +51,7 @@ function useRegionHopping(canvas: React.RefObject<HTMLDivElement | null>) {
  * inside it; a tray along the bottom appears when there are minimized panels or an active call, and
  * a docked roster takes the right edge. Phones get the plain stacked layout instead.
  */
-export function WorkspaceCanvas({ children }: { children: ReactNode }) {
+export function WorkspaceCanvas({ children, extra }: { children: ReactNode; extra?: ReactNode }) {
   const canvas = useRef<HTMLDivElement>(null);
   const store = useWorkspaceStore();
   const isCanvas = useIsCanvas();
@@ -91,10 +92,11 @@ export function WorkspaceCanvas({ children }: { children: ReactNode }) {
       ref={canvas}
       data-workspace=""
       style={{ "--tray": tray ? `${TRAY_HEIGHT + GAP}px` : "0px" } as CSSProperties}
-      className="group/ws relative flex min-w-0 flex-1 md:isolate md:block"
+      className="group/ws relative flex min-h-0 min-w-0 flex-1 md:isolate md:block"
     >
       {children}
       <VoicePanel />
+      {extra}
       {isCanvas && <WorkspaceSeams />}
       {isCanvas && (
         <section

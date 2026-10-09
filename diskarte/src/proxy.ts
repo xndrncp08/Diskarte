@@ -5,7 +5,9 @@ import { allowedOriginSet, buildCsp, corsHeadersFor, createNonce, isSafeMethod, 
 import { refreshSession } from "@/lib/supabase/proxy";
 
 /** Pages that need a signed-in user (server components re-check with getUser()). */
-const PROTECTED_PREFIXES = ["/tambayan", "/settings", "/onboarding", "/reset-password"];
+const PROTECTED_PREFIXES = ["/tambayan", "/settings", "/onboarding", "/reset-password", "/admin"];
+/** The Super Admin Control Center: anyone else is sent back to the canvas (API: 403) before rendering. */
+const ADMIN_PATHS = ["/admin", "/tambayan/admin", "/api/admin"];
 const GUEST_ONLY = ["/login", "/signup", "/forgot-password"];
 /** Pages whose POSTs are auth attempts (Server Actions post to the page URL; "/" hosts a sign-in card). */
 const AUTH_POST_PATHS = ["/", "/login", "/signup", "/forgot-password", "/reset-password", "/settings/account"];
@@ -14,9 +16,9 @@ const FIRST_LOGIN_PATH = "/reset-password";
 /** API routes reachable without a session. */
 const PUBLIC_API = ["/api/health"];
 
-/** Extra CORS origins: ALLOWED_ORIGINS plus the Early Access portal (it reads /api/health). */
+/** Extra CORS origins (comma-separated ALLOWED_ORIGINS). */
 function extraOrigins() {
-  return [...(process.env.ALLOWED_ORIGINS ?? "").split(","), process.env.EARLY_ACCESS_URL ?? ""].map((o) => o.trim()).filter(Boolean);
+  return (process.env.ALLOWED_ORIGINS ?? "").split(",").map((o) => o.trim()).filter(Boolean);
 }
 
 function matches(pathname: string, prefixes: readonly string[]) {
@@ -85,7 +87,8 @@ export async function proxy(request: NextRequest) {
   if (!env || matches(pathname, PUBLIC_API)) return makeResponse();
 
   // --- session refresh + route guards ------------------------------------------------------
-  const { response, userId, mustChangePassword } = await refreshSession(request, env, makeResponse);
+  const adminPath = matches(pathname, ADMIN_PATHS);
+  const { response, userId, mustChangePassword, superAdmin } = await refreshSession(request, env, makeResponse, { checkSuperAdmin: adminPath });
 
   const withCookies = (target: NextResponse) => {
     for (const cookie of response.cookies.getAll()) target.cookies.set(cookie);
@@ -104,11 +107,19 @@ export async function proxy(request: NextRequest) {
     return withCookies(NextResponse.redirect(url));
   }
 
-  // Early Access accounts start with an emailed temporary password: nothing else until it's changed.
+  // Accounts created with a temporary password (must_change_password): nothing else until it's changed.
   if (mustChangePassword && matches(pathname, PROTECTED_PREFIXES) && pathname !== FIRST_LOGIN_PATH) {
     const url = request.nextUrl.clone();
     url.pathname = FIRST_LOGIN_PATH;
     url.search = "?first=1";
+    return withCookies(NextResponse.redirect(url));
+  }
+
+  if (userId && adminPath && superAdmin !== true) {
+    if (isApi) return withCookies(NextResponse.json({ error: "Forbidden" }, { status: 403, headers: { ...cors, "Cache-Control": "no-store" } }));
+    const url = request.nextUrl.clone();
+    url.pathname = "/tambayan";
+    url.search = "";
     return withCookies(NextResponse.redirect(url));
   }
 

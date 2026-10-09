@@ -10,10 +10,8 @@ import sharp from "sharp";
 import pngToIco from "png-to-ico";
 import { DiskarteLogo } from "../src/components/brand/DiskarteLogo";
 import { DiskarteWordmark } from "../src/components/brand/DiskarteWordmark";
-import { PORTAL_BRAND_DIR, PORTAL_PUBLIC_DIR, portalBrandSvgs } from "../src/components/brand/portal-export";
 
 const root = path.resolve(__dirname, "..");
-const repoRoot = path.resolve(root, "..");
 const appDir = path.join(root, "src/app");
 const iconsDir = path.join(root, "public/icons");
 
@@ -101,15 +99,7 @@ async function main() {
   fs.writeFileSync(path.join(appDir, "opengraph-image.alt.txt"), "Diskarte — Walang Shutdown-Shutdown: Ang Bagong Istambayan ng Bayan.");
   fs.writeFileSync(path.join(appDir, "twitter-image.alt.txt"), "Diskarte — Walang Shutdown-Shutdown: Ang Bagong Istambayan ng Bayan.");
 
-  // Early Access portal: static SVGs + the mascot PNG used in the welcome email (email clients
-  // don't render SVG).
-  const portalBrand = path.join(repoRoot, PORTAL_BRAND_DIR);
-  fs.mkdirSync(portalBrand, { recursive: true });
-  for (const [file, markup] of Object.entries(portalBrandSvgs())) fs.writeFileSync(path.join(portalBrand, file), markup);
-  fs.mkdirSync(path.join(repoRoot, PORTAL_PUBLIC_DIR, "email"), { recursive: true });
-  fs.writeFileSync(path.join(repoRoot, PORTAL_PUBLIC_DIR, "email/salakot.png"), await paddedIcon(176, 0.08));
-
-  console.log("Brand assets written to src/app, public/icons and early-access-portal/public");
+  console.log("Brand assets written to src/app and public/icons");
 }
 
 main().catch((err) => {
