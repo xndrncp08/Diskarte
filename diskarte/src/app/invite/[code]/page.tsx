@@ -68,7 +68,7 @@ export default async function InvitePage({ params }: PageProps<"/invite/[code]">
           <>
             <h1 className="text-xl font-extrabold text-white">Invalid or expired invite</h1>
             <p className="mt-2 text-sm text-slate-400">Ask your friend for a new link.</p>
-            <Link href="/" className="mt-6 inline-block font-semibold text-sun hover:underline">
+            <Link href="/" className="mt-6 inline-flex min-h-11 items-center font-semibold text-sun hover:underline">
               Back to Diskarte
             </Link>
           </>
