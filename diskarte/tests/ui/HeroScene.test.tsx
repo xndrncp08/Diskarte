@@ -168,6 +168,18 @@ describe("landing and auth stages", () => {
     expect(container.querySelector("[data-reveal='letter']")!.parentElement!.querySelector(".sr-only")).toHaveTextContent("Diskarte");
   });
 
+  it("a starved frame clock (slow phones, CI) can't hold the sign-in card back past the wall-clock cap", async () => {
+    configure();
+    gsap.globalTimeline.pause(); // no frames advance the timeline at all
+    try {
+      const { container } = render(await LandingPage());
+      await waitFor(() => expect(container.querySelector("[data-entrance]")).toHaveAttribute("data-entrance", "done"), { timeout: 8_000 });
+      expect(container.querySelector("[data-reveal='card']")).toHaveStyle({ visibility: "visible", opacity: "1" });
+    } finally {
+      gsap.globalTimeline.resume();
+    }
+  }, 10_000);
+
   it("landing without configuration explains what's missing instead of a broken form", async () => {
     const { container } = render(await LandingPage());
     await settle(container);
