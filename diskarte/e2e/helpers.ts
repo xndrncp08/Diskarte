@@ -8,6 +8,11 @@ export async function settleEntrance(page: Page) {
   if (await page.locator("[data-entrance]").count()) await page.locator('[data-entrance="done"]').waitFor({ timeout: 15_000 });
 }
 
+/** Transient toasts legitimately sit on top of the UI for a few seconds; let them clear before measuring. */
+export async function waitForToasts(page: Page) {
+  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0, { timeout: 15_000 });
+}
+
 export interface TestUser {
   displayName: string;
   username: string;

@@ -1,12 +1,7 @@
 import { devices, expect, test, type Locator, type Page } from "@playwright/test";
-import { createServer, FULL, FULL_REASON, makeUser, signUpAndOnboard, settleEntrance } from "./helpers";
+import { createServer, FULL, FULL_REASON, makeUser, signUpAndOnboard, settleEntrance, waitForToasts } from "./helpers";
 
 test.use({ ...devices["Pixel 7"], permissions: ["microphone", "camera"] });
-
-/** Transient toasts legitimately sit on top of the UI for a few seconds; let them clear first. */
-async function waitForToasts(page: Page) {
-  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0, { timeout: 15_000 });
-}
 
 /** Checks the *tappable* area (including touch-target pseudo-elements) is at least 44×44 px. */
 async function expectTouchTarget(locator: Locator) {
