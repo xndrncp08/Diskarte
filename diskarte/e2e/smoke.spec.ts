@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 import { settleEntrance } from "./helpers";
 
 test.describe("smoke (no backend required)", () => {
+  test.use({ reducedMotion: "no-preference" });
+
   test("landing page shows the brand and calls to action", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("img", { name: "Diskarte" }).first()).toBeVisible();
