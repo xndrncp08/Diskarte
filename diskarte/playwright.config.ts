@@ -24,6 +24,9 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "retain-on-failure",
     permissions: ["microphone", "camera"],
+    // Journeys test behaviour, not motion: skip the WebGL scenes and long entrance on CPU-only runners.
+    // The smoke spec opts back in to cover the full-motion landing.
+    reducedMotion: "reduce",
     launchOptions: {
       // Fake mic/camera so the voice journey can publish tracks headlessly.
       args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", "--autoplay-policy=no-user-gesture-required"],

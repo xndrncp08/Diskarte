@@ -72,9 +72,14 @@ test.describe("Super Admin Control Center", () => {
     const center = adminPage.getByTestId("admin-control-center");
     await expect(center).toBeVisible();
     await expect(center.getByTestId("roster-row").first()).toBeVisible();
-    const main = (await adminPage.locator('[data-panel="main"]').boundingBox())!;
-    const panel = (await adminPage.locator('[data-panel="admin"]').boundingBox())!;
-    expect(Math.abs(panel.x - (main.x + main.width) - 12)).toBeLessThanOrEqual(2);
+    // Panels glide into place, so measure once the dock has settled.
+    await expect
+      .poll(async () => {
+        const main = (await adminPage.locator('[data-panel="main"]').boundingBox())!;
+        const panel = (await adminPage.locator('[data-panel="admin"]').boundingBox())!;
+        return Math.abs(panel.x - (main.x + main.width) - 12);
+      })
+      .toBeLessThanOrEqual(2);
 
     // Compose and dispatch a sticky announcement.
     const title = `Maintenance ${Date.now().toString(36)}`;
