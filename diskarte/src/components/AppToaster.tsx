@@ -12,8 +12,9 @@ function subscribe(callback: () => void) {
 }
 
 /**
- * Toasts sit bottom-right on desktop, but on phones they'd cover the composer and call controls
- * (and swallow taps) for several seconds — so small screens get them at the top instead.
+ * Toasts sit bottom-right on desktop, lifted above the workspace tray (call controls, minimized
+ * panels: 56 px tray + 12 px frame). On phones they'd cover the composer and call controls (and
+ * swallow taps) for several seconds — so small screens get them at the top instead.
  */
 export function AppToaster() {
   const small = useSyncExternalStore(
@@ -25,7 +26,7 @@ export function AppToaster() {
     <Toaster
       theme="dark"
       position={small ? "top-center" : "bottom-right"}
-      offset={small ? { top: "max(0.75rem, env(safe-area-inset-top))" } : undefined}
+      offset={small ? { top: "max(0.75rem, env(safe-area-inset-top))" } : { bottom: 80 }}
       toastOptions={{
         classNames: {
           toast: "!bg-black/70 !backdrop-blur-md !border !border-white/10 !text-slate-100 !rounded-xl",
