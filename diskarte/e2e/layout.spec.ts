@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { createServer, FULL, FULL_REASON, makeUser, messageItem, sendMessage, signUpAndOnboard } from "./helpers";
+import { createServer, FULL, FULL_REASON, makeUser, messageItem, sendMessage, signUpAndOnboard, waitForToasts } from "./helpers";
 
 /**
  * Real-geometry regression checks for overlays (menus, pickers, popovers, modals, call dock).
@@ -65,6 +65,7 @@ test.describe("overlay layout regression", () => {
     for (let i = 0; i < 7; i++) await sendMessage(page, `Filler message ${i}\npara\nmay\nscroll\ndito`);
     await expect(messageItem(page, "Filler message 6")).toBeVisible();
     await expect(page.getByTestId("message").filter({ hasText: "Couldn't send" })).toHaveCount(0);
+    await waitForToasts(page); // "Server created!" would otherwise sit over the pickers below
     const before = await columnBoxes(page);
     await expectNoPageOverflow(page);
 
