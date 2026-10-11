@@ -113,7 +113,7 @@ function ServerRow({ server }: { server: Server }) {
       <Link
         href={`/tambayan/${server.id}`}
         onClick={() => setNavOpen(false)}
-        className="group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-slate-300 hover:bg-white/5 hover:text-white"
+        className="group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-slate-300 hover:bg-white/5 hover:text-white pointer-coarse:min-h-11"
         {...menu.triggerProps}
       >
         <ServerIcon server={server} size={28} />
@@ -143,7 +143,7 @@ export function HomeSidebar({ servers = [] }: { servers?: Server[] }) {
             onClick={() => setNavOpen(false)}
             aria-current={pathname === "/tambayan/friends" ? "page" : undefined}
             className={cn(
-              "mb-3 flex items-center gap-2.5 rounded-md px-2 py-2 text-sm font-semibold transition-colors",
+              "mb-3 flex items-center gap-2.5 rounded-md px-2 py-2 text-sm font-semibold transition-colors pointer-coarse:min-h-11",
               pathname === "/tambayan/friends" ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white",
             )}
           >

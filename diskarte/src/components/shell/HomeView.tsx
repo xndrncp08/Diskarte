@@ -24,7 +24,7 @@ export function HomeView({ servers }: { servers: Server[] }) {
       <WorkspacePanel id="main" title="Home">
         <section className="flex min-w-0 flex-1 flex-col overflow-y-auto">
           <header className="flex h-12 shrink-0 items-center gap-2 border-b border-white/5 px-3 md:hidden">
-            <button type="button" onClick={() => setNavOpen(true)} aria-label="Open navigation" className="rounded-md p-1.5 text-slate-300 hover:bg-white/10">
+            <button type="button" onClick={() => setNavOpen(true)} aria-label="Open navigation" className="touch-target relative rounded-md p-1.5 text-slate-300 hover:bg-white/10">
               <MenuIcon className="size-5" aria-hidden />
             </button>
             <span className="font-bold text-white">Home</span>
@@ -39,7 +39,7 @@ export function HomeView({ servers }: { servers: Server[] }) {
               </div>
             </div>
 
-            <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
               <button type="button" onClick={() => setDialog("create")} className="glass group rounded-2xl p-5 text-left transition-colors hover:border-sun/40">
                 <Sparkles className="mb-3 size-6 text-sun" aria-hidden />
                 <p className="font-bold text-white">Create a server</p>
@@ -60,7 +60,7 @@ export function HomeView({ servers }: { servers: Server[] }) {
             {servers.length > 0 && (
               <section className="mt-10">
                 <h2 className="mb-3 font-pixel text-[10px] text-slate-400">SAVED GAMES</h2>
-                <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {servers.map((s) => (
                     <li key={s.id}>
                       <Link href={`/tambayan/${s.id}`} className="glass group flex items-center gap-3 rounded-xl p-3 transition-colors hover:bg-white/10">
