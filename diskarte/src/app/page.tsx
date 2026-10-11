@@ -51,21 +51,21 @@ export default async function LandingPage() {
         header={
           <header className="relative mx-auto flex max-w-6xl items-center justify-between px-5 py-5">
             <Link href="/" aria-label="Diskarte home" className="inline-flex items-center rounded-lg pointer-coarse:min-h-11">
-              <DiskarteWordmark height={40} />
+              <DiskarteWordmark height={40} className="h-8 w-auto min-[375px]:h-10" />
             </Link>
             <nav aria-label="Account" className="flex items-center gap-2">
               {signedIn ? (
-                <Link href="/tambayan" className="rounded-lg bg-sun px-4 py-2 text-sm font-semibold text-abyss shadow-[0_3px_0_0_#b45309] transition-transform active:translate-y-[3px] active:shadow-none pointer-coarse:py-3">
+                <Link href="/tambayan" className="whitespace-nowrap rounded-lg bg-sun px-3 py-2 text-sm font-semibold text-abyss shadow-[0_3px_0_0_#b45309] transition-transform active:translate-y-[3px] active:shadow-none min-[375px]:px-4 pointer-coarse:py-3">
                   Open app
                 </Link>
               ) : (
                 <>
-                  <a href="#sign-in" className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/10 pointer-coarse:py-3">
+                  <a href="#sign-in" className="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/10 min-[375px]:px-4 pointer-coarse:py-3">
                     Log in
                   </a>
                   <Link
                     href="/signup"
-                    className="rounded-lg bg-sun px-4 py-2 text-sm font-semibold text-abyss shadow-[0_3px_0_0_#b45309] transition-transform active:translate-y-[3px] active:shadow-none pointer-coarse:py-3"
+                    className="whitespace-nowrap rounded-lg bg-sun px-3 py-2 text-sm font-semibold text-abyss shadow-[0_3px_0_0_#b45309] transition-transform active:translate-y-[3px] active:shadow-none min-[375px]:px-4 pointer-coarse:py-3"
                   >
                     Sign up
                   </Link>
@@ -77,7 +77,7 @@ export default async function LandingPage() {
         card={signedIn ? <SignedInCard /> : configured ? <SignInCard /> : <ConfigNotice />}
       >
         <h1 className="text-balance text-3xl font-extrabold leading-[1.08] tracking-tight text-white sm:text-4xl lg:text-[2.75rem]">
-          Walang <span className="whitespace-nowrap">Shutdown-Shutdown.</span>
+          Walang <span className="min-[375px]:whitespace-nowrap">Shutdown-Shutdown.</span>
           <span className="mt-1 block text-sun">Ang Bagong Istambayan ng Bayan.</span>
         </h1>
         <p className="mt-5 max-w-xl text-pretty text-base text-slate-300 sm:text-lg">

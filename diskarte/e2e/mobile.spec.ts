@@ -50,6 +50,26 @@ test.describe("mobile — public pages", () => {
   }
 });
 
+test.describe("responsive — public pages at every supported width", () => {
+  for (const width of [320, 375, 390, 768, 1440]) {
+    test(`${width}px: no horizontal overflow and the hero copy is not clipped`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 800 });
+      for (const path of ["/", "/login", "/signup", "/forgot-password"]) {
+        await page.goto(path);
+        await settleEntrance(page);
+        await expectFitsViewport(page);
+        // Clipped text hides inside overflow-hidden wrappers, so measure the copy itself.
+        const clipped = await page.locator("main h1, main p, header a").evaluateAll((els) =>
+          els.filter((el) => el.getBoundingClientRect().width > 0 && (el.getBoundingClientRect().right > innerWidth + 1 || el.scrollWidth > el.clientWidth + 1)).map((el) => el.textContent?.trim().slice(0, 40)),
+        );
+        expect(clipped, `${path} at ${width}px`).toEqual([]);
+        const header = page.locator("header nav a");
+        for (let i = 0; i < (await header.count()); i++) expect((await header.nth(i).boundingBox())!.height, `${path} header link wraps`).toBeLessThan(60);
+      }
+    });
+  }
+});
+
 test.describe("mobile — app shell", () => {
   test.skip(!FULL, FULL_REASON);
 
@@ -73,6 +93,8 @@ test.describe("mobile — app shell", () => {
     // The composer sits fully inside the dynamic viewport (100dvh), not under the URL bar.
     const composer = await page.getByTestId("composer").boundingBox();
     expect(composer!.y + composer!.height).toBeLessThanOrEqual(viewport.height);
+    // On narrow composers the textarea gets its own row instead of being squeezed between the buttons.
+    expect(composer!.width).toBeGreaterThan(viewport.width / 2);
     for (const name of ["Attach files", "Insert icon", "Open navigation", "Pinned messages"]) {
       await expectTouchTarget(page.locator(`button[aria-label="${name}"]:visible`).first());
     }

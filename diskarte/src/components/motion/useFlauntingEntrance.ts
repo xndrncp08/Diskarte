@@ -68,10 +68,15 @@ export function useFlauntingEntrance(rootRef: RefObject<HTMLElement | null>, sta
       // Stage 3: the glass card floats in.
       tl.fromTo(q("[data-reveal='card']"), { autoAlpha: 0, y: 40, scale: 0.96 }, { autoAlpha: 1, y: 0, scale: 1, duration: 1, ease: "power3.out" }, "-=0.45");
 
+      // Frame-driven timing stretches on slow GPUs and CPUs (low-end phones, CI), keeping the sign-in
+      // card hidden; past its designed length plus a beat of wall-clock time, jump to the end.
+      const cap = window.setTimeout(() => tl.progress(1), (tl.duration() / tl.timeScale() + 1) * 1000);
+
       if (scroll) {
         // The scenes read raw progress and smooth it themselves.
         ScrollTrigger.create({ trigger: el, start: "top top", end: "bottom top", onUpdate: (self) => void (stageRef.current.scroll = self.progress) });
       }
+      return () => window.clearTimeout(cap);
     },
     { scope: rootRef },
   );

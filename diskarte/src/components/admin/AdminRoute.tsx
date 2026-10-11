@@ -47,7 +47,7 @@ export function AdminRoute({ servers }: { servers: Server[] }) {
         ) : (
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <header className="flex h-12 shrink-0 items-center gap-2 border-b border-white/5 px-3">
-              <button type="button" onClick={() => setNavOpen(true)} aria-label="Open navigation" className="rounded-md p-1.5 text-slate-300 hover:bg-white/10">
+              <button type="button" onClick={() => setNavOpen(true)} aria-label="Open navigation" className="touch-target relative rounded-md p-1.5 text-slate-300 hover:bg-white/10">
                 <MenuIcon className="size-5" aria-hidden />
               </button>
               <span className="font-bold text-white">Control Center</span>

@@ -334,7 +334,7 @@ export function ChannelSidebar() {
           onClick={() => setNavOpen(false)}
           aria-current={onLfg ? "page" : undefined}
           className={cn(
-            "mb-3 flex items-center gap-2 rounded-lg border px-2 py-1.5 text-sm font-semibold transition-colors pointer-coarse:py-2.5",
+            "mb-3 flex items-center gap-2 rounded-lg border px-2 py-1.5 text-sm font-semibold transition-colors pointer-coarse:min-h-11",
             onLfg ? "border-sun/60 bg-sun/15 text-sun" : "border-white/10 bg-white/5 text-slate-300 hover:border-sun/40 hover:text-white",
           )}
         >

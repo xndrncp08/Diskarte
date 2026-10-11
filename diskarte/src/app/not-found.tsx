@@ -9,7 +9,7 @@ export default function NotFound() {
         <p className="font-pixel text-xs text-sun">404 · GAME OVER</p>
         <h1 className="text-2xl font-extrabold text-white">Page not found</h1>
         <p className="max-w-sm text-slate-400">That page doesn&apos;t exist, or you&apos;re not a member of this server.</p>
-        <Link href="/tambayan" className="rounded-lg bg-sun px-4 py-2 font-semibold text-abyss">
+        <Link href="/tambayan" className="rounded-lg bg-sun px-4 py-2 font-semibold text-abyss pointer-coarse:py-3">
           Back to Diskarte
         </Link>
       </div>

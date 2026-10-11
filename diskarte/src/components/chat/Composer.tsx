@@ -224,7 +224,7 @@ export function Composer({
           DROP FILES HERE
         </div>
       )}
-      <div className="glass overflow-hidden rounded-xl transition-shadow focus-within:border-sun/50 focus-within:ring-2 focus-within:ring-sun/25">
+      <div className="glass @container overflow-hidden rounded-xl transition-shadow focus-within:border-sun/50 focus-within:ring-2 focus-within:ring-sun/25">
         {replyTo && (
           <div className="flex items-center justify-between border-b border-white/5 bg-black/30 px-3 py-1.5 text-xs text-slate-400">
             <span className="truncate">
@@ -269,7 +269,8 @@ export function Composer({
           </ul>
         )}
         <form
-          className="flex items-end gap-1 px-2 py-1.5"
+          // Narrow composers (phones, slim panels) give the textarea its own row above the buttons.
+          className="flex flex-wrap items-end gap-1 px-2 py-1.5 @sm:flex-nowrap"
           onSubmit={(e) => {
             e.preventDefault();
             void submit();
@@ -297,6 +298,7 @@ export function Composer({
               </button>
             </>
           )}
+          <span aria-hidden className="flex-1 @sm:hidden" />
           <label htmlFor={`composer-${channelId}`} className="sr-only">
             Message #{channelName}
           </label>
@@ -314,7 +316,7 @@ export function Composer({
             rows={1}
             maxLength={MESSAGE_MAX + 100}
             placeholder={placeholder ?? `Message #${channelName}`}
-            className="max-h-60 min-h-6 flex-1 resize-none bg-transparent px-1 py-1.5 text-[15px] text-slate-100 outline-none placeholder:text-slate-500"
+            className="order-first max-h-60 min-h-6 basis-full resize-none bg-transparent @sm:order-none @sm:flex-1 @sm:basis-auto px-1 py-1.5 text-[15px] text-slate-100 outline-none placeholder:text-slate-500"
             data-testid="composer"
           />
           <EmojiPicker onPick={(value) => insert(value.startsWith(":") ? `${value} ` : value)} label="Insert icon" triggerClassName="pointer-coarse:p-3.5" />
