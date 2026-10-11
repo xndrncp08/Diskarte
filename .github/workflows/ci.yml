@@ -126,6 +126,8 @@ jobs:
       - name: Start LiveKit (dev mode)
         run: docker run -d --name livekit --network host livekit/livekit-server:latest --dev --bind 0.0.0.0 --node-ip 127.0.0.1
       - name: Install Playwright browser
+        # the app's pinned Playwright; the root has none, so npx would fetch a mismatched latest
+        working-directory: diskarte
         run: npx playwright install --with-deps chromium
       - name: Build the app
         run: npm run build --prefix diskarte
