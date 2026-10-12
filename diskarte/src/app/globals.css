@@ -248,6 +248,11 @@ body {
   }
 }
 
+/* Loading states: invisible for the first beat so quick loads never flash a skeleton. */
+.fade-delayed {
+  animation: fade-soft 250ms ease-out 150ms both;
+}
+
 /* Ambient page backdrop: Philippine-sun glow over midnight with a pixel grid. */
 .diskarte-backdrop {
   background:

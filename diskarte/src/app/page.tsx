@@ -20,7 +20,7 @@ const FEATURES = [
   { icon: MonitorUp, title: "Screen share & video", body: "Share your ranked game or your thesis slides — an adaptive grid for the whole crew." },
   { icon: Users, title: "Community servers", body: "Invite codes, categorized channels, and Admin / Moderator / Member roles." },
   { icon: ShieldCheck, title: "Secure by default", body: "Row-Level Security on every table, CSP nonces, CSRF guards and rate limiting." },
-  { icon: Code2, title: "Open-source forever", body: "Self-host on free tiers. Walang shutdown-shutdown — because it's ours." },
+  { icon: Code2, title: "Open-source forever", body: "Self-host on free tiers. It's ours, so it stays up." },
 ];
 
 const PREVIEW_CHANNELS = ["general", "chika", "lfg-valorant"];
@@ -75,7 +75,7 @@ export default async function LandingPage() {
         card={signedIn ? <SignedInCard /> : configured ? <SignInCard /> : <ConfigNotice />}
       >
         <h1 className="text-balance text-3xl font-extrabold leading-[1.08] tracking-tight text-white sm:text-4xl lg:text-[2.75rem]">
-          Walang <span className="min-[375px]:whitespace-nowrap">Shutdown-Shutdown.</span>
+          Tara, <span className="min-[375px]:whitespace-nowrap">Tambay Tayo.</span>
           <span className="mt-1 block text-sun">Ang Bagong Istambayan ng Bayan.</span>
         </h1>
         <p className="mt-5 max-w-xl text-pretty text-base text-slate-300 sm:text-lg">

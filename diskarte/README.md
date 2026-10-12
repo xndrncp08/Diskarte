@@ -2,7 +2,7 @@
   <img src="public/wordmark.svg" alt="Diskarte" height="72" />
 </p>
 
-<h3 align="center">Walang Shutdown-Shutdown: Ang Bagong Istambayan ng Bayan.</h3>
+<h3 align="center">Tara, Tambay Tayo. Ang Bagong Istambayan ng Bayan.</h3>
 
 <p align="center">
   An open-source, self-hostable Discord alternative made for Filipino gamers, students and communities.<br/>

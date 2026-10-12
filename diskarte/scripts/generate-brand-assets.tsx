@@ -67,7 +67,7 @@ async function socialCard(width: number, height: number) {
     .sub { font: 500 ${Math.round(height * 0.034)}px 'Helvetica Neue', Arial, sans-serif; fill: #CBD5E1; }
     .px { font: 700 ${Math.round(height * 0.026)}px 'Courier New', monospace; fill: ${GOLD}; letter-spacing: 3px; }
   </style>
-  <text x="50%" y="${Math.round(height * 0.7)}" text-anchor="middle" class="tag">Walang Shutdown-Shutdown: Ang Bagong Istambayan ng Bayan.</text>
+  <text x="50%" y="${Math.round(height * 0.7)}" text-anchor="middle" class="tag">Tara, Tambay Tayo. Ang Bagong Istambayan ng Bayan.</text>
   <text x="50%" y="${Math.round(height * 0.79)}" text-anchor="middle" class="sub">Open-source chat, voice &amp; screen share para sa buong barkada.</text>
   <text x="50%" y="${Math.round(height * 0.14)}" text-anchor="middle" class="px">&#9650; PRESS START &#9650;</text>
 </svg>`);
@@ -96,8 +96,8 @@ async function main() {
   const card = await socialCard(1200, 630);
   fs.writeFileSync(path.join(appDir, "opengraph-image.png"), card);
   fs.writeFileSync(path.join(appDir, "twitter-image.png"), card);
-  fs.writeFileSync(path.join(appDir, "opengraph-image.alt.txt"), "Diskarte — Walang Shutdown-Shutdown: Ang Bagong Istambayan ng Bayan.");
-  fs.writeFileSync(path.join(appDir, "twitter-image.alt.txt"), "Diskarte — Walang Shutdown-Shutdown: Ang Bagong Istambayan ng Bayan.");
+  fs.writeFileSync(path.join(appDir, "opengraph-image.alt.txt"), "Diskarte — Tara, Tambay Tayo. Ang Bagong Istambayan ng Bayan.");
+  fs.writeFileSync(path.join(appDir, "twitter-image.alt.txt"), "Diskarte — Tara, Tambay Tayo. Ang Bagong Istambayan ng Bayan.");
 
   console.log("Brand assets written to src/app and public/icons");
 }
