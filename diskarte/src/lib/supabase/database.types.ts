@@ -352,6 +352,21 @@ export interface Database {
         },
         never
       >;
+      problem_reports: TableDef<
+        {
+          id: string;
+          reporter_id: string;
+          category: "bug" | "slow" | "account" | "other";
+          description: string;
+          page_url: string | null;
+          user_agent: string | null;
+          status: "open" | "sent" | "resolved" | "dismissed";
+          issue_url: string | null;
+          created_at: string;
+          updated_at: string;
+        },
+        { category: "bug" | "slow" | "account" | "other"; description: string; page_url?: string | null; user_agent?: string | null }
+      >;
     };
     Views: { [_ in never]: never };
     Functions: {
@@ -433,6 +448,7 @@ export interface Database {
         Returns: string;
       };
       admin_retract_broadcast: { Args: { p_broadcast: string }; Returns: undefined };
+      admin_set_report_status: { Args: { p_report: string; p_status: string; p_issue_url?: string | null }; Returns: undefined };
     };
     Enums: {
       member_role: MemberRole;

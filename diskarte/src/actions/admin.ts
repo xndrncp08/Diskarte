@@ -5,6 +5,7 @@ import { getSessionUser } from "@/lib/auth";
 import { adminError, banSchema, broadcastIdSchema, broadcastSchema, roleChangeSchema, statusOverrideSchema, userIdSchema } from "@/lib/admin";
 import { isSuperAdmin } from "@/lib/admin-server";
 import { fieldErrors } from "@/lib/profile";
+import { fixAgentSchema, reportStatusSchema } from "@/lib/reports";
 import { limiters } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 import type { ActionResult } from "./servers";
@@ -117,4 +118,50 @@ export async function unbanUserAction(input: { userId: string }): Promise<Action
   const { error } = await supabase.rpc("admin_unban_user", { p_user: parsed.data.userId });
   if (error) return { ok: false, error: adminError(error.message) };
   return { ok: true };
+}
+
+export async function setReportStatusAction(input: z.input<typeof reportStatusSchema>): Promise<ActionResult> {
+  const denied = await guard();
+  if (denied) return denied;
+  const parsed = reportStatusSchema.safeParse(input);
+  if (!parsed.success) return invalid(parsed.error);
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_set_report_status", { p_report: parsed.data.reportId, p_status: parsed.data.status });
+  if (error) return { ok: false, error: adminError(error.message) };
+  return { ok: true };
+}
+
+/**
+ * Hands a report to the fix agent: opens a GitHub issue labelled `autofix` (which starts
+ * .github/workflows/fix-agent.yml) and marks the report sent. The admin reviews the text first;
+ * the issue is public.
+ */
+export async function sendToFixAgentAction(input: z.input<typeof fixAgentSchema>): Promise<ActionResult<{ issueUrl: string }>> {
+  const denied = await guard();
+  if (denied) return denied;
+  const parsed = fixAgentSchema.safeParse(input);
+  if (!parsed.success) return invalid(parsed.error);
+  const token = process.env.GITHUB_FIX_AGENT_TOKEN;
+  const repo = process.env.GITHUB_REPO ?? "xndrncp08/Diskarte";
+  if (!token) return { ok: false, error: "The fix agent isn't set up: add GITHUB_FIX_AGENT_TOKEN to the deployment." };
+
+  let issueUrl: string;
+  try {
+    const res = await fetch(`https://api.github.com/repos/${repo}/issues`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" },
+      body: JSON.stringify({ title: parsed.data.title, body: parsed.data.body, labels: ["autofix"] }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return { ok: false, error: `GitHub refused the issue (${res.status}). Check the token's Issues permission.` };
+    issueUrl = ((await res.json()) as { html_url: string }).html_url;
+  } catch {
+    return { ok: false, error: "Couldn't reach GitHub. Try again." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_set_report_status", { p_report: parsed.data.reportId, p_status: "sent", p_issue_url: issueUrl });
+  // The issue exists either way; say so rather than inviting a duplicate.
+  if (error) return { ok: false, error: `Issue opened (${issueUrl}) but the report wasn't marked sent: ${adminError(error.message)}` };
+  return { ok: true, data: { issueUrl } };
 }

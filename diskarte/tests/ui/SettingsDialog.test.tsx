@@ -101,6 +101,9 @@ describe("Settings dialog", () => {
     expect(accountTab).toHaveAttribute("aria-selected", "true");
     expect(accountTab).toHaveFocus();
     await user.keyboard("{ArrowRight}");
+    expect(within(dialog).getByRole("tab", { name: "Report a problem" })).toHaveAttribute("aria-selected", "true");
+    expect(within(dialog).getByRole("heading", { name: "Report a problem" })).toBeInTheDocument();
+    await user.keyboard("{ArrowRight}");
     expect(profileTab).toHaveAttribute("aria-selected", "true");
   });
 
