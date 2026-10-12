@@ -6,8 +6,6 @@ import { DiskarteWordmark } from "@/components/brand/DiskarteWordmark";
 import { PixelStatus } from "@/components/retro/PixelStatus";
 import { SignalBars } from "@/components/retro/SignalBars";
 import { Glyph } from "@/components/ui/Glyph";
-import { ScrollReveal } from "@/components/motion/ScrollReveal";
-import { ScrollTilt } from "@/components/motion/ScrollTilt";
 import { LandingHero } from "@/components/landing/LandingHero";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { OAuthButtons } from "@/components/auth/OAuthButtons";
@@ -101,19 +99,17 @@ export default async function LandingPage() {
           <p className="mx-auto mb-10 max-w-xl text-pretty text-center text-slate-300">
             Servers, channels, voice rooms and your whole barkada — on one glass dashboard that runs on prepaid data.
           </p>
-          <ScrollTilt>
-            <AppPreview />
-          </ScrollTilt>
+          <AppPreview />
         </section>
 
-        <ScrollReveal className="relative z-10 mx-auto max-w-6xl px-5 pb-24">
+        <div className="relative z-10 mx-auto max-w-6xl px-5 pb-24">
           <section aria-labelledby="features-heading">
             <h2 id="features-heading" className="mb-8 font-pixel text-sm leading-relaxed text-sun sm:text-base">
               LEVEL SELECT
             </h2>
             <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {FEATURES.map(({ icon: Icon, title, body }) => (
-                <li key={title} data-scroll-reveal className="glass rounded-2xl p-5 transition-colors hover:border-sun/30">
+                <li key={title} className="glass rounded-2xl p-5 transition-colors hover:border-sun/30">
                   <Icon className="mb-3 size-6 text-sun" aria-hidden />
                   <h3 className="font-bold text-white">{title}</h3>
                   <p className="mt-1 text-sm text-slate-400">{body}</p>
@@ -121,7 +117,7 @@ export default async function LandingPage() {
               ))}
             </ul>
           </section>
-        </ScrollReveal>
+        </div>
 
         <footer className="relative z-10 border-t border-white/5 py-8 text-center text-xs text-slate-500">
           <p>

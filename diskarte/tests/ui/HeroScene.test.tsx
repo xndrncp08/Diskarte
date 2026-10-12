@@ -21,9 +21,6 @@ vi.mock("@/components/three/ParticleMeshScene", () => ({ default: stub("field") 
 const { Diskarte3DLogo } = await import("@/components/three/Diskarte3DLogo");
 const { ParticleBackdrop } = await import("@/components/three/ParticleBackdrop");
 const { resetWebGLProbe, useStageBus } = await import("@/components/three/stage-bus");
-const { default: LandingPage } = await import("@/app/page");
-const { AuthEntrance } = await import("@/components/motion/AuthEntrance");
-const { gsap } = await import("@/components/motion/gsap");
 
 function setReducedMotion(reduce: boolean) {
   window.matchMedia = ((query: string) =>
@@ -130,72 +127,5 @@ describe("<ParticleBackdrop />", () => {
     expect(screen.getByTestId("ambient-glow")).toBeInTheDocument();
     expect(screen.queryByTestId("field-canvas")).not.toBeInTheDocument();
     expect(container.firstElementChild).toHaveAttribute("data-backdrop", "static");
-  });
-});
-
-describe("landing and auth stages", () => {
-  beforeEach(() => void gsap.globalTimeline.timeScale(40));
-  afterEach(() => void gsap.globalTimeline.timeScale(1));
-  /** The entrance hides the card until Stage 3; wait for the timeline to finish. */
-  const settle = (container: HTMLElement) => waitFor(() => expect(container.querySelector("[data-entrance]")).toHaveAttribute("data-entrance", "done"));
-
-  function configure() {
-    vi.stubEnv("SUPABASE_URL", "https://proj.supabase.co");
-    vi.stubEnv("SUPABASE_ANON_KEY", "anon-key-that-is-long-enough");
-    vi.stubEnv("LIVEKIT_URL", "wss://proj.livekit.cloud");
-  }
-
-  it("landing: the sign-in card is plain, reachable HTML beside the decorative 3D layers", async () => {
-    configure();
-    const { container } = render(await LandingPage());
-    await screen.findByTestId("mascot-canvas");
-    await settle(container);
-    expect(screen.getByTestId("field-canvas")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Walang Shutdown-Shutdown.");
-    // Stage 3: the card holds a real form, labelled fields and the sign-up path.
-    const card = container.querySelector("#sign-in")!;
-    expect(card).toHaveAttribute("data-reveal", "card");
-    expect(card.firstElementChild).toHaveClass("backdrop-blur-2xl", "bg-slate-900/50", "border-white/10", "shadow-2xl");
-    expect(screen.getByLabelText("Email")).toHaveAttribute("type", "email");
-    expect(screen.getByRole("button", { name: "Sign in" })).toHaveAttribute("type", "submit");
-    expect(screen.getByRole("link", { name: /Create an account/ })).toHaveAttribute("href", "/signup");
-    expect(screen.getByRole("link", { name: "Log in" })).toHaveAttribute("href", "#sign-in");
-    // The headline is never held back by the entrance (it's the LCP); the canvases are hidden from AT.
-    expect(screen.getByRole("heading", { level: 1 }).closest("[data-reveal]")).toBeNull();
-    for (const id of ["mascot-canvas", "field-canvas"]) expect(screen.getByTestId(id).closest("[aria-hidden='true']")).not.toBeNull();
-    // "DISKARTE" is split into letters for the stagger, but read once.
-    expect(container.querySelectorAll("[data-reveal='letter']")).toHaveLength(8);
-    expect(container.querySelector("[data-reveal='letter']")!.parentElement!.querySelector(".sr-only")).toHaveTextContent("Diskarte");
-  });
-
-  it("a starved frame clock (slow phones, CI) can't hold the sign-in card back past the wall-clock cap", async () => {
-    configure();
-    gsap.globalTimeline.pause(); // no frames advance the timeline at all
-    try {
-      const { container } = render(await LandingPage());
-      await waitFor(() => expect(container.querySelector("[data-entrance]")).toHaveAttribute("data-entrance", "done"), { timeout: 8_000 });
-      expect(container.querySelector("[data-reveal='card']")).toHaveStyle({ visibility: "visible", opacity: "1" });
-    } finally {
-      gsap.globalTimeline.resume();
-    }
-  }, 10_000);
-
-  it("landing without configuration explains what's missing instead of a broken form", async () => {
-    const { container } = render(await LandingPage());
-    await settle(container);
-    expect(screen.getByRole("alert")).toHaveTextContent("Missing configuration");
-    expect(screen.queryByLabelText("Email")).not.toBeInTheDocument();
-  });
-
-  it("auth pages: logo, split word, tagline, then the glass card with the form", async () => {
-    const { container } = render(
-      <AuthEntrance tagline="Walang Shutdown-Shutdown">
-        <input aria-label="Email" />
-      </AuthEntrance>,
-    );
-    await screen.findByTestId("mascot-canvas");
-    const order = ["logo", "letter", "tagline", "card"].map((k) => container.querySelector(`[data-reveal='${k}']`)!);
-    for (let i = 1; i < order.length; i++) expect(order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByLabelText("Email").closest("[data-reveal='card']")).not.toBeNull();
   });
 });

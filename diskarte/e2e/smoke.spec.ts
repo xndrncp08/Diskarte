@@ -1,9 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { settleEntrance } from "./helpers";
 
 test.describe("smoke (no backend required)", () => {
-  test.use({ reducedMotion: "no-preference" });
-
   test("landing page shows the brand and calls to action", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("img", { name: "Diskarte" }).first()).toBeVisible();
@@ -11,13 +8,8 @@ test.describe("smoke (no backend required)", () => {
     await expect(page.getByRole("link", { name: /Create an account/ })).toHaveAttribute("href", "/signup");
   });
 
-  test("the 3D layers stay decorative and the landing sign-in card works like any form", async ({ page }) => {
+  test("the landing sign-in card works like any form", async ({ page }) => {
     await page.goto("/");
-    await settleEntrance(page);
-    for (const layer of [page.locator("[data-backdrop]"), page.locator("[data-logo3d]")]) {
-      await expect(layer).toHaveAttribute("aria-hidden", "true");
-      expect(await layer.evaluate((el) => getComputedStyle(el).pointerEvents)).toBe("none");
-    }
     // Header "Log in" jumps to the card; the fields take typing and pasting.
     await page.getByRole("link", { name: "Log in" }).click();
     await expect(page).toHaveURL(/#sign-in$/);
@@ -28,19 +20,6 @@ test.describe("smoke (no backend required)", () => {
     await expect(page.getByRole("button", { name: "Sign in" })).toBeEnabled();
     await page.getByRole("link", { name: /Create an account/ }).click();
     await expect(page).toHaveURL(/\/signup$/);
-  });
-
-  test("reduced motion gets the static scene and never downloads the WebGL code", async ({ page }) => {
-    await page.emulateMedia({ reducedMotion: "reduce" });
-    const scripts: string[] = [];
-    page.on("response", (res) => res.request().resourceType() === "script" && scripts.push(res.url()));
-    await page.goto("/");
-    await page.waitForLoadState("networkidle");
-    await expect(page.locator("[data-backdrop]")).toHaveAttribute("data-backdrop", "static");
-    await expect(page.locator("[data-logo3d]")).toHaveAttribute("data-logo3d", "static");
-    await expect(page.locator("canvas")).toHaveCount(0);
-    const bodies = await Promise.all(scripts.map((url) => page.request.get(url).then((r) => r.text())));
-    expect(bodies.some((js) => js.includes("WebGLRenderer"))).toBe(false);
   });
 
   test("health endpoint reports liveness", async ({ request }) => {

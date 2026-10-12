@@ -21,7 +21,6 @@ const { RosterDrawer } = await import("@/components/workspace/RosterDrawer");
 const { WorkspaceCanvas } = await import("@/components/workspace/WorkspaceCanvas");
 const { WorkspacePanel } = await import("@/components/workspace/WorkspacePanel");
 const { WorkspaceProvider } = await import("@/components/workspace/WorkspaceProvider");
-const { resetWebGLProbe } = await import("@/components/three/stage-bus");
 
 /** jsdom has no layout: give the canvas a 1200 × 800 box and report a desktop viewport. */
 const CANVAS = { w: 1200, h: 800 };
@@ -45,9 +44,6 @@ beforeEach(() => {
   localStorage.clear();
   desktop();
   vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ token: "jwt", url: RUNTIME.livekitUrl }), { status: 200 })));
-  // No WebGL in jsdom: the 3D background stays off, quietly.
-  resetWebGLProbe();
-  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
   Object.defineProperty(Element.prototype, "clientWidth", { configurable: true, get() { return this.hasAttribute("data-workspace") ? CANVAS.w : 0; } });
   Object.defineProperty(Element.prototype, "clientHeight", { configurable: true, get() { return this.hasAttribute("data-workspace") ? CANVAS.h : 0; } });
 });
