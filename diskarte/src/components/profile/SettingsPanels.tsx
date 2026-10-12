@@ -4,6 +4,7 @@ import { useId, useRef, type KeyboardEvent } from "react";
 import { useMe } from "@/components/providers/MeProvider";
 import { AccountSettings, type AccountInfo } from "@/components/profile/AccountSettings";
 import { ProfileBuilder } from "@/components/profile/ProfileBuilder";
+import { ReportProblemForm } from "@/components/profile/ReportProblemForm";
 import { SignOutButton } from "@/components/profile/SignOutButton";
 import { cn } from "@/lib/utils";
 import type { SettingsTab } from "./SettingsDialog";
@@ -11,6 +12,7 @@ import type { SettingsTab } from "./SettingsDialog";
 const TABS: { id: SettingsTab; label: string }[] = [
   { id: "profile", label: "My Profile" },
   { id: "account", label: "Account & Sessions" },
+  { id: "report", label: "Report a problem" },
 ];
 
 /** The Settings window's body; loaded on first open so the profile builder and account forms stay out of the initial bundle. */
@@ -32,7 +34,7 @@ export function SettingsPanels({ account, tab, onTab }: { account: AccountInfo; 
   return (
     <div className="flex min-h-full flex-col md:h-full md:flex-row">
       <div className="flex shrink-0 flex-col border-b border-white/5 px-4 pb-3 pt-5 md:w-48 md:border-b-0 md:border-r md:bg-black/20 md:px-3 md:py-8">
-        <div role="tablist" aria-label="User settings" onKeyDown={onKeyDown} className="flex gap-2 pr-10 md:flex-col md:gap-1 md:pr-0">
+        <div role="tablist" aria-label="User settings" onKeyDown={onKeyDown} className="scrollbar-none flex gap-2 overflow-x-auto pr-10 md:flex-col md:gap-1 md:overflow-visible md:pr-0">
           {TABS.map((t, i) => (
             <button
               key={t.id}
@@ -48,7 +50,7 @@ export function SettingsPanels({ account, tab, onTab }: { account: AccountInfo; 
               data-autofocus={tab === t.id ? "" : undefined}
               onClick={() => onTab(t.id)}
               className={cn(
-                "block rounded-md px-3 py-1.5 text-left text-sm font-medium transition-colors pointer-coarse:min-h-11",
+                "block shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-left text-sm font-medium transition-colors pointer-coarse:min-h-11",
                 tab === t.id ? "bg-white/10 text-white" : "text-slate-400 hover:bg-white/5 hover:text-slate-200",
               )}
             >
@@ -65,6 +67,12 @@ export function SettingsPanels({ account, tab, onTab }: { account: AccountInfo; 
           <>
             <h2 className="mb-6 text-2xl font-extrabold text-white">My Profile</h2>
             <ProfileBuilder profile={me} mode="settings" />
+          </>
+        ) : tab === "report" ? (
+          <>
+            <h2 className="mb-2 text-2xl font-extrabold text-white">Report a problem</h2>
+            <p className="mb-6 text-sm text-slate-400">Something broken, slow or confusing? Tell us and we&apos;ll fix it.</p>
+            <ReportProblemForm />
           </>
         ) : (
           <>

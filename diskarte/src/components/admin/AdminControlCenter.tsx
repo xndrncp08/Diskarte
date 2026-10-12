@@ -1,21 +1,23 @@
 "use client";
 
-import { Activity, Megaphone, Radio, RefreshCw, ScrollText, ShieldCheck } from "lucide-react";
+import { Activity, LifeBuoy, Megaphone, Radio, RefreshCw, ScrollText, ShieldCheck } from "lucide-react";
 import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { AuditTab } from "./AuditTab";
 import { BroadcastComposer } from "./BroadcastComposer";
 import { formatAbsolute } from "./format";
 import { NetworkTab } from "./NetworkTab";
+import { ReportsTab } from "./ReportsTab";
 import { useAdminSnapshot, useNow } from "./useAdminSnapshot";
 import { VoiceTab } from "./VoiceTab";
 
-type Tab = "network" | "voice" | "broadcast" | "audit";
+type Tab = "network" | "voice" | "broadcast" | "reports" | "audit";
 
 const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
   { id: "network", label: "Network", icon: <Activity className="size-3.5" aria-hidden /> },
   { id: "voice", label: "Voice", icon: <Radio className="size-3.5" aria-hidden /> },
   { id: "broadcast", label: "Broadcast", icon: <Megaphone className="size-3.5" aria-hidden /> },
+  { id: "reports", label: "Reports", icon: <LifeBuoy className="size-3.5" aria-hidden /> },
   { id: "audit", label: "Audit", icon: <ScrollText className="size-3.5" aria-hidden /> },
 ];
 
@@ -36,7 +38,7 @@ function Skeleton() {
 
 /**
  * The Super Admin Control Center: network roster and presence inspector, live voice stages, the
- * global announcement dispatcher and the audit trail. Rendered inside the workspace's admin panel
+ * global announcement dispatcher, problem reports and the audit trail. Rendered inside the workspace's admin panel
  * (tablet and up) or as the /tambayan/admin page on phones. Only mounted for verified super admins.
  */
 export function AdminControlCenter({ className }: { className?: string }) {
@@ -45,6 +47,7 @@ export function AdminControlCenter({ className }: { className?: string }) {
   const snap = useAdminSnapshot(query);
   const now = useNow(5000);
   const base = useId();
+  const openReports = snap.data?.reports?.filter((r) => r.status === "open").length ?? 0;
   const tabRefs = useRef<Partial<Record<Tab, HTMLButtonElement | null>>>({});
 
   const onTabKey = (e: KeyboardEvent<HTMLButtonElement>) => {
@@ -94,6 +97,11 @@ export function AdminControlCenter({ className }: { className?: string }) {
           >
             {t.icon}
             {t.label}
+            {t.id === "reports" && openReports > 0 && (
+              <span className="rounded bg-sun px-1 text-[10px] tabular-nums text-abyss" aria-label={`${openReports} open`}>
+                {openReports}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -113,6 +121,8 @@ export function AdminControlCenter({ className }: { className?: string }) {
           <VoiceTab snapshot={snap.data} now={now} />
         ) : tab === "broadcast" ? (
           <BroadcastComposer snapshot={snap.data} now={now} onChanged={snap.refresh} />
+        ) : tab === "reports" ? (
+          <ReportsTab snapshot={snap.data} onChanged={snap.refresh} />
         ) : (
           <AuditTab snapshot={snap.data} />
         )}

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { ProblemReport } from "@/lib/reports";
 import type { PresenceStatus } from "@/lib/supabase/database.types";
 
 /**
@@ -164,6 +165,8 @@ export interface AdminSnapshot {
   voice: VoiceTelemetry;
   audit: AuditEntry[];
   broadcasts: Broadcast[];
+  /** null when the problem reports migration isn't applied yet (the rest of the Control Center still works). */
+  reports: ProblemReport[] | null;
   generatedAt: string;
 }
 
@@ -268,6 +271,8 @@ const ADMIN_ERRORS: Record<string, string> = {
   BROADCAST_NOT_FOUND: "That banner is already down.",
   CHANNEL_MISSING: "Diskarte HQ is missing that channel.",
   RATE_LIMITED: "Slow down a little. Try again in a moment.",
+  REPORT_NOT_FOUND: "That report no longer exists.",
+  INVALID_STATUS: "Unknown report status.",
 };
 
 /** Friendly text for a database error raised by the Control Center RPCs. */
@@ -286,6 +291,10 @@ const ACTION_LABEL: Record<string, string> = {
   "broadcast.dispatch": "Broadcast",
   "broadcast.retract": "Took down banner",
   "waitlist.archived": "Archived waitlist application",
+  "report.sent": "Sent a report to the fix agent",
+  "report.resolved": "Resolved a report",
+  "report.dismissed": "Dismissed a report",
+  "report.open": "Reopened a report",
 };
 
 export function auditLabel(action: string) {

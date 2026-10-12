@@ -18,6 +18,8 @@ const adminActions = vi.hoisted(() => ({
   revokeSessionsAction: vi.fn(async () => ({ ok: true, data: { sessions: 2 } })),
   banUserAction: vi.fn(async () => ({ ok: true })),
   unbanUserAction: vi.fn(async () => ({ ok: true })),
+  setReportStatusAction: vi.fn(async () => ({ ok: true })),
+  sendToFixAgentAction: vi.fn(async () => ({ ok: true, data: { issueUrl: "https://github.com/xndrncp08/Diskarte/issues/7" } })),
 }));
 vi.mock("@/actions/admin", () => adminActions);
 
@@ -81,6 +83,32 @@ function snapshot(): AdminSnapshot {
     audit: [{ id: "a1", actor_id: ADMIN.id, action: "user.role_update", target_user_id: juan.id, details: { from: "member", to: "moderator" }, created_at: NOW }],
     broadcasts: [
       { id: "b1", author_id: ADMIN.id, title: "Maintenance tonight", body: "Back soon", tone: "warning", targets: ["announcements"], message_ids: [], sticky: true, sticky_until: null, retracted_at: null, created_at: ago(60) },
+    ],
+    reports: [
+      {
+        id: "30000000-0000-4000-8000-000000000001",
+        reporter_id: juan.id,
+        category: "bug",
+        description: "Messages in #general never load on my phone.",
+        page_url: "/tambayan",
+        user_agent: "Mozilla/5.0 (Android)",
+        status: "open",
+        issue_url: null,
+        created_at: ago(300),
+        updated_at: ago(300),
+      },
+      {
+        id: "30000000-0000-4000-8000-000000000002",
+        reporter_id: maria.id,
+        category: "slow",
+        description: "Voice was choppy last night.",
+        page_url: null,
+        user_agent: null,
+        status: "resolved",
+        issue_url: null,
+        created_at: ago(90000),
+        updated_at: ago(3600),
+      },
     ],
     generatedAt: NOW,
   };
@@ -243,5 +271,35 @@ describe("Super Admin Control Center", () => {
     renderCenter();
     expect(await screen.findByRole("alert")).toHaveTextContent("Forbidden");
     expect(screen.queryByTestId("roster-row")).toBeNull();
+  });
+
+  it("triages problem reports and hands one to the fix agent after an editable, public-issue warning", async () => {
+    const user = userEvent.setup();
+    renderCenter();
+    const tab = await screen.findByRole("tab", { name: /Reports/ });
+    expect(within(tab).getByLabelText("1 open")).toBeInTheDocument();
+    await user.click(tab);
+    const rows = screen.getAllByTestId("report-row");
+    expect(rows).toHaveLength(1); // open only by default
+    expect(rows[0]).toHaveTextContent("Messages in #general never load on my phone.");
+    expect(rows[0]).toHaveTextContent("Juan");
+
+    await user.click(within(rows[0]).getByRole("button", { name: "Fix with agent" }));
+    expect(within(rows[0]).getByText(/public GitHub issue/)).toBeInTheDocument();
+    const title = within(rows[0]).getByLabelText("Issue title");
+    expect(title).toHaveValue("Something's broken: Messages in #general never load on my phone.");
+    expect((within(rows[0]).getByLabelText("Issue description") as HTMLTextAreaElement).value).toContain("- Page: /tambayan");
+    await user.clear(title);
+    await user.type(title, "Chat history never loads on Android");
+    await user.click(within(rows[0]).getByRole("button", { name: "Send to fix agent" }));
+    await waitFor(() =>
+      expect(adminActions.sendToFixAgentAction).toHaveBeenCalledWith(expect.objectContaining({ reportId: "30000000-0000-4000-8000-000000000001", title: "Chat history never loads on Android" })),
+    );
+
+    await user.selectOptions(screen.getByLabelText("Filter reports"), "resolved");
+    const resolved = screen.getAllByTestId("report-row");
+    expect(resolved[0]).toHaveTextContent("Voice was choppy last night.");
+    await user.click(within(resolved[0]).getByRole("button", { name: "Reopen" }));
+    await waitFor(() => expect(adminActions.setReportStatusAction).toHaveBeenCalledWith({ reportId: "30000000-0000-4000-8000-000000000002", status: "open" }));
   });
 });
