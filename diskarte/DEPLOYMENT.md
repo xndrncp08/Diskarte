@@ -57,6 +57,13 @@ All configuration is read **at runtime**, so the same Docker image works locally
 5. Go back to Supabase **Auth → URL Configuration** and make sure the Render URL is the Site URL and is in the redirect list.
 6. **Custom domain** (optional): add it in Render, then set `SITE_URL=https://your.domain` and add `https://your.domain/auth/callback` to Supabase redirects.
 
+**Or Vercel** (no cold starts; the official instance runs at `https://diskarte-ten.vercel.app`)
+1. Vercel → **Add New → Project** → import the repo, set **Root Directory `diskarte`** (framework: Next.js, defaults otherwise).
+2. Add the same variables plus `SITE_URL=https://<project>.vercel.app` (Render's `RENDER_EXTERNAL_URL` fallback doesn't exist here).
+3. Settings → Functions → region: pick the one next to your Supabase project (e.g. `iad1` for `us-east-1`); every request makes several database round trips.
+4. Serverless instances don't share memory, so set `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` or the auth rate limits only count per instance.
+5. Add the Vercel URL as Supabase's Site URL and to its redirect list, as in step 5 above.
+
 **Free-tier notes**
 - Render free services sleep after ~15 minutes idle; the first request takes ~30–60s to wake. An external uptime pinger hitting `/api/health` keeps it warm.
 - Supabase free projects pause after a week without activity. Resume them from the dashboard.
