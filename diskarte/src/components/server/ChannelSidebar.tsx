@@ -1,13 +1,13 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, Reorder, useDragControls } from "framer-motion";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
-import { BadgeCheck, ChevronDown, ChevronsDownUp, ChevronsUpDown, Hash, HeadphoneOff, Heart, Link2, LogOut, MicOff, Pencil, Plus, Radio, Rocket, Settings, ShieldCheck, Trash2, UserPlus, Video, Volume2 } from "lucide-react";
-import { useState, useTransition } from "react";
+import { BadgeCheck, ChevronDown, ChevronsDownUp, ChevronsUpDown, GripVertical, Hash, HeadphoneOff, Heart, Link2, LogOut, MicOff, Pencil, Plus, Radio, Rocket, Settings, ShieldCheck, Trash2, UserPlus, Video, Volume2 } from "lucide-react";
+import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { deleteChannelAction, leaveServerAction } from "@/actions/servers";
+import { deleteChannelAction, leaveServerAction, reorderChannelsAction } from "@/actions/servers";
 import { SupportDialog } from "@/components/community/SupportDialog";
 import { useMe } from "@/components/providers/MeProvider";
 import { useServerSpeaking } from "@/components/providers/PresenceProvider";
@@ -87,7 +87,21 @@ function Occupant({ member, presence: p, speaking }: { member: MemberWithProfile
 }
 
 /** Right-click on a channel: copy its link, invite people, edit or delete it (managers). */
-function ChannelRow({ channel, active, canManage, onDialog }: { channel: Channel; active: boolean; canManage: boolean; onDialog: (dialog: DialogState) => void }) {
+function ChannelRow({
+  channel,
+  active,
+  canManage,
+  reorder,
+  onDialog,
+}: {
+  channel: Channel;
+  active: boolean;
+  canManage: boolean;
+  /** Moderators drag the grip (or press ↑/↓ on it) to move the channel within its category. */
+  reorder?: { onDragEnd: () => void; onMove: (delta: -1 | 1) => void };
+  onDialog: (dialog: DialogState) => void;
+}) {
+  const drag = useDragControls();
   const { server, removeChannel } = useServer();
   const { setNavOpen } = useShellUI();
   const prewarm = usePrewarm();
@@ -125,7 +139,19 @@ function ChannelRow({ channel, active, canManage, onDialog }: { channel: Channel
   ];
 
   return (
-    <li>
+    <Reorder.Item
+      as="li"
+      value={channel.id}
+      dragListener={false}
+      dragControls={drag}
+      onDragEnd={reorder?.onDragEnd}
+      layout="position"
+      className="relative rounded-md"
+      // Same shape at rest and lifted, so the shadow and backdrop animate instead of snapping.
+      style={{ backgroundColor: "rgba(30, 41, 59, 0)", boxShadow: "0px 0px 0px 0px rgba(0, 0, 0, 0), 0px 0px 0px 0px rgba(255, 184, 0, 0)" }}
+      whileDrag={{ scale: 1.03, zIndex: 10, backgroundColor: "rgba(30, 41, 59, 0.95)", boxShadow: "0px 12px 28px -8px rgba(0, 0, 0, 0.6), 0px 0px 0px 1px rgba(255, 184, 0, 0.35)" }}
+      transition={{ type: "spring", stiffness: 600, damping: 40, mass: 0.6 }}
+    >
       <div
         className={cn("group relative flex items-center rounded-md transition-colors", active ? "bg-white/10 text-white" : "text-slate-400 hover:bg-white/5 hover:text-slate-200")}
         {...menu.triggerProps}
@@ -149,6 +175,27 @@ function ChannelRow({ channel, active, canManage, onDialog }: { channel: Channel
           <Icon className="size-4 shrink-0 opacity-70" aria-hidden />
           <span className="truncate">{channel.name}</span>
         </Link>
+        {reorder && (
+          <button
+            type="button"
+            aria-label={`Move ${channel.name} (drag, or use the arrow keys)`}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              drag.start(e);
+            }}
+            onKeyDown={(e) => {
+              if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+              e.preventDefault();
+              const grip = e.currentTarget;
+              reorder.onMove(e.key === "ArrowUp" ? -1 : 1);
+              // React moves the row's DOM node, which drops focus; keep it on the grip for repeated presses.
+              requestAnimationFrame(() => grip.focus());
+            }}
+            className="touch-target relative cursor-grab touch-none rounded p-1 text-slate-500 opacity-0 transition-opacity hover:text-white focus:opacity-100 active:cursor-grabbing group-hover:opacity-100 pointer-coarse:opacity-100"
+          >
+            <GripVertical className="size-3.5" aria-hidden />
+          </button>
+        )}
         {canManage && (
           <button
             type="button"
@@ -164,7 +211,7 @@ function ChannelRow({ channel, active, canManage, onDialog }: { channel: Channel
       <ContextMenu menu={menu} label={`${label} options`}>
         <ContextMenuItems items={items} />
       </ContextMenu>
-    </li>
+    </Reorder.Item>
   );
 }
 
@@ -224,8 +271,49 @@ function CategoryHeader({
   );
 }
 
+/** One category's channels; moderators can reorder them (a folded category shows only the open channel, fixed). */
+function ChannelList({
+  list,
+  order,
+  collapsed,
+  activeId,
+  canManage,
+  onDialog,
+  onReorder,
+  onDragEnd,
+  onMove,
+}: {
+  list: Channel[];
+  order: string[] | null;
+  collapsed: boolean;
+  activeId: string | undefined;
+  canManage: boolean;
+  onDialog: (dialog: DialogState) => void;
+  onReorder: (ids: string[]) => void;
+  onDragEnd: () => void;
+  onMove: (id: string, delta: -1 | 1) => void;
+}) {
+  const byId = new Map(list.map((c) => [c.id, c]));
+  const shown = (order ?? list.map((c) => c.id)).flatMap((id) => byId.get(id) ?? []).filter((c) => !collapsed || c.id === activeId);
+  const reorderable = canManage && !collapsed && list.length > 1;
+  return (
+    <Reorder.Group as="ul" axis="y" values={shown.map((c) => c.id)} onReorder={onReorder} className="space-y-0.5">
+      {shown.map((channel) => (
+        <ChannelRow
+          key={channel.id}
+          channel={channel}
+          active={channel.id === activeId}
+          canManage={canManage}
+          reorder={reorderable ? { onDragEnd, onMove: (delta) => onMove(channel.id, delta) } : undefined}
+          onDialog={onDialog}
+        />
+      ))}
+    </Reorder.Group>
+  );
+}
+
 export function ChannelSidebar() {
-  const { server, channels, myRole, health, members, badges } = useServer();
+  const { server, channels, myRole, health, members, badges, upsertChannel } = useServer();
   const { me } = useMe();
   const { setNavOpen } = useShellUI();
   // Phones keep the call dock in the drawer; on the canvas the call controls float in the tray.
@@ -292,6 +380,30 @@ export function ChannelSidebar() {
   ];
   const headerMenu = useContextMenu();
   const categories = groupChannels(channels);
+  // The order being dragged (one category at a time); a ref too, so drag-end reads the final order.
+  const [dragOrder, setDragOrder] = useState<{ category: string; ids: string[] } | null>(null);
+  const dragRef = useRef(dragOrder);
+  function drafting(order: { category: string; ids: string[] } | null) {
+    dragRef.current = order;
+    setDragOrder(order);
+  }
+
+  /** Optimistically renumbers the whole server top to bottom, then saves; rolls back if the save fails. */
+  function commitOrder(category: string, ids: string[]) {
+    drafting(null);
+    const order = categories.flatMap((g) => (g.category === category ? ids : g.channels.map((c) => c.id)));
+    const byId = new Map(channels.map((c) => [c.id, c]));
+    const before = order.map((id) => byId.get(id)!).filter((c, i) => c.position !== i);
+    if (before.length === 0) return;
+    for (const c of before) upsertChannel({ ...c, position: order.indexOf(c.id) });
+    void reorderChannelsAction({ serverId: server.id, channelIds: order })
+      .catch(() => ({ ok: false, error: "Couldn't reach Diskarte. The order wasn't saved." }))
+      .then((result) => {
+        if (result.ok) return;
+        for (const c of before) upsertChannel(c);
+        toast.error(result.error ?? "Couldn't reorder the channels.");
+      });
+  }
   const allCollapsed = categories.length > 0 && categories.every(({ category }) => collapsed[category]);
 
   return (
@@ -350,13 +462,24 @@ export function ChannelSidebar() {
               onToggleAll={() => setCollapsed(Object.fromEntries(categories.map((g) => [g.category, !allCollapsed])))}
               onCreate={canManageChannels ? () => setDialog({ kind: "channel", category, type: list[0]?.type ?? "text" }) : undefined}
             />
-            <ul className="space-y-0.5">
-              {list
-                .filter((c) => !collapsed[category] || c.id === params.channelId)
-                .map((channel) => (
-                  <ChannelRow key={channel.id} channel={channel} active={channel.id === params.channelId} canManage={canManageChannels} onDialog={setDialog} />
-                ))}
-            </ul>
+            <ChannelList
+              list={list}
+              order={dragOrder?.category === category ? dragOrder.ids : null}
+              collapsed={Boolean(collapsed[category])}
+              activeId={params.channelId}
+              canManage={canManageChannels}
+              onDialog={setDialog}
+              onReorder={(ids) => drafting({ category, ids })}
+              onDragEnd={() => dragRef.current?.category === category && commitOrder(category, dragRef.current.ids)}
+              onMove={(id, delta) => {
+                const ids = list.map((c) => c.id);
+                const from = ids.indexOf(id);
+                const to = from + delta;
+                if (to < 0 || to >= ids.length) return;
+                [ids[from], ids[to]] = [ids[to], ids[from]];
+                commitOrder(category, ids);
+              }}
+            />
           </section>
         ))}
       </nav>

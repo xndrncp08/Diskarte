@@ -6,13 +6,11 @@ import { MemberList } from "@/components/server/MemberList";
 import { RosterDrawer } from "@/components/workspace/RosterDrawer";
 import { WorkspacePanel } from "@/components/workspace/WorkspacePanel";
 import { requireProfile } from "@/lib/auth";
-import { getServerBundle } from "@/lib/data/servers";
+import { getServerBundle, getServerName } from "@/lib/data/servers";
 
 export async function generateMetadata({ params }: LayoutProps<"/tambayan/[serverId]">): Promise<Metadata> {
   const { serverId } = await params;
-  const { profile } = await requireProfile();
-  const bundle = await getServerBundle(serverId, profile.id);
-  return { title: bundle?.server.name ?? "Server" };
+  return { title: (await getServerName(serverId)) ?? "Server" };
 }
 
 export default async function ServerLayout({ children, params }: LayoutProps<"/tambayan/[serverId]">) {

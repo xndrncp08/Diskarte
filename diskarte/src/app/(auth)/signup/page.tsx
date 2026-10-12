@@ -35,7 +35,7 @@ export default async function SignupPage({ searchParams }: PageProps<"/signup">)
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-extrabold text-white">Create your account</h1>
-        <p className="mt-1 text-sm text-slate-400">Free, open-source, and walang shutdown-shutdown.</p>
+        <p className="mt-1 text-sm text-slate-400">Free, open-source, and made for your barkada.</p>
       </div>
       {tryGetPublicEnv() ? (
         <>

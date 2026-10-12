@@ -40,3 +40,19 @@ export const getServerBundle = cache(async (serverId: string, userId: string): P
   if (!me) return null;
   return { server: serverRes.data, channels: channelsRes.data ?? [], members, badges: badgesRes.data ?? [], myRole: me.role };
 });
+
+/** One channel by id (RLS returns it only to members): what a channel page needs, without the whole bundle. */
+export const getChannel = cache(async (serverId: string, channelId: string): Promise<Channel | null> => {
+  if (!uuidSchema.safeParse(serverId).success || !uuidSchema.safeParse(channelId).success) return null;
+  const supabase = await createClient();
+  const { data } = await supabase.from("channels").select("*").eq("id", channelId).eq("server_id", serverId).maybeSingle();
+  return data;
+});
+
+/** Just the server's name, for page titles (metadata re-runs on every navigation; the bundle is heavy). */
+export const getServerName = cache(async (serverId: string): Promise<string | null> => {
+  if (!uuidSchema.safeParse(serverId).success) return null;
+  const supabase = await createClient();
+  const { data } = await supabase.from("servers").select("name").eq("id", serverId).maybeSingle();
+  return data?.name ?? null;
+});

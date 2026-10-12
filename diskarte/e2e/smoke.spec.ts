@@ -4,7 +4,7 @@ test.describe("smoke (no backend required)", () => {
   test("landing page shows the brand and calls to action", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("img", { name: "Diskarte" }).first()).toBeVisible();
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("Walang Shutdown-Shutdown");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Tara, Tambay Tayo.");
     await expect(page.getByRole("link", { name: /Create an account/ })).toHaveAttribute("href", "/signup");
   });
 

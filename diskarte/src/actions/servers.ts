@@ -217,6 +217,30 @@ export async function updateChannelAction(input: {
   return { ok: true };
 }
 
+const reorderSchema = z.object({ serverId: uuidSchema, channelIds: z.array(uuidSchema).min(1).max(500) });
+
+/** Saves the sidebar order: `channelIds` is every channel of the server, top to bottom. Moderators only (RLS). */
+export async function reorderChannelsAction(input: { serverId: string; channelIds: string[] }): Promise<ActionResult> {
+  const { limited } = await authed();
+  if (limited) return RATE_LIMITED;
+  const parsed = reorderSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid channel order" };
+  const { serverId, channelIds } = parsed.data;
+  const supabase = await createClient();
+  const { data: current, error: readError } = await supabase.from("channels").select("id, position").eq("server_id", serverId);
+  if (readError || !current) return { ok: false, error: "Couldn't reorder the channels." };
+  const positions = new Map(current.map((c) => [c.id, c.position]));
+  if (channelIds.length !== positions.size || new Set(channelIds).size !== channelIds.length || !channelIds.every((id) => positions.has(id))) {
+    return { ok: false, error: "The channel list changed. Try again." };
+  }
+  // shortcut: one UPDATE per moved channel, not one transaction; fine for a sidebar's worth of rows (RLS makes them all fail together).
+  const moved = channelIds.flatMap((id, position) => (positions.get(id) === position ? [] : [{ id, position }]));
+  const results = await Promise.all(moved.map(({ id, position }) => supabase.from("channels").update({ position }).eq("id", id).eq("server_id", serverId).select("id")));
+  const failed = results.find((r) => r.error || !r.data?.length);
+  if (failed) return { ok: false, error: dbError(failed.error?.message, "Only moderators can reorder channels.") };
+  return { ok: true };
+}
+
 export async function deleteChannelAction(input: { channelId: string }): Promise<ActionResult> {
   const { limited } = await authed();
   if (limited) return RATE_LIMITED;

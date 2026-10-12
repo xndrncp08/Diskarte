@@ -43,6 +43,7 @@ export const serverActions = {
   createChannelAction: vi.fn(async () => ({ ok: true })),
   updateChannelAction: vi.fn(async () => ({ ok: true })),
   deleteChannelAction: vi.fn(async () => ({ ok: true })),
+  reorderChannelsAction: vi.fn(async (): Promise<{ ok: boolean; error?: string }> => ({ ok: true })),
   updateServerAction: vi.fn(async () => ({ ok: true })),
   deleteServerAction: vi.fn(async () => ({ ok: true })),
   setMemberRoleAction: vi.fn(async () => ({ ok: true })),

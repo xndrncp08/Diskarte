@@ -11,7 +11,7 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
         <AmbientGlow className="top-[18%]" />
         <Mascot className="size-36 sm:size-44" />
         <SplitWordmark className="mt-1 text-3xl sm:text-4xl" />
-        <p className="mb-7 mt-3 text-center font-silk text-[10px] uppercase tracking-widest text-slate-400">Walang Shutdown-Shutdown</p>
+        <p className="mb-7 mt-3 text-center font-silk text-[10px] uppercase tracking-widest text-slate-400">Tara, tambay tayo</p>
 
         <div className="relative w-full max-w-md">
           <div className={cn(GLASS_CARD, "p-6 sm:p-8")}>{children}</div>

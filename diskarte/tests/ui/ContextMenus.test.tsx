@@ -319,6 +319,39 @@ describe("Right-click channels and servers", () => {
     expect(screen.queryByRole("menuitem", { name: "Delete channel" })).toBeNull();
   });
 
+  it("moves a channel with the grip's arrow keys and saves the whole server's order", async () => {
+    render(
+      <Shell>
+        <ChannelSidebar />
+      </Shell>,
+    );
+    fireEvent.keyDown(screen.getByRole("button", { name: /^Move general/ }), { key: "ArrowDown" });
+    const [general, chika, lfg, ...voice] = CHANNELS.map((c) => c.id);
+    await waitFor(() => expect(serverActions.reorderChannelsAction).toHaveBeenCalledWith({ serverId: SERVER_ID, channelIds: [chika, general, lfg, ...voice] }));
+    // The top channel can't move further up (the fixture doesn't apply the optimistic order, so general is still first).
+    fireEvent.keyDown(screen.getByRole("button", { name: /^Move general/ }), { key: "ArrowUp" });
+    expect(serverActions.reorderChannelsAction).toHaveBeenCalledTimes(1);
+  });
+
+  it("tells moderators when the new order couldn't be saved, and shows members no grip", async () => {
+    const { toastMock } = await import("../mocks/actions");
+    serverActions.reorderChannelsAction.mockResolvedValueOnce({ ok: false, error: "Only moderators can reorder channels." });
+    const { unmount } = render(
+      <Shell>
+        <ChannelSidebar />
+      </Shell>,
+    );
+    fireEvent.keyDown(screen.getByRole("button", { name: /^Move chika/ }), { key: "ArrowUp" });
+    await waitFor(() => expect(toastMock.toast.error).toHaveBeenCalledWith("Only moderators can reorder channels."));
+    unmount();
+    render(
+      <Shell meId={MEMBER_ID} role="member">
+        <ChannelSidebar />
+      </Shell>,
+    );
+    expect(screen.queryByRole("button", { name: /^Move / })).toBeNull();
+  });
+
   it("folds every category from a category's menu", async () => {
     render(
       <Shell>

@@ -69,8 +69,8 @@ describe("branding & vector logo", () => {
     vi.stubEnv("LIVEKIT_URL", "wss://proj.livekit.cloud");
     render(await LandingPage());
     const heading = screen.getByRole("heading", { level: 1 });
-    // Rendered as two lines of one heading: "Walang Shutdown-Shutdown." / "Ang Bagong Istambayan ng Bayan."
-    expect(heading).toHaveTextContent(/^Walang Shutdown-Shutdown\.\s*Ang Bagong Istambayan ng Bayan\.$/);
+    // Rendered as two lines of one heading: "Tara, Tambay Tayo." / "Ang Bagong Istambayan ng Bayan."
+    expect(heading).toHaveTextContent(/^Tara, Tambay Tayo\.\s*Ang Bagong Istambayan ng Bayan\.$/);
     expect(screen.getByRole("link", { name: /Create an account/ })).toHaveAttribute("href", "/signup");
     vi.unstubAllEnvs();
   });

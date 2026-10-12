@@ -11,7 +11,7 @@ const pressStart = Press_Start_2P({ variable: "--font-press-start", weight: "400
 const silkscreen = Silkscreen({ variable: "--font-silkscreen", weight: ["400", "700"], subsets: ["latin"], display: "swap" });
 const jetbrains = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"], display: "swap" });
 
-export const TAGLINE = "Walang Shutdown-Shutdown: Ang Bagong Istambayan ng Bayan.";
+export const TAGLINE = "Tara, Tambay Tayo. Ang Bagong Istambayan ng Bayan.";
 
 export async function generateMetadata(): Promise<Metadata> {
   const env = tryGetPublicEnv();

@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Diskarte — Ang Bagong Istambayan ng Bayan",
     short_name: "Diskarte",
-    description: "Walang Shutdown-Shutdown: Ang Bagong Istambayan ng Bayan.",
+    description: "Tara, Tambay Tayo. Ang Bagong Istambayan ng Bayan.",
     start_url: "/tambayan",
     display: "standalone",
     background_color: "#020617",
