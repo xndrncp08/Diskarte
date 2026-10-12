@@ -19,7 +19,7 @@
 - **Voice, video and screen share**: LiveKit WebRTC rooms with an adaptive grid, a screen-share focus layout, active-speaker rings, noise suppression, and floating call controls. Calls keep running while you browse other channels, move panels or switch layouts.
 - **Profiles**: salakot mascot avatars, banners, bios, and Filipino status triggers ("Nagluto ng Canton", "AFK / Tulog", "LFG").
 - **Floating workspace**: after sign-in, a glass canvas instead of fixed columns. A command rail holds servers, notifications and layout presets (Focus, Multitask, Minimal dock); the channel list, chat and live call are draggable, resizable panels that snap to edges and each other (min 320 × 240) and minimize into a bottom tray; docked panels resize together (drag a shared edge or the seam between them; hold Alt / Option to resize one alone); the member roster slides out or docks on demand; a WebGL solar particle field drifts behind it all. Your arrangement is saved to the browser and your account.
-- **Look and feel**: Solar Gold on Midnight Navy glass, a 3D mascot on the landing page, and 8-bit touches (pixel status badges, arcade signal bars, synthesized Web Audio sound effects).
+- **Look and feel**: Solar Gold on Midnight Navy glass, the salakot mascot, and 8-bit touches (pixel status badges, arcade signal bars, synthesized Web Audio sound effects).
 - **Security**: RLS on every table, guard triggers, DB and app rate limiting, nonce-based CSP, CSRF checks, XSS-safe Markdown, and server-side LiveKit token minting.
 - **Fast on cheap phones**: a virtualised chat stream (@tanstack/react-virtual). LiveKit and the emoji grid load on demand, which cuts the chat page's initial JavaScript by about 30%, and images are served as AVIF/WebP with blur placeholders.
 - **Mobile-first**: a swipeable navigation drawer, 44 px touch targets, `100dvh` layouts with safe-area padding, and tap-to-reveal message actions.
@@ -92,7 +92,6 @@ src/
     voice/             CallProvider, VoiceStage, CallGrid, CallDock, FloatingCallHUD…
     server/ shell/     channel sidebar, member list, command rail, dialogs
     workspace/         floating canvas: panels, presets, tray, roster drawer, call overlay
-    three/             WebGL scenes (3D mascot, particle backdrops), lazy-loaded
     providers/         runtime config, presence, per-server realtime state
   hooks/               useChannelChat, useTyping, useSignedUrls…
   lib/                 env, security (CSP/CSRF), rate limiting, validation, sfx, supabase clients

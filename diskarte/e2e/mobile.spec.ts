@@ -1,5 +1,5 @@
 import { devices, expect, test, type Locator, type Page } from "@playwright/test";
-import { createServer, FULL, FULL_REASON, makeUser, signUpAndOnboard, settleEntrance, waitForToasts } from "./helpers";
+import { createServer, FULL, FULL_REASON, makeUser, signUpAndOnboard, waitForToasts } from "./helpers";
 
 test.use({ ...devices["Pixel 7"], permissions: ["microphone", "camera"] });
 
@@ -38,7 +38,6 @@ test.describe("mobile — public pages", () => {
   for (const path of ["/", "/login", "/signup"]) {
     test(`${path}: every control is a 44px touch target and nothing overflows`, async ({ page }) => {
       await page.goto(path);
-      await settleEntrance(page);
       await expectAllTouchTargets(page, page.locator("main"));
       await expectFitsViewport(page);
     });
@@ -51,8 +50,7 @@ test.describe("responsive — public pages at every supported width", () => {
       await page.setViewportSize({ width, height: 800 });
       for (const path of ["/", "/login", "/signup", "/forgot-password"]) {
         await page.goto(path);
-        await settleEntrance(page);
-        await expectFitsViewport(page);
+          await expectFitsViewport(page);
         // Clipped text hides inside overflow-hidden wrappers, so measure the copy itself.
         const clipped = await page.locator("main h1, main p, header a").evaluateAll((els) =>
           els.filter((el) => el.getBoundingClientRect().width > 0 && (el.getBoundingClientRect().right > innerWidth + 1 || el.scrollWidth > el.clientWidth + 1)).map((el) => el.textContent?.trim().slice(0, 40)),

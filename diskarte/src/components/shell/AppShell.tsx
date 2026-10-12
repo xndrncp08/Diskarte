@@ -3,8 +3,7 @@
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
-import { useShellEntrance } from "@/components/motion/useShellEntrance";
+import { useCallback, useEffect, useMemo, type ReactNode } from "react";
 import { useSwipeDrawer } from "@/hooks/useSwipeDrawer";
 import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
@@ -15,7 +14,6 @@ import { AdminAccessProvider, usePlatformRole } from "@/components/admin/AdminAc
 import { BroadcastBanner } from "@/components/broadcast/BroadcastBanner";
 import type { PlatformRole } from "@/lib/admin";
 import { cn } from "@/lib/utils";
-import { DiskarteCanvasBackground } from "@/components/workspace/DiskarteCanvasBackground";
 import { WorkspaceCanvas } from "@/components/workspace/WorkspaceCanvas";
 import { useWorkspace, useWorkspaceStore, WorkspaceProvider } from "@/components/workspace/WorkspaceProvider";
 import { ServerRail } from "./ServerRail";
@@ -43,12 +41,9 @@ function MembershipWatcher({ userId }: { userId: string }) {
 function Frame({ servers, children }: { servers: Server[]; children: ReactNode }) {
   const { navOpen, setNavOpen } = useShellUI();
   const swipe = useSwipeDrawer(navOpen, setNavOpen);
-  const frame = useRef<HTMLDivElement>(null);
   const role = usePlatformRole();
-  useShellEntrance(frame);
   return (
-    <div ref={frame} className="diskarte-backdrop relative flex h-dvh overflow-hidden md:gap-3 md:p-3" data-testid="shell" {...swipe}>
-      <DiskarteCanvasBackground />
+    <div className="diskarte-backdrop relative flex h-dvh overflow-hidden md:gap-3 md:p-3" data-testid="shell" {...swipe}>
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-lg focus:bg-sun focus:px-4 focus:py-2 focus:font-semibold focus:text-abyss"
