@@ -373,6 +373,8 @@ describe("active call on the canvas", () => {
     // With the sidebar hidden the controls move to the tray, which can bring the call panel back.
     await user.click(screen.getByRole("button", { name: "Minimize Channels" }));
     const trayDock = await within(screen.getByRole("region", { name: "Workspace tray" })).findByTestId("call-dock");
+    // One set at a time: the minimized sidebar's own dock steps aside (e2e locators are strict).
+    await waitFor(() => expect(screen.getAllByTestId("call-dock")).toEqual([trayDock]));
     await user.click(within(trayDock).getByRole("button", { name: "Show call" }));
     expect(panelEl("voice")).not.toHaveAttribute("data-minimized");
 

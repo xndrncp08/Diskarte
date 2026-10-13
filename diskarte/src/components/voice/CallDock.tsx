@@ -6,13 +6,16 @@ import { callHref, useCall } from "./CallProvider";
 import { MixerButton } from "./AudioMixer";
 import { ConnectionMeter } from "./ConnectionMeter";
 import { VoiceControls } from "./VoiceControls";
+import { useNavHidden } from "@/components/workspace/WorkspaceProvider";
 
 const STATUS_TEXT = { connecting: "Connecting…", reconnecting: "Reconnecting…", connected: "Voice Connected", idle: "" } as const;
 
 /** Floating active-call widget pinned above the user panel while you browse other channels. */
 export function CallDock() {
   const call = useCall();
-  const visible = call.status !== "idle" && call.target;
+  // In a minimized sidebar the tray's call controls take over; one set at a time.
+  const navHidden = useNavHidden();
+  const visible = call.status !== "idle" && call.target && !navHidden;
   return (
     <AnimatePresence>
       {visible && (
