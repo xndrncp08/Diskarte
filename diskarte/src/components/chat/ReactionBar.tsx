@@ -1,6 +1,6 @@
 "use client";
 
-import { Glyph } from "@/components/ui/Glyph";
+import { Emote } from "@/components/ui/Emote";
 import { glyphLabel } from "@/lib/glyphs";
 import type { Reaction } from "@/lib/messages";
 import { cn } from "@/lib/utils";
@@ -44,7 +44,7 @@ export function ReactionBar({ reactions, meId, onToggle, names }: { reactions: R
               r.mine ? "border-sun/60 bg-sun/15 text-sun" : "border-white/10 bg-white/5 text-slate-300 hover:border-white/25",
             )}
           >
-            <Glyph code={r.emoji} className="size-4" />
+            <Emote code={r.emoji} className="size-4" />
             <span className="font-silk text-[9px] uppercase">{label}</span>
             <span className="text-xs font-semibold tabular-nums">{r.count}</span>
           </button>

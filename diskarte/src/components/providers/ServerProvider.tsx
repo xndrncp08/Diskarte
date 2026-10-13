@@ -30,6 +30,8 @@ export interface ServerContextValue {
   memberRoles: Map<string, string[]>;
   /** Re-read roles and who has them (after an admin changes them; realtime also calls it). */
   reloadRoles: () => void;
+  /** Custom emoji: name (without colons) → public image URL. */
+  emojis: Map<string, string>;
 }
 
 /** Exported for tests and storybook-style fixtures; app code should use <ServerProvider>. */
@@ -89,6 +91,7 @@ export function ServerProvider({
   const [roles, setRoles] = useState(initialRoles);
   const [memberRoleRows, setMemberRoleRows] = useState(initialMemberRoles);
   const [health, setHealth] = useState<RealtimeHealth>("connecting");
+  const [emojiRows, setEmojiRows] = useState<{ name: string; path: string }[]>([]);
 
   // Re-seed whenever the server component re-renders with fresh data.
   const [seed, setSeed] = useState({ initialServer, initialChannels, initialMembers, initialBadges, initialRoles, initialMemberRoles });
@@ -110,6 +113,7 @@ export function ServerProvider({
   }
   const memberRoles = useMemo(() => memberRoleMap(memberRoleRows), [memberRoleRows]);
   const badges = useMemo(() => badgeMap(badgeRows), [badgeRows]);
+  const emojis = useMemo(() => new Map(emojiRows.map((e) => [e.name, supabase.storage.from("emoji").getPublicUrl(e.path).data.publicUrl])), [emojiRows, supabase]);
 
   const myRole = members.find((m) => m.user_id === me.id)?.role ?? initialRole;
   const serverId = server.id;
@@ -122,6 +126,15 @@ export function ServerProvider({
       if (r.data) setRoles(r.data);
       if (m.data) setMemberRoleRows(m.data);
     });
+  }, [supabase, serverId]);
+
+  const reloadEmojis = useCallback(() => {
+    void supabase
+      .from("server_emojis")
+      .select("name, path")
+      .eq("server_id", serverId)
+      .order("name")
+      .then(({ data }) => data && setEmojiRows(data));
   }, [supabase, serverId]);
 
   // The rail prefetches each server's shell, so this render's data can be a few minutes old: catch up once
@@ -137,10 +150,11 @@ export function ServerProvider({
       if (m.data) setMembers(m.data as MemberWithProfile[]);
     });
     reloadRoles();
+    reloadEmojis();
     return () => {
       live = false;
     };
-  }, [supabase, serverId, reloadRoles]);
+  }, [supabase, serverId, reloadRoles, reloadEmojis]);
 
   // ---- postgres_changes: channels / members / server row --------------------------------
   useEffect(() => {
@@ -198,6 +212,7 @@ export function ServerProvider({
           })
           .on("postgres_changes", { event: "*", schema: "public", table: "server_roles", filter: `server_id=eq.${serverId}` }, reloadRoles)
           .on("postgres_changes", { event: "*", schema: "public", table: "member_roles", filter: `server_id=eq.${serverId}` }, reloadRoles)
+          .on("postgres_changes", { event: "*", schema: "public", table: "server_emojis", filter: `server_id=eq.${serverId}` }, reloadEmojis)
           .on("postgres_changes", { event: "UPDATE", schema: "public", table: "servers", filter: `id=eq.${serverId}` }, ({ new: row }) => {
             setServer(row as Server);
           })
@@ -213,7 +228,7 @@ export function ServerProvider({
         else if (status === "CLOSED") setHealth("offline");
       },
     );
-  }, [supabase, serverId, me.id, router, reloadRoles, noteActivity]);
+  }, [supabase, serverId, me.id, router, reloadRoles, reloadEmojis, noteActivity]);
 
   // ---- presence (shared, ref-counted channel from PresenceProvider) ---------------------
   const presence = useServerPresence(serverId);
@@ -224,8 +239,8 @@ export function ServerProvider({
   const removeChannel = useCallback((id: string) => setChannels((prev) => prev.filter((c) => c.id !== id)), []);
 
   const value = useMemo<ServerContextValue>(
-    () => ({ server, channels, members, myRole, badges, presence, health, upsertChannel, removeChannel, roles, memberRoles, reloadRoles }),
-    [server, channels, members, myRole, badges, presence, health, upsertChannel, removeChannel, roles, memberRoles, reloadRoles],
+    () => ({ server, channels, members, myRole, badges, presence, health, upsertChannel, removeChannel, roles, memberRoles, reloadRoles, emojis }),
+    [server, channels, members, myRole, badges, presence, health, upsertChannel, removeChannel, roles, memberRoles, reloadRoles, emojis],
   );
 
   return <ServerContext.Provider value={value}>{children}</ServerContext.Provider>;

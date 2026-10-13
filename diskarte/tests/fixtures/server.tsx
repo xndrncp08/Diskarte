@@ -108,6 +108,7 @@ export function ServerFixture({
     roles: [],
     memberRoles: new Map(),
     reloadRoles: () => undefined,
+    emojis: new Map(),
     ...overrides,
   };
   return (

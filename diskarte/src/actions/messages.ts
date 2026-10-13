@@ -127,8 +127,14 @@ export async function setPinnedAction(input: { messageId: string; pinned: boolea
 export async function toggleReactionAction(input: { messageId: string; emoji: string; on: boolean }): Promise<ActionResult> {
   const { user, ok } = await requireUser("message");
   if (!ok) return { ok: false, error: messageError("RATE_LIMITED") };
-  if (!uuidSchema.safeParse(input.messageId).success || !isValidReaction(input.emoji)) return { ok: false, error: "Invalid reaction" };
+  if (!uuidSchema.safeParse(input.messageId).success || !(isValidReaction(input.emoji) || /^:[a-z0-9_]{2,32}:$/.test(input.emoji))) return { ok: false, error: "Invalid reaction" };
   const supabase = await createClient();
+  // Not a built-in: it has to be one of this server's custom emoji (removing an old one is always fine).
+  if (input.on && !isValidReaction(input.emoji)) {
+    const { data: message } = await supabase.from("messages").select("server_id").eq("id", input.messageId).maybeSingle();
+    const { data: emoji } = message ? await supabase.from("server_emojis").select("id").eq("server_id", message.server_id).eq("name", input.emoji.slice(1, -1)).maybeSingle() : { data: null };
+    if (!emoji) return { ok: false, error: "Invalid reaction" };
+  }
   if (input.on) {
     const { error } = await supabase.from("reactions").upsert({ message_id: input.messageId, user_id: user.id, emoji: input.emoji }, { onConflict: "message_id,user_id,emoji", ignoreDuplicates: true });
     if (error) return { ok: false, error: messageError(error.message) };
