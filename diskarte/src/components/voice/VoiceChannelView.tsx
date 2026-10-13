@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Loader2, Volume2 } from "lucide-react";
+import { Volume2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useEffect } from "react";
 import { useServer } from "@/components/providers/ServerProvider";
@@ -69,10 +69,9 @@ export function VoiceChannelView({ channel }: { channel: Channel }) {
             onClick={() => void call.join(target)}
             data-testid="join-voice"
           >
+            {/* The button draws its own spinner while loading. */}
             {here && call.status !== "idle" ? (
-              <>
-                <Loader2 className="size-4 animate-spin" aria-hidden /> Connecting…
-              </>
+              "Connecting…"
             ) : call.target ? (
               "Switch here"
             ) : (
