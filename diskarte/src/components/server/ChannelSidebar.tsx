@@ -24,6 +24,7 @@ import { CallDock } from "@/components/voice/CallDock";
 import { useCall, usePrewarm } from "@/components/voice/CallProvider";
 import { Menu, type MenuItem } from "@/components/ui/Menu";
 import { useOnline } from "@/hooks/useOnline";
+import { useVoiceRoster } from "@/hooks/useVoiceRoster";
 import { rememberChannel } from "@/lib/last-channel";
 import { boostLevel } from "@/lib/community";
 import { signalLevel, type PresencePayload } from "@/lib/presence";
@@ -54,13 +55,12 @@ function VoiceOccupants({ channelId }: { channelId: string }) {
 }
 
 function OccupantList({ channelId, speaking }: { channelId: string; speaking: ReadonlySet<string> | null }) {
-  const { presence, members } = useServer();
-  const inRoom = members.filter((m) => presence.get(m.user_id)?.voice_channel_id === channelId);
+  const inRoom = useVoiceRoster(channelId);
   if (inRoom.length === 0) return null;
   return (
     <ul className="mb-1 ml-7 space-y-0.5" aria-label="In voice">
-      {inRoom.map((m) => (
-        <Occupant key={m.user_id} member={m} presence={presence.get(m.user_id)} speaking={speaking?.has(m.user_id) ?? false} />
+      {inRoom.map(({ member, presence }) => (
+        <Occupant key={member.user_id} member={member} presence={presence} speaking={speaking?.has(member.user_id) ?? false} />
       ))}
     </ul>
   );

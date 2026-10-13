@@ -106,6 +106,10 @@ describe("call controls, Discord-style", () => {
     const dock = await screen.findByTestId("call-dock");
     await waitFor(() => expect(dock).toHaveTextContent("Voice Connected"));
     expect(screen.getAllByTestId("call-dock")).toHaveLength(1);
+    // You show under the voice channel straight away, from your own call (no presence echo needed).
+    const inVoice = () => within(screen.getByRole("navigation", { name: "Channels" })).getByRole("list", { name: "In voice" });
+    expect(inVoice()).toHaveTextContent("Kapitan");
+    expect(inVoice()).toHaveTextContent("Maria");
     // The dock is status + disconnect; mute and deafen live in the user panel.
     expect(within(dock).queryByRole("button", { name: "Mute" })).toBeNull();
     const panel = screen.getByTestId("user-panel");
@@ -120,6 +124,7 @@ describe("call controls, Discord-style", () => {
     await user.click(within(dock).getByRole("button", { name: "Disconnect" }));
     await waitFor(() => expect(screen.queryByTestId("call-dock")).toBeNull());
     expect(room.disconnect).toHaveBeenCalled();
+    expect(inVoice()).not.toHaveTextContent("Kapitan");
     expect(within(panel).queryByRole("button", { name: /^(Un)?mute$/ })).toBeNull();
   });
 });
