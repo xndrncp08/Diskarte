@@ -1,293 +1,102 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
-import { useOptionalSupabase } from "@/components/providers/RuntimeConfig";
-import {
-  applyPreset,
-  defaultWorkspace,
-  dockAdmin,
-  fillGap,
-  makeRoom,
-  newestWorkspace,
-  parseWorkspace,
-  PANEL_IDS,
-  raisePanel,
-  reflowPanels,
-  toFraction,
-  visibleRectsOf,
-  type PanelId,
-  type PanelState,
-  type Preset,
-  type Rect,
-  type Rects,
-  type RosterMode,
-  type WorkspaceState,
-} from "@/lib/workspace";
+import { createContext, useContext, useState, useSyncExternalStore, type ReactNode } from "react";
 
-const STORAGE_KEY = "diskarte:workspace:v1";
-/** Account sync is debounced: a burst of drags becomes one metadata write. */
-const REMOTE_DEBOUNCE_MS = 2500;
-/** The nominal canvas the default layout's fractions are computed on before the real one is measured. */
-const NOMINAL: Rect = { x: 0, y: 0, w: 1360, h: 820 };
-
-type Listener = () => void;
-
-export interface WorkspaceStore {
-  getState: () => WorkspaceState;
-  subscribe: (l: Listener) => () => void;
-  /** Pixel rectangle panels live in (canvas minus the tray and a docked roster). */
-  getBounds: () => Rect | null;
-  setBounds: (b: Rect) => void;
-  subscribeBounds: (l: Listener) => () => void;
-  /** Which panels (and the roster drawer, as "roster") are mounted right now: only those get tray pills. */
-  getMounted: () => ReadonlyMap<string, string>;
-  mount: (id: PanelId | "roster", title?: string) => () => void;
-  subscribeMounted: (l: Listener) => () => void;
-
-  commitRect: (id: PanelId, px: Rect) => void;
-  /** Several panels at once (a coupled resize): one change, one save. */
-  commitRects: (px: Rects) => void;
-  /** Pixel rectangles of the panels currently on the canvas (mounted, not minimized or closed). */
-  visibleRects: () => Rects;
-  raise: (id: PanelId) => void;
-  setMinimized: (id: PanelId, minimized: boolean) => void;
-  setClosed: (id: PanelId, closed: boolean) => void;
-  /** Shows a panel wherever it is: restores it from the tray, or (the Control Center) docks it right. */
-  openPanel: (id: PanelId) => void;
-  setRoster: (mode: RosterMode) => void;
-  applyPreset: (preset: Preset, opts: { voiceAvailable: boolean }) => void;
-  reset: () => void;
-  /** Replace the whole state (hydration from storage). */
-  load: (state: WorkspaceState) => void;
+/**
+ * The app's column layout (Discord-style): rail · channels · main · members. The channel and member
+ * columns are resizable and the member list toggles; widths and the toggle are saved per browser.
+ */
+export interface LayoutState {
+  /** Channel column width in px. */
+  nav: number;
+  /** Member column width in px. */
+  roster: number;
+  membersOpen: boolean;
 }
 
-/** Keeps z values small and in the same order (they're persisted). */
-function normaliseZ(state: WorkspaceState): WorkspaceState {
-  const order = [...PANEL_IDS].sort((a, b) => state.panels[a].z - state.panels[b].z);
-  if (order.every((id, i) => state.panels[id].z === i + 1)) return state;
-  const panels = { ...state.panels };
-  order.forEach((id, i) => (panels[id] = { ...panels[id], z: i + 1 }));
-  return { ...state, panels };
-}
+export const NAV_WIDTH = { min: 200, max: 420, initial: 240 };
+export const ROSTER_WIDTH = { min: 200, max: 400, initial: 248 };
+const STORAGE_KEY = "diskarte:layout:v2";
+const DEFAULT: LayoutState = { nav: NAV_WIDTH.initial, roster: ROSTER_WIDTH.initial, membersOpen: true };
 
-export function createWorkspaceStore(initial: WorkspaceState, onChange?: (s: WorkspaceState) => void): WorkspaceStore {
-  let state = initial;
-  let bounds: Rect | null = null;
-  let mounted: ReadonlyMap<string, string> = new Map();
-  const listeners = new Set<Listener>();
-  const boundsListeners = new Set<Listener>();
-  const mountedListeners = new Set<Listener>();
+const clamp = (v: number, { min, max }: { min: number; max: number }) => Math.round(Math.min(max, Math.max(min, v)));
 
-  const set = (next: WorkspaceState, persist = true) => {
-    if (next === state) return;
-    state = next;
-    listeners.forEach((l) => l());
-    if (persist) onChange?.(normaliseZ(state));
-  };
-  const patchPanel = (id: PanelId, patch: Partial<PanelState>, opts: { clearPreset?: boolean } = {}) =>
-    set({ ...state, t: Date.now(), preset: opts.clearPreset ? null : state.preset, panels: { ...state.panels, [id]: { ...state.panels[id], ...patch } } });
-  const withRects = (s: WorkspaceState, px: Rects): WorkspaceState => {
-    if (!bounds) return s;
-    const panels = { ...s.panels };
-    for (const id of PANEL_IDS) if (px[id]) panels[id] = { ...panels[id], rect: toFraction(px[id], bounds) };
-    return { ...s, panels };
-  };
-  // Windows stay magnetic when one leaves or comes back: neighbours fill its space, then give it back.
-  const hiding = (id: PanelId, next: WorkspaceState) => (bounds ? withRects(next, fillGap(visibleRectsOf(state.panels, bounds, mounted), id)) : next);
-  const showing = (id: PanelId, next: WorkspaceState) => (bounds ? withRects(next, makeRoom(visibleRectsOf(next.panels, bounds, mounted), id)) : next);
-
-  return {
-    getState: () => state,
-    subscribe: (l) => (listeners.add(l), () => void listeners.delete(l)),
-    getBounds: () => bounds,
-    setBounds: (b) => {
-      if (bounds && bounds.x === b.x && bounds.y === b.y && bounds.w === b.w && bounds.h === b.h) return;
-      const previous = bounds;
-      bounds = b;
-      // Until the user arranges anything (t = 0), the default layout is laid out for the real canvas;
-      // after that, panels reflow like windows (see reflowPanels). Neither is a user change to save.
-      if (state.t === 0) set({ ...defaultWorkspace(b), roster: state.roster }, false);
-      else if (previous) set(reflowPanels(state, previous, b), false);
-      boundsListeners.forEach((l) => l());
-    },
-    subscribeBounds: (l) => (boundsListeners.add(l), () => void boundsListeners.delete(l)),
-    getMounted: () => mounted,
-    mount: (id, title = id) => {
-      mounted = new Map(mounted).set(id, title);
-      mountedListeners.forEach((l) => l());
-      return () => {
-        const next = new Map(mounted);
-        next.delete(id);
-        mounted = next;
-        mountedListeners.forEach((l) => l());
-      };
-    },
-    subscribeMounted: (l) => (mountedListeners.add(l), () => void mountedListeners.delete(l)),
-
-    commitRect: (id, px) => {
-      if (!bounds) return;
-      // Moving or resizing by hand turns the active preset into a custom layout.
-      patchPanel(id, { rect: toFraction(px, bounds) }, { clearPreset: true });
-    },
-    commitRects: (px) => {
-      if (!bounds) return;
-      const b = bounds;
-      const panels = { ...state.panels };
-      for (const id of PANEL_IDS) {
-        const r = px[id];
-        if (r) panels[id] = { ...panels[id], rect: toFraction(r, b) };
-      }
-      set({ ...state, panels, preset: null, t: Date.now() });
-    },
-    visibleRects: () => (bounds ? visibleRectsOf(state.panels, bounds, mounted) : {}),
-    raise: (id) => set(raisePanel(state, id), false),
-    setMinimized: (id, minimized) => {
-      const current = state.panels[id];
-      if (current.minimized === minimized && !current.closed) return;
-      // Restoring a panel also brings it to the front.
-      const base = minimized ? state : raisePanel(state, id);
-      const next = { ...base, t: Date.now(), preset: null, panels: { ...base.panels, [id]: { ...base.panels[id], minimized, closed: false } } };
-      set(minimized ? hiding(id, next) : showing(id, next));
-    },
-    setClosed: (id, closed) => {
-      const next = { ...state, t: Date.now(), panels: { ...state.panels, [id]: { ...state.panels[id], closed, minimized: false } } };
-      set(closed ? hiding(id, next) : showing(id, next));
-    },
-    openPanel: (id) => {
-      const current = state.panels[id];
-      if (current.closed && id === "admin" && bounds) set(dockAdmin(state, bounds, mounted));
-      else if (current.closed || current.minimized) {
-        const base = raisePanel(state, id);
-        set(showing(id, { ...base, t: Date.now(), preset: null, panels: { ...base.panels, [id]: { ...base.panels[id], minimized: false, closed: false } } }));
-      } else set(raisePanel(state, id), false);
-    },
-    setRoster: (roster) => roster !== state.roster && set({ ...state, roster, t: Date.now() }),
-    applyPreset: (preset, opts) => set(applyPreset(state, preset, bounds ?? NOMINAL, opts)),
-    reset: () => set({ ...defaultWorkspace(bounds ?? NOMINAL), t: Date.now() }),
-    load: (next) => set(next, false),
-  };
-}
-
-const WorkspaceContext = createContext<WorkspaceStore | null>(null);
-
-function readLocal(): WorkspaceState | null {
+/** Saved layout, or the default; anything malformed falls back field by field. */
+export function parseLayout(raw: string | null): LayoutState {
   try {
-    return parseWorkspace(localStorage.getItem(STORAGE_KEY));
+    const v = raw ? (JSON.parse(raw) as Partial<LayoutState>) : {};
+    return {
+      nav: typeof v.nav === "number" ? clamp(v.nav, NAV_WIDTH) : DEFAULT.nav,
+      roster: typeof v.roster === "number" ? clamp(v.roster, ROSTER_WIDTH) : DEFAULT.roster,
+      membersOpen: typeof v.membersOpen === "boolean" ? v.membersOpen : DEFAULT.membersOpen,
+    };
   } catch {
-    return null;
+    return DEFAULT;
   }
 }
 
-/**
- * Owns the floating canvas layout: panel rectangles, z-order, minimized/closed panels, the roster
- * drawer and the active preset. Saved to this browser right away and to the account (Supabase user
- * metadata) shortly after, so the arrangement follows you to other devices; on load the newer copy wins.
- */
-export function WorkspaceProvider({ remote, children }: { remote?: unknown; children: ReactNode }) {
-  const supabase = useOptionalSupabase();
-  const [store] = useState(() => {
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    return createWorkspaceStore(parseWorkspace(remote) ?? defaultWorkspace(NOMINAL), (s) => {
+export interface LayoutStore {
+  get: () => LayoutState;
+  subscribe: (listener: () => void) => () => void;
+  set: (patch: Partial<LayoutState>) => void;
+}
+
+function createLayoutStore(): LayoutStore {
+  let state: LayoutState | null = null;
+  const listeners = new Set<() => void>();
+  const read = () => {
+    if (state) return state;
+    try {
+      state = parseLayout(localStorage.getItem(STORAGE_KEY));
+    } catch {
+      state = DEFAULT;
+    }
+    return state;
+  };
+  return {
+    get: read,
+    subscribe: (l) => (listeners.add(l), () => void listeners.delete(l)),
+    set: (patch) => {
+      const next = { ...read(), ...patch };
+      state = { nav: clamp(next.nav, NAV_WIDTH), roster: clamp(next.roster, ROSTER_WIDTH), membersOpen: next.membersOpen };
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       } catch {
-        // Storage blocked: the account copy still saves it.
+        // Private mode: this session only.
       }
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        try {
-          void Promise.resolve(supabase?.auth.updateUser({ data: { workspace: s } })).catch(() => undefined);
-        } catch {
-          // Offline or signed out: this browser's copy still has it.
-        }
-      }, REMOTE_DEBOUNCE_MS);
-    });
-  });
-
-  // This browser's copy may be newer than the account's (or the only one): adopt it after hydration.
-  useEffect(() => {
-    const best = newestWorkspace(readLocal(), parseWorkspace(remote));
-    if (best && best !== store.getState()) store.load(best);
-    // Hydrate once.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return <WorkspaceContext.Provider value={store}>{children}</WorkspaceContext.Provider>;
+      listeners.forEach((l) => l());
+    },
+  };
 }
 
-export function useWorkspaceStore(): WorkspaceStore {
-  const store = useContext(WorkspaceContext);
-  if (!store) throw new Error("useWorkspaceStore must be used inside <WorkspaceProvider>");
-  return store;
+const LayoutContext = createContext<LayoutStore | null>(null);
+
+export function WorkspaceProvider({ children }: { children: ReactNode }) {
+  const [store] = useState(createLayoutStore);
+  return <LayoutContext.Provider value={store}>{children}</LayoutContext.Provider>;
 }
 
-export function useOptionalWorkspaceStore(): WorkspaceStore | null {
-  return useContext(WorkspaceContext);
+/** The layout and its setter; outside the app shell (isolated renders) a fixed default. */
+export function useLayout(): [LayoutState, (patch: Partial<LayoutState>) => void] {
+  const store = useContext(LayoutContext);
+  const state = useSyncExternalStore(store?.subscribe ?? noSubscribe, store?.get ?? getDefault, getDefault);
+  return [state, store?.set ?? ignore];
 }
 
-/** Subscribes to one slice; components re-render only when that slice changes. */
-export function useWorkspace<T>(select: (s: WorkspaceState) => T): T {
-  const store = useWorkspaceStore();
-  return useSyncExternalStore(
-    store.subscribe,
-    () => select(store.getState()),
-    () => select(store.getState()),
-  );
-}
+const noSubscribe = () => () => undefined;
+const getDefault = () => DEFAULT;
+const ignore = () => undefined;
 
-export function useWorkspaceBounds(): Rect | null {
-  const store = useWorkspaceStore();
-  return useSyncExternalStore(store.subscribeBounds, store.getBounds, () => null);
-}
+// ---- desktop vs phone ------------------------------------------------------------------------
+// Columns from tablet width up; phones keep the stacked layout with the slide-in drawer.
 
-export function useMountedPanels(): ReadonlyMap<string, string> {
-  const store = useWorkspaceStore();
-  return useSyncExternalStore(store.subscribeMounted, store.getMounted, store.getMounted);
-}
-
-// ---- canvas mode -------------------------------------------------------------------------------
-// The floating canvas runs from tablet width up; phones keep the stacked layout with drawers.
-
-const CANVAS_QUERY = "(min-width: 768px)";
-function subscribeCanvas(cb: () => void) {
-  const mq = window.matchMedia?.(CANVAS_QUERY);
+const DESKTOP_QUERY = "(min-width: 768px)";
+function subscribeDesktop(cb: () => void) {
+  const mq = window.matchMedia?.(DESKTOP_QUERY);
   mq?.addEventListener?.("change", cb);
   return () => mq?.removeEventListener?.("change", cb);
 }
 
 export function useIsCanvas(): boolean {
-  return useSyncExternalStore(subscribeCanvas, () => window.matchMedia?.(CANVAS_QUERY).matches ?? false, () => false);
-}
-
-const noSubscribe = () => () => undefined;
-
-/**
- * Is the navigator panel minimized or closed on the canvas? Its call dock steps aside then (the tray
- * shows the call). Always false on phones and outside a workspace.
- */
-export function useNavHidden(): boolean {
-  const store = useOptionalWorkspaceStore();
-  const isCanvas = useIsCanvas();
-  const hidden = useSyncExternalStore(
-    store?.subscribe ?? noSubscribe,
-    () => (store ? store.getState().panels.nav.minimized || store.getState().panels.nav.closed : false),
-    () => false,
-  );
-  return isCanvas && hidden;
-}
-
-// Whether a workspace canvas is on screen at all (/settings pages have none): the picture-in-picture
-// call view, which lives above the shell, defers to the canvas's own voice panel.
-let canvasActive = false;
-const canvasListeners = new Set<Listener>();
-export function setCanvasActive(active: boolean) {
-  canvasActive = active;
-  canvasListeners.forEach((l) => l());
-}
-export function useCanvasActive(): boolean {
-  return useSyncExternalStore(
-    (l) => (canvasListeners.add(l), () => void canvasListeners.delete(l)),
-    () => canvasActive,
-    () => false,
-  );
+  return useSyncExternalStore(subscribeDesktop, () => window.matchMedia?.(DESKTOP_QUERY).matches ?? false, () => false);
 }

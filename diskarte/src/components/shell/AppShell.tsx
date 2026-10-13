@@ -1,6 +1,5 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, type ReactNode } from "react";
@@ -10,17 +9,13 @@ import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { subscribeDbChanges } from "@/lib/realtime";
 import type { Server } from "@/lib/servers";
 import { ConfirmHost } from "@/components/ui/ConfirmHost";
-import { AdminAccessProvider, usePlatformRole } from "@/components/admin/AdminAccess";
+import { AdminAccessProvider } from "@/components/admin/AdminAccess";
 import { BroadcastBanner } from "@/components/broadcast/BroadcastBanner";
 import type { PlatformRole } from "@/lib/admin";
 import { cn } from "@/lib/utils";
-import { WorkspaceCanvas } from "@/components/workspace/WorkspaceCanvas";
-import { useWorkspace, useWorkspaceStore, WorkspaceProvider } from "@/components/workspace/WorkspaceProvider";
+import { useLayout, WorkspaceProvider } from "@/components/workspace/WorkspaceProvider";
 import { ServerRail } from "./ServerRail";
 import { ShellUIProvider, useShellUI } from "./ShellUI";
-
-// Only super admins ever download the Control Center.
-const AdminPanel = dynamic(() => import("@/components/admin/AdminPanel").then((m) => m.AdminPanel), { ssr: false });
 
 /** Refreshes the server list when this user joins/leaves/is kicked from any Tambayan (e.g. in another tab). */
 function MembershipWatcher({ userId }: { userId: string }) {
@@ -41,9 +36,8 @@ function MembershipWatcher({ userId }: { userId: string }) {
 function Frame({ servers, children }: { servers: Server[]; children: ReactNode }) {
   const { navOpen, setNavOpen } = useShellUI();
   const swipe = useSwipeDrawer(navOpen, setNavOpen);
-  const role = usePlatformRole();
   return (
-    <div className="diskarte-backdrop relative flex h-dvh overflow-hidden md:gap-3 md:p-3" data-testid="shell" {...swipe}>
+    <div className="diskarte-backdrop relative flex h-dvh overflow-hidden" data-testid="shell" {...swipe}>
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-lg focus:bg-sun focus:px-4 focus:py-2 focus:font-semibold focus:text-abyss"
@@ -72,35 +66,35 @@ function Frame({ servers, children }: { servers: Server[]; children: ReactNode }
       >
         <ServerRail servers={servers} />
       </div>
-      {/* The sticky broadcast banner sits above the floating canvas (which re-measures around it).
-          On phones the canvas is a plain flex row with no z-index: a stacking context would trap
-          the drawer panels (z-40) beneath the drawer backdrop (z-30). */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col md:gap-3">
+      {/* The sticky broadcast banner sits above the columns. The column row has no z-index: a stacking
+          context would trap the phone drawer panels (z-40) beneath the drawer backdrop (z-30). */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <BroadcastBanner />
-        <WorkspaceCanvas extra={role === "super_admin" ? <AdminPanel /> : null}>{children}</WorkspaceCanvas>
+        <div className="flex min-h-0 min-w-0 flex-1" data-workspace="">
+          {children}
+        </div>
       </div>
     </div>
   );
 }
 
-/** Bridges the shell's member toggle to the workspace roster (open/docked/closed, saved with the layout). */
+/** Bridges the shell's member toggle to the saved layout. */
 export function ShellUIBridge({ children }: { children: ReactNode }) {
-  const store = useWorkspaceStore();
-  const roster = useWorkspace((s) => s.roster);
-  const setOpen = useCallback((open: boolean) => store.setRoster(open ? "open" : "closed"), [store]);
-  const members = useMemo(() => ({ open: roster !== "closed", setOpen }), [roster, setOpen]);
+  const [layout, setLayout] = useLayout();
+  const setOpen = useCallback((membersOpen: boolean) => setLayout({ membersOpen }), [setLayout]);
+  const members = useMemo(() => ({ open: layout.membersOpen, setOpen }), [layout.membersOpen, setOpen]);
   return <ShellUIProvider members={members}>{children}</ShellUIProvider>;
 }
 
 /**
- * The signed-in app frame: the command rail and the floating workspace canvas. Session state (the
- * call, presence, friends) lives above it in <SessionProviders>; the layout itself in <WorkspaceProvider>.
+ * The signed-in app frame: the server rail and the columns (channels · main · members). Session state
+ * (the call, presence, friends) lives above it in <SessionProviders>; column widths in <WorkspaceProvider>.
  */
-export function AppShell({ servers, workspace, platformRole = "member", children }: { servers: Server[]; workspace?: unknown; platformRole?: PlatformRole; children: ReactNode }) {
+export function AppShell({ servers, platformRole = "member", children }: { servers: Server[]; platformRole?: PlatformRole; children: ReactNode }) {
   const { me } = useMe();
   return (
     <AdminAccessProvider role={platformRole}>
-      <WorkspaceProvider remote={workspace}>
+      <WorkspaceProvider>
         <ShellUIBridge>
           <MembershipWatcher userId={me.id} />
           <Frame servers={servers}>{children}</Frame>

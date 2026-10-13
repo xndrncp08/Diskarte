@@ -35,7 +35,7 @@ test.describe("WebRTC voice rooms", () => {
     await page.getByTestId("voice-stage").getByRole("button", { name: "Mute" }).click();
     await expect(page.getByTestId("voice-stage").getByRole("button", { name: "Unmute" })).toHaveAttribute("aria-pressed", "true");
 
-    // Browsing a text channel keeps the call alive in the floating dock.
+    // Browsing a text channel keeps the call alive in the Voice Connected panel.
     await channels.getByRole("link", { name: "general" }).click();
     await expect(page.getByTestId("channel-title")).toHaveText("general");
     await expect(dock).toContainText("Voice Connected");

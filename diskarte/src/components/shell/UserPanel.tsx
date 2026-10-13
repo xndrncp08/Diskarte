@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Settings } from "lucide-react";
-import { useTransition, type ReactNode } from "react";
+import { HeadphoneOff, Headphones, Mic, MicOff, Settings } from "lucide-react";
+import { useContext, useTransition, type ReactNode } from "react";
 import { toast } from "sonner";
 import { setStatusAction } from "@/actions/profile";
 import { useMe } from "@/components/providers/MeProvider";
@@ -18,6 +18,7 @@ import { PRESENCE_OPTIONS, STATUS_TRIGGERS } from "@/lib/profile";
 import type { PresenceStatus } from "@/lib/supabase/database.types";
 import { statusTone } from "@/lib/presence";
 import { cn } from "@/lib/utils";
+import { CallContext } from "@/components/voice/CallProvider";
 
 /** Bottom-left identity panel with the quick status switcher; `controls` slot hosts voice buttons. */
 export function UserPanel({ controls }: { controls?: ReactNode }) {
@@ -107,6 +108,7 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
         )}
       />
       {controls}
+      <CallToggles />
       <SoundSettingsPopover />
       <Tooltip label="User settings" side="top">
         {/* Opens the Settings dialog in place so a voice call stays connected; the link still
@@ -126,5 +128,33 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
         </Link>
       </Tooltip>
     </div>
+  );
+}
+
+const TOGGLE = "touch-target relative rounded-md p-2 transition-colors hover:bg-white/10 pointer-coarse:p-3.5";
+
+/** Mute and deafen beside your name while you're in a call (Discord's user panel). */
+function CallToggles() {
+  const call = useContext(CallContext);
+  if (!call || call.status === "idle") return null;
+  return (
+    <>
+      <Tooltip label={call.muted ? "Unmute" : "Mute"} side="top">
+        <button type="button" aria-label={call.muted ? "Unmute" : "Mute"} aria-pressed={call.muted} onClick={() => void call.toggleMute()} className={cn(TOGGLE, call.muted ? "text-red-400" : "text-slate-400 hover:text-white")}>
+          {call.muted ? <MicOff className="size-4" aria-hidden /> : <Mic className="size-4" aria-hidden />}
+        </button>
+      </Tooltip>
+      <Tooltip label={call.deafened ? "Undeafen" : "Deafen"} side="top">
+        <button
+          type="button"
+          aria-label={call.deafened ? "Undeafen" : "Deafen"}
+          aria-pressed={call.deafened}
+          onClick={() => void call.toggleDeafen()}
+          className={cn(TOGGLE, call.deafened ? "text-red-400" : "text-slate-400 hover:text-white")}
+        >
+          {call.deafened ? <HeadphoneOff className="size-4" aria-hidden /> : <Headphones className="size-4" aria-hidden />}
+        </button>
+      </Tooltip>
+    </>
   );
 }

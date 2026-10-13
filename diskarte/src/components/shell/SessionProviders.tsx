@@ -10,7 +10,6 @@ import { PresenceProvider } from "@/components/providers/PresenceProvider";
 import { SocialProvider } from "@/components/providers/SocialProvider";
 import { AudioMixerProvider } from "@/components/voice/AudioMixer";
 import { CallProvider } from "@/components/voice/CallProvider";
-import { FloatingCallHUD } from "@/components/voice/FloatingCallHUD";
 import { IncomingCallsProvider } from "@/components/voice/IncomingCalls";
 import { SessionGuard } from "@/components/session/SessionGuard";
 import type { Tables } from "@/lib/supabase/database.types";
@@ -46,8 +45,6 @@ export function SessionProviders({
                       {children}
                       {/* Device heartbeat + live enforcement of bans, revoked sessions and status overrides. */}
                       <SessionGuard />
-                      {/* Picture-in-picture of the call on any page other than the call's own. */}
-                      <FloatingCallHUD />
                     </IncomingCallsProvider>
                   </MediaViewerProvider>
                 </AudioMixerProvider>

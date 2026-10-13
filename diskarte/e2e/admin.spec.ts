@@ -4,7 +4,7 @@ import { FULL, FULL_REASON, logIn, makeUser, type TestUser } from "./helpers";
 /**
  * Super Admin Control Center, end to end:
  * - non-admins are bounced from every admin route and the API answers 403;
- * - a super admin docks the Control Center on the canvas, broadcasts a sticky announcement that
+ * - a super admin opens the Control Center page, broadcasts a sticky announcement that
  *   appears live on another member's open canvas (no reload), changes their role, and bans them —
  *   which signs their open tab out.
  * Accounts and the super_admin grant are made with the service role, like `npm run admin:grant`.
@@ -67,19 +67,12 @@ test.describe("Super Admin Control Center", () => {
     const adminPage = await signedIn(browser, admin);
     const memberPage = await signedIn(browser, member);
 
-    // The Control Center docks on the right of the canvas and shares a seam with chat.
+    // The rail's shield opens the Control Center page.
     await adminPage.getByTestId("control-center-toggle").click();
+    await expect(adminPage).toHaveURL(/\/tambayan\/admin$/);
     const center = adminPage.getByTestId("admin-control-center");
     await expect(center).toBeVisible();
     await expect(center.getByTestId("roster-row").first()).toBeVisible();
-    // Panels glide into place, so measure once the dock has settled.
-    await expect
-      .poll(async () => {
-        const main = (await adminPage.locator('[data-panel="main"]').boundingBox())!;
-        const panel = (await adminPage.locator('[data-panel="admin"]').boundingBox())!;
-        return Math.abs(panel.x - (main.x + main.width) - 12);
-      })
-      .toBeLessThanOrEqual(2);
 
     // Compose and dispatch a sticky announcement.
     const title = `Maintenance ${Date.now().toString(36)}`;

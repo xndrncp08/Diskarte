@@ -13,7 +13,6 @@ import {
   type AdminUser,
 } from "@/lib/admin";
 import { deviceLabel } from "@/lib/device";
-import { coupledResize, defaultWorkspace, dockAdmin, findSeams, fromFraction, GAP, MIN_W, parseWorkspace, visibleRectsOf, type Rect } from "@/lib/workspace";
 
 const NOW = Date.parse("2026-10-06T08:00:00Z");
 const ago = (s: number) => new Date(NOW - s * 1000).toISOString();
@@ -141,50 +140,3 @@ describe("device labels", () => {
   });
 });
 
-describe("Control Center panel geometry", () => {
-  const B: Rect = { x: 0, y: 0, w: 1400, h: 840 };
-  const mounted = { has: (id: string) => id !== "voice" };
-
-  it("starts closed, and older saved layouts (without it) load with it closed", () => {
-    expect(defaultWorkspace(B).panels.admin.closed).toBe(true);
-    const legacy = defaultWorkspace(B, 5) as unknown as { panels: Record<string, unknown> };
-    delete legacy.panels.admin;
-    expect(parseWorkspace(JSON.stringify(legacy))?.panels.admin).toMatchObject({ closed: true });
-  });
-
-  it("docks against the right edge, full height, and chat gives way leaving the docking gap", () => {
-    const s = dockAdmin(defaultWorkspace(B, 1), B, mounted, 2);
-    const admin = fromFraction(s.panels.admin.rect, B);
-    const main = fromFraction(s.panels.main.rect, B);
-    expect(admin).toMatchObject({ y: 0, h: 840 });
-    expect(admin.x + admin.w).toBe(1400);
-    expect(main.x + main.w).toBe(admin.x - GAP);
-    expect(s.panels.admin).toMatchObject({ closed: false, minimized: false });
-    expect(s.panels.admin.z).toBeGreaterThan(s.panels.main.z);
-  });
-
-  it("shares a seam with chat, so resizing one scales the other with the gap intact", () => {
-    const s = dockAdmin(defaultWorkspace(B, 1), B, mounted, 2);
-    const rects = visibleRectsOf(s.panels, B, { has: () => true });
-    delete rects.voice;
-    expect(findSeams(rects)).toContainEqual(expect.objectContaining({ a: "main", b: "admin", orientation: "vertical" }));
-
-    // Drag the Control Center's left edge 100 px left: chat narrows by exactly 100 px.
-    const next = coupledResize(rects, "admin", "w", -100, 0, B);
-    expect(next.admin!.w).toBe(rects.admin!.w + 100);
-    expect(next.main!.w).toBe(rects.main!.w - 100);
-    expect(next.admin!.x - (next.main!.x + next.main!.w)).toBe(GAP);
-
-    // Widening chat into the Control Center compresses it down to its minimum, never past.
-    const squeezed = coupledResize(rects, "main", "e", 2000, 0, B);
-    expect(squeezed.admin!.w).toBe(MIN_W);
-    expect(squeezed.admin!.x + squeezed.admin!.w).toBe(1400);
-  });
-
-  it("slides a panel left instead of crushing it below the minimum width", () => {
-    const narrow: Rect = { x: 0, y: 0, w: 900, h: 700 };
-    const s = dockAdmin(defaultWorkspace(narrow, 1), narrow, mounted, 2);
-    const main = fromFraction(s.panels.main.rect, narrow);
-    expect(main.w).toBeGreaterThanOrEqual(MIN_W);
-  });
-});

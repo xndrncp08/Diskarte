@@ -5,19 +5,18 @@ import { AnimatePresence, motion } from "framer-motion";
 import { callHref, useCall } from "./CallProvider";
 import { MixerButton } from "./AudioMixer";
 import { ConnectionMeter } from "./ConnectionMeter";
-import { VoiceControls } from "./VoiceControls";
-import { useNavHidden } from "@/components/workspace/WorkspaceProvider";
+import { PhoneOff } from "lucide-react";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 const STATUS_TEXT = { connecting: "Connecting…", reconnecting: "Reconnecting…", connected: "Voice Connected", idle: "" } as const;
 
-/** Floating active-call widget pinned above the user panel while you browse other channels. */
+/**
+ * Discord's "Voice Connected" panel above the user panel: where you're connected, the mixer and
+ * Disconnect. Mute and deafen sit in the user panel; camera, screen and the rest on the call stage.
+ */
 export function CallDock() {
   const call = useCall();
-  // In a minimized sidebar the tray's call controls take over; one set at a time. Unmounted outright:
-  // an exit animation inside a hidden panel may never finish, leaving two docks in the page.
-  const navHidden = useNavHidden();
   const visible = call.status !== "idle" && call.target;
-  if (navHidden) return null;
   return (
     <AnimatePresence>
       {visible && (
@@ -26,10 +25,10 @@ export function CallDock() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 12 }}
           transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
-          className="glass-strong mx-2 mb-2 rounded-xl p-2.5 shadow-lg shadow-black/40"
+          className="mx-2 mb-1.5 rounded-lg border border-white/[0.06] bg-black/30 p-2"
           data-testid="call-dock"
         >
-          <div className="mb-2 flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2">
             <ConnectionMeter />
             <div className="min-w-0 flex-1">
               <p className={`text-sm font-bold ${call.status === "connected" ? "text-signal-green" : "text-signal-idle"}`} role="status">
@@ -40,8 +39,17 @@ export function CallDock() {
               </Link>
             </div>
             <MixerButton size="sm" className="shrink-0" />
+            <Tooltip label="Disconnect" side="top">
+              <button
+                type="button"
+                aria-label="Disconnect"
+                onClick={call.leave}
+                className="touch-target relative flex size-8 shrink-0 items-center justify-center rounded-md text-slate-300 transition-colors hover:bg-red-500/20 hover:text-red-300"
+              >
+                <PhoneOff className="size-4" aria-hidden />
+              </button>
+            </Tooltip>
           </div>
-          <VoiceControls size="sm" />
         </motion.div>
       )}
     </AnimatePresence>
