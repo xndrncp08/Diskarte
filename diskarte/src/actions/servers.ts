@@ -29,6 +29,8 @@ const DB_ERRORS: Record<string, string> = {
   CANNOT_LEAVE_SYSTEM_SERVER: "Everyone stays in Diskarte HQ — it's where announcements live.",
   SYSTEM_SERVER_IMMUTABLE: "Diskarte HQ is managed by the Diskarte team.",
   CANNOT_KICK_MEMBER: "You can't kick that member.",
+  ONLY_OWNER_CAN_TRANSFER: "Only the owner can transfer the server.",
+  NEW_OWNER_MUST_BE_MEMBER: "They need to be in the server first.",
   ONLY_ADMINS_CAN_CHANGE_ROLES: "Only admins can change roles.",
   CANNOT_CHANGE_OWNER_ROLE: "The owner's role can't be changed.",
   ONLY_OWNER_CAN_DEMOTE_ADMINS: "Only the owner can demote an admin.",
@@ -124,6 +126,18 @@ export async function leaveServerAction(input: { serverId: string }): Promise<Ac
   const supabase = await createClient();
   const { error } = await supabase.from("members").delete().eq("server_id", input.serverId).eq("user_id", user.id);
   if (error) return { ok: false, error: dbError(error.message, "Couldn't leave.") };
+  revalidatePath("/tambayan", "layout");
+  return { ok: true };
+}
+
+/** Discord's Transfer Ownership: the owner hands the server to another member (who becomes an admin). */
+export async function transferOwnershipAction(input: { serverId: string; userId: string }): Promise<ActionResult> {
+  const { limited } = await authed();
+  if (limited) return RATE_LIMITED;
+  if (!uuidSchema.safeParse(input.serverId).success || !uuidSchema.safeParse(input.userId).success) return { ok: false, error: "Invalid request" };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("servers").update({ owner_id: input.userId }).eq("id", input.serverId).select("id");
+  if (error || !data?.length) return { ok: false, error: dbError(error?.message, "Only the owner can transfer the server.") };
   revalidatePath("/tambayan", "layout");
   return { ok: true };
 }

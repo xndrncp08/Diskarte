@@ -1,11 +1,11 @@
 "use client";
 
-import { AlarmClockOff, ArrowRightLeft, AtSign, Ban, BellRing, Clock, Gavel, TriangleAlert, HeadphoneOff, MessageCircle, MicOff, PencilLine, Phone, PhoneOff, ShieldOff, StickyNote, UserCheck, UserMinus, UserPlus, UserRound, UserX, VideoOff, VolumeX } from "lucide-react";
+import { AlarmClockOff, ArrowUpRight, ArrowRightLeft, AtSign, Ban, BellRing, Clock, Gavel, TriangleAlert, HeadphoneOff, MessageCircle, MicOff, PencilLine, Phone, PhoneOff, ShieldOff, StickyNote, UserCheck, UserMinus, UserPlus, UserRound, UserX, VideoOff, VolumeX } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useContext } from "react";
 import { toast } from "sonner";
 import { banMemberAction, removeTimeoutAction, timeoutMemberAction, warnMemberAction } from "@/actions/moderation";
-import { assignRoleAction, kickMemberAction, setMemberRoleAction, setNicknameAction } from "@/actions/servers";
+import { assignRoleAction, kickMemberAction, transferOwnershipAction, setMemberRoleAction, setNicknameAction } from "@/actions/servers";
 import { openDmAction } from "@/actions/social";
 import { moderateVoiceAction } from "@/actions/voice";
 import { useOptionalSupabase } from "@/components/providers/RuntimeConfig";
@@ -276,6 +276,27 @@ export function PersonMenuItems({
         void removeTimeoutAction({ serverId: serverCtx!.server.id, userId: person.id }).then((result) =>
           result.ok ? toast.success(`${name} can talk again.`) : toast.error(result.error ?? "Couldn't remove the timeout."),
         ),
+    },
+    {
+      label: "Transfer Ownership",
+      icon: <ArrowUpRight className={icon} aria-hidden />,
+      danger: true,
+      group: "Moderation",
+      hidden: self || !member || !serverCtx || serverCtx.server.owner_id !== me.id || serverCtx.server.is_system,
+      onSelect: () =>
+        confirmAction({
+          title: `Transfer ownership to ${name}?`,
+          body: `${name} becomes the owner of ${serverCtx?.server.name}. You stay an admin, but you can't undo this yourself.`,
+          confirmLabel: "Transfer Ownership",
+          onConfirm: async () => {
+            const result = await transferOwnershipAction({ serverId: serverCtx!.server.id, userId: person.id });
+            if (!result.ok) {
+              toast.error(result.error ?? "Couldn't transfer the server.");
+              return false;
+            }
+            toast.success(`${name} owns ${serverCtx?.server.name} now.`);
+          },
+        }),
     },
     ...TIMEOUT_OPTIONS.map((o) => ({
       label: o.label,
