@@ -282,6 +282,7 @@ export interface Database {
       >;
       polls: TableDef<{ message_id: string; channel_id: string; options: string[]; multi: boolean; ends_at: string; created_at: string }, never>;
       poll_votes: TableDef<{ message_id: string; channel_id: string; user_id: string; option: number; created_at: string }, never>;
+      message_edits: TableDef<{ id: number; message_id: string; server_id: string; author_id: string | null; content: string; replaced_at: string }, never>;
       member_warnings: TableDef<{ id: string; server_id: string; user_id: string; moderator_id: string | null; reason: string; acknowledged_at: string | null; created_at: string }, never>;
       saved_messages: TableDef<{ user_id: string; message_id: string; saved_at: string }, { user_id?: string; message_id: string; saved_at?: string }>;
       channel_reads: TableDef<{ user_id: string; channel_id: string; last_read_at: string }, never>;
