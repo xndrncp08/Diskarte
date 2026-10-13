@@ -4,7 +4,7 @@ import { GripHorizontal, Minus, MoveDiagonal2, X } from "lucide-react";
 import { useEffect, useRef, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { useShellUI } from "@/components/shell/ShellUI";
 import { useCoupledResize } from "@/hooks/useCoupledResize";
-import { clampRect, fromFraction, PANEL_IDS, settleOnGrid, snapMove, type Edge, type PanelId, type Rect } from "@/lib/workspace";
+import { clampRect, fromFraction, MAGNET, magnetize, PANEL_IDS, settleOnGrid, snapMove, type Edge, type PanelId, type Rect } from "@/lib/workspace";
 import { cn } from "@/lib/utils";
 import { useIsCanvas, useOptionalWorkspaceStore, useWorkspace, useWorkspaceBounds, useWorkspaceStore } from "./WorkspaceProvider";
 
@@ -27,6 +27,8 @@ interface Gesture {
   others: Rect[];
   last: Rect;
   snapped: { x: boolean; y: boolean };
+  /** Alt / Option held: place it freely, no magnet. */
+  free: boolean;
 }
 
 export interface WorkspacePanelProps {
@@ -42,7 +44,7 @@ export interface WorkspacePanelProps {
 /**
  * A glass panel on the floating canvas (tablet and up): drag it by its bar, resize from any edge or
  * corner (min 320 × 240) — panels docked to that edge resize with it (Alt / Option detaches; see
- * useCoupledResize) — and moves snap magnetically to the canvas and its neighbours. Clicking or
+ * useCoupledResize) — and moves are magnetic: a dropped panel always attaches to the canvas edge or a neighbour (Alt places it freely). Clicking or
  * focusing it raises it — only its frame re-renders, never its content, so chat streams and video
  * keep running. Keyboard: the Move and Resize buttons take the arrow keys (Shift for bigger steps).
  * The main panel is the page's <main> landmark (the skip link's target); the others are labelled regions.
@@ -118,7 +120,7 @@ function CanvasPanel({ id, title, children, className, closable = false }: Works
     // No text selection while dragging — but a press on the Move button still focuses it for the arrow keys.
     if (!(e.target as HTMLElement).closest("button")) e.preventDefault();
     e.currentTarget.setPointerCapture?.(e.pointerId);
-    gesture.current = { start: rect, pointer: { x: e.clientX, y: e.clientY }, others: visibleOthers(), last: rect, snapped: { x: false, y: false } };
+    gesture.current = { start: rect, pointer: { x: e.clientX, y: e.clientY }, others: visibleOthers(), last: rect, snapped: { x: false, y: false }, free: false };
     frame.current?.setAttribute("data-dragging", "");
   }
 
@@ -127,7 +129,8 @@ function CanvasPanel({ id, title, children, className, closable = false }: Works
     if (!g || !bounds) return;
     const dx = e.clientX - g.pointer.x;
     const dy = e.clientY - g.pointer.y;
-    const { rect: next, snapped } = snapMove({ ...g.start, x: g.start.x + dx, y: g.start.y + dy }, g.others, bounds);
+    g.free = e.altKey;
+    const { rect: next, snapped } = snapMove({ ...g.start, x: g.start.x + dx, y: g.start.y + dy }, g.others, bounds, g.free ? 0 : MAGNET);
     g.last = next;
     g.snapped = snapped;
     paint(next, snapped.x || snapped.y);
@@ -139,7 +142,8 @@ function CanvasPanel({ id, title, children, className, closable = false }: Works
     gesture.current = null;
     frame.current?.removeAttribute("data-dragging");
     frame.current?.removeAttribute("data-snapped");
-    const settled = settleOnGrid(g.last, g.snapped, bounds);
+    // Released panels always attach to something; Alt leaves one exactly where it was dropped.
+    const settled = g.free ? settleOnGrid(g.last, g.snapped, bounds) : magnetize(g.last, g.others, bounds);
     paint(settled, false);
     store.commitRect(id, settled);
   }
@@ -202,7 +206,7 @@ function CanvasPanel({ id, title, children, className, closable = false }: Works
           type="button"
           data-move=""
           aria-label={`Move ${title} panel`}
-          title="Drag to move, or use the arrow keys. F6 moves between panels."
+          title="Drag to move; it snaps to the nearest edge or panel (hold Alt / Option to place it freely). Arrow keys move it too. F6 moves between panels."
           onKeyDown={(e) => nudge(e, "move")}
           className="flex size-6 shrink-0 cursor-[inherit] items-center justify-center rounded-md text-slate-500 hover:text-slate-200"
         >

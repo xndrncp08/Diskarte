@@ -101,9 +101,9 @@ const geometry = (id: string) => {
 const bar = (id: string) => panelEl(id).querySelector<HTMLElement>("[data-panel-bar]")!;
 const handle = (id: string, edge: string) => panelEl(id).querySelector<HTMLElement>(`[data-resize="${edge}"]`)!;
 
-function drag(el: HTMLElement, from: [number, number], to: [number, number]) {
+function drag(el: HTMLElement, from: [number, number], to: [number, number], altKey = false) {
   fireEvent.pointerDown(el, { clientX: from[0], clientY: from[1], button: 0, pointerId: 1 });
-  fireEvent.pointerMove(el, { clientX: to[0], clientY: to[1], pointerId: 1 });
+  fireEvent.pointerMove(el, { clientX: to[0], clientY: to[1], pointerId: 1, altKey });
   fireEvent.pointerUp(el, { clientX: to[0], clientY: to[1], pointerId: 1 });
 }
 
@@ -143,14 +143,21 @@ describe("floating workspace canvas", () => {
     await waitFor(() => expect(geometry("nav").h).toBe("240px"));
   });
 
-  it("snaps to the canvas edge within 8 px, settles free moves on the grid, and saves the layout", async () => {
+  it("snaps to the canvas edge, settles Alt (free) moves on the grid, and saves the layout", async () => {
     await ready();
     drag(handle("nav", "s"), [160, 800], [160, 300]);
-    drag(bar("nav"), [100, 10], [103, 213]);
+    drag(bar("nav"), [100, 10], [103, 213], true);
     await waitFor(() => expect(geometry("nav")).toMatchObject({ x: "0px", y: "200px" }));
     const saved = JSON.parse(localStorage.getItem("diskarte:workspace:v1")!);
     expect(saved.panels.nav.rect).toMatchObject({ x: 0, y: 0.25, h: 0.375 });
     expect(saved.preset).toBeNull();
+  });
+
+  it("attaches a dropped panel to the nearest edge instead of leaving it loose", async () => {
+    await ready();
+    drag(handle("nav", "s"), [160, 800], [160, 300]);
+    drag(bar("nav"), [100, 10], [130, 140]);
+    await waitFor(() => expect(geometry("nav")).toMatchObject({ x: "0px", y: "0px" }));
   });
 
   it("moves and resizes from the keyboard", async () => {
@@ -266,7 +273,7 @@ describe("coupled resizing", () => {
     expect(screen.getByRole("separator", { name: "Resize Channels and Barkada HQ" })).toBeInTheDocument();
     // Moves are never coupled: the main panel stays put while the navigator leaves the seam.
     const main = geometry("main");
-    drag(bar("nav"), [100, 10], [200, 10]);
+    drag(bar("nav"), [100, 10], [200, 10], true);
     await waitFor(() => expect(geometry("nav").x).toBe("104px"));
     expect(geometry("main")).toMatchObject({ x: main.x, w: main.w });
     expect(screen.queryByRole("separator", { name: "Resize Channels and Barkada HQ" })).toBeNull();
