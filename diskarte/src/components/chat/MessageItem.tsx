@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, Copy, CornerUpLeft, MessagesSquare, Pencil, Pin, PinOff, RotateCw, Trash2, X } from "lucide-react";
+import { Bookmark, BookmarkX, Clock, Copy, CornerUpLeft, Forward, MailOpen, MessagesSquare, Pencil, Pin, PinOff, RotateCw, Trash2, X } from "lucide-react";
 import { memo, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { PersonContextMenu } from "@/components/social/PersonMenu";
@@ -31,6 +31,11 @@ export interface MessageActions {
   onDiscard: (id: string) => void;
   onJump: (id: string) => void;
   nameOf: (userId: string) => string;
+  /** Servers only: forward elsewhere, save / unsave, and Discord's Mark Unread. */
+  onForward?: (m: ChatMessage) => void;
+  onSave?: (m: ChatMessage, saved: boolean) => void;
+  savedIds?: ReadonlySet<string>;
+  onMarkUnread?: (m: ChatMessage) => void;
   /** Opens an author's profile (servers only: DMs have no member profiles). */
   onOpenProfile?: (userId: string, anchor: HTMLElement) => void;
 }
@@ -176,6 +181,14 @@ function MessageMenuItems({ message, mine, canModerate, actions, setEditing }: {
       onSelect: () => actions.onPin?.(message.id, !message.pinned),
       hidden: !settled || !canModerate || !actions.onPin,
     },
+    { label: "Forward", icon: <Forward className={icon} aria-hidden />, onSelect: () => actions.onForward?.(message), hidden: !settled || !actions.onForward || !message.content },
+    {
+      label: actions.savedIds?.has(message.id) ? "Remove from Saved" : "Save Message",
+      icon: actions.savedIds?.has(message.id) ? <BookmarkX className={icon} aria-hidden /> : <Bookmark className={icon} aria-hidden />,
+      onSelect: () => actions.onSave?.(message, !actions.savedIds?.has(message.id)),
+      hidden: !settled || !actions.onSave,
+    },
+    { label: "Mark Unread", icon: <MailOpen className={icon} aria-hidden />, onSelect: () => actions.onMarkUnread?.(message), hidden: !settled || !actions.onMarkUnread },
     { label: "Copy text", icon: <Copy className={icon} aria-hidden />, onSelect: () => void copyText(message.content, "Message"), hidden: !message.content },
     { label: "Delete message", icon: <Trash2 className={icon} aria-hidden />, danger: true, onSelect: () => actions.onDelete(message, false), hidden: !settled || !(mine || canModerate) },
   ];
