@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import type { AdminOverview, AdminSnapshot, AdminUser, AuditEntry, Broadcast } from "@/lib/admin";
+import type { AdminOverview, AdminSnapshot, AdminUser, AuditEntry, Broadcast, SiteTraffic } from "@/lib/admin";
 import { isSuperAdmin, listVoiceRooms } from "@/lib/admin-server";
 import { getSessionUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -10,7 +10,7 @@ const noStore = { "Cache-Control": "no-store" };
  * GET /api/admin/snapshot?q=<search>
  * Everything the Control Center shows in one round trip: headline numbers, the network roster
  * (server-side search by username, display name or email), live LiveKit rooms, the latest audit
- * entries, broadcasts and problem reports. Super admins only — verified here and again by every RPC and RLS policy.
+ * entries, broadcasts, problem reports and site traffic. Super admins only — verified here and again by every RPC and RLS policy.
  */
 export async function GET(request: NextRequest) {
   const user = await getSessionUser();
@@ -19,12 +19,13 @@ export async function GET(request: NextRequest) {
 
   const q = request.nextUrl.searchParams.get("q")?.trim().slice(0, 64) || null;
   const supabase = await createClient();
-  const [overview, users, audit, broadcasts, reports, voice] = await Promise.all([
+  const [overview, users, audit, broadcasts, reports, traffic, voice] = await Promise.all([
     supabase.rpc("admin_overview"),
     supabase.rpc("admin_list_users", { p_query: q, p_limit: 500 }),
     supabase.from("admin_audit_logs").select("*").order("created_at", { ascending: false }).limit(80),
     supabase.from("system_broadcasts").select("*").order("created_at", { ascending: false }).limit(25),
     supabase.from("problem_reports").select("*").order("created_at", { ascending: false }).limit(100),
+    supabase.rpc("admin_site_traffic"),
     listVoiceRooms(),
   ]);
   const failed = overview.error ?? users.error ?? audit.error ?? broadcasts.error;
@@ -45,6 +46,7 @@ export async function GET(request: NextRequest) {
     audit: (audit.data ?? []) as unknown as AuditEntry[],
     broadcasts: (broadcasts.data ?? []) as unknown as Broadcast[],
     reports: reports.error ? null : (reports.data ?? []),
+    traffic: traffic.error ? null : (traffic.data as unknown as SiteTraffic),
     generatedAt: new Date().toISOString(),
   };
   return NextResponse.json(body, { headers: noStore });

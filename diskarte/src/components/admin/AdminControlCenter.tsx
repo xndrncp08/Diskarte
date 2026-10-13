@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, LifeBuoy, Megaphone, Radio, RefreshCw, ScrollText, ShieldCheck } from "lucide-react";
+import { Activity, BarChart3, LifeBuoy, Megaphone, Radio, RefreshCw, ScrollText, ShieldCheck } from "lucide-react";
 import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { AuditTab } from "./AuditTab";
@@ -8,13 +8,15 @@ import { BroadcastComposer } from "./BroadcastComposer";
 import { formatAbsolute } from "./format";
 import { NetworkTab } from "./NetworkTab";
 import { ReportsTab } from "./ReportsTab";
+import { TrafficTab } from "./TrafficTab";
 import { useAdminSnapshot, useNow } from "./useAdminSnapshot";
 import { VoiceTab } from "./VoiceTab";
 
-type Tab = "network" | "voice" | "broadcast" | "reports" | "audit";
+type Tab = "network" | "traffic" | "voice" | "broadcast" | "reports" | "audit";
 
 const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
   { id: "network", label: "Network", icon: <Activity className="size-3.5" aria-hidden /> },
+  { id: "traffic", label: "Traffic", icon: <BarChart3 className="size-3.5" aria-hidden /> },
   { id: "voice", label: "Voice", icon: <Radio className="size-3.5" aria-hidden /> },
   { id: "broadcast", label: "Broadcast", icon: <Megaphone className="size-3.5" aria-hidden /> },
   { id: "reports", label: "Reports", icon: <LifeBuoy className="size-3.5" aria-hidden /> },
@@ -37,7 +39,7 @@ function Skeleton() {
 }
 
 /**
- * The Super Admin Control Center: network roster and presence inspector, live voice stages, the
+ * The Super Admin Control Center: network roster and presence inspector, site traffic, live voice stages, the
  * global announcement dispatcher, problem reports and the audit trail. Rendered inside the workspace's admin panel
  * (tablet and up) or as the /tambayan/admin page on phones. Only mounted for verified super admins.
  */
@@ -78,7 +80,7 @@ export function AdminControlCenter({ className }: { className?: string }) {
         </button>
       </header>
 
-      <div role="tablist" aria-label="Control Center sections" className="flex shrink-0 gap-1 border-b border-white/[0.06] px-2 py-1.5">
+      <div role="tablist" aria-label="Control Center sections" className="scrollbar-none flex shrink-0 gap-1 overflow-x-auto border-b border-white/[0.06] px-2 py-1.5">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -117,6 +119,8 @@ export function AdminControlCenter({ className }: { className?: string }) {
           <Skeleton />
         ) : tab === "network" ? (
           <NetworkTab snapshot={snap.data} now={now} query={query} setQuery={setQuery} onChanged={snap.refresh} />
+        ) : tab === "traffic" ? (
+          <TrafficTab snapshot={snap.data} />
         ) : tab === "voice" ? (
           <VoiceTab snapshot={snap.data} now={now} />
         ) : tab === "broadcast" ? (

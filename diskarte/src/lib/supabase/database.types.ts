@@ -449,6 +449,8 @@ export interface Database {
       };
       admin_retract_broadcast: { Args: { p_broadcast: string }; Returns: undefined };
       admin_set_report_status: { Args: { p_report: string; p_status: string; p_issue_url?: string | null }; Returns: undefined };
+      record_site_visit: { Args: { p_visitor: string }; Returns: undefined };
+      admin_site_traffic: { Args: Record<string, never>; Returns: Json };
     };
     Enums: {
       member_role: MemberRole;
