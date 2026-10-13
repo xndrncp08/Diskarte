@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { BadgeCheck, ChevronDown, ChevronsDownUp, ChevronsUpDown, GripVertical, Hash, HeadphoneOff, Heart, Link2, LogOut, MicOff, Pencil, Plus, Radio, Rocket, Settings, ShieldCheck, Trash2, UserPlus, Video, Volume2 } from "lucide-react";
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { deleteChannelAction, leaveServerAction, reorderChannelsAction } from "@/actions/servers";
 import { SupportDialog } from "@/components/community/SupportDialog";
@@ -24,6 +24,7 @@ import { CallDock } from "@/components/voice/CallDock";
 import { useCall, usePrewarm } from "@/components/voice/CallProvider";
 import { Menu, type MenuItem } from "@/components/ui/Menu";
 import { useOnline } from "@/hooks/useOnline";
+import { rememberChannel } from "@/lib/last-channel";
 import { boostLevel } from "@/lib/community";
 import { signalLevel, type PresencePayload } from "@/lib/presence";
 import { groupChannels, hasRole, type Channel, type MemberWithProfile } from "@/lib/servers";
@@ -330,6 +331,10 @@ export function ChannelSidebar() {
   const { me } = useMe();
   const { setNavOpen } = useShellUI();
   const params = useParams<{ channelId?: string }>();
+  // The rail reopens this server on the channel you were last in.
+  useEffect(() => {
+    if (params.channelId) rememberChannel(server.id, params.channelId);
+  }, [server.id, params.channelId]);
   const pathname = usePathname();
   const onLfg = pathname === `/tambayan/${server.id}/lfg`;
   const boost = boostLevel(members.filter((m) => badges.get(m.user_id)?.includes("booster")).length).level;

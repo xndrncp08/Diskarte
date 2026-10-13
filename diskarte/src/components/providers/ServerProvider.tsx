@@ -74,6 +74,23 @@ export function ServerProvider({ server: initialServer, channels: initialChannel
   const myRole = members.find((m) => m.user_id === me.id)?.role ?? initialRole;
   const serverId = server.id;
 
+  // The rail prefetches each server's shell, so this render's data can be a few minutes old: catch up once
+  // in the background (realtime keeps it current from here).
+  useEffect(() => {
+    let live = true;
+    void Promise.all([
+      supabase.from("channels").select("*").eq("server_id", serverId).order("position").order("created_at"),
+      supabase.from("members").select("*, profile:profiles!inner(*)").eq("server_id", serverId).order("joined_at"),
+    ]).then(([c, m]) => {
+      if (!live) return;
+      if (c.data) setChannels(c.data);
+      if (m.data) setMembers(m.data as MemberWithProfile[]);
+    });
+    return () => {
+      live = false;
+    };
+  }, [supabase, serverId]);
+
   // ---- postgres_changes: channels / members / server row --------------------------------
   useEffect(() => {
     const fetchProfile = async (userId: string) => {

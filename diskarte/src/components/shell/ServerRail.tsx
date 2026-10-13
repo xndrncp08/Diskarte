@@ -9,6 +9,7 @@ import { DiskarteLogo } from "@/components/brand/DiskarteLogo";
 import { useOptionalSocial } from "@/components/providers/SocialProvider";
 import { Tooltip } from "@/components/ui/Tooltip";
 import type { Server } from "@/lib/servers";
+import { lastChannelIn, readLastChannels, subscribeLastChannels } from "@/lib/last-channel";
 import { cn } from "@/lib/utils";
 import { NotificationHub } from "@/components/workspace/NotificationHub";
 import { WorkspacePresets } from "@/components/workspace/WorkspacePresets";
@@ -31,15 +32,22 @@ function Pill({ active }: { active: boolean }) {
   );
 }
 
+type RailEntry = Server & { entryChannelId?: string | null };
+
 /** A server node on the rail; right-click for its menu (copy invite, leave…). */
-function RailServer({ server, active, official = false }: { server: Server; active: boolean; official?: boolean }) {
+function RailServer({ server, active, official = false }: { server: RailEntry; active: boolean; official?: boolean }) {
   const menu = useContextMenu();
+  // Straight to the channel you last had open (else the first one): no redirect hop, and the link can
+  // prefetch the server's whole shell ahead of the click.
+  const last = useSyncExternalStore(subscribeLastChannels, readLastChannels, () => "{}");
+  const channelId = lastChannelIn(last, server.id) ?? server.entryChannelId;
+  const href = channelId ? `/tambayan/${server.id}/${channelId}` : `/tambayan/${server.id}`;
   return (
     <>
       {official ? (
         <Tooltip label={`${server.name} · Official`}>
           <Link
-            href={`/tambayan/${server.id}`}
+            href={href}
             aria-label={`${server.name} (official)`}
             aria-current={active ? "page" : undefined}
             className="group relative flex"
@@ -55,7 +63,7 @@ function RailServer({ server, active, official = false }: { server: Server; acti
         </Tooltip>
       ) : (
         <Tooltip label={server.name}>
-          <Link href={`/tambayan/${server.id}`} aria-label={server.name} aria-current={active ? "page" : undefined} draggable={false} className="group relative flex" {...menu.triggerProps}>
+          <Link href={href} aria-label={server.name} aria-current={active ? "page" : undefined} draggable={false} className="group relative flex" {...menu.triggerProps}>
             <Pill active={active} />
             <ServerIcon server={server} active={active} />
           </Link>
@@ -104,7 +112,7 @@ export function sortByOrder(ids: string[], saved: string) {
 }
 
 /** A reorderable rail node: mice drag the icon (it lifts after a few pixels, so clicks still open it); Alt+↑/↓ moves it too. */
-function RailItem({ server, active, onDragEnd, onMove }: { server: Server; active: boolean; onDragEnd: () => void; onMove: (delta: -1 | 1) => void }) {
+function RailItem({ server, active, onDragEnd, onMove }: { server: RailEntry; active: boolean; onDragEnd: () => void; onMove: (delta: -1 | 1) => void }) {
   const drag = useDragControls();
   // A dragged icon must not also follow its link on release.
   const dragged = useRef(false);
@@ -181,7 +189,7 @@ function ControlCenterButton() {
  * The floating command rail: the mascot (Home), quick server-switcher nodes, the notification hub and
  * workspace layout presets. A glass column on tablets and up; the left part of the drawer on phones.
  */
-export function ServerRail({ servers }: { servers: Server[] }) {
+export function ServerRail({ servers }: { servers: RailEntry[] }) {
   const params = useParams<{ serverId?: string }>();
   const activeId = params.serverId;
   const [adding, setAdding] = useState(false);

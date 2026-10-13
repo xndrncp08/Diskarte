@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { ChatView } from "@/components/chat/ChatView";
 import { VoiceChannelView } from "@/components/voice/VoiceChannelView";
 import { requireProfile } from "@/lib/auth";
@@ -21,7 +21,8 @@ export default async function ChannelPage({ params }: PageProps<"/tambayan/[serv
     getChannel(serverId, channelId),
     getChannelHistory(channelId),
   ]);
-  if (!channel) notFound();
+  // A remembered or shared link to a channel that's gone: open the server instead (its index 404s non-members).
+  if (!channel) redirect(`/tambayan/${serverId}`);
   if (channel.type === "voice") return <VoiceChannelView channel={channel} />;
   return <ChatView key={channel.id} channel={channel} initial={history} />;
 }
