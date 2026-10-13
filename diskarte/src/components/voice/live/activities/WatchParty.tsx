@@ -2,7 +2,7 @@
 
 import { Pause, Play, RefreshCw, RotateCcw, RotateCw, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { expectedPosition, needsResync, playerCommand, youtubeEmbedUrl, type WatchState } from "@/lib/youtube";
+import { expectedPosition, formatClock, needsResync, playerCommand, youtubeEmbedUrl, type WatchState } from "@/lib/youtube";
 
 const PLAYER_ORIGIN = "https://www.youtube-nocookie.com";
 
@@ -15,6 +15,11 @@ export function WatchParty({ state, onChange }: { state: WatchState; onChange: (
   const frame = useRef<HTMLIFrameElement>(null);
   const localTime = useRef(0);
   const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(100);
+  // Length and where the player is (from its infoDelivery events); `scrub` while the seek bar is held.
+  const [duration, setDuration] = useState(0);
+  const [time, setTime] = useState(0);
+  const [scrub, setScrub] = useState<number | null>(null);
   const [origin] = useState(() => (typeof window === "undefined" ? "" : window.location.origin));
 
   const send = (message: string) => frame.current?.contentWindow?.postMessage(message, PLAYER_ORIGIN);
@@ -24,8 +29,13 @@ export function WatchParty({ state, onChange }: { state: WatchState; onChange: (
     const onMessage = (e: MessageEvent) => {
       if (e.origin !== PLAYER_ORIGIN || e.source !== frame.current?.contentWindow || typeof e.data !== "string") return;
       try {
-        const data = JSON.parse(e.data) as { event?: string; info?: { currentTime?: number } };
-        if (data.event === "infoDelivery" && typeof data.info?.currentTime === "number") localTime.current = data.info.currentTime;
+        const data = JSON.parse(e.data) as { event?: string; info?: { currentTime?: number; duration?: number } };
+        if (data.event !== "infoDelivery" && data.event !== "initialDelivery") return;
+        if (typeof data.info?.currentTime === "number") {
+          localTime.current = data.info.currentTime;
+          setTime(data.info.currentTime);
+        }
+        if (typeof data.info?.duration === "number" && data.info.duration > 0) setDuration(data.info.duration);
       } catch {
         // Not a player message.
       }
@@ -55,6 +65,14 @@ export function WatchParty({ state, onChange }: { state: WatchState; onChange: (
 
   const now = () => Date.now();
   const at = () => expectedPosition(state, now());
+  /** Seeks everyone in the call. */
+  const seek = (seconds: number) => onChange({ ...state, position: Math.max(0, duration ? Math.min(duration, seconds) : seconds), at: now() });
+  const commitScrub = () => {
+    if (scrub === null) return;
+    seek(scrub);
+    setScrub(null);
+  };
+  const shown = scrub ?? time;
 
   return (
     <div className="flex w-full max-w-3xl flex-col gap-2" data-testid="watch-party">
@@ -70,8 +88,28 @@ export function WatchParty({ state, onChange }: { state: WatchState; onChange: (
           className="absolute inset-0 size-full"
         />
       </div>
+      {/* Seek bar: dragging or the arrow keys move the video for everyone. */}
+      <div className="flex items-center gap-2 px-1 text-[11px] tabular-nums text-slate-400">
+        <span className="w-12 text-right">{formatClock(shown)}</span>
+        <input
+          type="range"
+          min={0}
+          max={Math.max(1, Math.round(duration))}
+          step={1}
+          value={Math.min(Math.round(shown), Math.max(1, Math.round(duration)))}
+          disabled={!duration}
+          aria-label="Seek (for everyone)"
+          aria-valuetext={`${formatClock(shown)} of ${formatClock(duration)}`}
+          onChange={(e) => setScrub(Number(e.target.value))}
+          onPointerUp={commitScrub}
+          onKeyUp={commitScrub}
+          onBlur={commitScrub}
+          className="h-1.5 min-w-0 flex-1 cursor-pointer accent-sun disabled:cursor-default disabled:opacity-40"
+        />
+        <span className="w-12">{duration ? formatClock(duration) : "–:––"}</span>
+      </div>
       <div className="flex items-center justify-center gap-1.5" role="toolbar" aria-label="Watch party controls">
-        <button type="button" aria-label="Back 10 seconds" onClick={() => onChange({ ...state, position: Math.max(0, at() - 10), at: now() })} className="rounded-lg bg-white/10 p-2 text-slate-200 hover:bg-white/20">
+        <button type="button" aria-label="Back 10 seconds" onClick={() => seek(at() - 10)} className="rounded-lg bg-white/10 p-2 text-slate-200 hover:bg-white/20">
           <RotateCcw className="size-4" aria-hidden />
         </button>
         <button
@@ -82,7 +120,7 @@ export function WatchParty({ state, onChange }: { state: WatchState; onChange: (
         >
           {state.playing ? <Pause className="size-4" aria-hidden /> : <Play className="size-4" aria-hidden />}
         </button>
-        <button type="button" aria-label="Forward 10 seconds" onClick={() => onChange({ ...state, position: at() + 10, at: now() })} className="rounded-lg bg-white/10 p-2 text-slate-200 hover:bg-white/20">
+        <button type="button" aria-label="Forward 10 seconds" onClick={() => seek(at() + 10)} className="rounded-lg bg-white/10 p-2 text-slate-200 hover:bg-white/20">
           <RotateCw className="size-4" aria-hidden />
         </button>
         <button type="button" aria-label="Resync" title="Resync" onClick={() => send(playerCommand("seekTo", [at(), true]))} className="rounded-lg bg-white/10 p-2 text-slate-200 hover:bg-white/20">
@@ -99,6 +137,23 @@ export function WatchParty({ state, onChange }: { state: WatchState; onChange: (
         >
           {muted ? <VolumeX className="size-4" aria-hidden /> : <Volume2 className="size-4" aria-hidden />}
         </button>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={muted ? 0 : volume}
+          aria-label="Video volume (just you)"
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            setVolume(v);
+            send(playerCommand("setVolume", [v]));
+            if (v > 0 && muted) {
+              send(playerCommand("unMute"));
+              setMuted(false);
+            }
+          }}
+          className="h-1.5 w-24 cursor-pointer accent-sun"
+        />
       </div>
     </div>
   );
