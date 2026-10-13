@@ -12,6 +12,7 @@ import { ChannelHeader } from "@/components/server/ChannelHeader";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { mentionsUser, useChannelChat, type ChatMessage } from "@/hooks/useChannelChat";
+import { useTimedOut } from "@/hooks/useTimedOut";
 import { useTyping } from "@/hooks/useTyping";
 import { isGroupedWithPrevious, sameDay } from "@/lib/chat-format";
 import { READ_ONLY_NOTICE, VERIFY_NOTICE, type MessageWithAuthor, type Reaction } from "@/lib/messages";
@@ -54,7 +55,13 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
   // Read-only channels (Diskarte HQ's #announcements) take posts from admins only — the database enforces
   // it too; verification-gated channels need a confirmed account.
   const readOnly = channel.read_only && myRole !== "admin";
-  const locked = readOnly ? READ_ONLY_NOTICE : channel.requires_verification && !verified && !canModerate ? VERIFY_NOTICE : null;
+  const timeoutUntil = members.find((m) => m.user_id === me.id)?.timeout_until;
+  const timedOut = useTimedOut(timeoutUntil);
+  const locked = timedOut
+    ? `You're timed out until ${new Date(timeoutUntil!).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}. You can still read, but can't send messages or react.`
+    : readOnly
+      ? READ_ONLY_NOTICE
+      : channel.requires_verification && !verified && !canModerate ? VERIFY_NOTICE : null;
   const [threadRootId, setThreadRootId] = useState<string | null>(null);
 
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
@@ -324,7 +331,7 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
           cooldownUntil={chat.cooldownUntil}
           slowmodeSeconds={canModerate ? 0 : channel.slowmode_seconds}
           locked={locked}
-          lockKind={readOnly ? "read-only" : "verification"}
+          lockKind={timedOut ? "timeout" : readOnly ? "read-only" : "verification"}
         />
       </motion.section>
 

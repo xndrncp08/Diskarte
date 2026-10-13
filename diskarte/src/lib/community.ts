@@ -76,6 +76,16 @@ export function parseTermList(raw: string): string[] {
     .filter(Boolean);
 }
 
+/** Discord's timeout lengths (timeout_member() accepts exactly these). */
+export const TIMEOUT_OPTIONS = [
+  { minutes: 1, label: "60 seconds" },
+  { minutes: 5, label: "5 minutes" },
+  { minutes: 10, label: "10 minutes" },
+  { minutes: 60, label: "1 hour" },
+  { minutes: 1440, label: "1 day" },
+  { minutes: 10080, label: "1 week" },
+] as const;
+
 export const SLOWMODE_OPTIONS: { value: number; label: string }[] = [
   { value: 0, label: "Off" },
   { value: 5, label: "5s" },
@@ -133,6 +143,14 @@ export function describeAudit(entry: Pick<AuditEntry, "action" | "actor_id" | "t
       return `${actor} banned ${target}${str(m.reason) ? ` — ${str(m.reason)}` : ""}`;
     case "member.unban":
       return `${actor} unbanned ${target}`;
+    case "member.timeout": {
+      const length = TIMEOUT_OPTIONS.find((o) => o.minutes === m.minutes)?.label ?? "a while";
+      return `${actor} timed out ${target} for ${length}${str(m.reason) ? ` — ${str(m.reason)}` : ""}`;
+    }
+    case "member.timeout_remove":
+      return `${actor} removed ${target}'s timeout`;
+    case "member.warn":
+      return `${actor} warned ${target} — ${str(m.reason)}`;
     case "member.role_update":
       return `${actor} changed ${target}'s role: ${str(m.from)} → ${str(m.to)}`;
     case "channel.create":
@@ -215,6 +233,11 @@ export function minutesLeft(expiresAt: string, now = Date.now()) {
 const COMMUNITY_ERRORS: Record<string, string> = {
   BANNED: "You're banned from this server.",
   CANNOT_BAN_MEMBER: "You can't ban that member.",
+  TIMED_OUT: "You're timed out in this server for now.",
+  CANNOT_TIMEOUT_MEMBER: "You can't time out that member.",
+  INVALID_TIMEOUT: "Pick one of the timeout lengths.",
+  CANNOT_WARN_MEMBER: "You can't warn that member.",
+  INVALID_WARNING: "Say why (up to 300 characters).",
   SLOWMODE: "Slow mode is on — take it easy.",
   VERIFICATION_REQUIRED: "Verify your email or phone number before chatting in this channel.",
   AUTOMOD_BLOCKED: "Bantay-Bayan auto-mod blocked your message.",

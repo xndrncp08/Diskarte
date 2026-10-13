@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ServerProvider } from "@/components/providers/ServerProvider";
 import { ChannelSidebar } from "@/components/server/ChannelSidebar";
 import { MemberList } from "@/components/server/MemberList";
+import { WarningNotice } from "@/components/server/WarningNotice";
 import { RosterDrawer } from "@/components/workspace/RosterDrawer";
 import { WorkspacePanel } from "@/components/workspace/WorkspacePanel";
 import { requireProfile } from "@/lib/auth";
@@ -27,6 +28,7 @@ export default async function ServerLayout({ children, params }: LayoutProps<"/t
       <WorkspacePanel id="main" title={bundle.server.name}>
         {children}
       </WorkspacePanel>
+      <WarningNotice />
       <RosterDrawer count={bundle.members.length}>
         <MemberList />
       </RosterDrawer>

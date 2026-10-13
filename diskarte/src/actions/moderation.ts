@@ -1,9 +1,12 @@
 "use server";
 
+import { RoomServiceClient } from "livekit-server-sdk";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getSessionUser } from "@/lib/auth";
-import { automodSettingsSchema, communityError, supportSettingsSchema } from "@/lib/community";
+import { automodSettingsSchema, communityError, supportSettingsSchema, TIMEOUT_OPTIONS } from "@/lib/community";
+import { getPublicEnv, getServerEnv } from "@/lib/env";
+import { voiceRoomName } from "@/lib/livekit";
 import { fieldErrors } from "@/lib/profile";
 import { limiters } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
@@ -73,6 +76,52 @@ export async function banMemberAction(input: { serverId: string; userId: string;
   const supabase = await createClient();
   const { error } = await supabase.rpc("ban_member", { p_server_id: parsed.data.serverId, p_user_id: parsed.data.userId, p_reason: parsed.data.reason.trim() });
   if (error) return { ok: false, error: communityError(error.message, "Couldn't ban.") };
+  return { ok: true };
+}
+
+/** Discord's Timeout: they keep reading but can't send, react or talk until it ends. */
+export async function timeoutMemberAction(input: { serverId: string; userId: string; minutes: number; reason?: string }): Promise<ActionResult> {
+  const { limited } = await authed();
+  if (limited) return RATE_LIMITED;
+  const parsed = memberIds
+    .extend({ minutes: z.number().refine((m) => TIMEOUT_OPTIONS.some((o) => o.minutes === m), "Pick a timeout length"), reason: z.string().max(200, "200 characters max").default("") })
+    .safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid request" };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("timeout_member", { p_server: parsed.data.serverId, p_user: parsed.data.userId, p_minutes: parsed.data.minutes, p_reason: parsed.data.reason.trim() });
+  if (error) return { ok: false, error: communityError(error.message, "Couldn't time them out.") };
+  // Out of any voice channel they're in; the token route won't let them back until it ends.
+  const { data: rooms } = await supabase.from("channels").select("id").eq("server_id", parsed.data.serverId).eq("type", "voice");
+  try {
+    const { livekitUrl } = getPublicEnv();
+    const { livekitApiKey, livekitApiSecret } = getServerEnv();
+    const lk = new RoomServiceClient(livekitUrl.replace(/^ws/, "http"), livekitApiKey, livekitApiSecret);
+    await Promise.allSettled((rooms ?? []).map((r) => lk.removeParticipant(voiceRoomName(r.id), parsed.data.userId)));
+  } catch {
+    // Voice isn't configured here; nothing to disconnect.
+  }
+  return { ok: true };
+}
+
+export async function removeTimeoutAction(input: { serverId: string; userId: string }): Promise<ActionResult> {
+  const { limited } = await authed();
+  if (limited) return RATE_LIMITED;
+  const parsed = memberIds.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid request" };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("remove_timeout", { p_server: parsed.data.serverId, p_user: parsed.data.userId });
+  if (error) return { ok: false, error: communityError(error.message, "Couldn't remove the timeout.") };
+  return { ok: true };
+}
+
+export async function warnMemberAction(input: { serverId: string; userId: string; reason: string }): Promise<ActionResult> {
+  const { limited } = await authed();
+  if (limited) return RATE_LIMITED;
+  const parsed = memberIds.extend({ reason: z.string().trim().min(1, "Say why").max(300, "300 characters max") }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid request" };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("warn_member", { p_server: parsed.data.serverId, p_user: parsed.data.userId, p_reason: parsed.data.reason });
+  if (error) return { ok: false, error: communityError(error.message, "Couldn't warn them.") };
   return { ok: true };
 }
 

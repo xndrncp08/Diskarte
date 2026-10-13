@@ -71,6 +71,8 @@ describe("Bantay-Bayan helpers", () => {
   it("describes audit entries in plain language", () => {
     const name = (id: string | null | undefined) => ({ u1: "Maria", u2: "Troll", u3: "Juan" })[id ?? ""] ?? "Someone";
     expect(describeAudit({ action: "member.ban", actor_id: "u1", target_id: "u2", metadata: { reason: "spam" } }, name)).toBe("Maria banned Troll — spam");
+    expect(describeAudit({ action: "member.timeout", actor_id: "u1", target_id: "u2", metadata: { minutes: 60, reason: "" } }, name)).toBe("Maria timed out Troll for 1 hour");
+    expect(describeAudit({ action: "member.warn", actor_id: "u1", target_id: "u2", metadata: { reason: "no spam" } }, name)).toBe("Maria warned Troll — no spam");
     expect(describeAudit({ action: "member.role_update", actor_id: "u1", target_id: "u3", metadata: { from: "member", to: "moderator" } }, name)).toBe(
       "Maria changed Juan's role: member → moderator",
     );
