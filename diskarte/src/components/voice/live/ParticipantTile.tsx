@@ -79,3 +79,19 @@ export function ParticipantTile({ trackRef, className, compact = false }: { trac
     </div>
   );
 }
+
+/** A screen share you aren't watching: who's sharing and a Watch button (its video isn't downloaded until then). */
+export function UnwatchedScreen({ trackRef, onWatch, className }: { trackRef: TrackReferenceOrPlaceholder; onWatch: () => void; className?: string }) {
+  const who = useParticipantProfile(trackRef.participant);
+  return (
+    <div className={cn("flex flex-col items-center justify-center gap-2 rounded-2xl border border-white/10 bg-black/60 p-3 text-center", className)} data-testid="unwatched-screen">
+      <MonitorUp className="size-5 text-sun" aria-hidden />
+      <p className="text-xs text-slate-300">
+        <span className="font-semibold text-white">{who.name}</span> is sharing their screen
+      </p>
+      <button type="button" onClick={onWatch} className="rounded-lg bg-sun px-3 py-1 text-xs font-bold text-abyss transition-colors hover:bg-sun-deep">
+        Watch
+      </button>
+    </div>
+  );
+}

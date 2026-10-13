@@ -2,14 +2,15 @@
 
 import { RoomContext, useTracks, type TrackReferenceOrPlaceholder } from "@livekit/components-react";
 import { Track } from "livekit-client";
-import { Maximize, Minimize } from "lucide-react";
+import { EyeOff, Maximize, Minimize } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { bestGrid } from "@/lib/voice-layout";
 import { cn } from "@/lib/utils";
 import { ActivitiesMenu, ActivityStage } from "./activities/ActivityStage";
 import { useActivity } from "./activities/useActivity";
-import { ParticipantTile } from "./ParticipantTile";
+import { ParticipantTile, UnwatchedScreen } from "./ParticipantTile";
 import { SoundboardPanel } from "./SoundboardPanel";
+import { trackKey, useScreenWatch } from "./useScreenWatch";
 import { useCall } from "../CallProvider";
 import { VoiceControls } from "../VoiceControls";
 import { MixerButton } from "../AudioMixer";
@@ -27,13 +28,11 @@ function useSize<T extends HTMLElement>() {
   return [ref, size] as const;
 }
 
-const trackKey = (t: TrackReferenceOrPlaceholder) => `${t.participant.identity}:${t.source}`;
-
 /**
  * Screen share "focus mode": true fullscreen where the Fullscreen API exists, otherwise (iOS
  * Safari) a fixed full-viewport overlay. Escape leaves either.
  */
-function FocusableScreen({ trackRef }: { trackRef: TrackReferenceOrPlaceholder }) {
+function FocusableScreen({ trackRef, onStop }: { trackRef: TrackReferenceOrPlaceholder; onStop: () => void }) {
   const box = useRef<HTMLDivElement>(null);
   const [overlay, setOverlay] = useState(false);
   const [native, setNative] = useState(false);
@@ -71,15 +70,22 @@ function FocusableScreen({ trackRef }: { trackRef: TrackReferenceOrPlaceholder }
   return (
     <div ref={box} className={cn("group/screen relative min-h-0 flex-1 bg-black", overlay && "fixed inset-0 z-50", focused && "flex")} data-testid="screen-focus" data-focused={focused || undefined}>
       <ParticipantTile trackRef={trackRef} className={cn("size-full", focused && "rounded-none border-0")} />
-      <button
-        type="button"
-        onClick={() => void toggle()}
-        aria-label={focused ? "Exit focus mode" : "Focus mode (fullscreen)"}
-        className="absolute right-3 top-3 flex items-center gap-1.5 rounded-lg bg-black/70 px-2.5 py-1.5 text-xs font-semibold text-white opacity-0 backdrop-blur transition-opacity hover:bg-black/90 focus:opacity-100 group-hover/screen:opacity-100 pointer-coarse:opacity-100"
-      >
-        {focused ? <Minimize className="size-4" aria-hidden /> : <Maximize className="size-4" aria-hidden />}
-        {focused ? "Exit" : "Focus"}
-      </button>
+      <div className="absolute right-3 top-3 flex gap-1.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover/screen:opacity-100 pointer-coarse:opacity-100">
+        {!focused && (
+          <button type="button" onClick={onStop} className="flex items-center gap-1.5 rounded-lg bg-black/70 px-2.5 py-1.5 text-xs font-semibold text-white backdrop-blur hover:bg-black/90">
+            <EyeOff className="size-4" aria-hidden /> Stop watching
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => void toggle()}
+          aria-label={focused ? "Exit focus mode" : "Focus mode (fullscreen)"}
+          className="flex items-center gap-1.5 rounded-lg bg-black/70 px-2.5 py-1.5 text-xs font-semibold text-white backdrop-blur hover:bg-black/90"
+        >
+          {focused ? <Minimize className="size-4" aria-hidden /> : <Maximize className="size-4" aria-hidden />}
+          {focused ? "Exit" : "Focus"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -106,29 +112,36 @@ function Stage() {
   );
   const screens = tracks.filter((t) => t.source === Track.Source.ScreenShare);
   const cameras = tracks.filter((t) => t.source === Track.Source.Camera);
-  const [focusKey, setFocusKey] = useState<string | null>(null);
+  const { watched, watch } = useScreenWatch(screens);
+  const unwatched = screens.filter((s) => s !== watched);
   const [gridRef, size] = useSize<HTMLDivElement>();
-
-  const focused = screens.find((s) => trackKey(s) === focusKey) ?? screens[0];
-  const grid = bestGrid(cameras.length, size.width, size.height);
+  const grid = bestGrid(cameras.length + (watched ? 0 : unwatched.length), size.width, size.height);
   const activity = useActivity();
 
   return (
     <div className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4" data-testid="voice-stage">
       <ActivityStage controls={activity} />
-      {focused ? (
+      {watched ? (
         <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
-          <FocusableScreen key={trackKey(focused)} trackRef={focused} />
+          <FocusableScreen key={trackKey(watched)} trackRef={watched} onStop={() => watch(null)} />
           <div className="scrollbar-thin flex shrink-0 gap-3 overflow-auto lg:w-56 lg:flex-col">
-            {[...screens.filter((s) => s !== focused), ...cameras].map((t) => (
-              <button key={trackKey(t)} type="button" onClick={() => t.source === Track.Source.ScreenShare && setFocusKey(trackKey(t))} className="aspect-video w-48 shrink-0 lg:w-full">
+            {unwatched.map((t) => (
+              <UnwatchedScreen key={trackKey(t)} trackRef={t} onWatch={() => watch(trackKey(t))} className="aspect-video w-48 shrink-0 lg:w-full" />
+            ))}
+            {cameras.map((t) => (
+              <div key={trackKey(t)} className="aspect-video w-48 shrink-0 lg:w-full">
                 <ParticipantTile trackRef={t} compact className="size-full" />
-              </button>
+              </div>
             ))}
           </div>
         </div>
       ) : (
         <div ref={gridRef} className="flex min-h-0 flex-1 flex-wrap content-center items-center justify-center gap-3">
+          {unwatched.map((t) => (
+            <div key={trackKey(t)} style={{ width: grid.tileWidth || undefined, aspectRatio: "16 / 9" }} className="min-w-40">
+              <UnwatchedScreen trackRef={t} onWatch={() => watch(trackKey(t))} className="size-full" />
+            </div>
+          ))}
           {cameras.map((t) => (
             <div key={trackKey(t)} style={{ width: grid.tileWidth || undefined, aspectRatio: "16 / 9" }} className="min-w-40">
               <ParticipantTile trackRef={t} className="size-full" />
