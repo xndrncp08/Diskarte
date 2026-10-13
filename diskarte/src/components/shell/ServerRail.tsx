@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, Reorder, useDragControls } from "framer-motion";
 import { BadgeCheck, Plus, ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import { DiskarteLogo } from "@/components/brand/DiskarteLogo";
 import { useOptionalSocial } from "@/components/providers/SocialProvider";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -55,7 +55,7 @@ function RailServer({ server, active, official = false }: { server: Server; acti
         </Tooltip>
       ) : (
         <Tooltip label={server.name}>
-          <Link href={`/tambayan/${server.id}`} aria-label={server.name} aria-current={active ? "page" : undefined} className="group relative flex" {...menu.triggerProps}>
+          <Link href={`/tambayan/${server.id}`} aria-label={server.name} aria-current={active ? "page" : undefined} draggable={false} className="group relative flex" {...menu.triggerProps}>
             <Pill active={active} />
             <ServerIcon server={server} active={active} />
           </Link>
@@ -63,6 +63,80 @@ function RailServer({ server, active, official = false }: { server: Server; acti
       )}
       <ServerContextMenu menu={menu} server={server} />
     </>
+  );
+}
+
+// The rail's server order is personal, so it lives in this browser (new servers join at the bottom).
+// shortcut: per browser, not synced across devices; move it to a server_members column if people ask.
+const ORDER_KEY = "diskarte:server-order";
+const orderListeners = new Set<() => void>();
+let memoryOrder: string | null = null;
+
+function readOrder() {
+  try {
+    return localStorage.getItem(ORDER_KEY) ?? "";
+  } catch {
+    return memoryOrder ?? "";
+  }
+}
+
+function saveOrder(ids: string[]) {
+  memoryOrder = ids.join(",");
+  try {
+    localStorage.setItem(ORDER_KEY, memoryOrder);
+  } catch {
+    // Private mode: keep it for this session only.
+  }
+  orderListeners.forEach((l) => l());
+}
+
+function subscribeOrder(listener: () => void) {
+  orderListeners.add(listener);
+  return () => {
+    orderListeners.delete(listener);
+  };
+}
+
+/** Saved ids first, in their saved order; servers the saved order doesn't know keep their place after them. */
+export function sortByOrder(ids: string[], saved: string) {
+  const rank = new Map(saved.split(",").map((id, i) => [id, i]));
+  return [...ids].sort((a, b) => (rank.get(a) ?? Infinity) - (rank.get(b) ?? Infinity) || ids.indexOf(a) - ids.indexOf(b));
+}
+
+/** A reorderable rail node: mice drag the icon (it lifts after a few pixels, so clicks still open it); Alt+↑/↓ moves it too. */
+function RailItem({ server, active, onDragEnd, onMove }: { server: Server; active: boolean; onDragEnd: () => void; onMove: (delta: -1 | 1) => void }) {
+  const drag = useDragControls();
+  // A dragged icon must not also follow its link on release.
+  const dragged = useRef(false);
+  return (
+    <Reorder.Item
+      as="li"
+      value={server.id}
+      dragListener={false}
+      dragControls={drag}
+      onDragStart={() => (dragged.current = true)}
+      onDragEnd={onDragEnd}
+      whileDrag={{ scale: 1.1, zIndex: 10 }}
+      transition={{ type: "spring", stiffness: 600, damping: 40, mass: 0.6 }}
+      className="relative [&_img]:[-webkit-user-drag:none]"
+      onPointerDown={(e) => {
+        dragged.current = false;
+        if (e.pointerType === "mouse" && e.button === 0) drag.start(e);
+      }}
+      onClickCapture={(e) => {
+        if (dragged.current) e.preventDefault();
+      }}
+      onKeyDown={(e) => {
+        if (!e.altKey || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+        e.preventDefault();
+        const focused = e.target as HTMLElement;
+        onMove(e.key === "ArrowUp" ? -1 : 1);
+        // React moves the node, which drops focus; keep it for repeated presses.
+        requestAnimationFrame(() => focused.focus());
+      }}
+    >
+      <RailServer server={server} active={active} />
+    </Reorder.Item>
   );
 }
 
@@ -115,7 +189,16 @@ export function ServerRail({ servers }: { servers: Server[] }) {
   const workspace = useOptionalWorkspaceStore();
   // Diskarte HQ, the global server everyone belongs to, is pinned first with a gold ring.
   const hq = servers.find((s) => s.is_system);
-  const others = servers.filter((s) => !s.is_system);
+  const byId = new Map(servers.filter((s) => !s.is_system).map((s) => [s.id, s]));
+  const saved = useSyncExternalStore(subscribeOrder, readOrder, () => "");
+  // The order being dragged; a ref too, so drag-end reads the final order.
+  const [dragIds, setDragIds] = useState<string[] | null>(null);
+  const dragRef = useRef(dragIds);
+  function drafting(ids: string[] | null) {
+    dragRef.current = ids;
+    setDragIds(ids);
+  }
+  const ids = dragIds ?? sortByOrder([...byId.keys()], saved);
 
   return (
     <div
@@ -138,13 +221,27 @@ export function ServerRail({ servers }: { servers: Server[] }) {
         </Tooltip>
         <div className="mx-auto h-0.5 w-8 shrink-0 rounded bg-white/10" />
         {hq && <RailServer server={hq} active={activeId === hq.id} official />}
-        <ul className="flex flex-col items-center gap-2" data-testid="server-list">
-          {others.map((server) => (
-            <li key={server.id}>
-              <RailServer server={server} active={activeId === server.id} />
-            </li>
+        <Reorder.Group as="ul" axis="y" values={ids} onReorder={drafting} className="flex flex-col items-center gap-2" data-testid="server-list">
+          {ids.flatMap((id) => byId.get(id) ?? []).map((server) => (
+            <RailItem
+              key={server.id}
+              server={server}
+              active={activeId === server.id}
+              onDragEnd={() => {
+                if (dragRef.current) saveOrder(dragRef.current);
+                drafting(null);
+              }}
+              onMove={(delta) => {
+                const next = [...ids];
+                const from = next.indexOf(server.id);
+                const to = from + delta;
+                if (to < 0 || to >= next.length) return;
+                [next[from], next[to]] = [next[to], next[from]];
+                saveOrder(next);
+              }}
+            />
           ))}
-        </ul>
+        </Reorder.Group>
         <Tooltip label="Create or join a server">
           <button
             type="button"
