@@ -7,7 +7,8 @@ import { getSessionUser } from "@/lib/auth";
 import { getPublicEnv, getServerEnv } from "@/lib/env";
 import { voiceRoomName } from "@/lib/livekit";
 import { limiters } from "@/lib/rate-limit";
-import { canManageMember, uuidSchema } from "@/lib/servers";
+import { canManageMember } from "@/lib/servers";
+import { uuidSchema } from "@/lib/schemas/servers";
 import { createClient } from "@/lib/supabase/server";
 import type { MemberRole } from "@/lib/supabase/database.types";
 

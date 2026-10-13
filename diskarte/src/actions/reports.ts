@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getSessionUser } from "@/lib/auth";
 import { fieldErrors } from "@/lib/profile";
 import { limiters } from "@/lib/rate-limit";
-import { reportSchema } from "@/lib/reports";
+import { reportSchema } from "@/lib/schemas/reports";
 import { createClient } from "@/lib/supabase/server";
 import type { ActionResult } from "./servers";
 

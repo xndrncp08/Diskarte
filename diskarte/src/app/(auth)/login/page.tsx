@@ -4,7 +4,7 @@ import { OAuthButtons } from "@/components/auth/OAuthButtons";
 import { ConfigNotice } from "@/components/ConfigNotice";
 import { tryGetPublicEnv } from "@/lib/env";
 import { enabledOAuthProviders } from "@/lib/profile";
-import { emailSchema } from "@/lib/profile";
+import { emailSchema } from "@/lib/schemas/profile";
 import { safeRedirectPath } from "@/lib/security";
 
 export const metadata: Metadata = { title: "Sign in" };

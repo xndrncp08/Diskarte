@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { AutomodCategory, BadgeKind, Json, Tables } from "@/lib/supabase/database.types";
 import type { GlyphCode } from "@/lib/glyphs";
 
@@ -32,20 +31,6 @@ export function formatMobile(number: string) {
   return number.replace(/^(\d{4})(\d{3})(\d{4})$/, "$1 $2 $3");
 }
 
-const mobile = z
-  .string()
-  .transform((v) => v.replace(/[\s-]/g, "").replace(/^\+?63/, "0"))
-  .pipe(z.string().regex(/^09\d{9}$/, "Dapat 11-digit PH mobile number (09XXXXXXXXX)."));
-
-export const supportSettingsSchema = z.object({
-  gcashNumber: z.union([z.literal(""), mobile]).transform((v) => v || null),
-  mayaNumber: z.union([z.literal(""), mobile]).transform((v) => v || null),
-  supportNote: z
-    .string()
-    .transform((v) => v.replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, "").trim())
-    .pipe(z.string().max(280, "280 characters max")),
-});
-
 // ---------------------------------------------------------------------------------------
 // Bantay-Bayan: auto-mod, slow mode
 // ---------------------------------------------------------------------------------------
@@ -58,15 +43,6 @@ export const AUTOMOD_CATEGORIES: Record<AutomodCategory, { label: string; descri
 };
 
 export const AUTOMOD_CATEGORY_KEYS = Object.keys(AUTOMOD_CATEGORIES) as AutomodCategory[];
-
-export const automodSettingsSchema = z.object({
-  enabled: z.boolean(),
-  categories: z.array(z.enum(["spam", "phishing", "hate", "explicit"])).max(4),
-  customTerms: z
-    .array(z.string())
-    .transform((terms) => Array.from(new Set(terms.map((t) => t.trim().toLowerCase()).filter(Boolean))))
-    .pipe(z.array(z.string().min(2, "Min 2 characters bawat salita").max(60, "Hanggang 60 characters bawat salita")).max(100, "Up to 100 custom words")),
-});
 
 /** Parses the custom-terms textarea: one term per line or comma-separated. */
 export function parseTermList(raw: string): string[] {
@@ -200,20 +176,6 @@ export function auditExcerpt(entry: Pick<AuditEntry, "metadata">): string | null
 // ---------------------------------------------------------------------------------------
 // LFG
 // ---------------------------------------------------------------------------------------
-
-export const lfgSchema = z.object({
-  game: z
-    .string()
-    .transform((v) => v.trim())
-    .pipe(z.string().min(1, "Anong laro?").max(48, "48 characters max")),
-  description: z
-    .string()
-    .transform((v) => v.replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, "").trim())
-    .pipe(z.string().max(200, "200 characters max")),
-  partySize: z.coerce.number().int().min(2).max(10),
-  durationMinutes: z.coerce.number().int().min(15).max(240),
-  voiceChannelId: z.union([z.literal(""), z.uuid()]).transform((v) => v || null),
-});
 
 export const LFG_GAMES = ["Valorant", "Mobile Legends", "Dota 2", "CODM", "Genshin Impact", "Roblox", "Minecraft", "League of Legends", "Among Us", "Wild Rift"];
 

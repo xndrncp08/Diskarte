@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { Tables } from "@/lib/supabase/database.types";
 
 export type Message = Tables<"messages">;
@@ -17,11 +16,6 @@ export function cleanMessageContent(raw: string): string {
     .trim();
 }
 
-export const messageContentSchema = z
-  .string()
-  .transform(cleanMessageContent)
-  .pipe(z.string().max(MESSAGE_MAX, `Messages are ${MESSAGE_MAX} characters max.`));
-
 export const AUTHOR_COLUMNS = "id, username, display_name, avatar_url, avatar_preset";
 export const MESSAGE_SELECT = `*, author:profiles!messages_author_id_fkey(${AUTHOR_COLUMNS})`;
 
@@ -32,30 +26,47 @@ export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
 /** `<server uuid>/<channel uuid>/<user uuid>/<random uuid>.<ext>` — nothing user-controlled. */
 export const ATTACHMENT_PATH_RE = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp|gif|mp3|mp4|webm|ogg|m4a)$/;
 
-export const attachmentSchema = z.object({
-  path: z.string().max(200).regex(ATTACHMENT_PATH_RE, "Invalid path"),
-  name: z.string().min(1).max(120),
-  size: z.number().int().positive().max(ATTACHMENT_MAX_BYTES),
-  type: z.enum(ATTACHMENT_MIME),
-  width: z.number().int().positive().max(20000).optional(),
-  height: z.number().int().positive().max(20000).optional(),
+export interface Attachment {
+  path: string;
+  name: string;
+  size: number;
+  type: (typeof ATTACHMENT_MIME)[number];
+  width?: number;
+  height?: number;
   /** A recorded voice message (shown as a compact player) and its length in seconds. */
-  voice: z.boolean().optional(),
-  duration: z.number().nonnegative().max(3600).optional(),
-});
-
-export type Attachment = z.infer<typeof attachmentSchema>;
+  voice?: boolean;
+  duration?: number;
+}
 
 /** Every attachment must live in the uploader's folder for this exact channel (DB trigger enforces too). */
 export function attachmentPrefix(serverId: string, channelId: string, userId: string) {
   return `${serverId}/${channelId}/${userId}/`;
 }
 
+const isInt = (v: unknown, min: number, max: number) => typeof v === "number" && Number.isInteger(v) && v >= min && v <= max;
+
+/** The valid attachments of a message row (mirrors attachmentSchema without shipping zod to the browser). */
 export function parseAttachments(value: unknown): Attachment[] {
   if (!Array.isArray(value)) return [];
-  return value.flatMap((item) => {
-    const parsed = attachmentSchema.safeParse(item);
-    return parsed.success ? [parsed.data] : [];
+  return value.flatMap((item): Attachment[] => {
+    if (!item || typeof item !== "object") return [];
+    const a = item as Record<string, unknown>;
+    const ok =
+      typeof a.path === "string" && a.path.length <= 200 && ATTACHMENT_PATH_RE.test(a.path) &&
+      typeof a.name === "string" && a.name.length >= 1 && a.name.length <= 120 &&
+      isInt(a.size, 1, ATTACHMENT_MAX_BYTES) &&
+      (ATTACHMENT_MIME as readonly unknown[]).includes(a.type) &&
+      (a.width === undefined || isInt(a.width, 1, 20000)) &&
+      (a.height === undefined || isInt(a.height, 1, 20000)) &&
+      (a.voice === undefined || typeof a.voice === "boolean") &&
+      (a.duration === undefined || (typeof a.duration === "number" && a.duration >= 0 && a.duration <= 3600));
+    if (!ok) return [];
+    const out: Attachment = { path: a.path as string, name: a.name as string, size: a.size as number, type: a.type as Attachment["type"] };
+    if (a.width !== undefined) out.width = a.width as number;
+    if (a.height !== undefined) out.height = a.height as number;
+    if (a.voice !== undefined) out.voice = a.voice as boolean;
+    if (a.duration !== undefined) out.duration = a.duration as number;
+    return [out];
   });
 }
 

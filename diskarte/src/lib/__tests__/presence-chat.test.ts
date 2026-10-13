@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { formatTimestamp, isGroupedWithPrevious } from "@/lib/chat-format";
-import { cleanMessageContent, messageContentSchema, type MessageWithAuthor } from "@/lib/messages";
+import { cleanMessageContent, type MessageWithAuthor } from "@/lib/messages";
+import { messageContentSchema } from "@/lib/schemas/messages";
 import { flattenPresence, signalLevel, visibleStatus } from "@/lib/presence";
 import { presenceFor } from "../../../tests/fixtures/server";
 

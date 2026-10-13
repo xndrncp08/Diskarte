@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getSessionUser } from "@/lib/auth";
 import { communityError } from "@/lib/community";
-import { messageContentSchema } from "@/lib/messages";
+import { messageContentSchema } from "@/lib/schemas/messages";
 import { limiters } from "@/lib/rate-limit";
 import { isStickerId } from "@/lib/stickers";
 import { createClient } from "@/lib/supabase/server";

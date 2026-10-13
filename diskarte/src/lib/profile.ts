@@ -1,5 +1,5 @@
-import { z } from "zod";
 import { isGlyphCode, type GlyphCode } from "@/lib/glyphs";
+import type { ZodError } from "zod";
 import type { PresenceStatus } from "@/lib/supabase/database.types";
 
 /** Salakot mascot avatars: each preset recolours the bubble, hat band and background. */
@@ -66,12 +66,6 @@ export function resolveBannerCss(key: string | null | undefined) {
 // Validation (shared by the client form and the server action)
 // ---------------------------------------------------------------------------------------
 
-export const usernameSchema = z
-  .string()
-  .trim()
-  .toLowerCase()
-  .regex(/^[a-z0-9_.]{3,32}$/, "3–32 characters: letters, numbers, underscores or periods only.");
-
 /** Strip ASCII control characters (keeps newlines out of single-line fields). */
 export function stripControl(value: string, allowNewlines = false) {
   const pattern = allowNewlines ? /[\u0000-\u0009\u000B\u000C\u000E-\u001F\u007F]/g : /[\u0000-\u001F\u007F]/g;
@@ -92,46 +86,6 @@ export function isAllowedImageUrl(value: string): boolean {
   }
 }
 
-const imageUrl = z
-  .string()
-  .trim()
-  .max(1024)
-  .refine((v) => v === "" || isAllowedImageUrl(v), "Invalid image URL")
-  .transform((v) => (v === "" ? null : v));
-
-export const profileUpdateSchema = z.object({
-  username: usernameSchema,
-  displayName: z
-    .string()
-    .transform((v) => stripControl(v).trim())
-    .pipe(z.string().min(1, "What should we call you?").max(32, "32 characters max")),
-  bio: z
-    .string()
-    .transform((v) => stripControl(v, true).trim())
-    .pipe(z.string().max(190, "Bio is 190 characters max")),
-  avatarPreset: z.enum(AVATAR_PRESET_KEYS as [AvatarPreset, ...AvatarPreset[]]),
-  bannerPreset: z.enum(BANNER_PRESET_KEYS as [BannerPreset, ...BannerPreset[]]),
-  avatarUrl: imageUrl.nullable().optional(),
-  bannerUrl: imageUrl.nullable().optional(),
-  status: z.enum(["online", "idle", "dnd", "invisible"]),
-  customStatus: z
-    .string()
-    .transform((v) => stripControl(v).trim())
-    .pipe(z.string().max(64, "64 characters max"))
-    .transform((v) => (v === "" ? null : v)),
-  // The custom status icon is a glyph code (vector icon), never an emoji.
-  customStatusEmoji: z
-    .string()
-    .trim()
-    .refine((v) => v === "" || isGlyphCode(v), "Pick a status icon")
-    .transform((v) => (v === "" ? null : v)),
-});
-
-export type ProfileUpdateInput = z.input<typeof profileUpdateSchema>;
-export type ProfileUpdate = z.output<typeof profileUpdateSchema>;
-
-export const emailSchema = z.string().trim().toLowerCase().pipe(z.email("That email doesn't look right"));
-
 export const PASSWORD_RULES = [
   { test: (v: string) => v.length >= 10, label: "10+ characters" },
   { test: (v: string) => /[a-z]/.test(v), label: "lowercase letter" },
@@ -140,36 +94,7 @@ export const PASSWORD_RULES = [
   { test: (v: string) => /[^A-Za-z0-9]/.test(v), label: "special character" },
 ] as const;
 
-/** Strong password policy for new/changed passwords (bcrypt only reads the first 72 bytes). */
-export const passwordSchema = z
-  .string()
-  .max(72, "72 characters max")
-  .refine((v) => new TextEncoder().encode(v).length <= 72, "That password is too long")
-  .superRefine((value, ctx) => {
-    const missing = PASSWORD_RULES.filter((r) => !r.test(value)).map((r) => r.label);
-    if (missing.length) ctx.addIssue({ code: "custom", message: `Password needs: ${missing.join(", ")}.` });
-  });
-
-/** Sign-in only checks shape — policy is enforced when passwords are set, never revealed on login. */
-export const credentialsSchema = z.object({
-  email: emailSchema,
-  password: z.string().min(1, "Enter your password").max(72, "72 characters max"),
-});
-
 export const PASSWORD_MISMATCH = "Passwords don't match";
-
-export const signUpSchema = z
-  .object({
-    email: emailSchema,
-    password: passwordSchema,
-    confirmPassword: z.string(),
-    username: usernameSchema,
-    displayName: z
-      .string()
-      .transform((v) => stripControl(v).trim())
-      .pipe(z.string().min(1, "What should we call you?").max(32)),
-  })
-  .refine((v) => v.password === v.confirmPassword, { path: ["confirmPassword"], message: PASSWORD_MISMATCH });
 
 export const OAUTH_PROVIDERS = ["github", "google", "discord"] as const;
 export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
@@ -183,7 +108,7 @@ export function enabledOAuthProviders(raw = process.env.AUTH_OAUTH_PROVIDERS): O
 }
 
 /** Flatten zod issues into `{ field: firstMessage }`. */
-export function fieldErrors(error: z.ZodError): Record<string, string> {
+export function fieldErrors(error: ZodError): Record<string, string> {
   const out: Record<string, string> = {};
   for (const issue of error.issues) {
     const key = String(issue.path[0] ?? "form");

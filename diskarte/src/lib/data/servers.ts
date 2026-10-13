@@ -2,7 +2,8 @@ import "server-only";
 import { cache } from "react";
 import type { ServerBadge } from "@/lib/community";
 import type { Channel, MemberWithProfile, Server, ServerRole } from "@/lib/servers";
-import { firstTextChannel, uuidSchema } from "@/lib/servers";
+import { firstTextChannel } from "@/lib/servers";
+import { uuidSchema } from "@/lib/schemas/servers";
 import type { MemberRole } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 

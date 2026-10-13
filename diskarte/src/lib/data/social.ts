@@ -1,6 +1,6 @@
 import "server-only";
 import { PAGE_SIZE } from "@/lib/messages";
-import { uuidSchema } from "@/lib/servers";
+import { uuidSchema } from "@/lib/schemas/servers";
 import { SOCIAL_PROFILE_COLUMNS, type SocialProfile } from "@/lib/social";
 import type { Tables } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";

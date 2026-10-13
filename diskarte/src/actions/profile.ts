@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
-import { fieldErrors, profileUpdateSchema } from "@/lib/profile";
+import { fieldErrors } from "@/lib/profile";
+import { profileUpdateSchema } from "@/lib/schemas/profile";
 import { limiters } from "@/lib/rate-limit";
 import { safeRedirectPath } from "@/lib/security";
 import { createClient } from "@/lib/supabase/server";

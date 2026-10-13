@@ -1,16 +1,18 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { MessageMarkdown, safeUrl } from "@/components/chat/MessageMarkdown";
 
 describe("MessageMarkdown", () => {
-  it("renders GFM, code blocks with highlighting and shortcodes", () => {
+  it("renders GFM, code blocks with highlighting and shortcodes", async () => {
     const { container } = render(<MessageMarkdown content={"**bold** ~~gone~~ :petmalu:\n\n```ts\nconst x = 1;\n```"} />);
     expect(container.querySelector("strong")).toHaveTextContent("bold");
     expect(container.querySelector("del")).toHaveTextContent("gone");
     // :petmalu: is drawn as a vector icon, not an emoji.
     expect(container.querySelector('[data-glyph=":petmalu:"]')).toHaveAttribute("aria-label", "Petmalu");
     expect(container.textContent).not.toContain(":petmalu:");
-    expect(container.querySelector("pre code.hljs")).not.toBeNull();
+    // Code shows right away; highlighting loads on demand and then applies.
+    expect(container.querySelector("pre code")).toHaveTextContent("const x = 1;");
+    await waitFor(() => expect(container.querySelector("pre code.hljs")).not.toBeNull());
     expect(container.querySelector(".hljs-keyword")).toHaveTextContent("const");
   });
 

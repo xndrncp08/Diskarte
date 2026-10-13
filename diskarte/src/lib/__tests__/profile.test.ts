@@ -1,19 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { friendlyAuthError } from "@/lib/auth-errors";
-import {
-  AVATAR_PRESET_KEYS,
-  BANNER_PRESET_KEYS,
-  credentialsSchema,
-  enabledOAuthProviders,
-  isAllowedImageUrl,
-  profileUpdateSchema,
-  resolveAvatarPreset,
-  resolveBannerCss,
-  signUpSchema,
-  STATUS_TRIGGERS,
-  stripControl,
-  usernameSchema,
-} from "@/lib/profile";
+import { AVATAR_PRESET_KEYS, BANNER_PRESET_KEYS, enabledOAuthProviders, isAllowedImageUrl, resolveAvatarPreset, resolveBannerCss, STATUS_TRIGGERS, stripControl } from "@/lib/profile";
+import { credentialsSchema, profileUpdateSchema, signUpSchema, usernameSchema } from "@/lib/schemas/profile";
 
 const base = {
   username: "Juan.Tamad",

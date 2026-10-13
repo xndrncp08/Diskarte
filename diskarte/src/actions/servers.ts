@@ -6,7 +6,8 @@ import { z } from "zod";
 import { getSessionUser } from "@/lib/auth";
 import { fieldErrors, isAllowedImageUrl } from "@/lib/profile";
 import { limiters } from "@/lib/rate-limit";
-import { channelSchema, INVITE_AGES, INVITE_USES, parseInviteInput, serverSchema, uuidSchema, type Channel } from "@/lib/servers";
+import { INVITE_AGES, INVITE_USES, parseInviteInput, type Channel } from "@/lib/servers";
+import { channelSchema, serverSchema, uuidSchema } from "@/lib/schemas/servers";
 import { createClient } from "@/lib/supabase/server";
 
 export interface ActionResult<T = undefined> {
