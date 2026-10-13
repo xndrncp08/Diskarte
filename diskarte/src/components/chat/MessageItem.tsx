@@ -15,6 +15,7 @@ import { Attachments } from "./Attachments";
 import { EmojiPicker } from "./EmojiPicker";
 import { MessageMarkdown } from "./MessageMarkdown";
 import { useDisplayPrefs } from "@/lib/display-prefs";
+import { LinkEmbeds } from "./LinkEmbeds";
 import { EditedMark } from "./EditHistory";
 import { PollCard } from "./Poll";
 import { ReactionBar } from "./ReactionBar";
@@ -325,6 +326,7 @@ export const MessageItem = memo(function MessageItem({
         )}
 
         <Attachments attachments={attachments} />
+        {!editing && message.content && <LinkEmbeds content={message.content} />}
         {"has_poll" in message && message.has_poll && "channel_id" in message && <PollCard messageId={message.id} channelId={message.channel_id} />}
         {actions.onReact && showReactions && <ReactionBar reactions={reactions} meId={meId} onToggle={(emoji) => actions.onReact?.(message.id, emoji)} names={actions.nameOf} />}
 

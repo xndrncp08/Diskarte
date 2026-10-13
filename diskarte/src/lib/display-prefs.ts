@@ -11,6 +11,8 @@ export interface DisplayPrefs {
   fontSize: number;
   spoilers: "click" | "always";
   inlineMedia: boolean;
+  /** Link previews under messages. */
+  embeds: boolean;
   reactions: boolean;
   roleColors: boolean;
   hour24: boolean;
@@ -23,6 +25,7 @@ export const DEFAULT_DISPLAY_PREFS: DisplayPrefs = {
   fontSize: 15,
   spoilers: "click",
   inlineMedia: true,
+  embeds: true,
   reactions: true,
   roleColors: true,
   hour24: false,
@@ -42,6 +45,7 @@ export function parseDisplayPrefs(raw: string | null): DisplayPrefs {
       fontSize: (FONT_SIZES as readonly number[]).includes(v.fontSize as number) ? (v.fontSize as number) : d.fontSize,
       spoilers: v.spoilers === "always" ? "always" : "click",
       inlineMedia: v.inlineMedia !== false,
+      embeds: v.embeds !== false,
       reactions: v.reactions !== false,
       roleColors: v.roleColors !== false,
       hour24: v.hour24 === true,

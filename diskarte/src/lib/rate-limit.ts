@@ -78,6 +78,8 @@ export const LIMITS = {
   message: { limit: 20, windowMs: 10_000 },
   voiceToken: { limit: 20, windowMs: 60_000 },
   upload: { limit: 30, windowMs: 60_000 },
+  /** Link previews fetched for you (each new link costs one outbound request). */
+  unfurl: { limit: 60, windowMs: 60_000 },
 } as const;
 
 export type LimiterName = keyof typeof LIMITS;

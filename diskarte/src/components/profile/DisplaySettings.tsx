@@ -35,6 +35,7 @@ export function ChatSettings() {
   return (
     <div className="max-w-md space-y-5" data-testid="chat-settings">
       <Switch checked={prefs.inlineMedia} onChange={(inlineMedia) => setDisplayPrefs({ inlineMedia })} label="Display images and videos" hint="Off: uploads show as links you can click to open." />
+      <Switch checked={prefs.embeds} onChange={(embeds) => setDisplayPrefs({ embeds })} label="Show embeds and preview website links" hint="Wrap a link in <angle brackets> to send it without a preview." />
       <Switch checked={prefs.reactions} onChange={(reactions) => setDisplayPrefs({ reactions })} label="Show emoji reactions on messages" />
       <Choice
         label="Show spoiler content"
