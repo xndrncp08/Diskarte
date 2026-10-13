@@ -259,6 +259,23 @@ export function useIsCanvas(): boolean {
   return useSyncExternalStore(subscribeCanvas, () => window.matchMedia?.(CANVAS_QUERY).matches ?? false, () => false);
 }
 
+const noSubscribe = () => () => undefined;
+
+/**
+ * Is the navigator panel minimized or closed on the canvas? Its call dock steps aside then (the tray
+ * shows the call). Always false on phones and outside a workspace.
+ */
+export function useNavHidden(): boolean {
+  const store = useOptionalWorkspaceStore();
+  const isCanvas = useIsCanvas();
+  const hidden = useSyncExternalStore(
+    store?.subscribe ?? noSubscribe,
+    () => (store ? store.getState().panels.nav.minimized || store.getState().panels.nav.closed : false),
+    () => false,
+  );
+  return isCanvas && hidden;
+}
+
 // Whether a workspace canvas is on screen at all (/settings pages have none): the picture-in-picture
 // call view, which lives above the shell, defers to the canvas's own voice panel.
 let canvasActive = false;
