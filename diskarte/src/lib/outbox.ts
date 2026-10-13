@@ -12,6 +12,8 @@ export interface OutboxEntry {
   replyToId: string | null;
   threadId: string | null;
   sticker: string | null;
+  /** Forum post title. */
+  title?: string | null;
   createdAt: string;
 }
 

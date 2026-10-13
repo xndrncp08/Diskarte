@@ -38,6 +38,8 @@ const sendSchema = z.object({
   threadId: z.uuid().nullish(),
   sticker: z.string().refine(isStickerId, "Unknown sticker").nullish(),
   attachments: z.array(attachmentSchema).max(MAX_ATTACHMENTS).default([]),
+  /** Forum posts only (the database ignores it elsewhere). */
+  title: z.string().trim().max(100, "Titles are 100 characters max").nullish(),
 });
 
 export async function sendMessageAction(input: z.input<typeof sendSchema>): Promise<ActionResult<{ message: MessageWithAuthor }>> {
@@ -45,7 +47,7 @@ export async function sendMessageAction(input: z.input<typeof sendSchema>): Prom
   if (!ok) return { ok: false, error: messageError("RATE_LIMITED"), code: "RATE_LIMITED" };
   const parsed = sendSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid message" };
-  const { id, channelId, content, replyToId, threadId, sticker, attachments } = parsed.data;
+  const { id, channelId, content, replyToId, threadId, sticker, attachments, title } = parsed.data;
   if (!content && attachments.length === 0 && !sticker) return { ok: false, error: "The message is empty." };
 
   const supabase = await createClient();
@@ -60,7 +62,7 @@ export async function sendMessageAction(input: z.input<typeof sendSchema>): Prom
   // exactly one row, which would also undo auto-mod's audit entry for a dropped message.
   const { data: rows, error } = await supabase
     .from("messages")
-    .insert({ id, channel_id: channelId, author_id: user.id, content, reply_to_id: replyToId ?? null, thread_id: threadId ?? null, sticker: sticker ?? null, attachments })
+    .insert({ id, channel_id: channelId, author_id: user.id, content, reply_to_id: replyToId ?? null, thread_id: threadId ?? null, sticker: sticker ?? null, attachments, ...(title ? { title } : {}) })
     .select(MESSAGE_SELECT);
   const data = rows?.[0];
   if (data) return { ok: true, data: { message: data as unknown as MessageWithAuthor } };
@@ -79,6 +81,7 @@ export async function sendMessageAction(input: z.input<typeof sendSchema>): Prom
   }
   if (error?.message?.includes("VERIFICATION_REQUIRED")) return { ok: false, error: messageError(error.message), code: "VERIFICATION_REQUIRED" };
   if (error?.message?.includes("READ_ONLY_CHANNEL")) return { ok: false, error: messageError(error.message), code: "READ_ONLY_CHANNEL" };
+  if (error?.message?.includes("POST_TITLE_REQUIRED")) return { ok: false, error: "Give your post a title.", code: "POST_TITLE_REQUIRED" };
   if (error?.message?.includes("TIMED_OUT")) return { ok: false, error: messageError(error.message), code: "TIMED_OUT" };
   return { ok: false, error: messageError(error?.message) };
 }

@@ -192,7 +192,7 @@ export async function regenerateInviteAction(input: { serverId: string }): Promi
 export async function createChannelAction(input: {
   serverId: string;
   name: string;
-  type: "text" | "voice";
+  type: "text" | "voice" | "forum";
   category: string;
   topic?: string;
   slowmodeSeconds?: number;
@@ -240,7 +240,7 @@ const channelModerationSchema = z.object({
 export async function updateChannelAction(input: {
   channelId: string;
   name: string;
-  type: "text" | "voice";
+  type: "text" | "voice" | "forum";
   category: string;
   topic: string;
   slowmodeSeconds?: number;

@@ -1,6 +1,6 @@
 "use client";
 
-import { Hash, Menu as MenuIcon, Users, Volume2 } from "lucide-react";
+import { Hash, Menu as MenuIcon, MessagesSquare, Users, Volume2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { SearchBox } from "@/components/chat/SearchBox";
 import { useShellUI } from "@/components/shell/ShellUI";
@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 
 export function ChannelHeader({ channel, actions }: { channel: Channel; actions?: ReactNode }) {
   const { setNavOpen, membersOpen, setMembersOpen } = useShellUI();
-  const Icon = channel.type === "voice" ? Volume2 : Hash;
+  const Icon = channel.type === "voice" ? Volume2 : channel.type === "forum" ? MessagesSquare : Hash;
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 border-b border-white/5 bg-black/20 px-3 backdrop-blur-md">
       <button type="button" onClick={() => setNavOpen(true)} aria-label="Open navigation" className="touch-target relative rounded-md p-1.5 text-slate-300 hover:bg-white/10 md:hidden">
