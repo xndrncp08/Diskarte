@@ -15,6 +15,8 @@ export const MIN_W = 320;
 export const MIN_H = 240;
 /** Magnetic pull distance for edges, and the grid free moves settle on. */
 export const SNAP = 8;
+/** How far a dragged panel's edges pull toward the canvas and its neighbours. */
+export const MAGNET = 40;
 export const GRID = 8;
 /** Breathing room between tiled panels and around the canvas. */
 export const GAP = 12;
@@ -136,6 +138,36 @@ export function snapMove(r: Rect, others: Rect[], bounds: Rect, threshold = SNAP
     }
   }
   return { rect: clampRect(out, bounds), snapped };
+}
+
+/**
+ * Where a released panel settles: the closest spot where each axis rests on a canvas edge, a
+ * neighbour's edge or beside a neighbour (gap) — however far that is, so panels always end up
+ * attached instead of floating loose. Spots covering the least of other panels win (none, when
+ * there's room), then the nearest.
+ */
+export function magnetize(r: Rect, others: Rect[], bounds: Rect): Rect {
+  const starts = (axis: "x" | "y") => {
+    const size = axis === "x" ? "w" : "h";
+    const out = [bounds[axis], bounds[axis] + bounds[size] - r[size]];
+    for (const o of others) out.push(o[axis], o[axis] + o[size] - r[size], o[axis] + o[size] + GAP, o[axis] - GAP - r[size]);
+    return out;
+  };
+  const covered = (a: Rect) =>
+    others.reduce((sum, b) => sum + Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y)), 0);
+  let best = r;
+  let bestScore = [Infinity, Infinity];
+  for (const x of starts("x")) {
+    for (const y of starts("y")) {
+      const c = clampRect({ ...r, x, y }, bounds);
+      const score = [covered(c), Math.hypot(c.x - r.x, c.y - r.y)];
+      if (score[0] < bestScore[0] || (score[0] === bestScore[0] && score[1] < bestScore[1])) {
+        best = c;
+        bestScore = score;
+      }
+    }
+  }
+  return best;
 }
 
 /** Magnetic resize: only the edges being dragged snap; the minimum size always holds. */

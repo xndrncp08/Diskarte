@@ -12,6 +12,7 @@ import {
   raisePanel,
   reflowPanels,
   settleOnGrid,
+  magnetize,
   snapMove,
   snapResize,
   toFraction,
@@ -28,6 +29,24 @@ describe("clampRect", () => {
 
   it("never asks for more than a tiny canvas has", () => {
     expect(clampRect({ x: 0, y: 0, w: 50, h: 50 }, { x: 0, y: 0, w: 300, h: 200 })).toEqual({ x: 0, y: 0, w: 300, h: 200 });
+  });
+});
+
+describe("magnetize", () => {
+  it("attaches a panel dropped far from everything to its nearest neighbour and canvas edge", () => {
+    const left: Rect = { x: 0, y: 0, w: 300, h: 800 };
+    // 150 px from the left panel's dock spot (x = 312) and 80 px below the top edge.
+    expect(magnetize({ x: 462, y: 80, w: 400, h: 500 }, [left], B)).toEqual({ x: 312, y: 0, w: 400, h: 500 });
+  });
+
+  it("never settles on top of another panel", () => {
+    const main: Rect = { x: 332, y: 0, w: 868, h: 800 };
+    // Dropped half over the main panel: it docks beside it, not aligned under it.
+    expect(magnetize({ x: 200, y: 0, w: 320, h: 800 }, [main], B)).toEqual({ x: 0, y: 0, w: 320, h: 800 });
+  });
+
+  it("goes to the closer canvas edge when no panel is near", () => {
+    expect(magnetize({ x: 700, y: 260, w: 400, h: 300 }, [], B)).toEqual({ x: 800, y: 500, w: 400, h: 300 });
   });
 });
 
