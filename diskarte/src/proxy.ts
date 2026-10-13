@@ -41,6 +41,16 @@ export async function proxy(request: NextRequest) {
   const env = tryGetPublicEnv();
   const ip = clientIp(request.headers);
 
+  // One canonical address: pages opened on another host (an old deployment still serving this
+  // build) move to SITE_URL, where sign-in cookies, OAuth and the same-origin checks below line up.
+  if (env?.siteUrl && !isApi && isSafeMethod(request.method)) {
+    const site = new URL(env.siteUrl);
+    const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? request.nextUrl.host;
+    if (host !== site.host && !/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(host)) {
+      return NextResponse.redirect(new URL(pathname + search, site), 308);
+    }
+  }
+
   // --- CORS / CSRF / rate limiting for route handlers ------------------------------------
   let cors: Record<string, string> = {};
   if (isApi) {
