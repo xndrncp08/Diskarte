@@ -5,6 +5,7 @@ import { Loader2, Volume2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useEffect } from "react";
 import { useServer } from "@/components/providers/ServerProvider";
+import { useVoiceRoster } from "@/hooks/useVoiceRoster";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { ChannelHeader } from "@/components/server/ChannelHeader";
 import { Button } from "@/components/ui/Button";
@@ -17,10 +18,10 @@ const VoiceStage = dynamic(() => import("./live/VoiceStage").then((m) => m.Voice
 
 /** Voice channel page: lobby with who's inside + Join, or the live stage when you're connected. */
 export function VoiceChannelView({ channel }: { channel: Channel }) {
-  const { server, members, presence } = useServer();
+  const { server } = useServer();
   const call = useCall();
   const here = call.target?.channelId === channel.id;
-  const inRoom = members.filter((m) => presence.get(m.user_id)?.voice_channel_id === channel.id);
+  const inRoom = useVoiceRoster(channel.id).map((r) => r.member);
   const target = { serverId: server.id, serverName: server.name, channelId: channel.id, channelName: channel.name };
 
   // Opening a voice channel is a strong hint you'll join: warm the SDK and token now.
