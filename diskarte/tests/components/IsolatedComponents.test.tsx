@@ -170,7 +170,8 @@ describe("server options dropdown", () => {
     expect(items[last]).toHaveFocus();
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
-    expect(trigger).toHaveFocus();
+    // Restored in the dialog's effect cleanup, which can land a tick after it leaves the DOM.
+    await waitFor(() => expect(trigger).toHaveFocus());
     expect(trigger).toHaveAttribute("aria-expanded", "false");
   });
 
@@ -260,7 +261,8 @@ describe("reaction emoji picker & message actions", () => {
     await screen.findByRole("dialog", { name: "Icon picker" });
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Icon picker" })).toBeNull());
-    expect(trigger).toHaveFocus();
+    // Restored in the dialog's effect cleanup, which can land a tick after it leaves the DOM.
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 
   it("the composer picker is not clipped by the composer's rounded overflow-hidden card", async () => {
@@ -341,7 +343,8 @@ describe("glass modals & scroll locking", () => {
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Create a server" })).toBeNull());
     expect(document.body.style.overflow).toBe("scroll");
-    expect(trigger).toHaveFocus();
+    // Restored in the dialog's effect cleanup, which can land a tick after it leaves the DOM.
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 
   it("settings opened from the server menu is a dialog that restores focus to the menu trigger", async () => {
@@ -359,7 +362,8 @@ describe("glass modals & scroll locking", () => {
     await user.click(within(dialog).getByRole("button", { name: "Close" }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Server settings" })).toBeNull());
     expect(document.body.style.overflow).toBe("");
-    expect(trigger).toHaveFocus();
+    // Restored in the dialog's effect cleanup, which can land a tick after it leaves the DOM.
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 
   it("clicking the backdrop closes the modal", async () => {
