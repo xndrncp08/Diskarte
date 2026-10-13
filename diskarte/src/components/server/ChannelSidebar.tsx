@@ -69,9 +69,12 @@ function OccupantList({ channelId, speaking }: { channelId: string; speaking: Re
 function Occupant({ member, presence: p, speaking }: { member: MemberWithProfile; presence: PresencePayload | undefined; speaking: boolean }) {
   const menu = useContextMenu();
   return (
-    <li className="flex items-center gap-2 rounded px-1.5 py-0.5 text-[13px] text-slate-300" {...menu.triggerProps}>
-      <UserAvatar profile={member.profile} size={20} speaking={speaking} />
-      <span className="truncate">{member.nickname ?? member.profile.display_name}</span>
+    <li className="flex items-center gap-2 rounded px-1.5 py-1 text-[13px] text-slate-300 hover:bg-white/5" data-speaking={speaking || undefined} {...menu.triggerProps}>
+      {/* Discord-style: the speaking ring hugs the avatar (no offset), so it never crowds the rows around it. */}
+      <span className={cn("flex shrink-0 rounded-full transition-shadow duration-150", speaking && "ring-2 ring-signal-green")}>
+        <UserAvatar profile={member.profile} size={24} />
+      </span>
+      <span className={cn("truncate", speaking && "text-white")}>{member.nickname ?? member.profile.display_name}</span>
       <span className="ml-auto flex items-center gap-1 text-slate-500">
         {p?.screen && <span className="rounded bg-red-500/80 px-1 font-silk text-[9px] text-white">LIVE</span>}
         {p?.video && <Video className="size-3.5" aria-label="Camera on" />}
