@@ -1,7 +1,7 @@
 "use client";
 
 import { FileText, Loader2, Lock, Paperclip, SendHorizontal, ShieldAlert, Turtle, X } from "lucide-react";
-import { useCallback, useEffect, useEffectEvent, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
@@ -52,7 +52,10 @@ export function Composer({
   slowmodeSeconds = 0,
   locked,
   lockKind = "verification",
+  extra,
 }: {
+  /** More toolbar buttons (the channel's "Create poll"). */
+  extra?: ReactNode;
   channelName: string;
   /** Attachments upload under this server/channel; omit it (DMs) to hide the attach button. */
   serverId?: string;
@@ -326,6 +329,7 @@ export function Composer({
           />
           <EmojiPicker onPick={(value) => insert(value.startsWith(":") ? `${value} ` : value)} label="Insert icon" triggerClassName="pointer-coarse:p-3.5" />
           {onSticker && <StickerPicker onPick={onSticker} disabled={cooldown > 0} />}
+          {extra}
           <button
             type="submit"
             disabled={(!draft.trim() && ready.length === 0) || busy || cooldown > 0}

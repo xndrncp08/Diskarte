@@ -22,6 +22,7 @@ import { openMemberProfile } from "@/components/server/memberProfiles";
 import { MessageItem, type MessageActions } from "./MessageItem";
 import { OfflineBanner } from "./OfflineBanner";
 import { PinsDrawer } from "./PinsDrawer";
+import { CreatePollButton } from "./Poll";
 import { ThreadPanel } from "./ThreadPanel";
 import { Timestamp } from "./Timestamp";
 
@@ -266,6 +267,7 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
             setReplyTo(null);
           }}
           onEditLast={editLast}
+          extra={<CreatePollButton channelId={channel.id} />}
           typingNames={typingNames}
           onTyping={notifyTyping}
           onStopTyping={stopTyping}
