@@ -1,17 +1,15 @@
 "use client";
 
 import { Crown } from "lucide-react";
-import { useEffect, useState } from "react";
-import { answerTrivia, currentQuestion, leaderboard, newTrivia, nextTrivia, revealTrivia, type Trivia } from "@/lib/games/trivia";
+import { useEffect, useEffectEvent, useState } from "react";
+import { answerTrivia, currentQuestion, leaderboard, newTrivia, nextTrivia, revealTrivia, ROUND_SECONDS, type Trivia } from "@/lib/games/trivia";
 import { builtinClip } from "@/lib/soundboard";
 import { getSfxSettings, playCue } from "@/lib/sfx";
 import { cn } from "@/lib/utils";
 
-const REVEAL_MS = 4000;
-
 /**
- * Timed rounds. Everyone answers locally and publishes; the room's "driver" closes each round at
- * its deadline and advances after a short reveal.
+ * Timed rounds. Everyone answers locally and publishes; the room's "driver" closes each round at its
+ * deadline — or as soon as everyone in the call has answered — and advances after a short reveal.
  */
 export function TriviaGame({
   game,
@@ -19,12 +17,15 @@ export function TriviaGame({
   nameOf,
   onChange,
   isDriver,
+  players,
 }: {
   game: Trivia;
   me: string;
   nameOf: (id: string | null) => string;
   onChange: (next: Trivia) => void;
   isDriver: () => boolean;
+  /** How many people are in the call (everyone answered → reveal right away). */
+  players: () => number;
 }) {
   const [now, setNow] = useState(() => Date.now());
   const q = currentQuestion(game);
@@ -35,18 +36,18 @@ export function TriviaGame({
     return () => clearInterval(timer);
   }, [game.phase]);
 
-  // Driver: close the round at the deadline, then move on after the reveal.
+  // Driver: each phase ends at its absolute deadline, so re-renders (the call stage re-renders all the
+  // time) can't keep pushing the timer back. The parent's onChange is a new function every render.
+  const advance = useEffectEvent((next: Trivia) => onChange(next));
+  const driving = useEffectEvent(() => isDriver());
+  const everyoneAnswered = useEffectEvent(() => Object.keys(game.answers).length >= players());
   useEffect(() => {
-    if (!isDriver()) return;
-    if (game.phase === "question") {
-      const t = setTimeout(() => onChange(revealTrivia(game)), Math.max(0, game.deadline - Date.now()));
-      return () => clearTimeout(t);
-    }
-    if (game.phase === "reveal") {
-      const t = setTimeout(() => onChange(nextTrivia(game, Date.now())), REVEAL_MS);
-      return () => clearTimeout(t);
-    }
-  }, [game, onChange, isDriver]);
+    if (!driving() || game.phase === "done") return;
+    const step = () => advance(game.phase === "question" ? revealTrivia(game, Math.min(Date.now(), game.deadline)) : nextTrivia(game, Date.now()));
+    if (game.phase === "question" && everyoneAnswered()) return step();
+    const t = setTimeout(step, Math.max(0, game.deadline - Date.now()));
+    return () => clearTimeout(t);
+  }, [game]);
 
   // Right/wrong jingle when the answer is revealed.
   useEffect(() => {
@@ -94,7 +95,7 @@ export function TriviaGame({
         </span>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-white/10" aria-hidden>
-        <div className="h-full bg-sun transition-[width] duration-200" style={{ width: revealing ? "0%" : `${Math.min(100, (secondsLeft / 15) * 100)}%` }} />
+        <div className="h-full bg-sun transition-[width] duration-200" style={{ width: revealing ? "0%" : `${Math.min(100, (secondsLeft / ROUND_SECONDS) * 100)}%` }} />
       </div>
       <p className="text-lg font-bold text-white">{q.q}</p>
       <div className="grid gap-2 sm:grid-cols-2" role="group" aria-label="Choices">

@@ -29,13 +29,15 @@ export const TRIVIA_QUESTIONS: TriviaQuestion[] = [
 ];
 
 export const ROUND_SECONDS = 15;
+/** How long the right answer shows before the next question. */
+export const REVEAL_MS = 2500;
 export const QUESTIONS_PER_GAME = 5;
 
 export interface Trivia {
   order: number[];
   index: number;
   phase: "question" | "reveal" | "done";
-  /** Epoch ms when answering closes. */
+  /** Epoch ms when the current phase ends: answering closes ("question"), or the next question starts ("reveal"). */
   deadline: number;
   answers: Record<string, number>;
   scores: Record<string, number>;
@@ -67,15 +69,15 @@ export function answerTrivia(game: Trivia, player: string, choice: number, now: 
   return { ...game, answers: { ...game.answers, [player]: choice } };
 }
 
-/** Close the round: +1 for every correct answer. */
-export function revealTrivia(game: Trivia): Trivia {
+/** Close the round: +1 for every correct answer; the reveal lasts REVEAL_MS from `now`. */
+export function revealTrivia(game: Trivia, now = game.deadline): Trivia {
   if (game.phase !== "question") return game;
   const q = currentQuestion(game);
   const scores = { ...game.scores };
   for (const [player, choice] of Object.entries(game.answers)) {
     scores[player] = (scores[player] ?? 0) + (q && choice === q.answer ? 1 : 0);
   }
-  return { ...game, phase: "reveal", scores };
+  return { ...game, phase: "reveal", scores, deadline: now + REVEAL_MS };
 }
 
 export function nextTrivia(game: Trivia, now: number): Trivia {

@@ -16,7 +16,7 @@ import {
   supportSettingsSchema,
 } from "@/lib/community";
 import { joinTicTacToe, newTicTacToe, outcome, playMove, rematch, type TicTacToe } from "@/lib/games/tictactoe";
-import { answerTrivia, currentQuestion, leaderboard, newTrivia, nextTrivia, revealTrivia, ROUND_SECONDS, shuffledOrder, TRIVIA_QUESTIONS } from "@/lib/games/trivia";
+import { answerTrivia, currentQuestion, leaderboard, newTrivia, nextTrivia, REVEAL_MS, revealTrivia, ROUND_SECONDS, shuffledOrder, TRIVIA_QUESTIONS } from "@/lib/games/trivia";
 import { getLowDataMode, imageQuality, resetLowDataCache, setLowDataMode, subscribeLowDataMode } from "@/lib/low-data";
 import { dequeue, enqueue, isNetworkError, outboxFor, outboxSize, type OutboxEntry } from "@/lib/outbox";
 import { classifyFriendships, conversationTitle, friendStatus, isUnread, sortConversations, type Friendship } from "@/lib/social";
@@ -235,6 +235,8 @@ describe("Pinoy trivia", () => {
     expect(leaderboard(game)[0]).toEqual({ player: "juan", score: 1 });
     game = nextTrivia(game, start + 20_000);
     expect(game).toMatchObject({ index: 1, phase: "question", answers: {} });
+    // The reveal has its own absolute end, from when the round closed.
+    expect(revealTrivia(newTrivia(9, start), start + 3000).deadline).toBe(start + 3000 + REVEAL_MS);
     for (let i = 1; i < game.order.length; i++) game = nextTrivia(revealTrivia(game), start);
     expect(game.phase).toBe("done");
   });
