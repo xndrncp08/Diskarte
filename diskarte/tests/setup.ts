@@ -23,6 +23,7 @@ vi.mock("@livekit/components-react", async () => {
   return {
     RoomContext: createContext(undefined),
     RoomAudioRenderer: ({ muted }: { muted?: boolean }) => h("div", { "data-testid": "room-audio", "data-muted": String(Boolean(muted)) }),
+    StartAudio: () => null,
     VideoTrack: ({ className }: { className?: string }) => h("video", { "data-testid": "video-track", className }),
     useTracks: () => livekitMock.tracks,
     useIsSpeaking: (p?: { identity: string }) => (p ? livekitMock.speaking.has(p.identity) : false),

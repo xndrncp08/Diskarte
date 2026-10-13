@@ -31,6 +31,7 @@ vi.mock("livekit-client", async (orig) => ({ ...(await orig<typeof import("livek
 vi.mock("@livekit/components-react", () => ({
   RoomContext: { Provider: ({ children }: { children: ReactNode }) => <>{children}</> },
   RoomAudioRenderer: ({ muted }: { muted: boolean }) => <div data-testid="audio-renderer" data-muted={String(muted)} />,
+  StartAudio: () => null,
 }));
 const setVoice = vi.fn();
 vi.mock("@/components/providers/PresenceProvider", () => ({ useVoicePresence: () => setVoice, useServerPresence: () => new Map(), useBroadcastSpeaking: () => () => undefined }));
@@ -38,7 +39,7 @@ const sfx = vi.fn();
 vi.mock("@/lib/sfx", () => ({ playSfx: (n: string) => sfx(n) }));
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }) }));
 
-const { CallProvider, useCall, usePrewarm, qualityToLevel, PREWARM_FRESH_MS, PREWARM_GAP_MS } = await import("@/components/voice/CallProvider");
+const { CallProvider, useCall, usePrewarm, qualityToLevel, takeRejoin, PREWARM_FRESH_MS, PREWARM_GAP_MS } = await import("@/components/voice/CallProvider");
 const { CallDock } = await import("@/components/voice/CallDock");
 const { ConnectionQuality } = await import("livekit-client");
 
@@ -299,6 +300,40 @@ describe("CallDock", () => {
     expect(screen.queryByRole("button", { name: "Mute" })).toBeNull();
     act(() => fireEvent.click(screen.getByRole("button", { name: "Disconnect" })));
     expect(roomInstances[0].disconnect).toHaveBeenCalled();
+  });
+});
+
+describe("rejoining after a page reload", () => {
+  beforeEach(() => sessionStorage.clear());
+
+  it("only counts a call left moments ago, and only once", () => {
+    const now = Date.now();
+    sessionStorage.setItem("diskarte:rejoin", JSON.stringify({ target, muted: true, deafened: false, at: now - 5_000 }));
+    expect(takeRejoin(now)).toEqual({ target, muted: true, deafened: false });
+    expect(takeRejoin(now)).toBeNull();
+    sessionStorage.setItem("diskarte:rejoin", JSON.stringify({ target, at: now - 60_000 }));
+    expect(takeRejoin(now)).toBeNull();
+    sessionStorage.setItem("diskarte:rejoin", "{not json");
+    expect(takeRejoin(now)).toBeNull();
+  });
+
+  it("saves the call when the page unloads, and the next load rejoins it muted", async () => {
+    const { result, unmount } = renderHook(() => useCall(), { wrapper });
+    await act(async () => {
+      await result.current.join(target);
+    });
+    await act(async () => {
+      await result.current.toggleMute();
+    });
+    act(() => void window.dispatchEvent(new Event("pagehide")));
+    unmount();
+
+    const again = renderHook(() => useCall(), { wrapper });
+    await vi.waitFor(() => expect(again.result.current.status).toBe("connected"));
+    expect(again.result.current.target?.channelId).toBe(target.channelId);
+    await vi.waitFor(() => expect(again.result.current.muted).toBe(true));
+    expect(roomInstances.at(-1)!.localParticipant.setMicrophoneEnabled).toHaveBeenLastCalledWith(false);
+    expect(sessionStorage.getItem("diskarte:rejoin")).toBeNull();
   });
 });
 
