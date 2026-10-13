@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import nextConfig from "../../next.config";
-import { credentialsSchema, passwordSchema, signUpSchema } from "@/lib/profile";
+import { credentialsSchema, passwordSchema, signUpSchema } from "@/lib/schemas/profile";
 import { checkDistributed, checkLimit, limiters } from "@/lib/rate-limit";
 import { allowedOriginSet, corsHeadersFor, withMinimumDuration } from "@/lib/security";
 import { authCookieOptions } from "@/lib/supabase/cookies";

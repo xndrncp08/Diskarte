@@ -2,10 +2,11 @@
 
 import { z } from "zod";
 import { getSessionUser } from "@/lib/auth";
-import { adminError, banSchema, broadcastIdSchema, broadcastSchema, roleChangeSchema, statusOverrideSchema, userIdSchema } from "@/lib/admin";
+import { adminError } from "@/lib/admin";
+import { banSchema, broadcastIdSchema, broadcastSchema, roleChangeSchema, statusOverrideSchema, userIdSchema } from "@/lib/schemas/admin";
 import { isSuperAdmin } from "@/lib/admin-server";
 import { fieldErrors } from "@/lib/profile";
-import { fixAgentSchema, reportStatusSchema } from "@/lib/reports";
+import { fixAgentSchema, reportStatusSchema } from "@/lib/schemas/reports";
 import { limiters } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 import type { ActionResult } from "./servers";

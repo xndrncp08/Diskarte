@@ -3,7 +3,8 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getSessionUser } from "@/lib/auth";
-import { communityError, lfgSchema } from "@/lib/community";
+import { communityError } from "@/lib/community";
+import { lfgSchema } from "@/lib/schemas/community";
 import { fieldErrors } from "@/lib/profile";
 import { limiters } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";

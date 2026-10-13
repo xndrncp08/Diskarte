@@ -1,20 +1,8 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { bump, isNewer, parseActivityMessage, reduceActivity, type Activity } from "@/lib/activity";
-import {
-  auditExcerpt,
-  automodSettingsSchema,
-  boostLevel,
-  communityError,
-  describeAudit,
-  formatDuration,
-  formatMobile,
-  isBeaconLive,
-  lfgSchema,
-  minutesLeft,
-  parseTermList,
-  supportSettingsSchema,
-} from "@/lib/community";
+import { auditExcerpt, boostLevel, communityError, describeAudit, formatDuration, formatMobile, isBeaconLive, minutesLeft, parseTermList } from "@/lib/community";
+import { automodSettingsSchema, lfgSchema, supportSettingsSchema } from "@/lib/schemas/community";
 import { joinTicTacToe, newTicTacToe, outcome, playMove, rematch, type TicTacToe } from "@/lib/games/tictactoe";
 import { answerTrivia, currentQuestion, leaderboard, newTrivia, nextTrivia, REVEAL_MS, revealTrivia, ROUND_SECONDS, shuffledOrder, TRIVIA_QUESTIONS } from "@/lib/games/trivia";
 import { getLowDataMode, imageQuality, resetLowDataCache, setLowDataMode, subscribeLowDataMode } from "@/lib/low-data";

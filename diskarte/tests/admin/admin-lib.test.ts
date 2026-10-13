@@ -1,17 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import {
-  adminError,
-  broadcastMarkdown,
-  broadcastSchema,
-  DEFAULT_FILTERS,
-  filterUsers,
-  isBanned,
-  isStickyLive,
-  presenceOf,
-  type AdminDevice,
-  type AdminUser,
-} from "@/lib/admin";
+import { adminError, broadcastMarkdown, DEFAULT_FILTERS, filterUsers, isBanned, isStickyLive, presenceOf, type AdminDevice, type AdminUser } from "@/lib/admin";
+import { broadcastSchema } from "@/lib/schemas/admin";
 import { deviceLabel } from "@/lib/device";
 
 const NOW = Date.parse("2026-10-06T08:00:00Z");

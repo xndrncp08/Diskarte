@@ -1,9 +1,8 @@
-import { memo, useState, type ReactNode } from "react";
+import { memo, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Emote } from "@/components/ui/Emote";
 import { useDisplayPrefs } from "@/lib/display-prefs";
 import { CircleCheck, Info, OctagonAlert, TriangleAlert } from "lucide-react";
-import ReactMarkdown, { defaultUrlTransform, type Components } from "react-markdown";
-import rehypeHighlight from "rehype-highlight";
+import ReactMarkdown, { defaultUrlTransform, type Components, type Options } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 const SAFE_PROTOCOLS = /^(https?:|mailto:)/i;
@@ -188,17 +187,46 @@ const components = {
     ),
 } as Components;
 
+// Syntax highlighting (highlight.js grammars) is the heaviest part of chat rendering, so it loads
+// only once a message with a fenced code block shows up; until then code renders plain.
+type Plugins = NonNullable<Options["rehypePlugins"]>;
+let highlightPlugins: Plugins | null = null;
+let highlightLoad: Promise<void> | null = null;
+const highlightListeners = new Set<() => void>();
+function loadHighlighter() {
+  highlightLoad ??= import("rehype-highlight").then((m) => {
+    highlightPlugins = [[m.default, { detect: false }]];
+    highlightListeners.forEach((l) => l());
+  });
+}
+function useHighlighter(needed: boolean): Plugins {
+  const plugins = useSyncExternalStore(
+    (listener) => {
+      highlightListeners.add(listener);
+      return () => void highlightListeners.delete(listener);
+    },
+    () => highlightPlugins,
+    () => null,
+  );
+  useEffect(() => {
+    if (needed && !plugins) loadHighlighter();
+  }, [needed, plugins]);
+  return (needed && plugins) || NO_PLUGINS;
+}
+const NO_PLUGINS: Plugins = [];
+
 /**
  * Chat Markdown (GFM + syntax highlighting + callout boxes). XSS-safe by construction: raw HTML is shown as literal
  * text (skipHtml stays on as a backstop), images are unwrapped (files go through attachments), and
  * URLs are protocol-allow-listed.
  */
 export const MessageMarkdown = memo(function MessageMarkdown({ content }: { content: string }) {
+  const rehypePlugins = useHighlighter(content.includes("```"));
   return (
     <div className="chat-markdown text-[length:var(--chat-font-size,15px)] text-slate-200">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkHtmlAsText, remarkCallouts, remarkSpoilers, remarkGlyphs]}
-        rehypePlugins={[[rehypeHighlight, { detect: false }]]}
+        rehypePlugins={rehypePlugins}
         skipHtml
         disallowedElements={["img", "iframe", "script", "style"]}
         unwrapDisallowed

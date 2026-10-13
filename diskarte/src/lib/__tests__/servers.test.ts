@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { canManageMember, channelSchema, inviteExpiry, isTimedOut, firstTextChannel, groupChannels, hasRole, inviteUrl, parseInviteInput, serverInitials, serverSchema, slugifyChannelName } from "@/lib/servers";
+import { canManageMember, inviteExpiry, isTimedOut, firstTextChannel, groupChannels, hasRole, inviteUrl, parseInviteInput, serverInitials, slugifyChannelName } from "@/lib/servers";
+import { channelSchema, serverSchema } from "@/lib/schemas/servers";
 import { channels, makeChannel } from "../../../tests/fixtures/server";
 
 describe("slugifyChannelName", () => {
