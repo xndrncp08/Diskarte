@@ -34,6 +34,7 @@ import { signalLevel, type PresencePayload } from "@/lib/presence";
 import { groupChannels, hasRole, type Channel, type MemberWithProfile } from "@/lib/servers";
 import { cn } from "@/lib/utils";
 import { ChannelDialog } from "./ChannelDialog";
+import { EventsButton } from "./EventsButton";
 import { InviteDialog } from "./InviteDialog";
 import type { SettingsTab } from "./ServerSettingsDialog";
 
@@ -536,6 +537,7 @@ export function ChannelSidebar() {
         >
           <Radio className="size-4" aria-hidden /> LFG Board
         </Link>
+        <EventsButton />
         {/* Just you here: the one thing worth doing next is bringing people in. */}
         {!server.is_system && members.length === 1 && (
           <button
