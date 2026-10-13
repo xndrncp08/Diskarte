@@ -91,7 +91,7 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
             aria-label={`Set status (currently ${STATUS_LABELS[me.status]})`}
             className="flex w-full min-w-0 items-center gap-2 rounded-md p-1 text-left transition-colors hover:bg-white/10 pointer-coarse:py-1.5"
           >
-            <span data-status-ring={shown} className={cn("shrink-0 rounded-full ring-2 ring-offset-2 ring-offset-[#0b1020] transition-shadow duration-300", STATUS_RING[shown])}>
+            <span data-status-ring={shown} className={cn("flex shrink-0 rounded-full ring-2 ring-offset-2 ring-offset-[#0b1020] transition-shadow duration-300", STATUS_RING[shown])}>
               <UserAvatar profile={me} size={32} status={shown} ring="#0b1020" />
             </span>
             <span className="min-w-0">

@@ -111,7 +111,7 @@ export function WorkspaceCanvas({ children, extra }: { children: ReactNode; extr
                 type="button"
                 onClick={() => store.setMinimized(id, false)}
                 aria-label={`Restore ${mounted.get(id) ?? PANEL_TITLES[id]}`}
-                className="flex h-10 shrink-0 items-center gap-2 rounded-2xl border border-white/10 bg-slate-900/60 px-3.5 text-sm font-semibold text-slate-200 shadow-xl shadow-black/40 backdrop-blur-2xl transition-[translate,background-color] duration-150 hover:-translate-y-0.5 hover:bg-slate-800/70"
+                className="flex h-10 shrink-0 items-center gap-2 rounded-2xl border border-white/10 bg-midnight/60 px-3.5 text-sm font-semibold text-slate-200 shadow-xl shadow-black/40 backdrop-blur-2xl transition-[translate,background-color] duration-150 hover:-translate-y-0.5 hover:bg-slate-800/70"
                 data-testid="panel-pill"
               >
                 <span className="text-sun">{PILL_ICONS[id]}</span>

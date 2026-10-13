@@ -27,7 +27,7 @@ export function RosterDrawer({ children, count }: { children: ReactNode; count?:
       data-roster={mode}
       style={{ width: ROSTER_WIDTH }}
       className={cn(
-        "absolute bottom-[var(--tray,0px)] right-0 top-0 z-[900] flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-slate-900/70 shadow-2xl shadow-black/50 backdrop-blur-2xl max-md:hidden",
+        "absolute bottom-[var(--tray,0px)] right-0 top-0 z-[900] flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-midnight/70 shadow-2xl shadow-black/50 backdrop-blur-2xl max-md:hidden",
         "transition-[translate,opacity] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]",
         open ? "translate-x-0 opacity-100" : "pointer-events-none invisible translate-x-[calc(100%+1rem)] opacity-0",
       )}

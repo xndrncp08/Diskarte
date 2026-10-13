@@ -1,6 +1,7 @@
 import { ChangePasswordForm } from "@/components/profile/ChangePasswordForm";
 import { DangerZone } from "@/components/profile/DangerZone";
 import { LowDataToggle } from "@/components/profile/LowDataToggle";
+import { ThemePicker } from "@/components/profile/ThemePicker";
 import { SignOutButton } from "@/components/profile/SignOutButton";
 import { SoundSettings } from "@/components/profile/SoundSettings";
 
@@ -51,6 +52,11 @@ export function AccountSettings({ account, username, createdAt }: { account: Acc
           <ChangePasswordForm />
         </section>
       )}
+
+      <section className="glass rounded-2xl p-5">
+        <h2 className="mb-3 font-pixel text-[10px] text-sun">THEME</h2>
+        <ThemePicker className="max-w-md" />
+      </section>
 
       <section className="glass rounded-2xl p-5">
         <h2 className="mb-3 font-pixel text-[10px] text-sun">8-BIT SOUNDS</h2>
