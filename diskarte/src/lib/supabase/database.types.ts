@@ -291,6 +291,7 @@ export interface Database {
         { id?: string; server_id: string; channel_id?: string | null; location?: string | null; name: string; description?: string; starts_at: string; ends_at?: string | null; created_by?: string | null }
       >;
       event_rsvps: TableDef<{ event_id: string; server_id: string; user_id: string; created_at: string }, { event_id: string; server_id: string; user_id?: string }>;
+      server_emojis: TableDef<{ id: string; server_id: string; name: string; path: string; created_by: string | null; created_at: string }, { id?: string; server_id: string; name: string; path: string; created_by?: string | null }>;
       saved_messages: TableDef<{ user_id: string; message_id: string; saved_at: string }, { user_id?: string; message_id: string; saved_at?: string }>;
       channel_reads: TableDef<{ user_id: string; channel_id: string; last_read_at: string }, never>;
       message_mentions: TableDef<{ message_id: string; user_id: string; channel_id: string; server_id: string; created_at: string }, never>;

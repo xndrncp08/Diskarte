@@ -1,8 +1,9 @@
 "use client";
 
-import { Sun, ThumbsUp } from "lucide-react";
+import { Smile, Sun, ThumbsUp } from "lucide-react";
 import { useState } from "react";
-import { Glyph } from "@/components/ui/Glyph";
+import { useOptionalServer } from "@/components/providers/ServerProvider";
+import { Emote } from "@/components/ui/Emote";
 import { CLASSIC_REACTIONS, PINOY_REACTIONS } from "@/lib/emoji";
 import { cn } from "@/lib/utils";
 
@@ -13,16 +14,21 @@ const TABS = [
 
 /** Tabs + search + grid of icon reactions (lazily loaded by EmojiPicker). Vector icons only — no emoji. */
 export function EmojiPickerPanel({ onPick }: { onPick: (value: string) => void }) {
-  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("pinoy");
+  const emojis = useOptionalServer()?.emojis;
+  const custom = [...(emojis?.keys() ?? [])].map((name) => ({ code: `:${name}:`, label: name }));
+  const tabs = custom.length ? [{ id: "server", label: "Server", icon: Smile, list: custom } as const, ...TABS] : TABS;
+  const [tab, setTab] = useState<(typeof tabs)[number]["id"]>(custom.length ? "server" : "pinoy");
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
   // Searching looks through every reaction, whichever tab is open.
-  const list = q ? [...PINOY_REACTIONS, ...CLASSIC_REACTIONS].filter((r) => r.label.toLowerCase().includes(q) || r.code.includes(q)) : TABS.find((t) => t.id === tab)!.list;
+  const list: readonly { code: string; label: string }[] = q
+    ? [...custom, ...PINOY_REACTIONS, ...CLASSIC_REACTIONS].filter((r) => r.label.toLowerCase().includes(q) || r.code.includes(q))
+    : (tabs.find((t) => t.id === tab) ?? tabs[0]).list;
 
   return (
     <>
       <div className="mb-2 flex gap-1">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
@@ -56,7 +62,7 @@ export function EmojiPickerPanel({ onPick }: { onPick: (value: string) => void }
             onClick={() => onPick(r.code)}
             className="flex flex-col items-center rounded-md p-1 transition-[transform,background-color] duration-150 hover:scale-110 hover:bg-white/10 motion-reduce:hover:scale-100"
           >
-            <Glyph code={r.code} className="size-6" />
+            <Emote code={r.code} className="size-6" />
             <span className="mt-0.5 w-full truncate text-center font-silk text-[8px] uppercase text-slate-400">{r.label}</span>
           </button>
         ))}

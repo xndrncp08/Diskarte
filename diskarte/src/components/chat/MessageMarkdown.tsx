@@ -1,11 +1,10 @@
 import { memo, useState, type ReactNode } from "react";
+import { Emote } from "@/components/ui/Emote";
 import { useDisplayPrefs } from "@/lib/display-prefs";
 import { CircleCheck, Info, OctagonAlert, TriangleAlert } from "lucide-react";
 import ReactMarkdown, { defaultUrlTransform, type Components } from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
-import { Glyph } from "@/components/ui/Glyph";
-import { splitGlyphs } from "@/lib/emoji";
 
 const SAFE_PROTOCOLS = /^(https?:|mailto:)/i;
 
@@ -38,9 +37,14 @@ export function remarkGlyphs() {
     const next: MdNode[] = [];
     for (const child of node.children) {
       if (child.type === "text" && child.value?.includes(":")) {
-        for (const part of splitGlyphs(child.value)) {
-          next.push(typeof part === "string" ? { type: "text", value: part } : { type: "glyph", data: { hName: "glyph", hProperties: { code: part.code } } });
+        // Every `:word:` becomes a glyph node; <Emote> decides (built-in, server emoji, or plain text).
+        let last = 0;
+        for (const match of child.value.matchAll(/:[a-z0-9_]{1,32}:/g)) {
+          if (match.index > last) next.push({ type: "text", value: child.value.slice(last, match.index) });
+          next.push({ type: "glyph", data: { hName: "glyph", hProperties: { code: match[0] } } });
+          last = match.index + match[0].length;
         }
+        if (last < child.value.length) next.push({ type: "text", value: child.value.slice(last) });
       } else {
         walk(child);
         next.push(child);
@@ -173,7 +177,7 @@ const components = {
     );
   },
   spoiler: ({ children }: { children?: ReactNode }) => <Spoiler>{children}</Spoiler>,
-  glyph: ({ node }: { node?: { properties?: { code?: unknown } } }) => <Glyph code={String(node?.properties?.code ?? "")} label className="size-[1.25em]" />,
+  glyph: ({ node }: { node?: { properties?: { code?: unknown } } }) => <Emote code={String(node?.properties?.code ?? "")} fallback="text" className="size-[1.25em]" />,
   a: ({ href, children }: { href?: string; children?: React.ReactNode }) =>
     href ? (
       <a href={href} target="_blank" rel="noopener noreferrer nofollow ugc">
