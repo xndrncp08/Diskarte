@@ -2,6 +2,7 @@
 
 import { Hash, Menu as MenuIcon, Users, Volume2 } from "lucide-react";
 import type { ReactNode } from "react";
+import { SearchBox } from "@/components/chat/SearchBox";
 import { useShellUI } from "@/components/shell/ShellUI";
 import { Tooltip } from "@/components/ui/Tooltip";
 import type { Channel } from "@/lib/servers";
@@ -27,6 +28,7 @@ export function ChannelHeader({ channel, actions }: { channel: Channel; actions?
       )}
       <div className="ml-auto flex items-center gap-1">
         {actions}
+        <SearchBox />
         <Tooltip label={membersOpen ? "Hide members" : "Show members"} side="bottom">
           <button
             type="button"

@@ -473,6 +473,10 @@ export interface Database {
         Returns: { channel_id: string; server_id: string; last_message_at: string | null; read_at: string; mentions: number }[];
       };
       mark_channel_read: { Args: { p_channel: string }; Returns: undefined };
+      search_messages: {
+        Args: { p_server: string; p_query: string; p_channel?: string | null; p_author?: string | null; p_before?: string | null; p_limit?: number };
+        Returns: Database["public"]["Tables"]["messages"]["Row"][];
+      };
       admin_site_traffic: { Args: Record<string, never>; Returns: Json };
     };
     Enums: {
