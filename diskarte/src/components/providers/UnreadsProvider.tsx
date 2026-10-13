@@ -1,9 +1,12 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { createContext, useCallback, useContext, useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMe } from "@/components/providers/MeProvider";
 import { useOptionalSupabase } from "@/components/providers/RuntimeConfig";
+import { desktopNotify, readNotifyPrefs, serverNotify } from "@/lib/notify-prefs";
 import { subscribeDbChanges } from "@/lib/realtime";
+import { playSfx } from "@/lib/sfx";
 
 /** How often the rail's unread state refreshes in the background (the open server is live). */
 export const UNREADS_POLL_MS = 30_000;
@@ -46,6 +49,25 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
   // Read marks made in this tab: a refresh racing the server write never brings an unread back.
   const marks = useRef(new Map<string, string>());
   const pending = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const router = useRouter();
+
+  // Someone @mentioned me: ping, and a desktop notification (Settings → Notifications), unless the
+  // server is muted or set to Nothing, or I'm already looking at that channel.
+  const onMention = useEffectEvent(async (row: { message_id?: string; channel_id?: string; server_id?: string }) => {
+    if (!supabase || !row.message_id || !row.channel_id || !row.server_id) return;
+    const level = serverNotify(readNotifyPrefs(), row.server_id);
+    if (level.muted || level.level === "nothing") return;
+    const href = `/tambayan/${row.server_id}/${row.channel_id}`;
+    if (document.hasFocus() && window.location.pathname === href) return;
+    playSfx("mention");
+    const [{ data: message }, { data: channel }] = await Promise.all([
+      supabase.from("messages").select("content, author_id").eq("id", row.message_id).maybeSingle(),
+      supabase.from("channels").select("name").eq("id", row.channel_id).maybeSingle(),
+    ]);
+    if (!message) return;
+    const { data: author } = message.author_id ? await supabase.from("profiles").select("display_name").eq("id", message.author_id).maybeSingle() : { data: null };
+    desktopNotify({ title: `${author?.display_name ?? "Someone"} in #${channel?.name ?? "a channel"}`, body: message.content, tag: row.message_id, href, open: (to) => router.push(to) });
+  });
 
   const refresh = useCallback(async () => {
     if (!supabase) return;
@@ -69,7 +91,10 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
     const onFocus = () => void refresh();
     window.addEventListener("focus", onFocus);
     const off = subscribeDbChanges(supabase, `mentions:${me.id}`, (channel) =>
-      channel.on("postgres_changes", { event: "INSERT", schema: "public", table: "message_mentions", filter: `user_id=eq.${me.id}` }, () => void refresh()),
+      channel.on("postgres_changes", { event: "INSERT", schema: "public", table: "message_mentions", filter: `user_id=eq.${me.id}` }, ({ new: row }) => {
+        void refresh();
+        void onMention(row as { message_id?: string; channel_id?: string; server_id?: string });
+      }),
     );
     return () => {
       clearInterval(timer);

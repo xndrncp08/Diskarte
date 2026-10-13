@@ -15,6 +15,7 @@ import type { PlatformRole } from "@/lib/admin";
 import { cn } from "@/lib/utils";
 import { useLayout, WorkspaceProvider } from "@/components/workspace/WorkspaceProvider";
 import { UnreadsProvider } from "@/components/providers/UnreadsProvider";
+import { DmNotifier } from "./DmNotifier";
 import { ServerRail } from "./ServerRail";
 import { ShellUIProvider, useShellUI } from "./ShellUI";
 
@@ -99,6 +100,7 @@ export function AppShell({ servers, platformRole = "member", children }: { serve
         <UnreadsProvider>
           <ShellUIBridge>
             <MembershipWatcher userId={me.id} />
+            <DmNotifier />
             <Frame servers={servers}>{children}</Frame>
             <ConfirmHost />
           </ShellUIBridge>
