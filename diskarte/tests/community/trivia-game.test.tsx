@@ -14,8 +14,11 @@ let latest: Trivia;
 /** Mirrors the call stage: a new onChange (and isDriver) on every render, re-rendered constantly. */
 function Room({ initial, players = 2 }: { initial: Trivia; players?: number }) {
   const [game, setGame] = useState(initial);
-  latest = game;
-  return <TriviaGame game={game} me="ana" nameOf={(id) => id ?? ""} isDriver={() => true} players={() => players} onChange={(next) => setGame(next)} />;
+  const change = (next: Trivia) => {
+    latest = next;
+    setGame(next);
+  };
+  return <TriviaGame game={game} me="ana" nameOf={(id) => id ?? ""} isDriver={() => true} players={() => players} onChange={change} />;
 }
 
 describe("trivia rounds", () => {
