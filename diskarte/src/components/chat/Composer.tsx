@@ -1,7 +1,7 @@
 "use client";
 
 import { FileText, Loader2, Lock, Paperclip, SendHorizontal, ShieldAlert, Turtle, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent } from "react";
 import { toast } from "sonner";
 import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
@@ -10,6 +10,7 @@ import { typingLabel } from "@/hooks/useTyping";
 import { formatDuration } from "@/lib/community";
 import { MAX_ATTACHMENTS, MESSAGE_MAX, type Attachment } from "@/lib/messages";
 import { ATTACHMENT_ACCEPT, uploadAttachment } from "@/lib/uploads";
+import { onMentionRequest } from "@/lib/mention";
 import { cn, formatBytes } from "@/lib/utils";
 import { EmojiPicker } from "./EmojiPicker";
 import { StickerPicker } from "./StickerPicker";
@@ -93,6 +94,10 @@ export function Composer({
   useEffect(() => {
     if (replyTo) textarea.current?.focus();
   }, [replyTo]);
+
+  // "Mention" from someone's menu drops @them where you're typing.
+  const mention = useEffectEvent((username: string) => insert(`@${username} `));
+  useEffect(() => onMentionRequest((username) => mention(username)), []);
 
   // Release preview object URLs on unmount (removal/sending revoke their own).
   const liveUploads = useRef<PendingUpload[]>([]);

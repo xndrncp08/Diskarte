@@ -4,6 +4,7 @@ import type { ConnectionQuality, DisconnectReason, LocalTrackPublication, Partic
 import dynamic from "next/dynamic";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { useOptionalSupabase } from "@/components/providers/RuntimeConfig";
 import { useBroadcastSpeaking, useServerPresence, useVoicePresence } from "@/components/providers/PresenceProvider";
 import type { SignalLevel } from "@/components/retro/SignalBars";
 import { getLowDataMode, subscribeLowDataMode } from "@/lib/low-data";
@@ -59,6 +60,9 @@ export interface CallContextValue extends CallState {
   mix: AudioMix;
   setMasterVolume: (volume: number) => void;
   setParticipantVolume: (identity: string, volume: number) => void;
+  /** Mute someone just for yourself, or stop downloading their camera (toggles). */
+  toggleLocalMute: (identity: string) => void;
+  toggleVideoOff: (identity: string) => void;
   /** Switch microphone or speakers mid-call. */
   switchDevice: (kind: "audioinput" | "audiooutput", deviceId: string) => Promise<void>;
 }
@@ -66,6 +70,10 @@ export interface CallContextValue extends CallState {
 export interface AudioMix {
   master: number;
   people: Record<string, number>;
+  /** People you've muted for yourself (Discord's "Mute" in their menu); remembered on this device. */
+  muted?: Record<string, boolean>;
+  /** People whose camera you don't download ("Disable Video"). */
+  videoOff?: Record<string, boolean>;
 }
 
 /**
@@ -160,13 +168,22 @@ export function takeRejoin(now = Date.now()): { target: CallTarget; muted: boole
 const DISCONNECT_TIMEOUT_MS = 2500;
 /** Re-announce "still talking" well inside the observers' SPEAKING_TTL_MS. */
 const SPEAKING_HEARTBEAT_MS = 2000;
+/** Toggle one id in a set of on-flags. */
+function flip(flags: Record<string, boolean> | undefined, id: string) {
+  const next = { ...flags };
+  if (next[id]) delete next[id];
+  else next[id] = true;
+  return next;
+}
+
 const clampVolume = (v: number) => (Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1);
 
 function readMix(): AudioMix {
   try {
     const parsed = JSON.parse(localStorage.getItem(MIX_KEY) ?? "null") as Partial<AudioMix> | null;
     const people = Object.fromEntries(Object.entries(parsed?.people ?? {}).map(([id, v]) => [id, clampVolume(Number(v))]));
-    return { master: clampVolume(Number(parsed?.master ?? 1)), people };
+    const flags = (v: unknown) => Object.fromEntries(Object.entries((v as Record<string, unknown>) ?? {}).filter(([, on]) => on === true)) as Record<string, boolean>;
+    return { master: clampVolume(Number(parsed?.master ?? 1)), people, muted: flags(parsed?.muted), videoOff: flags(parsed?.videoOff) };
   } catch {
     return { master: 1, people: {} };
   }
@@ -174,7 +191,7 @@ function readMix(): AudioMix {
 
 /** Effective playback volume for one person: the master level times their own slider. */
 export function effectiveVolume(mix: AudioMix, identity: string) {
-  return mix.master * (mix.people[identity] ?? 1);
+  return mix.muted?.[identity] ? 0 : mix.master * (mix.people[identity] ?? 1);
 }
 
 function applyMix(participant: RemoteParticipant, mix: AudioMix) {
@@ -182,6 +199,11 @@ function applyMix(participant: RemoteParticipant, mix: AudioMix) {
   participant.setVolume(volume);
   // Screen-share audio follows the same slider.
   participant.setVolume(volume, "screen_share_audio" as Parameters<RemoteParticipant["setVolume"]>[1]);
+  // "Disable Video": stop downloading their camera (screen shares have their own Watch choice).
+  const videoOff = mix.videoOff?.[participant.identity] === true;
+  participant.trackPublications?.forEach((pub) => {
+    if (pub.source === "camera" && pub.isDesired === videoOff) pub.setSubscribed(!videoOff);
+  });
 }
 
 /** Remote video at low simulcast layers when low-data mode is on. */
@@ -206,6 +228,12 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const [speaking, setSpeaking] = useState<string[]>([]);
   const roomRef = useRef<Room | null>(null);
   const current = useRef<CallTarget | null>(null);
+  // Looks up a channel's name (for "moved you to …"), through the browser Supabase client.
+  const supabase = useOptionalSupabase();
+  const channelNames = useRef<((id: string) => Promise<string | null>) | null>(null);
+  useEffect(() => {
+    channelNames.current = supabase ? async (id) => (await supabase.from("channels").select("name").eq("id", id).maybeSingle()).data?.name ?? null : null;
+  }, [supabase]);
   const leaving = useRef(false);
   const mutedBeforeDeafen = useRef(false);
   const dataHandlers = useRef(new Map<string, Set<DataHandler>>());
@@ -303,7 +331,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
         .on(lk.RoomEvent.ActiveSpeakersChanged, (speakers: Participant[]) => setSpeaking(speakers.map((p) => p.identity)))
         .on(lk.RoomEvent.TrackSubscribed, (_track: unknown, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
           if (getLowDataMode() && publication.kind === lk.Track.Kind.Video) publication.setVideoQuality(lk.VideoQuality.LOW);
-          if (publication.kind === lk.Track.Kind.Audio) applyMix(participant, mixRef.current);
+          if (publication.kind === lk.Track.Kind.Audio || publication.source === lk.Track.Source.Camera) applyMix(participant, mixRef.current);
         })
         .on(lk.RoomEvent.DataReceived, (payload: Uint8Array, participant?: RemoteParticipant, _kind?: unknown, topic?: string) => {
           const handlers = topic ? dataHandlers.current.get(topic) : undefined;
@@ -327,6 +355,27 @@ export function CallProvider({ children }: { children: ReactNode }) {
           if (publication.source === lk.Track.Source.Camera) setState((s) => ({ ...s, camera: false }));
         })
         .on(lk.RoomEvent.MediaDevicesError, (err: Error) => toast.error(mediaErrorMessage(err, "mic")))
+        // A moderator moved you to another voice channel of the server ("voice:<channelId>").
+        .on(lk.RoomEvent.Moved, (roomName: string) => {
+          const channelId = roomName.startsWith("voice:") ? roomName.slice(6) : null;
+          if (!channelId) return;
+          setState((s) => (s.target && s.target.kind !== "dm" ? { ...s, target: { ...s.target, channelId, channelName: "Voice" } } : s));
+          void channelNames.current?.(channelId).then((name) => {
+            if (!name) return;
+            setState((s) => (s.target?.channelId === channelId ? { ...s, target: { ...s.target, channelName: name } } : s));
+            toast(`A moderator moved you to ${name}.`);
+          });
+        })
+        // Server mute: a moderator took away your mic; it stays off until they lift it.
+        .on(lk.RoomEvent.ParticipantPermissionsChanged, (_prev: unknown, participant: Participant) => {
+          if (!participant.isLocal) return;
+          const sources = participant.permissions?.canPublishSources ?? [];
+          const micBlocked = sources.length > 0 && !sources.includes(2 /* MICROPHONE */);
+          if (micBlocked) {
+            setState((s) => (s.muted ? s : { ...s, muted: true }));
+            toast("A moderator server-muted you.");
+          }
+        })
         .on(lk.RoomEvent.Disconnected, (reason?: DisconnectReason) => {
           if (roomRef.current !== next) return;
           if (!leaving.current) {
@@ -499,6 +548,8 @@ export function CallProvider({ children }: { children: ReactNode }) {
 
   const setMasterVolume = useCallback((volume: number) => setMix((m) => ({ ...m, master: clampVolume(volume) })), []);
   const setParticipantVolume = useCallback((identity: string, volume: number) => setMix((m) => ({ ...m, people: { ...m.people, [identity]: clampVolume(volume) } })), []);
+  const toggleLocalMute = useCallback((identity: string) => setMix((m) => ({ ...m, muted: flip(m.muted, identity) })), []);
+  const toggleVideoOff = useCallback((identity: string) => setMix((m) => ({ ...m, videoOff: flip(m.videoOff, identity) })), []);
 
   const switchDevice = useCallback(async (kind: "audioinput" | "audiooutput", deviceId: string) => {
     const current = roomRef.current;
@@ -563,9 +614,11 @@ export function CallProvider({ children }: { children: ReactNode }) {
       mix,
       setMasterVolume,
       setParticipantVolume,
+      toggleLocalMute,
+      toggleVideoOff,
       switchDevice,
     }),
-    [state, room, speaking, join, prewarm, leave, toggleMute, toggleDeafen, toggleCamera, toggleScreen, toggleNoiseSuppression, sendData, onData, mix, setMasterVolume, setParticipantVolume, switchDevice],
+    [state, room, speaking, join, prewarm, leave, toggleMute, toggleDeafen, toggleCamera, toggleScreen, toggleNoiseSuppression, sendData, onData, mix, setMasterVolume, setParticipantVolume, toggleLocalMute, toggleVideoOff, switchDevice],
   );
 
   return (

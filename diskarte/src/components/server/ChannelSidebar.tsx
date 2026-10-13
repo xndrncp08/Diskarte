@@ -4,8 +4,8 @@ import { motion, Reorder, useDragControls } from "framer-motion";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
-import { BadgeCheck, ChevronDown, ChevronsDownUp, ChevronsUpDown, GripVertical, Hash, HeadphoneOff, Heart, Link2, Lock, LogOut, MicOff, Pencil, Plus, Radio, Rocket, Settings, ShieldCheck, Trash2, UserPlus, Video, Volume2 } from "lucide-react";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { BadgeCheck, BellOff, ChevronDown, ChevronsDownUp, ChevronsUpDown, EyeOff, GripVertical, Hash, HeadphoneOff, Heart, Link2, Lock, LogOut, MicOff, Pencil, PencilLine, Plus, Radio, Rocket, Settings, ShieldCheck, Trash2, UserPlus, Video, Volume2 } from "lucide-react";
+import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { toast } from "sonner";
 import { deleteChannelAction, leaveServerAction, reorderChannelsAction } from "@/actions/servers";
 import { SupportDialog } from "@/components/community/SupportDialog";
@@ -16,7 +16,7 @@ import { UserAvatar } from "@/components/profile/UserAvatar";
 import { SignalBars } from "@/components/retro/SignalBars";
 import { UserPanel } from "@/components/shell/UserPanel";
 import { useShellUI } from "@/components/shell/ShellUI";
-import { PersonContextMenu } from "@/components/social/PersonMenu";
+import { PersonContextMenu, promptServerNickname } from "@/components/social/PersonMenu";
 import { confirmAction } from "@/components/ui/ConfirmHost";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ContextMenu, ContextMenuItems, copyText, useContextMenu } from "@/components/ui/ContextMenu";
@@ -25,6 +25,7 @@ import { useCall, usePrewarm } from "@/components/voice/CallProvider";
 import { Menu, type MenuItem } from "@/components/ui/Menu";
 import { useOnline } from "@/hooks/useOnline";
 import { useVoiceRoster } from "@/hooks/useVoiceRoster";
+import { readChannelMutes, serverMutes, subscribeChannelMutes, toggleChannelMute, toggleHideMuted } from "@/lib/channel-mute";
 import { rememberChannel } from "@/lib/last-channel";
 import { boostLevel } from "@/lib/community";
 import { signalLevel, type PresencePayload } from "@/lib/presence";
@@ -96,10 +97,13 @@ function ChannelRow({
   canManage,
   reorder,
   onDialog,
+  muted = false,
 }: {
   channel: Channel;
   active: boolean;
   canManage: boolean;
+  /** Muted channels are dimmed (Discord). */
+  muted?: boolean;
   /** Moderators drag the grip (or press ↑/↓ on it) to move the channel within its category. */
   reorder?: { onDragEnd: () => void; onMove: (delta: -1 | 1) => void };
   onDialog: (dialog: DialogState) => void;
@@ -118,6 +122,13 @@ function ChannelRow({
   const items: MenuItem[] = [
     { label: "Copy link", icon: <Link2 className={icon} aria-hidden />, onSelect: () => void copyText(`${window.location.origin}/tambayan/${server.id}/${channel.id}`, "Channel link") },
     { label: "Invite people", icon: <UserPlus className={icon} aria-hidden />, onSelect: () => onDialog({ kind: "invite" }), hidden: server.is_system },
+    {
+      label: "Mute Channel",
+      icon: <BellOff className={icon} aria-hidden />,
+      multi: true,
+      checked: muted,
+      onSelect: () => toggleChannelMute(server.id, channel.id),
+    },
     { label: "Edit channel", icon: <Pencil className={icon} aria-hidden />, onSelect: () => onDialog({ kind: "channel", channel }), hidden: !canManage },
     {
       label: "Delete channel",
@@ -185,7 +196,7 @@ function ChannelRow({
           onClick={() => setNavOpen(false)}
           aria-current={active ? "page" : undefined}
           draggable={false}
-          className="flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1.5 text-[15px] pointer-coarse:min-h-11 pointer-coarse:py-2.5"
+          className={cn("flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1.5 text-[15px] pointer-coarse:min-h-11 pointer-coarse:py-2.5", muted && !active && "opacity-50")}
           data-channel-type={channel.type}
           {...(channel.type === "voice" ? prewarm({ serverId: server.id, serverName: server.name, channelId: channel.id, channelName: channel.name }) : {})}
         >
@@ -300,7 +311,11 @@ function ChannelList({
   onReorder,
   onDragEnd,
   onMove,
+  muted,
+  hideMuted,
 }: {
+  muted: ReadonlySet<string>;
+  hideMuted: boolean;
   list: Channel[];
   order: string[] | null;
   collapsed: boolean;
@@ -312,7 +327,9 @@ function ChannelList({
   onMove: (id: string, delta: -1 | 1) => void;
 }) {
   const byId = new Map(list.map((c) => [c.id, c]));
-  const shown = (order ?? list.map((c) => c.id)).flatMap((id) => byId.get(id) ?? []).filter((c) => !collapsed || c.id === activeId);
+  const shown = (order ?? list.map((c) => c.id))
+    .flatMap((id) => byId.get(id) ?? [])
+    .filter((c) => (!collapsed || c.id === activeId) && !(hideMuted && muted.has(c.id) && c.id !== activeId));
   const reorderable = canManage && !collapsed && list.length > 1;
   return (
     <Reorder.Group as="ul" axis="y" values={shown.map((c) => c.id)} onReorder={onReorder} className="space-y-0.5">
@@ -324,6 +341,7 @@ function ChannelList({
           canManage={canManage}
           reorder={reorderable ? { onDragEnd, onMove: (delta) => onMove(channel.id, delta) } : undefined}
           onDialog={onDialog}
+          muted={muted.has(channel.id)}
         />
       ))}
     </Reorder.Group>
@@ -351,6 +369,7 @@ export function ChannelSidebar() {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [leaving, startLeave] = useTransition();
   const canManageChannels = hasRole(myRole, "moderator");
+  const mutes = serverMutes(useSyncExternalStore(subscribeChannelMutes, readChannelMutes, () => "{}"), server.id);
   const isOwner = server.owner_id === me.id;
 
   function leave() {
@@ -383,6 +402,15 @@ export function ChannelSidebar() {
       hidden: !canManageChannels,
     },
     { label: "Support this server", icon: <Heart className="size-4" aria-hidden />, onSelect: () => setDialog({ kind: "support" }) },
+    {
+      label: "Edit Per-server Profile",
+      icon: <PencilLine className="size-4" aria-hidden />,
+      onSelect: () => {
+        const mine = members.find((m) => m.user_id === me.id);
+        promptServerNickname({ serverId: server.id, serverName: server.name, userId: me.id, displayName: me.display_name, current: mine?.nickname ?? null, self: true });
+      },
+    },
+    { label: "Hide Muted Channels", icon: <EyeOff className="size-4" aria-hidden />, multi: true, checked: mutes.hide, onSelect: () => toggleHideMuted(server.id) },
     {
       label: "Create channel",
       icon: <Plus className="size-4" aria-hidden />,
@@ -518,6 +546,8 @@ export function ChannelSidebar() {
               activeId={params.channelId}
               canManage={canManageChannels}
               onDialog={setDialog}
+              muted={mutes.muted}
+              hideMuted={mutes.hide}
               onReorder={(ids) => drafting({ category, ids })}
               onDragEnd={() => dragRef.current?.category === category && commitOrder(category, dragRef.current.ids)}
               onMove={(id, delta) => {

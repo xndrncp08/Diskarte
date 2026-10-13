@@ -19,6 +19,10 @@ export interface MenuItem {
   multi?: boolean;
   /** Consecutive items sharing a group render as one labelled section (e.g. "Status", "Custom status"). */
   group?: string;
+  /** Small second line under the label (e.g. "Only visible to you"). */
+  hint?: string;
+  /** An inline control (e.g. a volume slider) instead of a clickable row; `onSelect` is unused. */
+  control?: ReactNode;
 }
 
 export const ITEM_SELECTOR = "[role=menuitem],[role=menuitemradio],[role=menuitemcheckbox]";
@@ -182,6 +186,14 @@ function sections(items: MenuItem[]) {
 }
 
 function MenuRow({ item, onPick }: { item: MenuItem; onPick: () => void }) {
+  if (item.control) {
+    return (
+      <div className="px-2.5 py-1.5 text-sm text-slate-200">
+        <p className="mb-1">{item.label}</p>
+        {item.control}
+      </div>
+    );
+  }
   return (
     <button
       type="button"
@@ -201,7 +213,10 @@ function MenuRow({ item, onPick }: { item: MenuItem; onPick: () => void }) {
       )}
     >
       {item.icon}
-      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate">{item.label}</span>
+        {item.hint && <span className="block truncate text-[11px] font-normal opacity-70">{item.hint}</span>}
+      </span>
       {item.checked && <Check className="size-4 shrink-0 text-sun" aria-hidden />}
     </button>
   );

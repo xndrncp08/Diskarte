@@ -272,6 +272,7 @@ export interface Database {
         { id: string; channel_id: string; server_id: string; user_id: string | null; role_id: string | null; created_at: string },
         { channel_id: string; server_id: string; user_id?: string | null; role_id?: string | null }
       >;
+      user_notes: TableDef<{ owner_id: string; target_id: string; note: string; updated_at: string }, { owner_id?: string; target_id: string; note: string; updated_at?: string }>;
       friend_nicknames: TableDef<{ owner_id: string; target_id: string; nickname: string }, { owner_id?: string; target_id: string; nickname: string }>;
       dm_conversations: TableDef<
         { id: string; kind: DmKind; name: string | null; owner_id: string | null; direct_key: string | null; created_at: string; last_message_at: string },
