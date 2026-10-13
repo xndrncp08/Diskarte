@@ -109,7 +109,8 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
       />
       {controls}
       <CallToggles />
-      <SoundSettingsPopover />
+      {/* In a call the panel holds mic, deafen and settings (Discord); sound settings stay in Settings. */}
+      <SoundOutsideCall />
       <Tooltip label="User settings" side="top">
         {/* Opens the Settings dialog in place so a voice call stays connected; the link still
             works for new-tab clicks and outside the app shell. */}
@@ -132,6 +133,11 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
 }
 
 const TOGGLE = "touch-target relative rounded-md p-2 transition-colors hover:bg-white/10 pointer-coarse:p-3.5";
+
+function SoundOutsideCall() {
+  const call = useContext(CallContext);
+  return call && call.status !== "idle" ? null : <SoundSettingsPopover />;
+}
 
 /** Mute and deafen beside your name while you're in a call (Discord's user panel). */
 function CallToggles() {

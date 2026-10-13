@@ -28,16 +28,12 @@ export function CallDock() {
           className="mx-2 mb-1.5 rounded-lg border border-white/[0.06] bg-black/30 p-2"
           data-testid="call-dock"
         >
-          <div className="flex items-center gap-2">
-            <ConnectionMeter />
-            <div className="min-w-0 flex-1">
-              <p className={`text-sm font-bold ${call.status === "connected" ? "text-signal-green" : "text-signal-idle"}`} role="status">
-                {STATUS_TEXT[call.status]}
-              </p>
-              <Link href={callHref(call.target!)} className="block truncate text-xs text-slate-400 hover:text-white hover:underline">
-                {call.target!.channelName} / {call.target!.serverName}
-              </Link>
-            </div>
+          {/* Discord's layout: status and actions on one line, where you're connected underneath. */}
+          <div className="flex items-center gap-1.5">
+            <ConnectionMeter compact />
+            <p className={`min-w-0 flex-1 truncate whitespace-nowrap text-sm font-bold ${call.status === "connected" ? "text-signal-green" : "text-signal-idle"}`} role="status">
+              {STATUS_TEXT[call.status]}
+            </p>
             <MixerButton size="sm" className="shrink-0" />
             <Tooltip label="Disconnect" side="top">
               <button
@@ -50,6 +46,9 @@ export function CallDock() {
               </button>
             </Tooltip>
           </div>
+          <Link href={callHref(call.target!)} className="block truncate px-1 text-xs text-slate-400 hover:text-white hover:underline">
+            {call.target!.channelName} / {call.target!.serverName}
+          </Link>
         </motion.div>
       )}
     </AnimatePresence>

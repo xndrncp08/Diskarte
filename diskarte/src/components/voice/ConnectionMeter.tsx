@@ -18,7 +18,8 @@ function fmt(value: number | null, unit: string) {
  * 8-bit connection meter for the active call: signal bars from LiveKit quality + measured latency /
  * packet loss, with a details popover (latency, loss, jitter, LiveKit's rating).
  */
-export function ConnectionMeter() {
+/** `compact`: just the bars (the latency stays in the label and the details popover). */
+export function ConnectionMeter({ compact = false }: { compact?: boolean } = {}) {
   const call = useCall();
   const stats = useCallStats(call.status === "connected" ? call.room : null);
   const level = call.status === "connected" ? healthLevel(stats, call.quality) : 1;
@@ -58,7 +59,7 @@ export function ConnectionMeter() {
         data-testid="connection-meter"
       >
         <SignalBars level={level} />
-        <span className={cn("font-pixel text-[8px] tabular-nums", color)} aria-hidden>
+        <span className={cn("font-pixel text-[8px] tabular-nums", color, compact && "hidden")} aria-hidden>
           {stats.rttMs === null ? HEALTH_LABEL[level].toUpperCase() : `${stats.rttMs}MS`}
         </span>
       </button>

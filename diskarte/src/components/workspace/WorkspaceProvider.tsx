@@ -14,7 +14,8 @@ export interface LayoutState {
   membersOpen: boolean;
 }
 
-export const NAV_WIDTH = { min: 200, max: 420, initial: 240 };
+// Below ~232px the user panel can't fit your name beside mic, deafen and settings.
+export const NAV_WIDTH = { min: 232, max: 420, initial: 240 };
 export const ROSTER_WIDTH = { min: 200, max: 400, initial: 248 };
 const STORAGE_KEY = "diskarte:layout:v2";
 const DEFAULT: LayoutState = { nav: NAV_WIDTH.initial, roster: ROSTER_WIDTH.initial, membersOpen: true };
