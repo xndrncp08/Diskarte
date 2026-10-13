@@ -33,6 +33,8 @@ const DB_ERRORS: Record<string, string> = {
   CANNOT_CHANGE_OWNER_ROLE: "The owner's role can't be changed.",
   ONLY_OWNER_CAN_DEMOTE_ADMINS: "Only the owner can demote an admin.",
   ONLY_ADMINS_CAN_REGENERATE_INVITES: "Only admins can reset the invite.",
+  ONLY_ADMINS_CHANGE_PRIVACY: "Only admins can make a channel private or public.",
+  server_roles_name_idx: "There's already a role with that name.",
 };
 
 function dbError(message: string | undefined, fallback: string) {
@@ -149,6 +151,8 @@ export async function createChannelAction(input: {
   slowmodeSeconds?: number;
   requiresVerification?: boolean;
   readOnly?: boolean;
+  /** Admins only (the database refuses anyone else). */
+  isPrivate?: boolean;
 }): Promise<ActionResult<{ channelId: string }>> {
   const { limited } = await authed();
   if (limited) return RATE_LIMITED;
@@ -169,6 +173,8 @@ export async function createChannelAction(input: {
       slowmode_seconds: moderation.data.slowmodeSeconds,
       requires_verification: moderation.data.requiresVerification,
       read_only: moderation.data.readOnly,
+      // Only sent when set, so creating public channels never depends on the column.
+      ...(input.isPrivate ? { is_private: true } : {}),
     })
     .select("id")
     .single();
@@ -192,6 +198,8 @@ export async function updateChannelAction(input: {
   slowmodeSeconds?: number;
   requiresVerification?: boolean;
   readOnly?: boolean;
+  /** Only when it changes; admins only. */
+  isPrivate?: boolean;
 }): Promise<ActionResult> {
   const { limited } = await authed();
   if (limited) return RATE_LIMITED;
@@ -210,6 +218,7 @@ export async function updateChannelAction(input: {
       slowmode_seconds: moderation.data.slowmodeSeconds,
       requires_verification: moderation.data.requiresVerification,
       read_only: moderation.data.readOnly,
+      ...(typeof input.isPrivate === "boolean" ? { is_private: input.isPrivate } : {}),
     })
     .eq("id", input.channelId)
     .select("id");
@@ -298,5 +307,104 @@ export async function setNicknameAction(input: { serverId: string; userId: strin
     .eq("user_id", input.userId)
     .select("user_id");
   if (error || !data?.length) return { ok: false, error: dbError(error?.message, "Couldn't change the nickname.") };
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------------------
+// Custom roles and private channel access (admins only; RLS enforces it)
+// ---------------------------------------------------------------------------------------
+
+const customRoleSchema = z.object({
+  name: z
+    .string()
+    .transform((v) => v.replace(/[\u0000-\u001F\u007F]/g, "").trim())
+    .pipe(z.string().min(1, "Give the role a name").max(32, "32 characters max")),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Pick a colour"),
+});
+
+export async function createRoleAction(input: { serverId: string; name: string; color: string }): Promise<ActionResult<{ roleId: string }>> {
+  const { limited } = await authed();
+  if (limited) return RATE_LIMITED;
+  if (!uuidSchema.safeParse(input.serverId).success) return { ok: false, error: "Invalid server" };
+  const parsed = customRoleSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, fieldErrors: fieldErrors(parsed.error) };
+  const supabase = await createClient();
+  const { data: last } = await supabase.from("server_roles").select("position").eq("server_id", input.serverId).order("position", { ascending: false }).limit(1).maybeSingle();
+  const { data, error } = await supabase
+    .from("server_roles")
+    .insert({ server_id: input.serverId, ...parsed.data, position: (last?.position ?? -1) + 1 })
+    .select("id")
+    .single();
+  if (error || !data) return { ok: false, error: dbError(error?.message, "Only admins can create roles.") };
+  return { ok: true, data: { roleId: data.id } };
+}
+
+export async function updateRoleAction(input: { roleId: string; name: string; color: string }): Promise<ActionResult> {
+  const { limited } = await authed();
+  if (limited) return RATE_LIMITED;
+  if (!uuidSchema.safeParse(input.roleId).success) return { ok: false, error: "Invalid role" };
+  const parsed = customRoleSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, fieldErrors: fieldErrors(parsed.error) };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("server_roles").update(parsed.data).eq("id", input.roleId).select("id");
+  if (error || !data?.length) return { ok: false, error: dbError(error?.message, "Only admins can edit roles.") };
+  return { ok: true };
+}
+
+export async function deleteRoleAction(input: { roleId: string }): Promise<ActionResult> {
+  const { limited } = await authed();
+  if (limited) return RATE_LIMITED;
+  if (!uuidSchema.safeParse(input.roleId).success) return { ok: false, error: "Invalid role" };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("server_roles").delete().eq("id", input.roleId).select("id");
+  if (error || !data?.length) return { ok: false, error: dbError(error?.message, "Only admins can delete roles.") };
+  return { ok: true };
+}
+
+/** Gives a member a custom role, or takes it away. */
+export async function assignRoleAction(input: { serverId: string; userId: string; roleId: string; assigned: boolean }): Promise<ActionResult> {
+  const { limited } = await authed();
+  if (limited) return RATE_LIMITED;
+  if (![input.serverId, input.userId, input.roleId].every((id) => uuidSchema.safeParse(id).success)) return { ok: false, error: "Invalid request" };
+  const supabase = await createClient();
+  const { error } = input.assigned
+    ? await supabase.from("member_roles").upsert({ server_id: input.serverId, user_id: input.userId, role_id: input.roleId }, { onConflict: "role_id,user_id", ignoreDuplicates: true })
+    : await supabase.from("member_roles").delete().eq("role_id", input.roleId).eq("user_id", input.userId);
+  if (error) return { ok: false, error: dbError(error.message, "Only admins can hand out roles.") };
+  return { ok: true };
+}
+
+const accessSchema = z.object({
+  channelId: uuidSchema,
+  serverId: uuidSchema,
+  userIds: z.array(uuidSchema).max(500),
+  roleIds: z.array(uuidSchema).max(250),
+});
+
+/** Sets exactly who (people and roles) may see a private channel; admins always can. */
+export async function setChannelAccessAction(input: z.input<typeof accessSchema>): Promise<ActionResult> {
+  const { limited } = await authed();
+  if (limited) return RATE_LIMITED;
+  const parsed = accessSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid request" };
+  const { channelId, serverId, userIds, roleIds } = parsed.data;
+  const supabase = await createClient();
+  const { data: current, error: readError } = await supabase.from("channel_access").select("id, user_id, role_id").eq("channel_id", channelId);
+  if (readError || !current) return { ok: false, error: dbError(readError?.message, "Only admins can change who's in a private channel.") };
+  const wantUsers = new Set(userIds);
+  const wantRoles = new Set(roleIds);
+  const stale = current.filter((a) => (a.user_id ? !wantUsers.has(a.user_id) : !wantRoles.has(a.role_id!))).map((a) => a.id);
+  const added = [
+    ...[...wantUsers].filter((id) => !current.some((a) => a.user_id === id)).map((user_id) => ({ channel_id: channelId, server_id: serverId, user_id })),
+    ...[...wantRoles].filter((id) => !current.some((a) => a.role_id === id)).map((role_id) => ({ channel_id: channelId, server_id: serverId, role_id })),
+  ];
+  if (stale.length) {
+    const { error } = await supabase.from("channel_access").delete().in("id", stale);
+    if (error) return { ok: false, error: dbError(error.message, "Couldn't update who's in the channel.") };
+  }
+  if (added.length) {
+    const { error } = await supabase.from("channel_access").insert(added);
+    if (error) return { ok: false, error: dbError(error.message, "Couldn't update who's in the channel.") };
+  }
   return { ok: true };
 }

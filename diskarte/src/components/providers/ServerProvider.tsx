@@ -9,7 +9,7 @@ import { useServerPresence } from "@/components/providers/PresenceProvider";
 import type { ServerBadge } from "@/lib/community";
 import type { PresencePayload, RealtimeHealth } from "@/lib/presence";
 import { subscribeDbChanges } from "@/lib/realtime";
-import type { Channel, MemberWithProfile, Server } from "@/lib/servers";
+import type { Channel, MemberWithProfile, Server, ServerRole } from "@/lib/servers";
 import type { BadgeKind, MemberRole, Tables } from "@/lib/supabase/database.types";
 
 export interface ServerContextValue {
@@ -23,6 +23,12 @@ export interface ServerContextValue {
   health: RealtimeHealth;
   upsertChannel: (channel: Channel) => void;
   removeChannel: (id: string) => void;
+  /** Custom roles, lowest position first. */
+  roles: ServerRole[];
+  /** Custom role ids per user id. */
+  memberRoles: Map<string, string[]>;
+  /** Re-read roles and who has them (after an admin changes them; realtime also calls it). */
+  reloadRoles: () => void;
 }
 
 /** Exported for tests and storybook-style fixtures; app code should use <ServerProvider>. */
@@ -34,10 +40,20 @@ export interface ServerProviderProps {
   members: MemberWithProfile[];
   badges?: ServerBadge[];
   myRole: MemberRole;
+  roles?: ServerRole[];
+  memberRoles?: { user_id: string; role_id: string }[];
   children: ReactNode;
 }
 
 const NO_BADGES: ServerBadge[] = [];
+const NO_ROLES: ServerRole[] = [];
+const NO_MEMBER_ROLES: { user_id: string; role_id: string }[] = [];
+
+function memberRoleMap(rows: { user_id: string; role_id: string }[]) {
+  const map = new Map<string, string[]>();
+  for (const row of rows) map.set(row.user_id, [...(map.get(row.user_id) ?? []), row.role_id]);
+  return map;
+}
 
 function badgeMap(rows: ServerBadge[]) {
   const map = new Map<string, BadgeKind[]>();
@@ -49,7 +65,16 @@ function badgeMap(rows: ServerBadge[]) {
  * Live state for one Tambayan: channels, members and presence are seeded from the server render
  * and then kept current with Supabase Realtime postgres_changes; presence comes from PresenceProvider.
  */
-export function ServerProvider({ server: initialServer, channels: initialChannels, members: initialMembers, badges: initialBadges = NO_BADGES, myRole: initialRole, children }: ServerProviderProps) {
+export function ServerProvider({
+  server: initialServer,
+  channels: initialChannels,
+  members: initialMembers,
+  badges: initialBadges = NO_BADGES,
+  myRole: initialRole,
+  roles: initialRoles = NO_ROLES,
+  memberRoles: initialMemberRoles = NO_MEMBER_ROLES,
+  children,
+}: ServerProviderProps) {
   const supabase = useSupabase();
   const router = useRouter();
   const { me } = useMe();
@@ -58,21 +83,43 @@ export function ServerProvider({ server: initialServer, channels: initialChannel
   const [channels, setChannels] = useState(initialChannels);
   const [members, setMembers] = useState(initialMembers);
   const [badgeRows, setBadgeRows] = useState(initialBadges);
+  const [roles, setRoles] = useState(initialRoles);
+  const [memberRoleRows, setMemberRoleRows] = useState(initialMemberRoles);
   const [health, setHealth] = useState<RealtimeHealth>("connecting");
 
   // Re-seed whenever the server component re-renders with fresh data.
-  const [seed, setSeed] = useState({ initialServer, initialChannels, initialMembers, initialBadges });
-  if (seed.initialServer !== initialServer || seed.initialChannels !== initialChannels || seed.initialMembers !== initialMembers || seed.initialBadges !== initialBadges) {
-    setSeed({ initialServer, initialChannels, initialMembers, initialBadges });
+  const [seed, setSeed] = useState({ initialServer, initialChannels, initialMembers, initialBadges, initialRoles, initialMemberRoles });
+  if (
+    seed.initialServer !== initialServer ||
+    seed.initialChannels !== initialChannels ||
+    seed.initialMembers !== initialMembers ||
+    seed.initialBadges !== initialBadges ||
+    seed.initialRoles !== initialRoles ||
+    seed.initialMemberRoles !== initialMemberRoles
+  ) {
+    setSeed({ initialServer, initialChannels, initialMembers, initialBadges, initialRoles, initialMemberRoles });
     setServer(initialServer);
     setChannels(initialChannels);
     setMembers(initialMembers);
     setBadgeRows(initialBadges);
+    setRoles(initialRoles);
+    setMemberRoleRows(initialMemberRoles);
   }
+  const memberRoles = useMemo(() => memberRoleMap(memberRoleRows), [memberRoleRows]);
   const badges = useMemo(() => badgeMap(badgeRows), [badgeRows]);
 
   const myRole = members.find((m) => m.user_id === me.id)?.role ?? initialRole;
   const serverId = server.id;
+
+  const reloadRoles = useCallback(() => {
+    void Promise.all([
+      supabase.from("server_roles").select("*").eq("server_id", serverId).order("position").order("created_at"),
+      supabase.from("member_roles").select("user_id, role_id").eq("server_id", serverId),
+    ]).then(([r, m]) => {
+      if (r.data) setRoles(r.data);
+      if (m.data) setMemberRoleRows(m.data);
+    });
+  }, [supabase, serverId]);
 
   // The rail prefetches each server's shell, so this render's data can be a few minutes old: catch up once
   // in the background (realtime keeps it current from here).
@@ -86,10 +133,11 @@ export function ServerProvider({ server: initialServer, channels: initialChannel
       if (c.data) setChannels(c.data);
       if (m.data) setMembers(m.data as MemberWithProfile[]);
     });
+    reloadRoles();
     return () => {
       live = false;
     };
-  }, [supabase, serverId]);
+  }, [supabase, serverId, reloadRoles]);
 
   // ---- postgres_changes: channels / members / server row --------------------------------
   useEffect(() => {
@@ -143,6 +191,8 @@ export function ServerProvider({ server: initialServer, channels: initialChannel
             if (key.server_id !== serverId) return;
             setBadgeRows((prev) => prev.filter((b) => !(b.user_id === key.user_id && b.badge === key.badge)));
           })
+          .on("postgres_changes", { event: "*", schema: "public", table: "server_roles", filter: `server_id=eq.${serverId}` }, reloadRoles)
+          .on("postgres_changes", { event: "*", schema: "public", table: "member_roles", filter: `server_id=eq.${serverId}` }, reloadRoles)
           .on("postgres_changes", { event: "UPDATE", schema: "public", table: "servers", filter: `id=eq.${serverId}` }, ({ new: row }) => {
             setServer(row as Server);
           })
@@ -158,7 +208,7 @@ export function ServerProvider({ server: initialServer, channels: initialChannel
         else if (status === "CLOSED") setHealth("offline");
       },
     );
-  }, [supabase, serverId, me.id, router]);
+  }, [supabase, serverId, me.id, router, reloadRoles]);
 
   // ---- presence (shared, ref-counted channel from PresenceProvider) ---------------------
   const presence = useServerPresence(serverId);
@@ -169,8 +219,8 @@ export function ServerProvider({ server: initialServer, channels: initialChannel
   const removeChannel = useCallback((id: string) => setChannels((prev) => prev.filter((c) => c.id !== id)), []);
 
   const value = useMemo<ServerContextValue>(
-    () => ({ server, channels, members, myRole, badges, presence, health, upsertChannel, removeChannel }),
-    [server, channels, members, myRole, badges, presence, health, upsertChannel, removeChannel],
+    () => ({ server, channels, members, myRole, badges, presence, health, upsertChannel, removeChannel, roles, memberRoles, reloadRoles }),
+    [server, channels, members, myRole, badges, presence, health, upsertChannel, removeChannel, roles, memberRoles, reloadRoles],
   );
 
   return <ServerContext.Provider value={value}>{children}</ServerContext.Provider>;

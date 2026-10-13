@@ -72,7 +72,7 @@ function Shell({
 }) {
   return (
     <RuntimeConfigProvider value={RUNTIME}>
-      <ServerFixture members={MEMBERS} meId={meId} myRole={role} overrides={{ channels: CHANNELS }}>
+      <ServerFixture members={MEMBERS} meId={meId} myRole={role} overrides={{ channels: CHANNELS, roles: [TROPA], memberRoles: new Map([[MOD_ID, [TROPA.id]]]) }}>
         <PresenceProvider>
           <CallProvider>
             <Social friends={friends} blocked={blocked} profiles={profiles}>
@@ -85,6 +85,8 @@ function Shell({
     </RuntimeConfigProvider>
   );
 }
+
+const TROPA = { id: "50000000-0000-4000-8000-000000000002", server_id: SERVER_ID, name: "Tropa", color: "#4ade80", position: 0, created_at: "2026-10-01T00:00:00Z" };
 
 const row = (name: string) => screen.getAllByTestId("member-row").find((r) => r.textContent?.includes(name))!;
 const openMenu = (el: Element) => fireEvent.contextMenu(el, { clientX: 20, clientY: 20 });
@@ -212,6 +214,31 @@ describe("Right-click a person", () => {
     await waitFor(() => expect(within(dialog).getByRole("button", { name: "Save" })).toBeEnabled());
     fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
     await waitFor(() => expect(setFriendNickname).toHaveBeenCalledWith(OWNER_ID, "Kap"));
+  });
+
+  it("lets admins hand out and take back custom roles; members don't see them", async () => {
+    const { unmount } = render(
+      <Shell>
+        <MemberList />
+      </Shell>,
+    );
+    openMenu(row("Juan"));
+    const tropa = screen.getByRole("menuitemcheckbox", { name: /Tropa/ });
+    expect(tropa).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(tropa);
+    await waitFor(() => expect(serverActions.assignRoleAction).toHaveBeenCalledWith({ serverId: SERVER_ID, userId: MEMBER_ID, roleId: TROPA.id, assigned: true }));
+    openMenu(row("Maria"));
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: /Tropa/ }));
+    await waitFor(() => expect(serverActions.assignRoleAction).toHaveBeenCalledWith({ serverId: SERVER_ID, userId: MOD_ID, roleId: TROPA.id, assigned: false }));
+    unmount();
+
+    render(
+      <Shell meId={MEMBER_ID} role="member">
+        <MemberList />
+      </Shell>,
+    );
+    openMenu(row("Maria"));
+    expect(screen.queryByRole("menuitemcheckbox", { name: /Tropa/ })).toBeNull();
   });
 
   it("asks before blocking", async () => {

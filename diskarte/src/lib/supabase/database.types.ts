@@ -140,6 +140,8 @@ export interface Database {
           requires_verification: boolean;
           /** Only server admins (in Diskarte HQ: the creators) can post. */
           read_only: boolean;
+          /** Only admins and people or roles they let in (channel_access) can see it. */
+          is_private: boolean;
           created_at: string;
         };
         Insert: {
@@ -153,6 +155,7 @@ export interface Database {
           slowmode_seconds?: number;
           requires_verification?: boolean;
           read_only?: boolean;
+          is_private?: boolean;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["channels"]["Insert"]>;
@@ -260,6 +263,15 @@ export interface Database {
         never
       >;
       user_blocks: TableDef<{ blocker_id: string; blocked_id: string; created_at: string }, never>;
+      server_roles: TableDef<
+        { id: string; server_id: string; name: string; color: string; position: number; created_at: string },
+        { server_id: string; name: string; color?: string; position?: number }
+      >;
+      member_roles: TableDef<{ server_id: string; user_id: string; role_id: string; created_at: string }, { server_id: string; user_id: string; role_id: string }>;
+      channel_access: TableDef<
+        { id: string; channel_id: string; server_id: string; user_id: string | null; role_id: string | null; created_at: string },
+        { channel_id: string; server_id: string; user_id?: string | null; role_id?: string | null }
+      >;
       friend_nicknames: TableDef<{ owner_id: string; target_id: string; nickname: string }, { owner_id?: string; target_id: string; nickname: string }>;
       dm_conversations: TableDef<
         { id: string; kind: DmKind; name: string | null; owner_id: string | null; direct_key: string | null; created_at: string; last_message_at: string },

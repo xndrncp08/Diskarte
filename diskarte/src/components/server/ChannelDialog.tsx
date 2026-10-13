@@ -1,10 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Hash, Trash2, Volume2 } from "lucide-react";
-import { useState, useTransition, type FormEvent } from "react";
+import { Hash, Lock, Trash2, Volume2 } from "lucide-react";
+import { useEffect, useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
-import { createChannelAction, deleteChannelAction, updateChannelAction } from "@/actions/servers";
+import { createChannelAction, deleteChannelAction, setChannelAccessAction, updateChannelAction } from "@/actions/servers";
+import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { useServer } from "@/components/providers/ServerProvider";
 import { Button } from "@/components/ui/Button";
 import { InputField } from "@/components/ui/Field";
@@ -33,7 +34,9 @@ export function ChannelDialog(props: ChannelDialogProps) {
 
 /** Mounted fresh each time the dialog opens, so its state starts from the props. */
 function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }: ChannelDialogProps) {
-  const { server, channels, removeChannel } = useServer();
+  const { server, channels, removeChannel, myRole, members, roles } = useServer();
+  const supabase = useSupabase();
+  const isAdmin = myRole === "admin";
   const router = useRouter();
   const editing = Boolean(channel);
   const [type, setType] = useState<ChannelType>(channel?.type ?? defaultType);
@@ -41,6 +44,29 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
   const [slowmode, setSlowmode] = useState(channel?.slowmode_seconds ?? 0);
   const [verifiedOnly, setVerifiedOnly] = useState(channel?.requires_verification ?? false);
   const [readOnly, setReadOnly] = useState(channel?.read_only ?? false);
+  const wasPrivate = channel?.is_private ?? false;
+  const [isPrivate, setIsPrivate] = useState(wasPrivate);
+  // Who's let in (admins always are): loaded when editing a private channel.
+  const [allowedUsers, setAllowedUsers] = useState<ReadonlySet<string>>(() => new Set());
+  const [allowedRoles, setAllowedRoles] = useState<ReadonlySet<string>>(() => new Set());
+  useEffect(() => {
+    if (!channel || !wasPrivate || !isAdmin) return;
+    void supabase
+      .from("channel_access")
+      .select("user_id, role_id")
+      .eq("channel_id", channel.id)
+      .then(({ data }) => {
+        if (!data) return;
+        setAllowedUsers(new Set(data.flatMap((a) => a.user_id ?? [])));
+        setAllowedRoles(new Set(data.flatMap((a) => a.role_id ?? [])));
+      });
+  }, [supabase, channel, wasPrivate, isAdmin]);
+  const toggle = (set: ReadonlySet<string>, id: string) => {
+    const next = new Set(set);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    return next;
+  };
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
 
@@ -58,6 +84,8 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
       slowmodeSeconds: type === "text" ? slowmode : 0,
       requiresVerification: type === "text" && verifiedOnly,
       readOnly: type === "text" && readOnly,
+      // Sent only when it changes, so editing other settings never depends on the privacy column.
+      ...(isAdmin && isPrivate !== wasPrivate ? { isPrivate } : {}),
     };
     startTransition(async () => {
       const result = channel
@@ -67,6 +95,11 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
         setErrors(result.fieldErrors ?? {});
         if (result.error) toast.error(result.error);
         return;
+      }
+      const channelId = channel?.id ?? (result.data && "channelId" in result.data ? result.data.channelId : null);
+      if (isAdmin && isPrivate && channelId) {
+        const access = await setChannelAccessAction({ channelId, serverId: server.id, userIds: [...allowedUsers], roleIds: [...allowedRoles] });
+        if (!access.ok) toast.error(access.error ?? "Saved, but couldn't update who's in the channel.");
       }
       toast.success(channel ? "Channel updated." : "Channel created!");
       onClose();
@@ -190,6 +223,42 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
             hint="Members need a confirmed email or phone number to chat here."
           />
           <Switch checked={readOnly} onChange={setReadOnly} label="Read-only (announcements)" hint="Only admins can post; everyone else can read and react." />
+        </fieldset>
+      )}
+      {isAdmin && (
+        <fieldset className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-3">
+          <legend className="flex items-center gap-1 px-1 font-silk text-[11px] uppercase tracking-wider text-sun">
+            <Lock className="size-3" aria-hidden /> Privacy
+          </legend>
+          <Switch checked={isPrivate} onChange={setIsPrivate} label="Private channel" hint="Only admins and the people or roles you pick can see it." />
+          {isPrivate && (
+            <div className="scrollbar-thin max-h-56 space-y-3 overflow-y-auto" data-testid="channel-access">
+              {roles.length > 0 && (
+                <div>
+                  <p className="mb-1 text-xs font-semibold text-slate-300">Roles</p>
+                  {roles.map((r) => (
+                    <label key={r.id} className="flex items-center gap-2 rounded-md px-1.5 py-1 text-sm text-slate-200 hover:bg-white/5">
+                      <input type="checkbox" checked={allowedRoles.has(r.id)} onChange={() => setAllowedRoles((s) => toggle(s, r.id))} className="accent-sun" />
+                      <span className="size-2.5 rounded-full" style={{ background: r.color }} aria-hidden />
+                      {r.name}
+                    </label>
+                  ))}
+                </div>
+              )}
+              <div>
+                <p className="mb-1 text-xs font-semibold text-slate-300">People</p>
+                {members
+                  .filter((m) => m.role !== "admin")
+                  .map((m) => (
+                    <label key={m.user_id} className="flex items-center gap-2 rounded-md px-1.5 py-1 text-sm text-slate-200 hover:bg-white/5">
+                      <input type="checkbox" checked={allowedUsers.has(m.user_id)} onChange={() => setAllowedUsers((s) => toggle(s, m.user_id))} className="accent-sun" />
+                      {m.nickname ?? m.profile.display_name}
+                      <span className="text-xs text-slate-500">@{m.profile.username}</span>
+                    </label>
+                  ))}
+              </div>
+            </div>
+          )}
         </fieldset>
       )}
       <div className="flex items-center justify-between gap-2 pt-1">

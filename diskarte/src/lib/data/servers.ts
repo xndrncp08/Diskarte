@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import type { ServerBadge } from "@/lib/community";
-import type { Channel, MemberWithProfile, Server } from "@/lib/servers";
+import type { Channel, MemberWithProfile, Server, ServerRole } from "@/lib/servers";
 import { firstTextChannel, uuidSchema } from "@/lib/servers";
 import type { MemberRole } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
@@ -28,22 +28,36 @@ export interface ServerBundle {
   members: MemberWithProfile[];
   badges: ServerBadge[];
   myRole: MemberRole;
+  roles: ServerRole[];
+  /** Custom role ids per member. */
+  memberRoles: { user_id: string; role_id: string }[];
 }
 
 export const getServerBundle = cache(async (serverId: string, userId: string): Promise<ServerBundle | null> => {
   if (!uuidSchema.safeParse(serverId).success) return null;
   const supabase = await createClient();
-  const [serverRes, channelsRes, membersRes, badgesRes] = await Promise.all([
+  const [serverRes, channelsRes, membersRes, badgesRes, rolesRes, memberRolesRes] = await Promise.all([
     supabase.from("servers").select("*").eq("id", serverId).maybeSingle(),
     supabase.from("channels").select("*").eq("server_id", serverId).order("position").order("created_at"),
     supabase.from("members").select("*, profile:profiles!inner(*)").eq("server_id", serverId).order("joined_at"),
     supabase.from("server_badges").select("*").eq("server_id", serverId).order("created_at"),
+    supabase.from("server_roles").select("*").eq("server_id", serverId).order("position").order("created_at"),
+    supabase.from("member_roles").select("user_id, role_id").eq("server_id", serverId),
   ]);
   if (!serverRes.data) return null;
   const members = (membersRes.data ?? []) as MemberWithProfile[];
   const me = members.find((m) => m.user_id === userId);
   if (!me) return null;
-  return { server: serverRes.data, channels: channelsRes.data ?? [], members, badges: badgesRes.data ?? [], myRole: me.role };
+  // Roles come back empty (not an error page) until the roles migration is applied.
+  return {
+    server: serverRes.data,
+    channels: channelsRes.data ?? [],
+    members,
+    badges: badgesRes.data ?? [],
+    myRole: me.role,
+    roles: rolesRes.data ?? [],
+    memberRoles: memberRolesRes.data ?? [],
+  };
 });
 
 /** One channel by id (RLS returns it only to members): what a channel page needs, without the whole bundle. */

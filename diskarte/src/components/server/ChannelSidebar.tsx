@@ -4,7 +4,7 @@ import { motion, Reorder, useDragControls } from "framer-motion";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
-import { BadgeCheck, ChevronDown, ChevronsDownUp, ChevronsUpDown, GripVertical, Hash, HeadphoneOff, Heart, Link2, LogOut, MicOff, Pencil, Plus, Radio, Rocket, Settings, ShieldCheck, Trash2, UserPlus, Video, Volume2 } from "lucide-react";
+import { BadgeCheck, ChevronDown, ChevronsDownUp, ChevronsUpDown, GripVertical, Hash, HeadphoneOff, Heart, Link2, Lock, LogOut, MicOff, Pencil, Plus, Radio, Rocket, Settings, ShieldCheck, Trash2, UserPlus, Video, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { deleteChannelAction, leaveServerAction, reorderChannelsAction } from "@/actions/servers";
@@ -188,6 +188,7 @@ function ChannelRow({
         >
           <Icon className="size-4 shrink-0 opacity-70" aria-hidden />
           <span className="truncate">{channel.name}</span>
+          {channel.is_private && <Lock className="size-3 shrink-0 opacity-60" aria-label="Private" />}
         </Link>
         {reorder && (
           <button

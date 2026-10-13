@@ -18,13 +18,15 @@ import { cn } from "@/lib/utils";
 import { AuditLogPanel } from "./settings/AuditLogPanel";
 import { AutomodSettings } from "./settings/AutomodSettings";
 import { BansPanel } from "./settings/BansPanel";
+import { RolesSettings } from "./settings/RolesSettings";
 import { SoundboardSettings } from "./settings/SoundboardSettings";
 import { SupportSettings } from "./settings/SupportSettings";
 
-export type SettingsTab = "overview" | "automod" | "audit" | "bans" | "soundboard" | "support";
+export type SettingsTab = "overview" | "roles" | "automod" | "audit" | "bans" | "soundboard" | "support";
 
 const TABS: { id: SettingsTab; label: string; adminOnly: boolean }[] = [
   { id: "overview", label: "Overview", adminOnly: true },
+  { id: "roles", label: "Roles", adminOnly: true },
   { id: "automod", label: "Bantay-Bayan", adminOnly: true },
   { id: "audit", label: "Audit log", adminOnly: false },
   { id: "bans", label: "Bans", adminOnly: false },
@@ -61,6 +63,7 @@ function SettingsTabs({ initialTab, onClose }: { initialTab: SettingsTab; onClos
 
   const panels: Record<SettingsTab, ReactNode> = {
     overview: <ServerSettingsForm onClose={onClose} />,
+    roles: <RolesSettings />,
     automod: <AutomodSettings />,
     audit: <AuditLogPanel />,
     bans: <BansPanel />,
