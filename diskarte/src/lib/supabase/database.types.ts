@@ -280,6 +280,7 @@ export interface Database {
       >;
       polls: TableDef<{ message_id: string; channel_id: string; options: string[]; multi: boolean; ends_at: string; created_at: string }, never>;
       poll_votes: TableDef<{ message_id: string; channel_id: string; user_id: string; option: number; created_at: string }, never>;
+      saved_messages: TableDef<{ user_id: string; message_id: string; saved_at: string }, { user_id?: string; message_id: string; saved_at?: string }>;
       channel_reads: TableDef<{ user_id: string; channel_id: string; last_read_at: string }, never>;
       message_mentions: TableDef<{ message_id: string; user_id: string; channel_id: string; server_id: string; created_at: string }, never>;
       user_notes: TableDef<{ owner_id: string; target_id: string; note: string; updated_at: string }, { owner_id?: string; target_id: string; note: string; updated_at?: string }>;
@@ -479,6 +480,7 @@ export interface Database {
         Returns: { channel_id: string; server_id: string; last_message_at: string | null; read_at: string; mentions: number }[];
       };
       mark_channel_read: { Args: { p_channel: string }; Returns: undefined };
+      mark_channel_unread: { Args: { p_channel: string; p_from: string }; Returns: undefined };
       create_poll: { Args: { p_channel: string; p_question: string; p_options: string[]; p_multi: boolean; p_hours: number }; Returns: string };
       vote_poll: { Args: { p_message: string; p_options: number[] }; Returns: undefined };
       search_messages: {

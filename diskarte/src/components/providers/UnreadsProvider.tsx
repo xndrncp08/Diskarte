@@ -24,6 +24,8 @@ interface UnreadsValue {
   channels: ReadonlyMap<string, ChannelUnread>;
   /** I've read this channel (now, and at least up to its newest message). */
   markRead: (channelId: string) => void;
+  /** Discord's "Mark Unread": unread again from this message on. */
+  markUnread: (channelId: string, fromIso: string) => void;
   /** A channel got a message (live, from the open server's realtime). */
   noteActivity: (channelId: string, serverId: string, at: string) => void;
   refresh: () => void;
@@ -49,6 +51,8 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
   // Read marks made in this tab: a refresh racing the server write never brings an unread back.
   const marks = useRef(new Map<string, string>());
   const pending = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  // "Mark Unread" read points, kept until the server agrees (a refresh in between can't undo it).
+  const rewinds = useRef(new Map<string, string>());
   const router = useRouter();
 
   // Someone @mentioned me: ping, and a desktop notification (Settings → Notifications), unless the
@@ -76,10 +80,12 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
     if (error || !data) return;
     setChannels(
       new Map(
-        data.map((r) => [
-          r.channel_id,
-          { serverId: r.server_id, lastMessageAt: r.last_message_at, readAt: later(r.read_at, marks.current.get(r.channel_id)) ?? r.read_at, mentions: r.mentions },
-        ]),
+        data.map((r) => {
+          const rewind = rewinds.current.get(r.channel_id);
+          if (rewind && Date.parse(r.read_at) <= Date.parse(rewind) + 1000) rewinds.current.delete(r.channel_id);
+          const readAt = rewinds.current.get(r.channel_id) ?? later(r.read_at, marks.current.get(r.channel_id)) ?? r.read_at;
+          return [r.channel_id, { serverId: r.server_id, lastMessageAt: r.last_message_at, readAt, mentions: r.mentions }];
+        }),
       ),
     );
   }, [supabase]);
@@ -105,6 +111,7 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
 
   const markRead = useCallback(
     (channelId: string) => {
+      rewinds.current.delete(channelId);
       setChannels((prev) => {
         const c = prev.get(channelId);
         const at = later(new Date().toISOString(), c?.lastMessageAt) as string;
@@ -125,6 +132,22 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
     [supabase],
   );
 
+  const markUnread = useCallback(
+    (channelId: string, fromIso: string) => {
+      const readAt = new Date(Date.parse(fromIso) - 1).toISOString();
+      marks.current.delete(channelId);
+      clearTimeout(pending.current.get(channelId));
+      pending.current.delete(channelId);
+      rewinds.current.set(channelId, readAt);
+      setChannels((prev) => {
+        const c = prev.get(channelId);
+        return c ? new Map(prev).set(channelId, { ...c, readAt }) : prev;
+      });
+      void supabase?.rpc("mark_channel_unread", { p_channel: channelId, p_from: fromIso });
+    },
+    [supabase],
+  );
+
   const noteActivity = useCallback((channelId: string, serverId: string, at: string) => {
     setChannels((prev) => {
       const c = prev.get(channelId);
@@ -133,7 +156,7 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const value = useMemo(() => ({ channels, markRead, noteActivity, refresh: () => void refresh() }), [channels, markRead, noteActivity, refresh]);
+  const value = useMemo(() => ({ channels, markRead, markUnread, noteActivity, refresh: () => void refresh() }), [channels, markRead, markUnread, noteActivity, refresh]);
   return <UnreadsContext.Provider value={value}>{children}</UnreadsContext.Provider>;
 }
 

@@ -5,6 +5,7 @@ import { ArrowDown, Hash, Loader2, Pin } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useMe } from "@/components/providers/MeProvider";
+import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { useServer } from "@/components/providers/ServerProvider";
 import { useOptionalUnreads } from "@/components/providers/UnreadsProvider";
 import { ChannelHeader } from "@/components/server/ChannelHeader";
@@ -23,6 +24,7 @@ import { MessageItem, type MessageActions } from "./MessageItem";
 import { OfflineBanner } from "./OfflineBanner";
 import { PinsDrawer } from "./PinsDrawer";
 import { CreatePollButton } from "./Poll";
+import { ForwardDialog } from "./ForwardDialog";
 import { ThreadPanel } from "./ThreadPanel";
 import { Timestamp } from "./Timestamp";
 
@@ -130,6 +132,44 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
     requestAnimationFrame(flash);
   }, []);
 
+  // Saved messages (bookmarks) among what's loaded, Forward, and Mark Unread.
+  const supabase = useSupabase();
+  const unreads = useOptionalUnreads();
+  const [savedIds, setSavedIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [forwarding, setForwarding] = useState<ChatMessage | null>(null);
+  const loadedIds = chat.messages
+    .slice(-100)
+    .filter((m) => !m.pending && !m.failed && !m.queued)
+    .map((m) => m.id)
+    .join(",");
+  useEffect(() => {
+    if (!loadedIds) return;
+    let live = true;
+    void supabase
+      .from("saved_messages")
+      .select("message_id")
+      .in("message_id", loadedIds.split(","))
+      .then(({ data }) => live && data && setSavedIds(new Set(data.map((r) => r.message_id))));
+    return () => {
+      live = false;
+    };
+  }, [supabase, loadedIds]);
+  const save = useCallback(
+    async (m: ChatMessage, on: boolean) => {
+      const { error } = on ? await supabase.from("saved_messages").insert({ message_id: m.id }) : await supabase.from("saved_messages").delete().eq("message_id", m.id);
+      if (error) return void toast.error("Couldn't update your saved messages.");
+      setSavedIds((prev) => {
+        const next = new Set(prev);
+        if (on) next.add(m.id);
+        else next.delete(m.id);
+        return next;
+      });
+      toast(on ? "Saved. Find it under Notifications → Saved." : "Removed from Saved.");
+    },
+    [supabase],
+  );
+  const markUnread = unreads?.markUnread;
+
   const actions = useMemo<MessageActions>(
     () => ({
       onReply: (m) => setReplyTo(m),
@@ -143,8 +183,12 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
       onJump: jumpTo,
       nameOf: (userId) => names.get(userId) ?? "Someone",
       onOpenProfile: openMemberProfile,
+      onForward: setForwarding,
+      onSave: (m, on) => void save(m, on),
+      savedIds,
+      onMarkUnread: markUnread ? (m) => (markUnread(channel.id, m.created_at), toast("Marked unread from here.")) : undefined,
     }),
-    [chat, jumpTo, names],
+    [chat, jumpTo, names, save, savedIds, markUnread, channel.id],
   );
 
   function editLast() {
@@ -176,6 +220,12 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
               </button>
             </Tooltip>
           }
+        />
+        <ForwardDialog
+          message={forwarding}
+          author={forwarding?.author_id ? (names.get(forwarding.author_id) ?? "Someone") : "Someone"}
+          sourceChannel={channel.name}
+          onClose={() => setForwarding(null)}
         />
         <PinsDrawer
           open={pinsOpen}

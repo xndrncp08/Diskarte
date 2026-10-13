@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { Bell, MessageCircle, UserPlus } from "lucide-react";
+import { useState } from "react";
 import { useOptionalSocial } from "@/components/providers/SocialProvider";
+import { SavedMessages } from "./SavedMessages";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { Popover } from "@/components/ui/Popover";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -10,14 +12,15 @@ import { conversationTitle, isUnread } from "@/lib/social";
 import { cn } from "@/lib/utils";
 
 /**
- * The rail's notification hub: incoming friend requests and unread conversations in one place, each
- * a link straight to where you can act on it.
+ * The rail's notification hub: an inbox (incoming friend requests and unread conversations, each a
+ * link straight to where you can act on it) and your saved messages.
  */
 export function NotificationHub() {
   const social = useOptionalSocial();
   const attention = social?.attention ?? 0;
   const requests = (social?.friends ?? []).filter((f) => f.status === "incoming");
   const unread = (social?.conversations ?? []).filter(isUnread).slice(0, 8);
+  const [tab, setTab] = useState<"inbox" | "saved">("inbox");
 
   return (
     <Popover
@@ -51,8 +54,23 @@ export function NotificationHub() {
     >
       {(close) => (
         <div className="p-2">
-          <p className="px-2 pb-2 pt-1 font-silk text-[10px] uppercase tracking-widest text-slate-400">Notifications</p>
-          {requests.length === 0 && unread.length === 0 ? (
+          <div role="tablist" aria-label="Notifications" className="mb-2 flex gap-1 px-1 pt-1">
+            {(["inbox", "saved"] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                role="tab"
+                aria-selected={tab === t}
+                onClick={() => setTab(t)}
+                className="rounded-md px-2.5 py-1 font-silk text-[10px] uppercase tracking-widest text-slate-400 hover:text-white aria-selected:bg-white/10 aria-selected:text-white"
+              >
+                {t === "inbox" ? "Inbox" : "Saved"}
+              </button>
+            ))}
+          </div>
+          {tab === "saved" ? (
+            <SavedMessages onOpen={close} />
+          ) : requests.length === 0 && unread.length === 0 ? (
             <p className="px-2 pb-3 text-sm text-slate-400">You&apos;re all caught up.</p>
           ) : (
             <ul className="space-y-0.5">
