@@ -6,6 +6,8 @@ import {
   applyPreset,
   defaultWorkspace,
   dockAdmin,
+  fillGap,
+  makeRoom,
   newestWorkspace,
   parseWorkspace,
   PANEL_IDS,
@@ -84,6 +86,15 @@ export function createWorkspaceStore(initial: WorkspaceState, onChange?: (s: Wor
   };
   const patchPanel = (id: PanelId, patch: Partial<PanelState>, opts: { clearPreset?: boolean } = {}) =>
     set({ ...state, t: Date.now(), preset: opts.clearPreset ? null : state.preset, panels: { ...state.panels, [id]: { ...state.panels[id], ...patch } } });
+  const withRects = (s: WorkspaceState, px: Rects): WorkspaceState => {
+    if (!bounds) return s;
+    const panels = { ...s.panels };
+    for (const id of PANEL_IDS) if (px[id]) panels[id] = { ...panels[id], rect: toFraction(px[id], bounds) };
+    return { ...s, panels };
+  };
+  // Windows stay magnetic when one leaves or comes back: neighbours fill its space, then give it back.
+  const hiding = (id: PanelId, next: WorkspaceState) => (bounds ? withRects(next, fillGap(visibleRectsOf(state.panels, bounds, mounted), id)) : next);
+  const showing = (id: PanelId, next: WorkspaceState) => (bounds ? withRects(next, makeRoom(visibleRectsOf(next.panels, bounds, mounted), id)) : next);
 
   return {
     getState: () => state,
@@ -135,15 +146,19 @@ export function createWorkspaceStore(initial: WorkspaceState, onChange?: (s: Wor
       if (current.minimized === minimized && !current.closed) return;
       // Restoring a panel also brings it to the front.
       const base = minimized ? state : raisePanel(state, id);
-      set({ ...base, t: Date.now(), preset: null, panels: { ...base.panels, [id]: { ...base.panels[id], minimized, closed: false } } });
+      const next = { ...base, t: Date.now(), preset: null, panels: { ...base.panels, [id]: { ...base.panels[id], minimized, closed: false } } };
+      set(minimized ? hiding(id, next) : showing(id, next));
     },
-    setClosed: (id, closed) => patchPanel(id, { closed, minimized: false }),
+    setClosed: (id, closed) => {
+      const next = { ...state, t: Date.now(), panels: { ...state.panels, [id]: { ...state.panels[id], closed, minimized: false } } };
+      set(closed ? hiding(id, next) : showing(id, next));
+    },
     openPanel: (id) => {
       const current = state.panels[id];
       if (current.closed && id === "admin" && bounds) set(dockAdmin(state, bounds, mounted));
       else if (current.closed || current.minimized) {
         const base = raisePanel(state, id);
-        set({ ...base, t: Date.now(), preset: null, panels: { ...base.panels, [id]: { ...base.panels[id], minimized: false, closed: false } } });
+        set(showing(id, { ...base, t: Date.now(), preset: null, panels: { ...base.panels, [id]: { ...base.panels[id], minimized: false, closed: false } } }));
       } else set(raisePanel(state, id), false);
     },
     setRoster: (roster) => roster !== state.roster && set({ ...state, roster, t: Date.now() }),
