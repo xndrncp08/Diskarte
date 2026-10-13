@@ -69,6 +69,11 @@ function Dialog({ onClose, title, id, icon, className, bodyClassName, actions, c
   useEffect(() => {
     const token = pushOverlay();
     const previouslyFocused = document.activeElement as HTMLElement | null;
+    // Everything else on the page sits behind the backdrop: out of reach of Tab, clicks and screen
+    // readers until the dialog closes (menus or confirmations opened from it mount later, on top).
+    const layer = frame.current?.closest("[data-window-layer]");
+    const behind = Array.from(document.body.children).filter((el) => el !== layer && !el.hasAttribute("inert"));
+    for (const el of behind) el.setAttribute("inert", "");
     // First [data-autofocus] or focusable element of the body (it may load lazily), else Close.
     const focusFirst = () => {
       const el = frame.current;
@@ -110,6 +115,7 @@ function Dialog({ onClose, title, id, icon, className, bodyClassName, actions, c
       observer?.disconnect();
       document.removeEventListener("keydown", onKey);
       removeOverlay(token);
+      for (const el of behind) el.removeAttribute("inert");
       if (previouslyFocused?.isConnected) previouslyFocused.focus?.();
     };
   }, []);

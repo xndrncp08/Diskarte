@@ -30,7 +30,7 @@ function FieldShell({ label, hint, error, htmlFor, children, className }: FieldS
           {error}
         </p>
       ) : hint ? (
-        <p id={`${htmlFor}-hint`} className="text-xs text-slate-500">
+        <p id={`${htmlFor}-hint`} className="text-xs text-slate-400">
           {hint}
         </p>
       ) : null}
