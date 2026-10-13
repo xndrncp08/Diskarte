@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { Inter, JetBrains_Mono, Press_Start_2P, Silkscreen } from "next/font/google";
 import { AppToaster } from "@/components/AppToaster";
 import { RuntimeConfigProvider } from "@/components/providers/RuntimeConfig";
 import { tryGetPublicEnv } from "@/lib/env";
-import { THEME_BOOT_SCRIPT } from "@/lib/theme";
+import { isTheme, THEME_COOKIE } from "@/lib/theme";
 import "./globals.css";
 
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"], display: "swap" });
@@ -39,19 +39,17 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   // Reading request headers opts every route into dynamic rendering, which the per-request CSP
   // nonce set in proxy.ts requires (Next.js applies the nonce to its own scripts automatically).
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  await headers();
+  const theme = (await cookies()).get(THEME_COOKIE)?.value;
   const env = tryGetPublicEnv();
 
   return (
     <html
       lang="en"
+      data-theme={isTheme(theme) ? theme : undefined}
       className={`${inter.variable} ${pressStart.variable} ${silkscreen.variable} ${jetbrains.variable} h-full`}
       suppressHydrationWarning
     >
-      <head>
-        {/* text/plain on the client: React never re-runs it there, and this skips its dev warning. */}
-        <script nonce={nonce} type={typeof window === "undefined" ? "text/javascript" : "text/plain"} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
-      </head>
       <body className="min-h-full bg-abyss text-slate-100 antialiased">
         <RuntimeConfigProvider
           value={
