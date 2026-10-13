@@ -3,7 +3,7 @@
 import { Check, Copy, RefreshCw, Send, Share2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { regenerateInviteAction } from "@/actions/servers";
+import { createInviteAction, regenerateInviteAction } from "@/actions/servers";
 import { openDmAction, sendDirectMessageAction } from "@/actions/social";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { useOptionalSocial } from "@/components/providers/SocialProvider";
@@ -11,13 +11,17 @@ import { useServer } from "@/components/providers/ServerProvider";
 import { useRuntimeConfig } from "@/components/providers/RuntimeConfig";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { inviteUrl } from "@/lib/servers";
+import { INVITE_AGES, INVITE_USES, inviteExpiry, inviteUrl } from "@/lib/servers";
 
 export function InviteDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { server, myRole, members } = useServer();
   const social = useOptionalSocial();
   const { siteUrl } = useRuntimeConfig();
   const [code, setCode] = useState<string | null>(null);
+  // Set when the link shown is a limited invite (Edit invite link), not the server's permanent one.
+  const [limits, setLimits] = useState<{ expiresAt: string | null; maxUses: number } | null>(null);
+  const [maxAge, setMaxAge] = useState<number>(10080);
+  const [maxUses, setMaxUses] = useState<number>(0);
   const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
   const current = code ?? server.invite_code;
@@ -74,8 +78,19 @@ export function InviteDialog({ open, onClose }: { open: boolean; onClose: () => 
       const result = await regenerateInviteAction({ serverId: server.id });
       if (result.ok && result.data) {
         setCode(result.data.code);
+        setLimits(null);
         toast.success("New invite link created. The old one no longer works.");
       } else toast.error(result.error ?? "Couldn't reset.");
+    });
+  }
+
+  function createLimited() {
+    startTransition(async () => {
+      const result = await createInviteAction({ serverId: server.id, maxAgeMinutes: maxAge, maxUses });
+      if (!result.ok || !result.data) return void toast.error(result.error ?? "Couldn't create the invite.");
+      setCode(result.data.code);
+      setLimits({ expiresAt: result.data.expiresAt, maxUses });
+      setCopied(false);
     });
   }
 
@@ -124,9 +139,40 @@ export function InviteDialog({ open, onClose }: { open: boolean; onClose: () => 
           </Button>
         )}
       </div>
-      <p className="mt-2 text-xs text-slate-500">
-        Code: <span className="font-mono text-slate-300">{current}</span>
+      <p className="mt-2 text-xs text-slate-500" data-testid="invite-limits">
+        {limits ? `${inviteExpiry(limits.expiresAt)}${limits.maxUses ? ` · ${limits.maxUses} use${limits.maxUses === 1 ? "" : "s"}` : ""}.` : "This link never expires."} Code:{" "}
+        <span className="font-mono text-slate-300">{current}</span>
       </p>
+      {!server.is_system && (
+        <details className="mt-3 rounded-lg border border-white/10 px-3 py-2">
+          <summary className="cursor-pointer text-sm font-semibold text-slate-200">Edit invite link</summary>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label className="block text-xs font-semibold text-slate-300">
+              Expire after
+              <select value={maxAge} onChange={(e) => setMaxAge(Number(e.target.value))} className="mt-1 h-9 w-full rounded-lg border border-white/10 bg-black/40 px-2 text-sm font-normal text-white">
+                {INVITE_AGES.map((a) => (
+                  <option key={a.minutes} value={a.minutes}>
+                    {a.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-xs font-semibold text-slate-300">
+              Max number of uses
+              <select value={maxUses} onChange={(e) => setMaxUses(Number(e.target.value))} className="mt-1 h-9 w-full rounded-lg border border-white/10 bg-black/40 px-2 text-sm font-normal text-white">
+                {INVITE_USES.map((u) => (
+                  <option key={u} value={u}>
+                    {u === 0 ? "No limit" : `${u} use${u === 1 ? "" : "s"}`}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <Button size="sm" className="mt-3" onClick={createLimited} loading={pending}>
+            Generate a New Link
+          </Button>
+        </details>
+      )}
       {myRole === "admin" && (
         <Button variant="ghost" size="sm" className="mt-4" onClick={regenerate} loading={pending}>
           <RefreshCw className="size-4" aria-hidden /> Reset invite link
