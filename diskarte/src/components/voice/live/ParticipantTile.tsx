@@ -3,13 +3,14 @@
 import { useIsSpeaking, VideoTrack, type TrackReferenceOrPlaceholder } from "@livekit/components-react";
 import { isTrackReference } from "@livekit/components-react";
 import { ConnectionQuality, Track, type Participant } from "livekit-client";
-import { MicOff, MonitorUp } from "lucide-react";
-import { useEffect, useState } from "react";
+import { MicOff, MonitorUp, VolumeX } from "lucide-react";
+import { useContext, useEffect, useState } from "react";
 import { useOptionalServer } from "@/components/providers/ServerProvider";
 import { UserAvatar, type AvatarProfile } from "@/components/profile/UserAvatar";
 import { SignalBars } from "@/components/retro/SignalBars";
+import { ContextMenu, ContextMenuItems, useContextMenu } from "@/components/ui/ContextMenu";
 import { cn } from "@/lib/utils";
-import { qualityToLevel } from "../CallProvider";
+import { CallContext, qualityToLevel } from "../CallProvider";
 
 /** Resolve a participant (identity = user id) to a profile: Tambayan members first, token metadata second. */
 export function useParticipantProfile(participant: Participant): AvatarProfile & { name: string } {
@@ -47,9 +48,16 @@ export function ParticipantTile({ trackRef, className, compact = false }: { trac
   const { micOn, quality } = useParticipantState(participant);
   const isScreen = trackRef.source === Track.Source.ScreenShare;
   const hasVideo = isTrackReference(trackRef) && trackRef.publication?.isSubscribed !== false && !trackRef.publication?.isMuted;
+  // Right-click someone's stream: its sound has its own volume and mute, apart from their voice.
+  const call = useContext(CallContext);
+  const streamMenu = !!call && isScreen && !participant.isLocal;
+  const menu = useContextMenu({ disabled: !streamMenu });
+  const streamVolume = Math.round((call?.mix.streams?.[participant.identity] ?? 1) * 100);
+  const streamMuted = !!call?.mix.streamMuted?.[participant.identity];
 
   return (
     <div
+      {...(streamMenu ? menu.triggerProps : {})}
       className={cn(
         "relative flex items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-midnight/80 backdrop-blur-md transition-shadow duration-150",
         speaking && !isScreen ? "neon-speaking" : "shadow-[0_0_0_1px_rgb(255_255_255_/_0.06)]",
@@ -71,6 +79,35 @@ export function ParticipantTile({ trackRef, className, compact = false }: { trac
         <span className="truncate">{isScreen ? `${profile.name}'s screen` : profile.name}</span>
         {participant.isLocal && !isScreen && <span className="text-slate-400">(you)</span>}
       </div>
+      {streamMenu && streamMuted && (
+        <div className="absolute right-2 top-2 rounded bg-black/60 p-1" title="Stream muted">
+          <VolumeX className="size-4 text-red-300" aria-label="Stream muted" />
+        </div>
+      )}
+      {streamMenu && (
+        <ContextMenu menu={menu} label={`${profile.name}'s stream`}>
+          <ContextMenuItems
+            items={[
+              {
+                label: `Stream Volume · ${streamVolume}%`,
+                onSelect: () => undefined,
+                control: (
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    defaultValue={streamVolume}
+                    onChange={(e) => call?.setStreamVolume(participant.identity, Number(e.target.value) / 100)}
+                    aria-label={`Stream volume for ${profile.name}`}
+                    className="w-full accent-sun"
+                  />
+                ),
+              },
+              { label: "Mute Stream", icon: <VolumeX className="size-4" aria-hidden />, multi: true, checked: streamMuted, onSelect: () => call?.toggleStreamMute(participant.identity) },
+            ]}
+          />
+        </ContextMenu>
+      )}
       {!isScreen && quality !== ConnectionQuality.Unknown && (
         <div className="absolute right-2 top-2 rounded bg-black/50 px-1 py-0.5">
           <SignalBars level={qualityToLevel(quality)} />

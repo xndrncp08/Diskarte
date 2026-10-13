@@ -186,10 +186,12 @@ describe("audio mixer window", () => {
     expect(await within(mixer).findAllByTestId("mixer-person")).toHaveLength(1); // the panel loads on first open
 
     fireEvent.change(within(mixer).getByRole("slider", { name: "Volume for Maria" }), { target: { value: "50" } });
-    expect(maria.setVolume).toHaveBeenLastCalledWith(0.5, "screen_share_audio");
     expect(maria.setVolume).toHaveBeenCalledWith(0.5);
+    // Her screen-share audio has its own slider (right-click her stream), so it stays put.
+    expect(maria.setVolume).toHaveBeenLastCalledWith(1, "screen_share_audio");
     fireEvent.change(within(mixer).getByRole("slider", { name: "Call volume" }), { target: { value: "50" } });
     expect(maria.setVolume).toHaveBeenCalledWith(0.25);
+    expect(maria.setVolume).toHaveBeenLastCalledWith(0.5, "screen_share_audio");
 
     await user.click(within(mixer).getByRole("button", { name: "Mute Maria for me" }));
     expect(maria.setVolume).toHaveBeenCalledWith(0);

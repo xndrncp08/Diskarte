@@ -64,6 +64,9 @@ export interface CallContextValue extends CallState {
   /** Mute someone just for yourself, or stop downloading their camera (toggles). */
   toggleLocalMute: (identity: string) => void;
   toggleVideoOff: (identity: string) => void;
+  /** Their screen share's sound, separately from their voice. */
+  setStreamVolume: (identity: string, volume: number) => void;
+  toggleStreamMute: (identity: string) => void;
   /** Switch microphone or speakers mid-call. */
   switchDevice: (kind: "audioinput" | "audiooutput", deviceId: string) => Promise<void>;
 }
@@ -75,6 +78,9 @@ export interface AudioMix {
   muted?: Record<string, boolean>;
   /** People whose camera you don't download ("Disable Video"). */
   videoOff?: Record<string, boolean>;
+  /** Screen-share audio, set apart from their voice (right-click their stream): volume 0–1 and mute. */
+  streams?: Record<string, number>;
+  streamMuted?: Record<string, boolean>;
 }
 
 /**
@@ -179,7 +185,8 @@ function readMix(): AudioMix {
     const parsed = JSON.parse(localStorage.getItem(MIX_KEY) ?? "null") as Partial<AudioMix> | null;
     const people = Object.fromEntries(Object.entries(parsed?.people ?? {}).map(([id, v]) => [id, clampVolume(Number(v))]));
     const flags = (v: unknown) => Object.fromEntries(Object.entries((v as Record<string, unknown>) ?? {}).filter(([, on]) => on === true)) as Record<string, boolean>;
-    return { master: clampVolume(Number(parsed?.master ?? 1)), people, muted: flags(parsed?.muted), videoOff: flags(parsed?.videoOff) };
+    const streams = Object.fromEntries(Object.entries(parsed?.streams ?? {}).map(([id, v]) => [id, clampVolume(Number(v))]));
+    return { master: clampVolume(Number(parsed?.master ?? 1)), people, muted: flags(parsed?.muted), videoOff: flags(parsed?.videoOff), streams, streamMuted: flags(parsed?.streamMuted) };
   } catch {
     return { master: 1, people: {} };
   }
@@ -190,11 +197,14 @@ export function effectiveVolume(mix: AudioMix, identity: string) {
   return mix.muted?.[identity] ? 0 : mix.master * (mix.people[identity] ?? 1);
 }
 
+/** Effective volume of someone's screen-share audio: the master level times their stream slider. */
+export function effectiveStreamVolume(mix: AudioMix, identity: string) {
+  return mix.streamMuted?.[identity] ? 0 : mix.master * (mix.streams?.[identity] ?? 1);
+}
+
 function applyMix(participant: RemoteParticipant, mix: AudioMix) {
-  const volume = effectiveVolume(mix, participant.identity);
-  participant.setVolume(volume);
-  // Screen-share audio follows the same slider.
-  participant.setVolume(volume, "screen_share_audio" as Parameters<RemoteParticipant["setVolume"]>[1]);
+  participant.setVolume(effectiveVolume(mix, participant.identity));
+  participant.setVolume(effectiveStreamVolume(mix, participant.identity), "screen_share_audio" as Parameters<RemoteParticipant["setVolume"]>[1]);
   // "Disable Video": stop downloading their camera (screen shares have their own Watch choice).
   const videoOff = mix.videoOff?.[participant.identity] === true;
   participant.trackPublications?.forEach((pub) => {
@@ -550,6 +560,8 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const setParticipantVolume = useCallback((identity: string, volume: number) => setMix((m) => ({ ...m, people: { ...m.people, [identity]: clampVolume(volume) } })), []);
   const toggleLocalMute = useCallback((identity: string) => setMix((m) => ({ ...m, muted: flip(m.muted, identity) })), []);
   const toggleVideoOff = useCallback((identity: string) => setMix((m) => ({ ...m, videoOff: flip(m.videoOff, identity) })), []);
+  const setStreamVolume = useCallback((identity: string, volume: number) => setMix((m) => ({ ...m, streams: { ...m.streams, [identity]: clampVolume(volume) } })), []);
+  const toggleStreamMute = useCallback((identity: string) => setMix((m) => ({ ...m, streamMuted: flip(m.streamMuted, identity) })), []);
 
   const switchDevice = useCallback(async (kind: "audioinput" | "audiooutput", deviceId: string) => {
     const current = roomRef.current;
@@ -644,10 +656,12 @@ export function CallProvider({ children }: { children: ReactNode }) {
       setMasterVolume,
       setParticipantVolume,
       toggleLocalMute,
+      setStreamVolume,
+      toggleStreamMute,
       toggleVideoOff,
       switchDevice,
     }),
-    [state, room, speaking, join, prewarm, leave, toggleMute, toggleDeafen, toggleCamera, toggleScreen, toggleNoiseSuppression, sendData, onData, mix, setMasterVolume, setParticipantVolume, toggleLocalMute, toggleVideoOff, switchDevice],
+    [state, room, speaking, join, prewarm, leave, toggleMute, toggleDeafen, toggleCamera, toggleScreen, toggleNoiseSuppression, sendData, onData, mix, setMasterVolume, setParticipantVolume, toggleLocalMute, toggleVideoOff, setStreamVolume, toggleStreamMute, switchDevice],
   );
 
   return (
