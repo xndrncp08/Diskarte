@@ -22,13 +22,13 @@ export function sameDay(a: string, b: string) {
 export const SERVER_TIME_ZONE = "Asia/Manila";
 
 const formatters = new Map<string, Intl.DateTimeFormat>();
-function fmt(kind: "time" | "day" | "parts", timeZone?: string) {
-  const key = `${kind}:${timeZone ?? "local"}`;
+function fmt(kind: "time" | "day" | "parts", timeZone?: string, hour24 = false) {
+  const key = `${kind}:${timeZone ?? "local"}:${hour24}`;
   let f = formatters.get(key);
   if (!f) {
     f =
       kind === "time"
-        ? new Intl.DateTimeFormat("en-PH", { hour: "numeric", minute: "2-digit", timeZone })
+        ? new Intl.DateTimeFormat("en-PH", { hour: hour24 ? "2-digit" : "numeric", minute: "2-digit", hourCycle: hour24 ? "h23" : "h12", timeZone })
         : kind === "day"
           ? new Intl.DateTimeFormat("en-PH", { month: "long", day: "numeric", year: "numeric", timeZone })
           : new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone });
@@ -42,18 +42,18 @@ function dayKey(date: Date, timeZone?: string) {
   return fmt("parts", timeZone).format(date);
 }
 
-export function formatTime(iso: string, timeZone?: string) {
-  return fmt("time", timeZone).format(new Date(iso));
+export function formatTime(iso: string, timeZone?: string, hour24 = false) {
+  return fmt("time", timeZone, hour24).format(new Date(iso));
 }
 
 /** "Today 3:14 PM", "Yesterday 9:02 AM", or a full date. */
-export function formatTimestamp(iso: string, now = new Date(), timeZone?: string) {
+export function formatTimestamp(iso: string, now = new Date(), timeZone?: string, hour24 = false) {
   const date = new Date(iso);
   const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const key = dayKey(date, timeZone);
-  if (key === dayKey(now, timeZone)) return `Today ${formatTime(iso, timeZone)}`;
-  if (key === dayKey(yesterday, timeZone)) return `Yesterday ${formatTime(iso, timeZone)}`;
-  return `${fmt("day", timeZone).format(date)} ${formatTime(iso, timeZone)}`;
+  if (key === dayKey(now, timeZone)) return `Today ${formatTime(iso, timeZone, hour24)}`;
+  if (key === dayKey(yesterday, timeZone)) return `Yesterday ${formatTime(iso, timeZone, hour24)}`;
+  return `${fmt("day", timeZone).format(date)} ${formatTime(iso, timeZone, hour24)}`;
 }
 
 export function formatDayDivider(iso: string, timeZone?: string) {

@@ -9,6 +9,8 @@ import { SignOutButton } from "@/components/profile/SignOutButton";
 import { VoiceSettings } from "@/components/profile/VoiceSettings";
 import { LowDataToggle } from "@/components/profile/LowDataToggle";
 import { NotificationSettings } from "@/components/profile/NotificationSettings";
+import { AccessibilitySettings, ChatSettings } from "@/components/profile/DisplaySettings";
+import { PrivacySettings } from "@/components/profile/PrivacySettings";
 import { SoundSettings } from "@/components/profile/SoundSettings";
 import { ThemePicker } from "@/components/profile/ThemePicker";
 import { cn } from "@/lib/utils";
@@ -17,8 +19,11 @@ import type { SettingsTab } from "./SettingsDialog";
 const TABS: { id: SettingsTab; label: string }[] = [
   { id: "profile", label: "My Profile" },
   { id: "account", label: "Account & Sessions" },
+  { id: "privacy", label: "Privacy & Safety" },
   { id: "appearance", label: "Appearance" },
+  { id: "accessibility", label: "Accessibility" },
   { id: "voice", label: "Voice & Video" },
+  { id: "chat", label: "Chat" },
   { id: "notifications", label: "Notifications" },
   { id: "advanced", label: "Advanced" },
   { id: "report", label: "Report a problem" },
@@ -84,6 +89,21 @@ export function SettingsPanels({ account, tab, onTab }: { account: AccountInfo; 
               <h3 className="text-sm font-semibold text-white">Theme</h3>
               <ThemePicker className="max-w-md" />
             </section>
+          </>
+        ) : tab === "chat" ? (
+          <>
+            <h2 className="mb-6 text-2xl font-extrabold text-white">Chat</h2>
+            <ChatSettings />
+          </>
+        ) : tab === "accessibility" ? (
+          <>
+            <h2 className="mb-6 text-2xl font-extrabold text-white">Accessibility</h2>
+            <AccessibilitySettings />
+          </>
+        ) : tab === "privacy" ? (
+          <>
+            <h2 className="mb-6 text-2xl font-extrabold text-white">Privacy &amp; Safety</h2>
+            <PrivacySettings />
           </>
         ) : tab === "notifications" ? (
           <>

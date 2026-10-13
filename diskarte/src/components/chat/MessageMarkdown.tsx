@@ -1,4 +1,5 @@
 import { memo, useState, type ReactNode } from "react";
+import { useDisplayPrefs } from "@/lib/display-prefs";
 import { CircleCheck, Info, OctagonAlert, TriangleAlert } from "lucide-react";
 import ReactMarkdown, { defaultUrlTransform, type Components } from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
@@ -90,7 +91,9 @@ export function remarkSpoilers() {
 
 /** Hidden until clicked (or Enter/Space), like Discord. */
 function Spoiler({ children }: { children?: ReactNode }) {
-  const [shown, setShown] = useState(false);
+  const always = useDisplayPrefs().spoilers === "always";
+  const [clicked, setShown] = useState(false);
+  const shown = clicked || always;
   return (
     <span
       role={shown ? undefined : "button"}
@@ -188,7 +191,7 @@ const components = {
  */
 export const MessageMarkdown = memo(function MessageMarkdown({ content }: { content: string }) {
   return (
-    <div className="chat-markdown text-[15px] text-slate-200">
+    <div className="chat-markdown text-[length:var(--chat-font-size,15px)] text-slate-200">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkHtmlAsText, remarkCallouts, remarkSpoilers, remarkGlyphs]}
         rehypePlugins={[[rehypeHighlight, { detect: false }]]}

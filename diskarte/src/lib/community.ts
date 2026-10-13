@@ -252,6 +252,7 @@ const COMMUNITY_ERRORS: Record<string, string> = {
   INVALID_CLIP_PATH: "Something's wrong with the sound file. Upload it again.",
   USER_NOT_FOUND: "No user has that username.",
   CANNOT_FRIEND_SELF: "You can't add yourself.",
+  FRIEND_REQUESTS_CLOSED: "They aren't accepting friend requests from you.",
   TOO_MANY_REQUESTS: "You have too many pending friend requests.",
   REQUEST_NOT_FOUND: "That friend request no longer exists.",
   DM_NOT_ALLOWED: "Only friends can DM each other.",

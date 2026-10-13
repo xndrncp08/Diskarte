@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { Attachments } from "./Attachments";
 import { EmojiPicker } from "./EmojiPicker";
 import { MessageMarkdown } from "./MessageMarkdown";
+import { useDisplayPrefs } from "@/lib/display-prefs";
 import { EditedMark } from "./EditHistory";
 import { PollCard } from "./Poll";
 import { ReactionBar } from "./ReactionBar";
@@ -233,6 +234,7 @@ export const MessageItem = memo(function MessageItem({
   interactive?: boolean;
 }) {
   const mine = message.author_id === meId;
+  const showReactions = useDisplayPrefs().reactions;
   const menu = useContextMenu({ disabled: !interactive || editing });
   const attachments = parseAttachments(message.attachments);
   const name = message.author?.display_name ?? "Deleted user";
@@ -324,7 +326,7 @@ export const MessageItem = memo(function MessageItem({
 
         <Attachments attachments={attachments} />
         {"has_poll" in message && message.has_poll && "channel_id" in message && <PollCard messageId={message.id} channelId={message.channel_id} />}
-        {actions.onReact && <ReactionBar reactions={reactions} meId={meId} onToggle={(emoji) => actions.onReact?.(message.id, emoji)} names={actions.nameOf} />}
+        {actions.onReact && showReactions && <ReactionBar reactions={reactions} meId={meId} onToggle={(emoji) => actions.onReact?.(message.id, emoji)} names={actions.nameOf} />}
 
         {actions.onOpenThread && message.thread_reply_count > 0 && (
           <button

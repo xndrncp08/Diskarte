@@ -1,7 +1,7 @@
 "use client";
 
 import { MotionConfig } from "framer-motion";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { MediaViewerProvider } from "@/components/chat/MediaViewer";
 import type { AccountInfo } from "@/components/profile/AccountSettings";
 import { SettingsDialogProvider } from "@/components/profile/SettingsDialog";
@@ -12,6 +12,7 @@ import { AudioMixerProvider } from "@/components/voice/AudioMixer";
 import { CallProvider } from "@/components/voice/CallProvider";
 import { IncomingCallsProvider } from "@/components/voice/IncomingCalls";
 import { SessionGuard } from "@/components/session/SessionGuard";
+import { useDisplayPrefs } from "@/lib/display-prefs";
 import type { Tables } from "@/lib/supabase/database.types";
 
 /**
@@ -31,10 +32,18 @@ export function SessionProviders({
   verified?: boolean;
   children: ReactNode;
 }) {
+  const display = useDisplayPrefs();
+  // Settings → Chat / Accessibility, applied to the whole page (see globals.css).
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--chat-font-size", `${display.fontSize}px`);
+    root.toggleAttribute("data-reduce-motion", display.reducedMotion === "on");
+    root.toggleAttribute("data-underline-links", display.underlineLinks);
+  }, [display]);
   return (
     <MeProvider profile={profile} verified={verified}>
       {/* Honour the OS "reduce motion" setting for every framer-motion animation in the app. */}
-      <MotionConfig reducedMotion="user">
+      <MotionConfig reducedMotion={display.reducedMotion === "on" ? "always" : "user"}>
         <PresenceProvider>
           <SocialProvider>
             <CallProvider>
