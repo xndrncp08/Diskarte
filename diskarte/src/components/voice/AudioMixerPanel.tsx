@@ -6,6 +6,7 @@ import { useEffect, useReducer, useState } from "react";
 import { Switch } from "@/components/ui/Switch";
 import { cn } from "@/lib/utils";
 import { loadLivekit, useCall } from "./CallProvider";
+import { useMediaDevices as useDevices } from "@/hooks/useMediaDevices";
 
 function percent(v: number) {
   return Math.round(v * 100);
@@ -28,27 +29,6 @@ function Slider({ label, value, onChange, disabled }: { label: string; value: nu
   );
 }
 
-/** Lists audio devices of one kind; labels appear once the browser has granted the mic. */
-function useDevices(kind: MediaDeviceKind) {
-  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
-  useEffect(() => {
-    const media = typeof navigator !== "undefined" ? navigator.mediaDevices : undefined;
-    if (!media?.enumerateDevices) return;
-    let cancelled = false;
-    const load = () =>
-      media
-        .enumerateDevices()
-        .then((all) => !cancelled && setDevices(all.filter((d) => d.kind === kind && d.deviceId)))
-        .catch(() => undefined);
-    void load();
-    media.addEventListener?.("devicechange", load);
-    return () => {
-      cancelled = true;
-      media.removeEventListener?.("devicechange", load);
-    };
-  }, [kind]);
-  return devices;
-}
 
 /** Re-renders when people join or leave the room. */
 function useRemoteParticipants() {
