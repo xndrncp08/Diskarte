@@ -2,19 +2,24 @@ import "server-only";
 import { cache } from "react";
 import type { ServerBadge } from "@/lib/community";
 import type { Channel, MemberWithProfile, Server } from "@/lib/servers";
-import { uuidSchema } from "@/lib/servers";
+import { firstTextChannel, uuidSchema } from "@/lib/servers";
 import type { MemberRole } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 
-/** Servers the signed-in user belongs to (RLS returns nothing else), oldest membership first. */
-export const getMyServers = cache(async (userId: string): Promise<Server[]> => {
+/** Servers the signed-in user belongs to (RLS returns nothing else), oldest membership first, each with
+    the channel the rail should open (its first text channel). */
+export const getMyServers = cache(async (userId: string): Promise<(Server & { entryChannelId: string | null })[]> => {
   const supabase = await createClient();
   const { data } = await supabase
     .from("members")
-    .select("joined_at, server:servers!inner(*)")
+    .select("joined_at, server:servers!inner(*, channels(*))")
     .eq("user_id", userId)
     .order("joined_at", { ascending: true });
-  return (data ?? []).map((row) => row.server as Server);
+  return (data ?? []).map((row) => {
+    const { channels, ...server } = row.server as Server & { channels: Channel[] | null };
+    const entry = firstTextChannel(channels ?? []) ?? channels?.[0];
+    return { ...server, entryChannelId: entry?.id ?? null };
+  });
 });
 
 export interface ServerBundle {
