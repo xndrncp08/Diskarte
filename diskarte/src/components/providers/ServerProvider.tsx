@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useMe } from "@/components/providers/MeProvider";
+import { useOptionalUnreads } from "@/components/providers/UnreadsProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { useServerPresence } from "@/components/providers/PresenceProvider";
 import type { ServerBadge } from "@/lib/community";
@@ -77,6 +78,8 @@ export function ServerProvider({
 }: ServerProviderProps) {
   const supabase = useSupabase();
   const router = useRouter();
+  // Stable callback only: depending on the whole unreads value would resubscribe realtime on every change.
+  const noteActivity = useOptionalUnreads()?.noteActivity;
   const { me } = useMe();
 
   const [server, setServer] = useState(initialServer);
@@ -156,6 +159,8 @@ export function ServerProvider({
           })
           .on("postgres_changes", { event: "UPDATE", schema: "public", table: "channels", filter: `server_id=eq.${serverId}` }, ({ new: row }) => {
             setChannels((prev) => prev.map((c) => (c.id === row.id ? (row as Channel) : c)));
+            const at = (row as Channel).last_message_at;
+            if (at) noteActivity?.(row.id as string, serverId, at);
           })
           // DELETE events cannot be filtered server-side; the payload only carries the primary key.
           .on("postgres_changes", { event: "DELETE", schema: "public", table: "channels" }, ({ old }) => {
@@ -208,7 +213,7 @@ export function ServerProvider({
         else if (status === "CLOSED") setHealth("offline");
       },
     );
-  }, [supabase, serverId, me.id, router, reloadRoles]);
+  }, [supabase, serverId, me.id, router, reloadRoles, noteActivity]);
 
   // ---- presence (shared, ref-counted channel from PresenceProvider) ---------------------
   const presence = useServerPresence(serverId);

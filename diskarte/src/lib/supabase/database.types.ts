@@ -142,6 +142,8 @@ export interface Database {
           read_only: boolean;
           /** Only admins and people or roles they let in (channel_access) can see it. */
           is_private: boolean;
+          /** When the channel last got a (non-thread) message. */
+          last_message_at?: string | null;
           created_at: string;
         };
         Insert: {
@@ -272,6 +274,8 @@ export interface Database {
         { id: string; channel_id: string; server_id: string; user_id: string | null; role_id: string | null; created_at: string },
         { channel_id: string; server_id: string; user_id?: string | null; role_id?: string | null }
       >;
+      channel_reads: TableDef<{ user_id: string; channel_id: string; last_read_at: string }, never>;
+      message_mentions: TableDef<{ message_id: string; user_id: string; channel_id: string; server_id: string; created_at: string }, never>;
       user_notes: TableDef<{ owner_id: string; target_id: string; note: string; updated_at: string }, { owner_id?: string; target_id: string; note: string; updated_at?: string }>;
       friend_nicknames: TableDef<{ owner_id: string; target_id: string; nickname: string }, { owner_id?: string; target_id: string; nickname: string }>;
       dm_conversations: TableDef<
@@ -464,6 +468,11 @@ export interface Database {
       admin_retract_broadcast: { Args: { p_broadcast: string }; Returns: undefined };
       admin_set_report_status: { Args: { p_report: string; p_status: string; p_issue_url?: string | null }; Returns: undefined };
       record_site_visit: { Args: { p_visitor: string }; Returns: undefined };
+      my_unreads: {
+        Args: Record<string, never>;
+        Returns: { channel_id: string; server_id: string; last_message_at: string | null; read_at: string; mentions: number }[];
+      };
+      mark_channel_read: { Args: { p_channel: string }; Returns: undefined };
       admin_site_traffic: { Args: Record<string, never>; Returns: Json };
     };
     Enums: {
