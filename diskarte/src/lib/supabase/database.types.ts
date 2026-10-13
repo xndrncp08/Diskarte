@@ -285,6 +285,7 @@ export interface Database {
       message_edits: TableDef<{ id: number; message_id: string; server_id: string; author_id: string | null; content: string; replaced_at: string }, never>;
       member_warnings: TableDef<{ id: string; server_id: string; user_id: string; moderator_id: string | null; reason: string; acknowledged_at: string | null; created_at: string }, never>;
       privacy_settings: TableDef<{ user_id: string; friend_requests_from: string; updated_at: string }, { user_id?: string; friend_requests_from: string; updated_at?: string }>;
+      server_invites: TableDef<{ code: string; server_id: string; created_by: string | null; max_uses: number | null; uses: number; expires_at: string | null; created_at: string }, never>;
       saved_messages: TableDef<{ user_id: string; message_id: string; saved_at: string }, { user_id?: string; message_id: string; saved_at?: string }>;
       channel_reads: TableDef<{ user_id: string; channel_id: string; last_read_at: string }, never>;
       message_mentions: TableDef<{ message_id: string; user_id: string; channel_id: string; server_id: string; created_at: string }, never>;
@@ -491,6 +492,8 @@ export interface Database {
       remove_timeout: { Args: { p_server: string; p_user: string }; Returns: undefined };
       warn_member: { Args: { p_server: string; p_user: string; p_reason: string }; Returns: string };
       acknowledge_warnings: { Args: { p_server: string }; Returns: undefined };
+      create_invite: { Args: { p_server: string; p_max_age_minutes: number; p_max_uses: number }; Returns: string };
+      revoke_invite: { Args: { p_code: string }; Returns: undefined };
       vote_poll: { Args: { p_message: string; p_options: number[] }; Returns: undefined };
       search_messages: {
         Args: { p_server: string; p_query: string; p_channel?: string | null; p_author?: string | null; p_before?: string | null; p_limit?: number };

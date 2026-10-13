@@ -6,7 +6,7 @@ import { z } from "zod";
 import { getSessionUser } from "@/lib/auth";
 import { fieldErrors, isAllowedImageUrl } from "@/lib/profile";
 import { limiters } from "@/lib/rate-limit";
-import { channelSchema, parseInviteInput, serverSchema, uuidSchema, type Channel } from "@/lib/servers";
+import { channelSchema, INVITE_AGES, INVITE_USES, parseInviteInput, serverSchema, uuidSchema, type Channel } from "@/lib/servers";
 import { createClient } from "@/lib/supabase/server";
 
 export interface ActionResult<T = undefined> {
@@ -23,7 +23,11 @@ export interface ActionResult<T = undefined> {
 const DB_ERRORS: Record<string, string> = {
   SERVER_LIMIT_REACHED: "You've reached the limit of 25 servers you can own.",
   SERVER_JOIN_LIMIT: "You're in 100 servers already — leave one first.",
-  INVITE_NOT_FOUND: "No server has that invite code.",
+  INVITE_NOT_FOUND: "That invite is invalid or has expired.",
+  CANNOT_CREATE_INVITE: "You can't create invites for this server.",
+  INVALID_INVITE_SETTINGS: "Pick an expiry and a use limit.",
+  TOO_MANY_INVITES: "This server has too many active invites. Revoke some first.",
+  CANNOT_REVOKE_INVITE: "You can only revoke your own invites.",
   BANNED: "You're banned from this server.",
   OWNER_CANNOT_LEAVE: "You own this server — delete it or transfer ownership first.",
   CANNOT_LEAVE_SYSTEM_SERVER: "Everyone stays in Diskarte HQ — it's where announcements live.",
@@ -139,6 +143,35 @@ export async function transferOwnershipAction(input: { serverId: string; userId:
   const { data, error } = await supabase.from("servers").update({ owner_id: input.userId }).eq("id", input.serverId).select("id");
   if (error || !data?.length) return { ok: false, error: dbError(error?.message, "Only the owner can transfer the server.") };
   revalidatePath("/tambayan", "layout");
+  return { ok: true };
+}
+
+/** An extra invite link that expires and/or stops after a number of uses. Any member can make one. */
+export async function createInviteAction(input: { serverId: string; maxAgeMinutes: number; maxUses: number }): Promise<ActionResult<{ code: string; expiresAt: string | null }>> {
+  const { limited } = await authed();
+  if (limited) return RATE_LIMITED;
+  const parsed = z
+    .object({
+      serverId: uuidSchema,
+      maxAgeMinutes: z.number().refine((m) => INVITE_AGES.some((a) => a.minutes === m)),
+      maxUses: z.number().refine((u) => (INVITE_USES as readonly number[]).includes(u)),
+    })
+    .safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Pick an expiry and a use limit." };
+  const supabase = await createClient();
+  const { data: code, error } = await supabase.rpc("create_invite", { p_server: parsed.data.serverId, p_max_age_minutes: parsed.data.maxAgeMinutes, p_max_uses: parsed.data.maxUses });
+  if (error || !code) return { ok: false, error: dbError(error?.message, "Couldn't create the invite.") };
+  const { data: row } = await supabase.from("server_invites").select("expires_at").eq("code", code).maybeSingle();
+  return { ok: true, data: { code, expiresAt: row?.expires_at ?? null } };
+}
+
+export async function revokeInviteAction(input: { code: string }): Promise<ActionResult> {
+  const { limited } = await authed();
+  if (limited) return RATE_LIMITED;
+  if (!/^[A-Z0-9]{6,16}$/.test(input.code)) return { ok: false, error: "Invalid invite" };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("revoke_invite", { p_code: input.code });
+  if (error) return { ok: false, error: dbError(error.message, "Couldn't revoke the invite.") };
   return { ok: true };
 }
 

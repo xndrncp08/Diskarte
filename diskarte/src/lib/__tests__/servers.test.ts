@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canManageMember, channelSchema, isTimedOut, firstTextChannel, groupChannels, hasRole, inviteUrl, parseInviteInput, serverInitials, serverSchema, slugifyChannelName } from "@/lib/servers";
+import { canManageMember, channelSchema, inviteExpiry, isTimedOut, firstTextChannel, groupChannels, hasRole, inviteUrl, parseInviteInput, serverInitials, serverSchema, slugifyChannelName } from "@/lib/servers";
 import { channels, makeChannel } from "../../../tests/fixtures/server";
 
 describe("slugifyChannelName", () => {
@@ -52,6 +52,15 @@ describe("roles", () => {
     expect(canManageMember({ actorRole: "member", actorId: "x", target: target("member"), ownerId: owner })).toEqual({ timeout: false, changeRole: false, kick: false, rename: false });
     expect(canManageMember({ actorRole: "admin", actorId: "a", target: target("admin", owner), ownerId: owner })).toEqual({ timeout: false, changeRole: false, kick: false, rename: false });
     expect(canManageMember({ actorRole: "admin", actorId: "a", target: target("admin", "a"), ownerId: owner })).toEqual({ timeout: false, changeRole: false, kick: false, rename: true });
+  });
+
+  it("describes invite expiry like Discord", () => {
+    const now = Date.parse("2026-10-13T10:00:00Z");
+    expect(inviteExpiry(null, now)).toBe("Never expires");
+    expect(inviteExpiry("2026-10-13T09:00:00Z", now)).toBe("Expired");
+    expect(inviteExpiry("2026-10-13T10:30:00Z", now)).toBe("Expires in 30 minutes");
+    expect(inviteExpiry("2026-10-13T16:00:00Z", now)).toBe("Expires in 6 hours");
+    expect(inviteExpiry("2026-10-20T10:00:00Z", now)).toBe("Expires in 7 days");
   });
 
   it("knows when a timeout is still running", () => {

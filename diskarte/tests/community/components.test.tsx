@@ -300,14 +300,14 @@ describe("Bantay-Bayan settings", () => {
     tables.audit_logs = [{ id: 1, server_id: SERVER_ID, actor_id: MOD_ID, action: "member.kick", target_type: "member", target_id: MEMBER_ID, metadata: {}, created_at: "2026-09-27T00:00:00Z" }];
     render(<ServerSettingsDialog open onClose={() => undefined} initialTab="overview" />, { wrapper: wrap(MOD_ID, "moderator") });
     const tabs = screen.getAllByRole("tab").map((t) => t.textContent);
-    expect(tabs).toEqual(["Audit log", "Bans"]);
+    expect(tabs).toEqual(["Audit log", "Bans", "Invites"]);
     expect(await screen.findByText("Maria kicked Juan")).toBeInTheDocument();
   });
 
   it("lets admins configure auto-mod", async () => {
     const user = userEvent.setup();
     render(<ServerSettingsDialog open onClose={() => undefined} initialTab="automod" />, { wrapper: wrap() });
-    expect(screen.getAllByRole("tab")).toHaveLength(7);
+    expect(screen.getAllByRole("tab")).toHaveLength(8);
     await user.click(screen.getByRole("switch", { name: "Explicit content" }));
     await user.type(screen.getByLabelText("Custom blocked words"), "scam{Enter}benta account");
     await user.click(screen.getByRole("button", { name: "Save" }));

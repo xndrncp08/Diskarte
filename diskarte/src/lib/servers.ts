@@ -23,6 +23,31 @@ export function isTimedOut(member: { timeout_until?: string | null } | null | un
   return !!member?.timeout_until && Date.parse(member.timeout_until) > now;
 }
 
+/** Discord's "Expire after" / "Max number of uses" (create_invite() accepts exactly these; 0 = never / no limit). */
+export const INVITE_AGES = [
+  { minutes: 30, label: "30 minutes" },
+  { minutes: 60, label: "1 hour" },
+  { minutes: 360, label: "6 hours" },
+  { minutes: 720, label: "12 hours" },
+  { minutes: 1440, label: "1 day" },
+  { minutes: 10080, label: "7 days" },
+  { minutes: 0, label: "Never" },
+] as const;
+export const INVITE_USES = [0, 1, 5, 10, 25, 50, 100] as const;
+
+/** "Expires in 6 hours", "Never expires", "Expired". */
+export function inviteExpiry(expiresAt: string | null, now = Date.now()) {
+  if (!expiresAt) return "Never expires";
+  const ms = Date.parse(expiresAt) - now;
+  if (ms <= 0) return "Expired";
+  const mins = Math.ceil(ms / 60_000);
+  if (mins < 60) return `Expires in ${mins} minute${mins === 1 ? "" : "s"}`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `Expires in ${hours} hour${hours === 1 ? "" : "s"}`;
+  const days = Math.round(hours / 24);
+  return `Expires in ${days} day${days === 1 ? "" : "s"}`;
+}
+
 export function canManageMember(opts: { actorRole: MemberRole | null; actorId: string; target: { role: MemberRole; user_id: string }; ownerId: string | null }) {
   const { actorRole, actorId, target, ownerId } = opts;
   const isSelf = target.user_id === actorId;
