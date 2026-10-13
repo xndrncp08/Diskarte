@@ -14,6 +14,7 @@ import { VoiceRecorder } from "./VoiceRecorder";
 import { onMentionRequest } from "@/lib/mention";
 import { cn, formatBytes } from "@/lib/utils";
 import { EmojiPicker } from "./EmojiPicker";
+import { GifPicker } from "./GifPicker";
 import { StickerPicker } from "./StickerPicker";
 
 /** Seconds left until `until` (a Date.now() timestamp), ticking while it's in the future. */
@@ -343,6 +344,14 @@ export function Composer({
             data-testid="composer"
           />
           <EmojiPicker onPick={(value) => insert(value.startsWith(":") ? `${value} ` : value)} label="Insert icon" triggerClassName="pointer-coarse:p-3.5" />
+          <GifPicker
+            disabled={cooldown > 0}
+            onPick={(url) => {
+              const replyId = replyTo?.id ?? null;
+              onCancelReply();
+              void onSend(url, [], replyId);
+            }}
+          />
           {onSticker && <StickerPicker onPick={onSticker} disabled={cooldown > 0} />}
           {extra}
           <button

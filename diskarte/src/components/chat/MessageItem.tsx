@@ -15,6 +15,7 @@ import { Attachments } from "./Attachments";
 import { EmojiPicker } from "./EmojiPicker";
 import { MessageMarkdown } from "./MessageMarkdown";
 import { useDisplayPrefs } from "@/lib/display-prefs";
+import { isGifOnlyMessage } from "@/lib/gifs";
 import { LinkEmbeds } from "./LinkEmbeds";
 import { EditedMark } from "./EditHistory";
 import { PollCard } from "./Poll";
@@ -235,7 +236,9 @@ export const MessageItem = memo(function MessageItem({
   interactive?: boolean;
 }) {
   const mine = message.author_id === meId;
-  const showReactions = useDisplayPrefs().reactions;
+  const { reactions: showReactions, embeds } = useDisplayPrefs();
+  // A message that's only a GIF link shows the GIF alone (the link stays visible if previews are off).
+  const gifOnly = embeds && isGifOnlyMessage(message.content);
   const menu = useContextMenu({ disabled: !interactive || editing });
   const attachments = parseAttachments(message.attachments);
   const name = message.author?.display_name ?? "Deleted user";
@@ -319,7 +322,7 @@ export const MessageItem = memo(function MessageItem({
         ) : (
           message.content && (
             <div className="flex items-end gap-1.5">
-              <MessageMarkdown content={message.content} />
+              {!gifOnly && <MessageMarkdown content={message.content} />}
               {message.edited_at && <EditedMark messageId={message.id} current={message.content} editedAt={message.edited_at} canView={(mine || canModerate) && "channel_id" in message} />}
             </div>
           )

@@ -37,7 +37,7 @@ export function buildCsp(nonce: string, sources: CspSources, isDev: boolean, upg
     "script-src": ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", ...(isDev ? ["'unsafe-eval'"] : [])],
     // React emits style attributes and Framer Motion / LiveKit animate inline styles.
     "style-src": ["'self'", "'unsafe-inline'"],
-    "img-src": ["'self'", "data:", "blob:", ...supabaseHttp, "https://avatars.githubusercontent.com", "https://lh3.googleusercontent.com", "https://cdn.discordapp.com"],
+    "img-src": ["'self'", "data:", "blob:", ...supabaseHttp, "https://avatars.githubusercontent.com", "https://lh3.googleusercontent.com", "https://cdn.discordapp.com", "https://*.giphy.com"],
     "media-src": ["'self'", "blob:", "mediastream:", ...supabaseHttp],
     "font-src": ["'self'", "data:"],
     "connect-src": ["'self'", ...supabase, ...livekit, ...(isDev ? ["ws://localhost:*", "http://localhost:*"] : [])],
