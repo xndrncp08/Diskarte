@@ -25,6 +25,7 @@ import { useCall, usePrewarm } from "@/components/voice/CallProvider";
 import { Menu, type MenuItem } from "@/components/ui/Menu";
 import { useOnline } from "@/hooks/useOnline";
 import { useVoiceRoster } from "@/hooks/useVoiceRoster";
+import { useChannelUnread } from "@/components/providers/UnreadsProvider";
 import { readChannelMutes, serverMutes, subscribeChannelMutes, toggleChannelMute, toggleHideMuted } from "@/lib/channel-mute";
 import { rememberChannel } from "@/lib/last-channel";
 import { boostLevel } from "@/lib/community";
@@ -117,6 +118,9 @@ function ChannelRow({
   const router = useRouter();
   const menu = useContextMenu();
   const Icon = channel.type === "voice" ? Volume2 : Hash;
+  const { unread: hasUnread, mentions } = useChannelUnread(channel.id, channel.last_message_at);
+  // Discord: unread channels (not muted, not the open one) are bright, with a short pill at the edge.
+  const unread = hasUnread && !active && !muted;
   const label = `${channel.type === "text" ? "#" : ""}${channel.name}`;
   const icon = "size-4";
   const items: MenuItem[] = [
@@ -183,6 +187,7 @@ function ChannelRow({
           if (dragged.current) e.preventDefault();
         }}
       >
+        {unread && <span className="absolute -left-2 top-1/2 h-2 w-1 -translate-y-1/2 rounded-r bg-white" aria-hidden />}
         {active && (
           <motion.span
             layoutId={`channel-pill-${server.id}`}
@@ -196,13 +201,23 @@ function ChannelRow({
           onClick={() => setNavOpen(false)}
           aria-current={active ? "page" : undefined}
           draggable={false}
-          className={cn("flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1.5 text-[15px] pointer-coarse:min-h-11 pointer-coarse:py-2.5", muted && !active && "opacity-50")}
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1.5 text-[15px] pointer-coarse:min-h-11 pointer-coarse:py-2.5",
+            muted && !active && "opacity-50",
+            unread && "font-semibold text-white",
+          )}
+          data-unread={unread || undefined}
           data-channel-type={channel.type}
           {...(channel.type === "voice" ? prewarm({ serverId: server.id, serverName: server.name, channelId: channel.id, channelName: channel.name }) : {})}
         >
           <Icon className="size-4 shrink-0 opacity-70" aria-hidden />
           <span className="truncate">{channel.name}</span>
           {channel.is_private && <Lock className="size-3 shrink-0 opacity-60" aria-label="Private" />}
+          {mentions > 0 && !active && (
+            <span className="ml-auto rounded-full bg-red-600 px-1.5 text-[11px] font-bold tabular-nums text-white" aria-label={`${mentions} mention${mentions === 1 ? "" : "s"}`}>
+              {mentions > 99 ? "99+" : mentions}
+            </span>
+          )}
         </Link>
         {reorder && (
           <button

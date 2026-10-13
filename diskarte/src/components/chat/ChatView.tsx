@@ -2,10 +2,11 @@
 
 import { motion } from "framer-motion";
 import { ArrowDown, Hash, Loader2, Pin } from "lucide-react";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useMe } from "@/components/providers/MeProvider";
 import { useServer } from "@/components/providers/ServerProvider";
+import { useOptionalUnreads } from "@/components/providers/UnreadsProvider";
 import { ChannelHeader } from "@/components/server/ChannelHeader";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -35,6 +36,18 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
   const canModerate = hasRole(myRole, "moderator");
   const chat = useChannelChat(channel.id, initial, { slowmodeSeconds: channel.slowmode_seconds, slowmodeExempt: canModerate });
   const { typingNames, notifyTyping, stopTyping } = useTyping(channel.id);
+
+  // Reading it clears its unread pill and mentions: on open, as messages arrive while you're looking,
+  // and when you come back to the tab.
+  const markRead = useOptionalUnreads()?.markRead;
+  const newest = chat.messages.at(-1)?.id;
+  useEffect(() => {
+    if (!markRead) return;
+    const mark = () => document.visibilityState === "visible" && markRead(channel.id);
+    mark();
+    document.addEventListener("visibilitychange", mark);
+    return () => document.removeEventListener("visibilitychange", mark);
+  }, [markRead, channel.id, newest]);
   // Read-only channels (Diskarte HQ's #announcements) take posts from admins only — the database enforces
   // it too; verification-gated channels need a confirmed account.
   const readOnly = channel.read_only && myRole !== "admin";

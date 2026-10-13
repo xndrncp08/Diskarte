@@ -10,6 +10,8 @@ import { useOptionalSocial } from "@/components/providers/SocialProvider";
 import { Tooltip } from "@/components/ui/Tooltip";
 import type { Server } from "@/lib/servers";
 import { lastChannelIn, readLastChannels, subscribeLastChannels } from "@/lib/last-channel";
+import { readChannelMutes, serverMutes, subscribeChannelMutes } from "@/lib/channel-mute";
+import { serverUnread, useOptionalUnreads } from "@/components/providers/UnreadsProvider";
 import { cn } from "@/lib/utils";
 import { NotificationHub } from "@/components/workspace/NotificationHub";
 import { usePlatformRole } from "@/components/admin/AdminAccess";
@@ -18,16 +20,40 @@ import { AddServerDialog } from "./AddServerDialog";
 import { ServerContextMenu } from "./ServerContextMenu";
 import { ServerIcon } from "./ServerIcon";
 
-function Pill({ active }: { active: boolean }) {
+function Pill({ active, unread = false }: { active: boolean; unread?: boolean }) {
   return (
     <span className="absolute -left-3 top-1/2 flex h-10 w-1 -translate-y-1/2 items-center" aria-hidden>
       {active ? (
         <motion.span layoutId="rail-pill" className="h-10 w-1 rounded-r bg-sun" transition={{ type: "spring", stiffness: 500, damping: 40 }} />
       ) : (
-        <span className="h-0 w-1 rounded-r bg-white transition-[height] duration-150 group-hover:h-5" />
+        // Discord: a short pill for unread messages, taller on hover.
+        <span className={cn("w-1 rounded-r bg-white transition-[height] duration-150 group-hover:h-5", unread ? "h-2" : "h-0")} />
       )}
     </span>
   );
+}
+
+/** Red mention count in the icon's corner. */
+function MentionBadge({ count, top = false }: { count: number; top?: boolean }) {
+  if (count <= 0) return null;
+  return (
+    <span
+      className={cn(
+        "absolute -right-0.5 flex min-w-5 items-center justify-center rounded-full border-[3px] border-abyss bg-red-600 px-1 font-silk text-[10px] font-bold tabular-nums text-white",
+        top ? "-top-0.5" : "-bottom-0.5",
+      )}
+      data-testid="mention-badge"
+    >
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
+/** Unread state for a rail node, ignoring channels you muted. */
+function useServerBadge(serverId: string) {
+  const unreads = useOptionalUnreads();
+  const mutes = serverMutes(useSyncExternalStore(subscribeChannelMutes, readChannelMutes, () => "{}"), serverId);
+  return unreads ? serverUnread(unreads.channels, serverId, mutes.muted) : { unread: false, mentions: 0 };
 }
 
 type RailEntry = Server & { entryChannelId?: string | null };
@@ -40,30 +66,34 @@ function RailServer({ server, active, official = false }: { server: RailEntry; a
   const last = useSyncExternalStore(subscribeLastChannels, readLastChannels, () => "{}");
   const channelId = lastChannelIn(last, server.id) ?? server.entryChannelId;
   const href = channelId ? `/tambayan/${server.id}/${channelId}` : `/tambayan/${server.id}`;
+  const badge = useServerBadge(server.id);
+  const label = `${server.name}${badge.mentions ? `, ${badge.mentions} mention${badge.mentions === 1 ? "" : "s"}` : badge.unread ? ", unread messages" : ""}`;
   return (
     <>
       {official ? (
         <Tooltip label={`${server.name} · Official`}>
           <Link
             href={href}
-            aria-label={`${server.name} (official)`}
+            aria-label={`${label} (official)`}
             aria-current={active ? "page" : undefined}
             className="group relative flex"
             data-testid="pinned-server"
             {...menu.triggerProps}
           >
-            <Pill active={active} />
+            <Pill active={active} unread={badge.unread} />
             <span className="rounded-[50%] ring-2 ring-sun ring-offset-2 ring-offset-[#0b1020] transition-[border-radius] group-hover:rounded-2xl">
               <ServerIcon server={server} active={active} />
             </span>
             <BadgeCheck className="absolute -bottom-1 -right-1 size-5 rounded-full bg-abyss fill-sun text-abyss" aria-hidden />
+            <MentionBadge count={badge.mentions} top />
           </Link>
         </Tooltip>
       ) : (
         <Tooltip label={server.name}>
-          <Link href={href} aria-label={server.name} aria-current={active ? "page" : undefined} draggable={false} className="group relative flex" {...menu.triggerProps}>
-            <Pill active={active} />
+          <Link href={href} aria-label={label} aria-current={active ? "page" : undefined} draggable={false} className="group relative flex" {...menu.triggerProps}>
+            <Pill active={active} unread={badge.unread} />
             <ServerIcon server={server} active={active} />
+            <MentionBadge count={badge.mentions} />
           </Link>
         </Tooltip>
       )}

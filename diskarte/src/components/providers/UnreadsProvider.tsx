@@ -1,0 +1,136 @@
+"use client";
+
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useMe } from "@/components/providers/MeProvider";
+import { useOptionalSupabase } from "@/components/providers/RuntimeConfig";
+import { subscribeDbChanges } from "@/lib/realtime";
+
+/** How often the rail's unread state refreshes in the background (the open server is live). */
+export const UNREADS_POLL_MS = 30_000;
+const MARK_DEBOUNCE_MS = 800;
+
+interface ChannelUnread {
+  serverId: string;
+  lastMessageAt: string | null;
+  readAt: string;
+  mentions: number;
+}
+
+interface UnreadsValue {
+  /** Per text channel I can see. */
+  channels: ReadonlyMap<string, ChannelUnread>;
+  /** I've read this channel (now, and at least up to its newest message). */
+  markRead: (channelId: string) => void;
+  /** A channel got a message (live, from the open server's realtime). */
+  noteActivity: (channelId: string, serverId: string, at: string) => void;
+  refresh: () => void;
+}
+
+const UnreadsContext = createContext<UnreadsValue | null>(null);
+
+const later = (a: string | null | undefined, b: string | null | undefined) => (!a ? (b ?? null) : !b ? a : Date.parse(a) >= Date.parse(b) ? a : b);
+
+export function isUnread(c: ChannelUnread | undefined) {
+  return !!c?.lastMessageAt && Date.parse(c.lastMessageAt) > Date.parse(c.readAt);
+}
+
+/**
+ * Discord's unread pills and mention badges. Loads my_unreads() for every channel I can see, refreshes
+ * it every 30 s and on focus, and right away when someone mentions me (my own message_mentions rows).
+ * The open server feeds channel activity in live; reading a channel marks it on the server (debounced).
+ */
+export function UnreadsProvider({ children }: { children: ReactNode }) {
+  const supabase = useOptionalSupabase();
+  const { me } = useMe();
+  const [channels, setChannels] = useState<ReadonlyMap<string, ChannelUnread>>(() => new Map());
+  // Read marks made in this tab: a refresh racing the server write never brings an unread back.
+  const marks = useRef(new Map<string, string>());
+  const pending = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+
+  const refresh = useCallback(async () => {
+    if (!supabase) return;
+    const { data, error } = await supabase.rpc("my_unreads");
+    // Not migrated yet (or offline): keep what we have; no badges is the safe default.
+    if (error || !data) return;
+    setChannels(
+      new Map(
+        data.map((r) => [
+          r.channel_id,
+          { serverId: r.server_id, lastMessageAt: r.last_message_at, readAt: later(r.read_at, marks.current.get(r.channel_id)) ?? r.read_at, mentions: r.mentions },
+        ]),
+      ),
+    );
+  }, [supabase]);
+
+  useEffect(() => {
+    if (!supabase) return;
+    void refresh();
+    const timer = setInterval(() => document.visibilityState === "visible" && void refresh(), UNREADS_POLL_MS);
+    const onFocus = () => void refresh();
+    window.addEventListener("focus", onFocus);
+    const off = subscribeDbChanges(supabase, `mentions:${me.id}`, (channel) =>
+      channel.on("postgres_changes", { event: "INSERT", schema: "public", table: "message_mentions", filter: `user_id=eq.${me.id}` }, () => void refresh()),
+    );
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+      off();
+    };
+  }, [supabase, me.id, refresh]);
+
+  const markRead = useCallback(
+    (channelId: string) => {
+      setChannels((prev) => {
+        const c = prev.get(channelId);
+        const at = later(new Date().toISOString(), c?.lastMessageAt) as string;
+        marks.current.set(channelId, later(at, marks.current.get(channelId)) as string);
+        if (!c || (!isUnread(c) && c.mentions === 0)) return prev;
+        return new Map(prev).set(channelId, { ...c, readAt: at, mentions: 0 });
+      });
+      if (!supabase) return;
+      clearTimeout(pending.current.get(channelId));
+      pending.current.set(
+        channelId,
+        setTimeout(() => {
+          pending.current.delete(channelId);
+          void supabase.rpc("mark_channel_read", { p_channel: channelId });
+        }, MARK_DEBOUNCE_MS),
+      );
+    },
+    [supabase],
+  );
+
+  const noteActivity = useCallback((channelId: string, serverId: string, at: string) => {
+    setChannels((prev) => {
+      const c = prev.get(channelId);
+      if (c && c.lastMessageAt && Date.parse(c.lastMessageAt) >= Date.parse(at)) return prev;
+      return new Map(prev).set(channelId, { serverId, readAt: c?.readAt ?? at, mentions: c?.mentions ?? 0, lastMessageAt: at });
+    });
+  }, []);
+
+  const value = useMemo(() => ({ channels, markRead, noteActivity, refresh: () => void refresh() }), [channels, markRead, noteActivity, refresh]);
+  return <UnreadsContext.Provider value={value}>{children}</UnreadsContext.Provider>;
+}
+
+export function useOptionalUnreads() {
+  return useContext(UnreadsContext);
+}
+
+/** One channel's state; `liveLastMessageAt` (the open server's own copy) wins when newer. */
+export function useChannelUnread(channelId: string, liveLastMessageAt?: string | null): { unread: boolean; mentions: number } {
+  const c = useOptionalUnreads()?.channels.get(channelId);
+  if (!c) return { unread: false, mentions: 0 };
+  return { unread: isUnread({ ...c, lastMessageAt: later(c.lastMessageAt, liveLastMessageAt) }), mentions: c.mentions };
+}
+
+/** A server's rail badge: any unread channel (muted ones excluded) and total mentions. */
+export function serverUnread(channels: ReadonlyMap<string, ChannelUnread>, serverId: string, muted: ReadonlySet<string>) {
+  let unread = false;
+  let mentions = 0;
+  for (const [id, c] of channels) {
+    if (c.serverId !== serverId) continue;
+    mentions += c.mentions;
+    if (!muted.has(id) && isUnread(c)) unread = true;
+  }
+  return { unread, mentions };
+}

@@ -14,6 +14,7 @@ import { BroadcastBanner } from "@/components/broadcast/BroadcastBanner";
 import type { PlatformRole } from "@/lib/admin";
 import { cn } from "@/lib/utils";
 import { useLayout, WorkspaceProvider } from "@/components/workspace/WorkspaceProvider";
+import { UnreadsProvider } from "@/components/providers/UnreadsProvider";
 import { ServerRail } from "./ServerRail";
 import { ShellUIProvider, useShellUI } from "./ShellUI";
 
@@ -95,11 +96,13 @@ export function AppShell({ servers, platformRole = "member", children }: { serve
   return (
     <AdminAccessProvider role={platformRole}>
       <WorkspaceProvider>
-        <ShellUIBridge>
-          <MembershipWatcher userId={me.id} />
-          <Frame servers={servers}>{children}</Frame>
-          <ConfirmHost />
-        </ShellUIBridge>
+        <UnreadsProvider>
+          <ShellUIBridge>
+            <MembershipWatcher userId={me.id} />
+            <Frame servers={servers}>{children}</Frame>
+            <ConfirmHost />
+          </ShellUIBridge>
+        </UnreadsProvider>
       </WorkspaceProvider>
     </AdminAccessProvider>
   );
