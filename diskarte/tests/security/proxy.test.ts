@@ -31,6 +31,18 @@ beforeEach(() => {
   ipCounter += 1;
 });
 
+describe("canonical address", () => {
+  it("sends pages opened on another host (an old deployment) to SITE_URL, keeping the path", async () => {
+    const res = await proxy(req("/invite/ABCDEFGH23?x=1", { headers: { host: "diskarte-old.example.com" } }));
+    expect(res.status).toBe(308);
+    expect(res.headers.get("location")).toBe(`${SITE}/invite/ABCDEFGH23?x=1`);
+    // API calls, the real host and local dev are left alone.
+    expect((await proxy(req("/api/health", { headers: { host: "diskarte-old.example.com" } }))).status).not.toBe(308);
+    expect((await proxy(req("/login"))).status).not.toBe(308);
+    expect((await proxy(req("/login", { headers: { host: "localhost:3998" } }))).status).not.toBe(308);
+  });
+});
+
 describe("anti-brute-force", () => {
   it("caps auth attempts at 5 per minute per IP with 429 + Retry-After", async () => {
     const ip = `198.51.100.${ipCounter}`;
