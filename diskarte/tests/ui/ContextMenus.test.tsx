@@ -11,6 +11,7 @@ const social = vi.hoisted(() => ({
   openDmAction: vi.fn(async () => ({ ok: true, data: { conversationId: "30000000-0000-4000-8000-000000000001" } })),
   leaveDmAction: vi.fn(async () => ({ ok: true })),
   createGroupDmAction: vi.fn(),
+  sendDirectMessageAction: vi.fn(async () => ({ ok: true })),
 }));
 const moderation = vi.hoisted(() => ({ banMemberAction: vi.fn(async () => ({ ok: true })), setBadgeAction: vi.fn(async () => ({ ok: true })) }));
 
@@ -38,11 +39,11 @@ type FriendEntry = NonNullable<SocialValue["friends"]>[number];
 
 const setFriendNickname = vi.fn(async () => true);
 
-function Social({ friends = [], blocked = [], children }: { friends?: FriendEntry[]; blocked?: string[]; children: ReactNode }) {
+function Social({ friends = [], blocked = [], profiles = new Map(), children }: { friends?: FriendEntry[]; blocked?: string[]; profiles?: SocialValue["profiles"]; children: ReactNode }) {
   const value: SocialValue = {
     friends,
     blocked,
-    profiles: new Map(),
+    profiles,
     reload: async () => undefined,
     conversations: [],
     reloadConversations: async () => undefined,
@@ -54,13 +55,27 @@ function Social({ friends = [], blocked = [], children }: { friends?: FriendEntr
   return <SocialContext.Provider value={value}>{children}</SocialContext.Provider>;
 }
 
-function Shell({ meId = OWNER_ID, role = "admin", friends, blocked, children }: { meId?: string; role?: "admin" | "moderator" | "member"; friends?: FriendEntry[]; blocked?: string[]; children: ReactNode }) {
+function Shell({
+  meId = OWNER_ID,
+  role = "admin",
+  friends,
+  blocked,
+  profiles,
+  children,
+}: {
+  meId?: string;
+  role?: "admin" | "moderator" | "member";
+  friends?: FriendEntry[];
+  blocked?: string[];
+  profiles?: SocialValue["profiles"];
+  children: ReactNode;
+}) {
   return (
     <RuntimeConfigProvider value={RUNTIME}>
       <ServerFixture members={MEMBERS} meId={meId} myRole={role} overrides={{ channels: CHANNELS }}>
         <PresenceProvider>
           <CallProvider>
-            <Social friends={friends} blocked={blocked}>
+            <Social friends={friends} blocked={blocked} profiles={profiles}>
               {children}
               <ConfirmHost />
             </Social>
@@ -336,6 +351,28 @@ describe("Right-click channels and servers", () => {
     fireEvent.click(item("Delete channel"));
     fireEvent.click(within(await screen.findByRole("dialog", { name: "Delete #chika?" })).getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(serverActions.deleteChannelAction).toHaveBeenCalledWith({ channelId: CHANNELS[1].id }));
+  });
+
+  it("invites a friend who isn't in the server with a DM, and marks friends already there", async () => {
+    const PEDRO = "00000000-0000-4000-8000-0000000000ee";
+    const person = (id: string, username: string, display_name: string) => ({ id, username, display_name, avatar_url: null, avatar_preset: "default", custom_status: null, custom_status_emoji: null });
+    render(
+      <Shell
+        meId={MEMBER_ID}
+        role="member"
+        friends={[{ userId: PEDRO, status: "accepted", since }, { userId: OWNER_ID, status: "accepted", since }]}
+        profiles={new Map([[PEDRO, person(PEDRO, "pedro", "Pedro")], [OWNER_ID, person(OWNER_ID, "kapitan", "Kapitan")]])}
+      >
+        <ChannelSidebar />
+      </Shell>,
+    );
+    fireEvent.click(screen.getByTestId("invite-button"));
+    const list = await screen.findByTestId("invite-friends");
+    expect(within(list).getAllByRole("listitem").map((li) => li.textContent)).toEqual([expect.stringContaining("Pedro"), expect.stringContaining("Joined")]);
+    fireEvent.click(within(list).getByRole("button", { name: "Invite Pedro" }));
+    await waitFor(() => expect(social.sendDirectMessageAction).toHaveBeenCalledWith(expect.objectContaining({ conversationId: "30000000-0000-4000-8000-000000000001", content: expect.stringContaining("/invite/") })));
+    expect(social.openDmAction).toHaveBeenCalledWith({ userId: PEDRO });
+    expect(await within(list).findByText("Invited")).toBeInTheDocument();
   });
 
   it("only offers members the channel link and invite", () => {
