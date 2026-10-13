@@ -49,6 +49,11 @@ export const serverActions = {
   setMemberRoleAction: vi.fn(async () => ({ ok: true })),
   kickMemberAction: vi.fn(async () => ({ ok: true })),
   setNicknameAction: vi.fn(async () => ({ ok: true })),
+  createRoleAction: vi.fn(async () => ({ ok: true, data: { roleId: "40000000-0000-4000-8000-000000000001" } })),
+  updateRoleAction: vi.fn(async () => ({ ok: true })),
+  deleteRoleAction: vi.fn(async () => ({ ok: true })),
+  assignRoleAction: vi.fn(async () => ({ ok: true })),
+  setChannelAccessAction: vi.fn(async () => ({ ok: true })),
   createServerAction: vi.fn(async () => ({ ok: true, data: { serverId: "10000000-0000-4000-8000-000000000001" } })),
   joinServerAction: vi.fn(async () => ({ ok: true, data: { serverId: "10000000-0000-4000-8000-000000000001" } })),
 };

@@ -4,6 +4,9 @@ import { stripControl } from "@/lib/profile";
 
 export type Server = Tables<"servers">;
 export type Channel = Tables<"channels">;
+export type ServerRole = Tables<"server_roles">;
+/** Role colours admins pick from (all readable on the dark UI). */
+export const ROLE_COLORS = ["#f87171", "#fb923c", "#facc15", "#4ade80", "#2dd4bf", "#60a5fa", "#a78bfa", "#f472b6", "#94a3b8"] as const;
 export type Profile = Tables<"profiles">;
 export type MemberWithProfile = Tables<"members"> & { profile: Profile };
 

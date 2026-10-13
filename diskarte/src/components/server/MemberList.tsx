@@ -272,7 +272,10 @@ function MemberProfileCard({
 }
 
 function MemberRow({ member, presence, dim }: { member: MemberWithProfile; presence: PresencePayload | undefined; dim: boolean }) {
-  const { server, badges } = useServer();
+  const { server, badges, roles, memberRoles } = useServer();
+  // A custom role's colour wins over the rank colour: the highest role they have.
+  const mine = memberRoles.get(member.user_id);
+  const roleColor = mine?.length ? roles.filter((r) => mine.includes(r.id)).at(-1)?.color : undefined;
   const [open, setOpen] = useState(false);
   const menu = useContextMenu();
   const row = useRef<HTMLButtonElement>(null);
@@ -299,7 +302,10 @@ function MemberRow({ member, presence, dim }: { member: MemberWithProfile; prese
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1">
-            <span className={cn("truncate text-sm font-medium", member.role === "admin" ? "text-red-200" : member.role === "moderator" ? "text-sky-200" : "text-slate-200")}>
+            <span
+              className={cn("truncate text-sm font-medium", member.role === "admin" ? "text-red-200" : member.role === "moderator" ? "text-sky-200" : "text-slate-200")}
+              style={roleColor ? { color: roleColor } : undefined}
+            >
               {member.nickname ?? member.profile.display_name}
             </span>
             <RoleIcon role={member.role} owner={member.user_id === server.owner_id} />

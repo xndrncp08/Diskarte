@@ -15,11 +15,13 @@ export interface MenuItem {
   hidden?: boolean;
   /** Set for choice items (a status switcher): rendered as a checked/unchecked radio menu item. */
   checked?: boolean;
+  /** With `checked`: one of several independent toggles (roles), so a checkbox item instead of a radio. */
+  multi?: boolean;
   /** Consecutive items sharing a group render as one labelled section (e.g. "Status", "Custom status"). */
   group?: string;
 }
 
-export const ITEM_SELECTOR = "[role=menuitem],[role=menuitemradio]";
+export const ITEM_SELECTOR = "[role=menuitem],[role=menuitemradio],[role=menuitemcheckbox]";
 
 /**
  * Popover menu (server menu, status switcher…). The panel is portalled to <body> with fixed
@@ -183,7 +185,7 @@ function MenuRow({ item, onPick }: { item: MenuItem; onPick: () => void }) {
   return (
     <button
       type="button"
-      role={item.checked === undefined ? "menuitem" : "menuitemradio"}
+      role={item.checked === undefined ? "menuitem" : item.multi ? "menuitemcheckbox" : "menuitemradio"}
       aria-checked={item.checked}
       onClick={() => {
         onPick();

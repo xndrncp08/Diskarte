@@ -307,7 +307,7 @@ describe("Bantay-Bayan settings", () => {
   it("lets admins configure auto-mod", async () => {
     const user = userEvent.setup();
     render(<ServerSettingsDialog open onClose={() => undefined} initialTab="automod" />, { wrapper: wrap() });
-    expect(screen.getAllByRole("tab")).toHaveLength(6);
+    expect(screen.getAllByRole("tab")).toHaveLength(7);
     await user.click(screen.getByRole("switch", { name: "Explicit content" }));
     await user.type(screen.getByLabelText("Custom blocked words"), "scam{Enter}benta account");
     await user.click(screen.getByRole("button", { name: "Save" }));

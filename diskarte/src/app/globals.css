@@ -118,7 +118,8 @@ body {
   [role="switch"],
   [role="radio"],
   [role="menuitem"],
-  [role="menuitemradio"] {
+  [role="menuitemradio"],
+  [role="menuitemcheckbox"] {
     touch-action: manipulation;
   }
 

@@ -4,7 +4,7 @@ import { AtSign, Ban, BellRing, Gavel, MessageCircle, PencilLine, ShieldOff, Use
 import { useContext } from "react";
 import { toast } from "sonner";
 import { banMemberAction } from "@/actions/moderation";
-import { kickMemberAction, setMemberRoleAction, setNicknameAction } from "@/actions/servers";
+import { assignRoleAction, kickMemberAction, setMemberRoleAction, setNicknameAction } from "@/actions/servers";
 import { useMe } from "@/components/providers/MeProvider";
 import { useOptionalServer } from "@/components/providers/ServerProvider";
 import { useOptionalSocial } from "@/components/providers/SocialProvider";
@@ -159,6 +159,23 @@ export function PersonMenuItems({
     },
     ...after,
     ...ROLES.map((role) => ({ label: ROLE_LABEL[role], group: "Role", checked: member?.role === role, onSelect: () => member?.role !== role && setRole(role), hidden: !perms?.changeRole })),
+    // Custom roles: admins hand them out (yourself included).
+    ...(serverCtx?.roles ?? []).map((r) => {
+      const has = serverCtx?.memberRoles.get(person.id)?.includes(r.id) ?? false;
+      return {
+        label: r.name,
+        icon: <span className="size-2.5 rounded-full" style={{ background: r.color }} aria-hidden />,
+        group: "Roles",
+        checked: has,
+        multi: true,
+        hidden: !member || serverCtx?.myRole !== "admin",
+        onSelect: () =>
+          void assignRoleAction({ serverId: serverCtx!.server.id, userId: person.id, roleId: r.id, assigned: !has }).then((result) => {
+            if (!result.ok) toast.error(result.error ?? "Couldn't change the role.");
+            else serverCtx!.reloadRoles();
+          }),
+      };
+    }),
     {
       label: `Kick ${name}`,
       icon: <UserMinus className={icon} aria-hidden />,

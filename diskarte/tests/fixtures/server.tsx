@@ -54,7 +54,7 @@ export const server: Server = {
 };
 
 export function makeChannel(id: string, name: string, type: "text" | "voice", position: number, category = type === "text" ? "Text Channels" : "Voice Channels"): Channel {
-  return { id, server_id: SERVER_ID, name, type, category, topic: "", position, slowmode_seconds: 0, requires_verification: false, read_only: false, created_at: "2026-09-01T00:00:00Z" };
+  return { id, server_id: SERVER_ID, name, type, category, topic: "", position, slowmode_seconds: 0, requires_verification: false, read_only: false, is_private: false, created_at: "2026-09-01T00:00:00Z" };
 }
 
 export const channels: Channel[] = [
@@ -105,6 +105,9 @@ export function ServerFixture({
     health: "connected",
     upsertChannel: () => undefined,
     removeChannel: () => undefined,
+    roles: [],
+    memberRoles: new Map(),
+    reloadRoles: () => undefined,
     ...overrides,
   };
   return (
