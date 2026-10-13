@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { usePathname } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { livekitMock, mockCameraPlaceholder, mockParticipant } from "../mocks/livekit";
+import { livekitMock } from "../mocks/livekit";
 import { navigation } from "../mocks/navigation";
 
 vi.mock("@/actions/profile", async () => (await import("../mocks/actions")).profileActions);
@@ -13,7 +13,7 @@ const { SessionProviders } = await import("@/components/shell/SessionProviders")
 const { RuntimeConfigProvider } = await import("@/components/providers/RuntimeConfig");
 const { useCall } = await import("@/components/voice/CallProvider");
 const { ACCOUNT, MEMBERS, RUNTIME, TAMBAYAN, channelUrl } = await import("../fixtures/layout");
-const { MOD_ID, SERVER_ID, server } = await import("../fixtures/server");
+const { SERVER_ID, server } = await import("../fixtures/server");
 
 function JoinButton() {
   const call = useCall();
@@ -67,10 +67,8 @@ describe("session providers at the signed-in root layout", () => {
     expect(screen.getByText("Settings page")).toBeInTheDocument();
     expect(screen.queryByTestId("shell")).toBeNull(); // the app frame unmounted…
     expect(screen.getByTestId("call-status")).toHaveTextContent("connected"); // …the call did not
-    // And the picture-in-picture call widget follows you there (it shows a video track).
-    livekitMock.tracks = [mockCameraPlaceholder(mockParticipant(MOD_ID))];
     act(() => navigation.push("/settings/account"));
-    expect(await screen.findByTestId("call-hud")).toBeInTheDocument();
+    expect(screen.getByTestId("call-status")).toHaveTextContent("connected");
 
     act(() => navigation.push(channelUrl(TAMBAYAN.id)));
     expect(screen.getByTestId("shell")).toBeInTheDocument();

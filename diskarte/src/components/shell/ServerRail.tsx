@@ -12,8 +12,6 @@ import type { Server } from "@/lib/servers";
 import { lastChannelIn, readLastChannels, subscribeLastChannels } from "@/lib/last-channel";
 import { cn } from "@/lib/utils";
 import { NotificationHub } from "@/components/workspace/NotificationHub";
-import { WorkspacePresets } from "@/components/workspace/WorkspacePresets";
-import { useIsCanvas, useOptionalWorkspaceStore, useWorkspace, type WorkspaceStore } from "@/components/workspace/WorkspaceProvider";
 import { usePlatformRole } from "@/components/admin/AdminAccess";
 import { useContextMenu } from "@/components/ui/ContextMenu";
 import { AddServerDialog } from "./AddServerDialog";
@@ -150,32 +148,10 @@ function RailItem({ server, active, onDragEnd, onMove }: { server: RailEntry; ac
 
 const RAIL_BUTTON = "flex size-11 items-center justify-center rounded-2xl text-slate-300 transition-colors hover:bg-white/10 hover:text-white aria-pressed:bg-sun/15 aria-pressed:text-sun";
 
-/** Super admins: toggles the Control Center panel on the canvas. */
-function ControlCenterToggle({ store }: { store: WorkspaceStore }) {
-  const open = useWorkspace((s) => !s.panels.admin.closed && !s.panels.admin.minimized);
-  return (
-    <Tooltip label={open ? "Close the Control Center" : "Control Center"} side="right">
-      <button
-        type="button"
-        aria-label="Control Center"
-        aria-pressed={open}
-        onClick={() => (open ? store.setClosed("admin", true) : store.openPanel("admin"))}
-        className={RAIL_BUTTON}
-        data-testid="control-center-toggle"
-      >
-        <ShieldCheck className="size-5" aria-hidden />
-      </button>
-    </Tooltip>
-  );
-}
-
-/** The Control Center entry on the rail: a panel toggle on the canvas, a link to its page on phones. */
+/** Super admins: the Control Center page. */
 function ControlCenterButton() {
   const role = usePlatformRole();
-  const workspace = useOptionalWorkspaceStore();
-  const isCanvas = useIsCanvas();
   if (role !== "super_admin") return null;
-  if (workspace && isCanvas) return <ControlCenterToggle store={workspace} />;
   return (
     <Tooltip label="Control Center" side="right">
       <Link href="/tambayan/admin" aria-label="Control Center" className={RAIL_BUTTON} data-testid="control-center-toggle">
@@ -186,15 +162,13 @@ function ControlCenterButton() {
 }
 
 /**
- * The floating command rail: the mascot (Home), quick server-switcher nodes, the notification hub and
- * workspace layout presets. A glass column on tablets and up; the left part of the drawer on phones.
+ * The server rail: the mascot (Home), the server switcher and the notification hub. A glass column on tablets and up; the left part of the drawer on phones.
  */
 export function ServerRail({ servers }: { servers: RailEntry[] }) {
   const params = useParams<{ serverId?: string }>();
   const activeId = params.serverId;
   const [adding, setAdding] = useState(false);
   const attention = useOptionalSocial()?.attention ?? 0;
-  const workspace = useOptionalWorkspaceStore();
   // Diskarte HQ, the global server everyone belongs to, is pinned first with a gold ring.
   const hq = servers.find((s) => s.is_system);
   const byId = new Map(servers.filter((s) => !s.is_system).map((s) => [s.id, s]));
@@ -210,7 +184,7 @@ export function ServerRail({ servers }: { servers: RailEntry[] }) {
 
   return (
     <div
-      className="pt-safe flex h-full w-[72px] shrink-0 flex-col items-center gap-2 pb-3 max-md:bg-abyss md:rounded-[2rem] md:border md:border-white/10 md:bg-slate-900/60 md:py-3 md:shadow-2xl md:shadow-black/50 md:backdrop-blur-2xl"
+      className="pt-safe flex h-full w-[72px] shrink-0 flex-col items-center gap-2 bg-abyss pb-3 md:border-r md:border-white/[0.06] md:pt-3"
       data-testid="micro-dock"
     >
       <nav aria-label="Servers" className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 overflow-y-auto scrollbar-none">
@@ -266,7 +240,6 @@ export function ServerRail({ servers }: { servers: RailEntry[] }) {
       <section aria-label="Workspace controls" className="flex shrink-0 flex-col items-center gap-1.5 border-t border-white/[0.06] pt-2">
         <ControlCenterButton />
         <NotificationHub />
-        {workspace && <WorkspacePresets />}
       </section>
       <AddServerDialog open={adding} onClose={() => setAdding(false)} />
     </div>

@@ -404,25 +404,6 @@ describe("floating call widgets", () => {
     expect(within(panel).getByRole("button", { name: /Set status/ })).toBeEnabled();
     expectNoReactErrors();
   });
-
-  it("shows the draggable picture-in-picture HUD outside the columns when video is live", async () => {
-    const user = userEvent.setup();
-    navigation.set(channelUrl(TAMBAYAN.id));
-    const maria = mockParticipant(MOD_ID, { name: "Maria" });
-    livekitMock.tracks = [{ participant: maria, source: "camera", publication: { isSubscribed: true, isMuted: false, track: {} } }];
-    render(<DiskarteLayout />);
-    await user.click(screen.getByTestId("join-voice"));
-    await screen.findByTestId("voice-stage");
-    expect(screen.queryByTestId("call-hud")).toBeNull(); // not while you're on the call page
-
-    await user.click(within(screen.getByRole("navigation", { name: "Channels" })).getByRole("link", { name: "general" }));
-    const hud = await screen.findByTestId("call-hud");
-    expect(hud).toHaveClass("fixed", "bottom-24", "right-6", "z-40");
-    expect(screen.getByRole("complementary", { name: /channels$/ }).contains(hud)).toBe(false);
-    expect(screen.getByTestId("active-view").contains(hud)).toBe(false);
-    expect(within(hud).getByTestId("video-track")).toBeInTheDocument();
-    expect(within(hud).getByRole("link", { name: "Back to call" })).toHaveAttribute("href", channelUrl(TAMBAYAN.id));
-  });
 });
 
 // =============================================================================================

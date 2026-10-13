@@ -272,7 +272,7 @@ describe("CallProvider", () => {
 });
 
 describe("CallDock", () => {
-  it("appears during a call with working controls", async () => {
+  it("appears during a call with where you are and Disconnect (mute lives in the user panel)", async () => {
     function Harness() {
       const call = useCall();
       return (
@@ -296,10 +296,7 @@ describe("CallDock", () => {
     const dock = await screen.findByTestId("call-dock");
     expect(dock).toHaveTextContent("Voice Connected");
     expect(dock).toHaveTextContent("Tambayan 1 / Barkada HQ");
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Mute" }));
-    });
-    expect(screen.getByRole("button", { name: "Unmute" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("button", { name: "Mute" })).toBeNull();
     act(() => fireEvent.click(screen.getByRole("button", { name: "Disconnect" })));
     expect(roomInstances[0].disconnect).toHaveBeenCalled();
   });
