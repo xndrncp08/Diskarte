@@ -34,7 +34,7 @@ export function ChannelDialog(props: ChannelDialogProps) {
 
 /** Mounted fresh each time the dialog opens, so its state starts from the props. */
 function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }: ChannelDialogProps) {
-  const { server, channels, removeChannel, myRole, members, roles } = useServer();
+  const { server, channels, removeChannel, upsertChannel, myRole, members, roles } = useServer();
   const supabase = useSupabase();
   const isAdmin = myRole === "admin";
   const router = useRouter();
@@ -71,7 +71,15 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
   const [pending, startTransition] = useTransition();
 
   const categories = Array.from(new Set(channels.map((c) => c.category)));
-  const fallbackCategory = defaultCategory ?? (type === "voice" ? "Voice Channels" : "Text Channels");
+  // New channels go where that kind already lives (HQ keeps everything under "Diskarte HQ"); the field
+  // follows the Text/Voice choice until you type your own category.
+  const categoryFor = (kind: ChannelType) => defaultCategory ?? channels.findLast((c) => c.type === kind)?.category ?? (kind === "voice" ? "Voice Channels" : "Text Channels");
+  const [category, setCategory] = useState(() => channel?.category ?? categoryFor(type));
+  const [categoryEdited, setCategoryEdited] = useState(editing);
+  function chooseType(kind: ChannelType) {
+    setType(kind);
+    if (!categoryEdited) setCategory(categoryFor(kind));
+  }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -79,7 +87,7 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
     const payload = {
       name,
       type,
-      category: String(form.get("category") ?? ""),
+      category,
       topic: String(form.get("topic") ?? ""),
       slowmodeSeconds: type === "text" ? slowmode : 0,
       requiresVerification: type === "text" && verifiedOnly,
@@ -96,14 +104,16 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
         if (result.error) toast.error(result.error);
         return;
       }
-      const channelId = channel?.id ?? (result.data && "channelId" in result.data ? result.data.channelId : null);
+      // Show it right away; realtime brings it to everyone else.
+      if (result.data?.channel) upsertChannel(result.data.channel);
+      const channelId = channel?.id ?? result.data?.channel.id ?? null;
       if (isAdmin && isPrivate && channelId) {
         const access = await setChannelAccessAction({ channelId, serverId: server.id, userIds: [...allowedUsers], roleIds: [...allowedRoles] });
         if (!access.ok) toast.error(access.error ?? "Saved, but couldn't update who's in the channel.");
       }
       toast.success(channel ? "Channel updated." : "Channel created!");
       onClose();
-      if (!channel && result.data && "channelId" in result.data) router.push(`/tambayan/${server.id}/${result.data.channelId}`);
+      if (!channel && channelId) router.push(`/tambayan/${server.id}/${channelId}`);
     });
   }
 
@@ -137,7 +147,7 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
               type="button"
               role="radio"
               aria-checked={type === value}
-              onClick={() => setType(value)}
+              onClick={() => chooseType(value)}
               className={cn(
                 "flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors",
                 type === value ? "border-sun/60 bg-sun/10" : "border-white/10 bg-white/5 hover:bg-white/10",
@@ -169,7 +179,11 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
           label="Category"
           name="category"
           list="channel-categories"
-          defaultValue={channel?.category ?? fallbackCategory}
+          value={category}
+          onChange={(e) => {
+            setCategory(e.target.value);
+            setCategoryEdited(true);
+          }}
           maxLength={32}
           required
           error={errors.category}

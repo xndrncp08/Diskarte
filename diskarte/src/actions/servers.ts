@@ -6,7 +6,7 @@ import { z } from "zod";
 import { getSessionUser } from "@/lib/auth";
 import { fieldErrors, isAllowedImageUrl } from "@/lib/profile";
 import { limiters } from "@/lib/rate-limit";
-import { channelSchema, parseInviteInput, serverSchema, uuidSchema } from "@/lib/servers";
+import { channelSchema, parseInviteInput, serverSchema, uuidSchema, type Channel } from "@/lib/servers";
 import { createClient } from "@/lib/supabase/server";
 
 export interface ActionResult<T = undefined> {
@@ -153,7 +153,7 @@ export async function createChannelAction(input: {
   readOnly?: boolean;
   /** Admins only (the database refuses anyone else). */
   isPrivate?: boolean;
-}): Promise<ActionResult<{ channelId: string }>> {
+}): Promise<ActionResult<{ channelId: string; channel: Channel }>> {
   const { limited } = await authed();
   if (limited) return RATE_LIMITED;
   if (!uuidSchema.safeParse(input.serverId).success) return { ok: false, error: "Invalid server" };
@@ -176,10 +176,11 @@ export async function createChannelAction(input: {
       // Only sent when set, so creating public channels never depends on the column.
       ...(input.isPrivate ? { is_private: true } : {}),
     })
-    .select("id")
+    .select("*")
     .single();
   if (error || !data) return { ok: false, error: dbError(error?.message, "Couldn't create the channel.") };
-  return { ok: true, data: { channelId: data.id } };
+  // The row comes back so the creator's sidebar shows it at once (others get it over realtime).
+  return { ok: true, data: { channelId: data.id, channel: data } };
 }
 
 const channelModerationSchema = z.object({
@@ -200,7 +201,7 @@ export async function updateChannelAction(input: {
   readOnly?: boolean;
   /** Only when it changes; admins only. */
   isPrivate?: boolean;
-}): Promise<ActionResult> {
+}): Promise<ActionResult<{ channel: Channel }>> {
   const { limited } = await authed();
   if (limited) return RATE_LIMITED;
   if (!uuidSchema.safeParse(input.channelId).success) return { ok: false, error: "Invalid channel" };
@@ -221,9 +222,9 @@ export async function updateChannelAction(input: {
       ...(typeof input.isPrivate === "boolean" ? { is_private: input.isPrivate } : {}),
     })
     .eq("id", input.channelId)
-    .select("id");
+    .select("*");
   if (error || !data?.length) return { ok: false, error: dbError(error?.message, "Only moderators can edit channels.") };
-  return { ok: true };
+  return { ok: true, data: { channel: data[0] } };
 }
 
 const reorderSchema = z.object({ serverId: uuidSchema, channelIds: z.array(uuidSchema).min(1).max(500) });
