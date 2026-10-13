@@ -1,11 +1,12 @@
 "use client";
 
-import { Maximize2, Music, Play } from "lucide-react";
+import { Film, ImageIcon, Maximize2, Music, Play } from "lucide-react";
 import { useState, type MouseEvent } from "react";
 import { useMediaViewer, type MediaItem } from "@/components/chat/MediaViewer";
 import { SmartImage } from "@/components/ui/SmartImage";
 import { useLowData } from "@/hooks/useLowData";
 import { useSignedUrls } from "@/hooks/useSignedUrls";
+import { useDisplayPrefs } from "@/lib/display-prefs";
 import { imageQuality } from "@/lib/low-data";
 import { isAudioAttachment, isImageAttachment, isVideoAttachment, type Attachment } from "@/lib/messages";
 import { formatBytes } from "@/lib/utils";
@@ -13,6 +14,7 @@ import { formatBytes } from "@/lib/utils";
 /** Renders allow-listed attachments from short-lived signed URLs (private bucket). */
 export function Attachments({ attachments }: { attachments: Attachment[] }) {
   const lowData = useLowData();
+  const inline = useDisplayPrefs().inlineMedia;
   // Low-data mode: GIFs (often several MB) only download once tapped.
   const [revealed, setRevealed] = useState<Set<string>>(() => new Set());
   const urls = useSignedUrls(attachments.map((a) => a.path));
@@ -36,7 +38,23 @@ export function Attachments({ attachments }: { attachments: Attachment[] }) {
 
   return (
     <div className="mt-1 space-y-1.5" data-testid="attachments">
-      {images.length > 0 && (
+      {/* Settings → Chat: media as links instead of previews. */}
+      {!inline &&
+        [...images, ...videos].map((a) => (
+          <a
+            key={a.path}
+            href={urls[a.path]}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => open(a.path, e)}
+            className="flex w-fit max-w-sm items-center gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-sky-300 hover:underline"
+          >
+            {isVideoAttachment(a) ? <Film className="size-4 shrink-0" aria-hidden /> : <ImageIcon className="size-4 shrink-0" aria-hidden />}
+            <span className="min-w-0 truncate">{a.name}</span>
+            <span className="shrink-0 text-xs text-slate-500">{formatBytes(a.size)}</span>
+          </a>
+        ))}
+      {inline && images.length > 0 && (
         <div className="flex max-w-xl flex-wrap gap-1.5">
           {images.map((a) => {
             const ratio = a.width && a.height ? a.width / a.height : 4 / 3;
@@ -76,7 +94,7 @@ export function Attachments({ attachments }: { attachments: Attachment[] }) {
           })}
         </div>
       )}
-      {videos.map((a) => (
+      {inline && videos.map((a) => (
         <div key={a.path} className="relative max-w-xl overflow-hidden rounded-lg border border-white/10 bg-black">
           {urls[a.path] && viewer && (
             <button
