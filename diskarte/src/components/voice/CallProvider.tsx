@@ -139,6 +139,23 @@ function requestToken(target: CallTarget): Promise<TokenResponse> {
 }
 
 const MIX_KEY = "diskarte:audio-mix";
+const REJOIN_KEY = "diskarte:rejoin";
+/** How soon after unloading a page still counts as the same call (a reload, not coming back later). */
+const REJOIN_WINDOW_MS = 30_000;
+
+/** The call this tab was in when it last unloaded, if that was moments ago (read once, then cleared). */
+export function takeRejoin(now = Date.now()): { target: CallTarget; muted: boolean; deafened: boolean } | null {
+  try {
+    const raw = sessionStorage.getItem(REJOIN_KEY);
+    sessionStorage.removeItem(REJOIN_KEY);
+    const saved = raw ? (JSON.parse(raw) as { target?: CallTarget; muted?: boolean; deafened?: boolean; at?: number }) : null;
+    if (!saved?.target?.channelId || typeof saved.at !== "number" || now - saved.at > REJOIN_WINDOW_MS || now < saved.at) return null;
+    return { target: saved.target, muted: saved.muted === true, deafened: saved.deafened === true };
+  } catch {
+    return null;
+  }
+}
+
 /** Don't let a hung disconnect block joining the next room. */
 const DISCONNECT_TIMEOUT_MS = 2500;
 /** Re-announce "still talking" well inside the observers' SPEAKING_TTL_MS. */
@@ -494,6 +511,39 @@ export function CallProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => () => void roomRef.current?.disconnect(), []);
+
+  // A full page reload mid-call (a new deploy makes the next navigation one, or a refresh) would drop
+  // you: remember the call when the page unloads and rejoin it, muted/deafened as you were.
+  const latest = useRef(state);
+  useEffect(() => {
+    latest.current = state;
+  }, [state]);
+  useEffect(() => {
+    const save = () => {
+      const s = latest.current;
+      if (s.status !== "connected" || !s.target) return;
+      try {
+        sessionStorage.setItem(REJOIN_KEY, JSON.stringify({ target: s.target, muted: s.muted, deafened: s.deafened, at: Date.now() }));
+      } catch {
+        // Storage blocked: no rejoin.
+      }
+    };
+    window.addEventListener("pagehide", save);
+    return () => window.removeEventListener("pagehide", save);
+  }, []);
+  useEffect(() => {
+    const saved = takeRejoin();
+    if (!saved) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- restoring the call is the external sync here
+    void join(saved.target).then(async () => {
+      const r = roomRef.current;
+      if (!r || current.current?.channelId !== saved.target.channelId || !(saved.muted || saved.deafened)) return;
+      await r.localParticipant.setMicrophoneEnabled(false).catch(() => undefined);
+      setState((s) => ({ ...s, muted: true, deafened: saved.deafened }));
+    });
+    // Once per page load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const value = useMemo<CallContextValue>(
     () => ({
