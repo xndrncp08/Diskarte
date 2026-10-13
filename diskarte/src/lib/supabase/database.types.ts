@@ -260,6 +260,7 @@ export interface Database {
         never
       >;
       user_blocks: TableDef<{ blocker_id: string; blocked_id: string; created_at: string }, never>;
+      friend_nicknames: TableDef<{ owner_id: string; target_id: string; nickname: string }, { owner_id?: string; target_id: string; nickname: string }>;
       dm_conversations: TableDef<
         { id: string; kind: DmKind; name: string | null; owner_id: string | null; direct_key: string | null; created_at: string; last_message_at: string },
         never

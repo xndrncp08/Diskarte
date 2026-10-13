@@ -1,11 +1,12 @@
 "use client";
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";
-import { useConversations, useFriends } from "@/hooks/useSocial";
-import { isUnread } from "@/lib/social";
+import { useConversations, useFriendNicknames, useFriends } from "@/hooks/useSocial";
+import { isUnread, withNickname } from "@/lib/social";
 
 export type SocialValue = ReturnType<typeof useFriends> &
-  Omit<ReturnType<typeof useConversations>, "reload"> & {
+  Omit<ReturnType<typeof useConversations>, "reload"> &
+  ReturnType<typeof useFriendNicknames> & {
     reloadConversations: () => Promise<void>;
     /** Incoming friend requests + unread conversations (for the Home badge). */
     attention: number;
@@ -20,10 +21,21 @@ export const SocialContext = createContext<SocialValue | null>(null);
 export function SocialProvider({ children }: { children: ReactNode }) {
   const friends = useFriends();
   const { conversations, reload: reloadConversations, markRead } = useConversations();
+  const { nicknames, setNickname } = useFriendNicknames();
   const attention = (friends.friends?.filter((f) => f.status === "incoming").length ?? 0) + (conversations?.filter(isUnread).length ?? 0);
+  // My private nicknames replace display names here, so every friends/DM surface shows them.
   const value = useMemo<SocialValue>(
-    () => ({ ...friends, conversations, reloadConversations, markRead, attention }),
-    [friends, conversations, reloadConversations, markRead, attention],
+    () => ({
+      ...friends,
+      profiles: new Map([...friends.profiles].map(([id, p]) => [id, withNickname(p, nicknames)])),
+      conversations: conversations?.map((c) => ({ ...c, others: c.others.map((p) => withNickname(p, nicknames)) })) ?? null,
+      reloadConversations,
+      markRead,
+      attention,
+      nicknames,
+      setNickname,
+    }),
+    [friends, conversations, reloadConversations, markRead, attention, nicknames, setNickname],
   );
   return <SocialContext.Provider value={value}>{children}</SocialContext.Provider>;
 }

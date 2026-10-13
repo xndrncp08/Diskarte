@@ -46,6 +46,8 @@ const social = {
   reloadConversations: vi.fn(async () => undefined),
   markRead: vi.fn(),
   attention: 0,
+  nicknames: new Map(),
+  setNickname: async () => true,
 };
 vi.mock("@/components/providers/SocialProvider", () => ({ useSocial: () => social, useOptionalSocial: () => social }));
 vi.mock("@/actions/social", () => ({

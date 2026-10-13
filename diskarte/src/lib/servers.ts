@@ -23,6 +23,8 @@ export function canManageMember(opts: { actorRole: MemberRole | null; actorId: s
   return {
     changeRole: actorRole === "admin" && !isSelf && !targetIsOwner && (target.role !== "admin" || actorIsOwner),
     kick: !isSelf && !targetIsOwner && hasRole(actorRole, "moderator") && (ROLE_RANK[target.role] < ROLE_RANK[actorRole ?? "member"] || actorIsOwner),
+    // Same rule as members_guard: yourself, or moderators renaming someone below them (owners anyone).
+    rename: isSelf || (hasRole(actorRole, "moderator") && (ROLE_RANK[target.role] < ROLE_RANK[actorRole ?? "member"] || actorIsOwner)),
   };
 }
 

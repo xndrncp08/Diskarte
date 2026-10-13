@@ -43,6 +43,12 @@ export interface ConversationSummary {
   others: SocialProfile[];
 }
 
+/** Shows my private nickname for someone in place of their display name. */
+export function withNickname<T extends { id: string; display_name: string }>(person: T, nicknames: ReadonlyMap<string, string>): T {
+  const nickname = nicknames.get(person.id);
+  return nickname ? { ...person, display_name: nickname } : person;
+}
+
 export function conversationTitle(conversation: Pick<ConversationSummary, "kind" | "name" | "others">): string {
   if (conversation.kind === "group" && conversation.name) return conversation.name;
   const names = conversation.others.map((p) => p.display_name);

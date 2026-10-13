@@ -36,6 +36,8 @@ const { MEMBER_ID, MOD_ID, OWNER_ID, SERVER_ID, ServerFixture, server } = await 
 type SocialValue = NonNullable<React.ContextType<typeof SocialContext>>;
 type FriendEntry = NonNullable<SocialValue["friends"]>[number];
 
+const setFriendNickname = vi.fn(async () => true);
+
 function Social({ friends = [], blocked = [], children }: { friends?: FriendEntry[]; blocked?: string[]; children: ReactNode }) {
   const value: SocialValue = {
     friends,
@@ -46,6 +48,8 @@ function Social({ friends = [], blocked = [], children }: { friends?: FriendEntr
     reloadConversations: async () => undefined,
     markRead: () => undefined,
     attention: 0,
+    nicknames: new Map(),
+    setNickname: setFriendNickname,
   };
   return <SocialContext.Provider value={value}>{children}</SocialContext.Provider>;
 }
@@ -168,6 +172,33 @@ describe("Right-click a person", () => {
     expect(item("View profile")).toBeInTheDocument();
   });
 
+  it("renames yourself in the server, and gives friends a private nickname", async () => {
+    render(
+      <Shell meId={MEMBER_ID} role="member" friends={[{ userId: OWNER_ID, status: "accepted", since }]}>
+        <MemberList />
+      </Shell>,
+    );
+    openMenu(row("Maria"));
+    expect(screen.queryByRole("menuitem", { name: "Change nickname" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: /friend nickname/ })).toBeNull();
+
+    openMenu(row("Juan"));
+    fireEvent.click(item("Change nickname"));
+    let dialog = await screen.findByRole("dialog", { name: "Change your nickname" });
+    fireEvent.change(within(dialog).getByLabelText("Server nickname"), { target: { value: "Juanito" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(serverActions.setNicknameAction).toHaveBeenCalledWith({ serverId: SERVER_ID, userId: MEMBER_ID, nickname: "Juanito" }));
+
+    openMenu(row("Kapitan"));
+    fireEvent.click(item("Add friend nickname"));
+    dialog = await screen.findByRole("dialog", { name: "Nickname for Kapitan" });
+    fireEvent.change(within(dialog).getByLabelText("Friend nickname"), { target: { value: "Kap" } });
+    // The shared confirm button holds its spinner briefly after the previous save.
+    await waitFor(() => expect(within(dialog).getByRole("button", { name: "Save" })).toBeEnabled());
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(setFriendNickname).toHaveBeenCalledWith(OWNER_ID, "Kap"));
+  });
+
   it("asks before blocking", async () => {
     render(
       <Shell meId={MEMBER_ID} role="member">
@@ -189,6 +220,7 @@ describe("Right-click a person", () => {
       </Shell>,
     );
     openMenu(row("Juan"));
+    expect(item("Change nickname")).toBeInTheDocument();
     const roles = screen.getByRole("group", { name: "Role" });
     expect(within(roles).getByRole("menuitemradio", { name: "Member" })).toHaveAttribute("aria-checked", "true");
     fireEvent.click(within(roles).getByRole("menuitemradio", { name: "Moderator" }));
