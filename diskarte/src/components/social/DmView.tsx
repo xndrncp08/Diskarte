@@ -45,7 +45,9 @@ export function DmView({
   canSend: boolean;
 }) {
   const { me } = useMe();
-  const { markRead, reloadConversations, nicknames } = useSocial();
+  const { markRead, reloadConversations, nicknames, conversations } = useSocial();
+  // Re-mark whenever the newest message moves on while you're looking at it.
+  const lastMessageAt = conversations?.find((c) => c.id === conversation.id)?.lastMessageAt;
   const { setNavOpen } = useShellUI();
   const call = useCall();
   const router = useRouter();
@@ -61,7 +63,7 @@ export function DmView({
 
   useEffect(() => {
     markRead(conversation.id);
-  }, [markRead, conversation.id]);
+  }, [markRead, conversation.id, lastMessageAt]);
 
   useEffect(() => {
     bottom.current?.scrollIntoView?.({ block: "end" });
