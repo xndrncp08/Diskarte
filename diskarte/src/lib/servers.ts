@@ -129,12 +129,12 @@ export const serverSchema = z.object({
 export const channelSchema = z
   .object({
     name: z.string(),
-    type: z.enum(["text", "voice"]),
+    type: z.enum(["text", "voice", "forum"]),
     category: cleanLine(32, 1, "Choose a category"),
     topic: cleanLine(256),
   })
   .transform((v, ctx) => {
-    const name = v.type === "text" ? slugifyChannelName(v.name) : stripControl(v.name).trim().slice(0, 32);
+    const name = v.type !== "voice" ? slugifyChannelName(v.name) : stripControl(v.name).trim().slice(0, 32);
     if (!name) {
       ctx.addIssue({ code: "custom", path: ["name"], message: "Give the channel a name" });
       return z.NEVER;

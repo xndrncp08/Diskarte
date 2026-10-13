@@ -4,7 +4,7 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type MemberRole = "member" | "moderator" | "admin";
-export type ChannelType = "text" | "voice";
+export type ChannelType = "text" | "voice" | "forum";
 export type PresenceStatus = "online" | "idle" | "dnd" | "invisible";
 export type AutomodCategory = "spam" | "phishing" | "hate" | "explicit";
 export type BadgeKind = "booster" | "lodi_supporter" | "gcash_contributor";
@@ -186,6 +186,8 @@ export interface Database {
           thread_last_reply_at: string | null;
           /** Set by create_poll(); the poll itself is in public.polls. (Absent before that migration.) */
           has_poll?: boolean;
+          /** A forum post's title (top-level messages in forum channels only). */
+          title?: string | null;
           /** @everyone/@here from a moderator. */
           mentions_everyone?: boolean;
           created_at: string;
@@ -204,6 +206,7 @@ export interface Database {
           edited_at?: string | null;
           thread_id?: string | null;
           sticker?: string | null;
+          title?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["messages"]["Insert"]>;

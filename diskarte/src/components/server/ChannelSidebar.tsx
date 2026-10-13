@@ -4,7 +4,7 @@ import { motion, Reorder, useDragControls } from "framer-motion";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
-import { BadgeCheck, BellOff, ChevronDown, ChevronsDownUp, ChevronsUpDown, EyeOff, GripVertical, Hash, HeadphoneOff, Heart, Link2, Lock, LogOut, MicOff, Pencil, PencilLine, Plus, Radio, Rocket, Settings, ShieldCheck, Trash2, UserPlus, Video, Volume2 } from "lucide-react";
+import { BadgeCheck, BellOff, ChevronDown, ChevronsDownUp, ChevronsUpDown, EyeOff, GripVertical, Hash, HeadphoneOff, Heart, Link2, Lock, LogOut, MessagesSquare, MicOff, Pencil, PencilLine, Plus, Radio, Rocket, Settings, ShieldCheck, Trash2, UserPlus, Video, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { toast } from "sonner";
 import { deleteChannelAction, leaveServerAction, reorderChannelsAction } from "@/actions/servers";
@@ -32,6 +32,7 @@ import { DEFAULT_NOTIFY_PREFS, readNotifyPrefs, serverNotify, setServerNotify, s
 import { boostLevel } from "@/lib/community";
 import { signalLevel, type PresencePayload } from "@/lib/presence";
 import { groupChannels, hasRole, type Channel, type MemberWithProfile } from "@/lib/servers";
+import type { ChannelType } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
 import { ChannelDialog } from "./ChannelDialog";
 import { EventsButton } from "./EventsButton";
@@ -45,7 +46,7 @@ type DialogState =
   | { kind: "settings"; tab?: SettingsTab }
   | { kind: "support" }
   | { kind: "leave" }
-  | { kind: "channel"; channel?: Channel; type?: "text" | "voice"; category?: string }
+  | { kind: "channel"; channel?: Channel; type?: ChannelType; category?: string }
   | null;
 
 function VoiceOccupants({ channelId }: { channelId: string }) {
@@ -119,11 +120,11 @@ function ChannelRow({
   const prewarm = usePrewarm();
   const router = useRouter();
   const menu = useContextMenu();
-  const Icon = channel.type === "voice" ? Volume2 : Hash;
+  const Icon = channel.type === "voice" ? Volume2 : channel.type === "forum" ? MessagesSquare : Hash;
   const { unread: hasUnread, mentions } = useChannelUnread(channel.id, channel.last_message_at);
   // Discord: unread channels (not muted, not the open one) are bright, with a short pill at the edge.
   const unread = hasUnread && !active && !muted;
-  const label = `${channel.type === "text" ? "#" : ""}${channel.name}`;
+  const label = `${channel.type !== "voice" ? "#" : ""}${channel.name}`;
   const icon = "size-4";
   const items: MenuItem[] = [
     { label: "Copy link", icon: <Link2 className={icon} aria-hidden />, onSelect: () => void copyText(`${window.location.origin}/tambayan/${server.id}/${channel.id}`, "Channel link") },

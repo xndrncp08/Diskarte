@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Hash, Lock, Trash2, Volume2 } from "lucide-react";
+import { Hash, Lock, MessagesSquare, Trash2, Volume2 } from "lucide-react";
 import { useEffect, useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
 import { createChannelAction, deleteChannelAction, setChannelAccessAction, updateChannelAction } from "@/actions/servers";
@@ -89,9 +89,9 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
       type,
       category,
       topic: String(form.get("topic") ?? ""),
-      slowmodeSeconds: type === "text" ? slowmode : 0,
-      requiresVerification: type === "text" && verifiedOnly,
-      readOnly: type === "text" && readOnly,
+      slowmodeSeconds: type !== "voice" ? slowmode : 0,
+      requiresVerification: type !== "voice" && verifiedOnly,
+      readOnly: type !== "voice" && readOnly,
       // Sent only when it changes, so editing other settings never depends on the privacy column.
       ...(isAdmin && isPrivate !== wasPrivate ? { isPrivate } : {}),
     };
@@ -126,7 +126,7 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
         return;
       }
       removeChannel(channel.id);
-      toast.success(`Deleted ${channel.type === "text" ? "#" : ""}${channel.name}.`);
+      toast.success(`Deleted ${channel.type !== "voice" ? "#" : ""}${channel.name}.`);
       onClose();
       router.push(`/tambayan/${server.id}`);
     });
@@ -140,6 +140,7 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
             [
               ["text", Hash, "Text", "Messages, memes, links at code"],
               ["voice", Volume2, "Voice", "Usap, video at screen share"],
+              ["forum", MessagesSquare, "Forum", "Posts with titles; replies stay in each post's thread"],
             ] as const
           ).map(([value, Icon, label, hint]) => (
             <button
@@ -171,8 +172,8 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
         required
         data-autofocus
         error={errors.name}
-        hint={type === "text" && name ? `Will be #${slugifyChannelName(name) || "…"}` : undefined}
-        placeholder={type === "text" ? "ranked-grind" : "Tambayan 2"}
+        hint={type !== "voice" && name ? `Will be #${slugifyChannelName(name) || "…"}` : undefined}
+        placeholder={type !== "voice" ? "ranked-grind" : "Tambayan 2"}
       />
       <div className="space-y-1.5">
         <InputField
@@ -194,7 +195,7 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
           ))}
         </datalist>
       </div>
-      {type === "text" && (
+      {type !== "voice" && (
         <InputField
           label="Topic (optional)"
           name="topic"
@@ -204,7 +205,7 @@ function ChannelForm({ onClose, channel, defaultType = "text", defaultCategory }
           placeholder="What's this channel about?"
         />
       )}
-      {type === "text" && (
+      {type !== "voice" && (
         <fieldset className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-3">
           <legend className="px-1 font-silk text-[11px] uppercase tracking-wider text-sun">Bantay-Bayan</legend>
           <div>

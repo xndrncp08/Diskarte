@@ -22,6 +22,8 @@ export type SendResult = "sent" | "queued" | "failed" | "rejected";
 
 export interface SendExtras {
   sticker?: string | null;
+  /** Forum post title. */
+  title?: string | null;
 }
 
 export interface ChatScope {
@@ -200,6 +202,7 @@ export function useChannelChat(
       edited_at: null,
       thread_id: entry.threadId,
       sticker: entry.sticker,
+      title: entry.title ?? null,
       thread_reply_count: 0,
       thread_last_reply_at: null,
       created_at: entry.createdAt,
@@ -221,6 +224,7 @@ export function useChannelChat(
           replyToId: entry.replyToId,
           threadId: entry.threadId,
           sticker: entry.sticker,
+          title: entry.title ?? null,
         });
       } catch (err) {
         if (!isNetworkError(err)) throw err;
@@ -237,7 +241,7 @@ export function useChannelChat(
       }
       playSfx("error");
       toast.error(result.error ?? "Couldn't send.");
-      if (result.code === "SLOWMODE" || result.code === "AUTOMOD_BLOCKED" || result.code === "VERIFICATION_REQUIRED" || result.code === "READ_ONLY_CHANNEL" || result.code === "TIMED_OUT") {
+      if (result.code === "SLOWMODE" || result.code === "AUTOMOD_BLOCKED" || result.code === "VERIFICATION_REQUIRED" || result.code === "READ_ONLY_CHANNEL" || result.code === "TIMED_OUT" || result.code === "POST_TITLE_REQUIRED") {
         if (result.code === "SLOWMODE") setCooldownUntil(Date.now() + (result.retryAfter ?? slowmode) * 1000);
         setMessages((prev) => prev.filter((m) => m.id !== entry.id));
         return "rejected";
@@ -257,6 +261,7 @@ export function useChannelChat(
         replyToId,
         threadId,
         sticker: extras.sticker ?? null,
+        title: extras.title ?? null,
         createdAt: new Date().toISOString(),
       };
       const offline = typeof navigator !== "undefined" && navigator.onLine === false;
@@ -307,7 +312,7 @@ export function useChannelChat(
   const retry = useCallback(
     async (message: ChatMessage) => {
       setMessages((prev) => prev.filter((m) => m.id !== message.id));
-      return send(message.content, (message.attachments as unknown as Attachment[]) ?? [], message.reply_to_id, { sticker: message.sticker });
+      return send(message.content, (message.attachments as unknown as Attachment[]) ?? [], message.reply_to_id, { sticker: message.sticker, title: message.title ?? null });
     },
     [send],
   );
