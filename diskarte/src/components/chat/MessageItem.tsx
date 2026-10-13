@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { Attachments } from "./Attachments";
 import { EmojiPicker } from "./EmojiPicker";
 import { MessageMarkdown } from "./MessageMarkdown";
+import { EditedMark } from "./EditHistory";
 import { PollCard } from "./Poll";
 import { ReactionBar } from "./ReactionBar";
 import { Sticker } from "./Sticker";
@@ -316,7 +317,7 @@ export const MessageItem = memo(function MessageItem({
           message.content && (
             <div className="flex items-end gap-1.5">
               <MessageMarkdown content={message.content} />
-              {message.edited_at && <span className="shrink-0 pb-0.5 text-[10px] text-slate-500">(edited)</span>}
+              {message.edited_at && <EditedMark messageId={message.id} current={message.content} editedAt={message.edited_at} canView={(mine || canModerate) && "channel_id" in message} />}
             </div>
           )
         )}
