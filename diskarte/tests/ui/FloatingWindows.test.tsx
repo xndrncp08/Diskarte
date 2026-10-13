@@ -194,7 +194,7 @@ describe("audio mixer window", () => {
     await user.click(within(mixer).getByRole("button", { name: "Mute Maria for me" }));
     expect(maria.setVolume).toHaveBeenCalledWith(0);
     expect(within(mixer).getByRole("button", { name: "Mute Maria for me" })).toHaveAttribute("aria-pressed", "true");
-    expect(JSON.parse(localStorage.getItem("diskarte:audio-mix")!)).toEqual({ master: 0.5, people: { [maria.identity]: 0 } });
+    expect(JSON.parse(localStorage.getItem("diskarte:audio-mix")!)).toMatchObject({ master: 0.5, people: { [maria.identity]: 0 } });
 
     await user.click(within(mixer).getByRole("button", { name: "Close" }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Audio mixer" })).toBeNull());

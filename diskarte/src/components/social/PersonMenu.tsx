@@ -1,10 +1,14 @@
 "use client";
 
-import { AtSign, Ban, BellRing, Gavel, MessageCircle, PencilLine, ShieldOff, UserCheck, UserMinus, UserPlus, UserRound, UserX } from "lucide-react";
+import { ArrowRightLeft, AtSign, Ban, BellRing, Gavel, HeadphoneOff, MessageCircle, MicOff, PencilLine, Phone, PhoneOff, ShieldOff, StickyNote, UserCheck, UserMinus, UserPlus, UserRound, UserX, VideoOff, VolumeX } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useContext } from "react";
 import { toast } from "sonner";
 import { banMemberAction } from "@/actions/moderation";
 import { assignRoleAction, kickMemberAction, setMemberRoleAction, setNicknameAction } from "@/actions/servers";
+import { openDmAction } from "@/actions/social";
+import { moderateVoiceAction } from "@/actions/voice";
+import { useOptionalSupabase } from "@/components/providers/RuntimeConfig";
 import { useMe } from "@/components/providers/MeProvider";
 import { useOptionalServer } from "@/components/providers/ServerProvider";
 import { useOptionalSocial } from "@/components/providers/SocialProvider";
@@ -16,7 +20,28 @@ import { CallContext } from "@/components/voice/CallProvider";
 import { useRinger } from "@/components/voice/IncomingCalls";
 import { useFriendActions } from "@/hooks/useFriendActions";
 import { canManageMember, ROLE_LABEL } from "@/lib/servers";
+import { requestMention } from "@/lib/mention";
 import { friendStatus } from "@/lib/social";
+
+/** Ask for a server nickname (yours: Discord's "Edit Per-server Profile") and save it. */
+export function promptServerNickname(opts: { serverId: string; serverName: string; userId: string; displayName: string; current: string | null; self: boolean }) {
+  const { serverId, serverName, userId, displayName, current, self } = opts;
+  confirmAction({
+    title: self ? "Change your nickname" : `Change ${current ?? displayName}'s nickname`,
+    body: `Everyone in ${serverName} sees it. Leave it empty to go back to ${self ? "your" : "their"} display name.`,
+    confirmLabel: "Save",
+    danger: false,
+    reason: { label: "Server nickname", placeholder: displayName, maxLength: 32, initial: current ?? "" },
+    onConfirm: async (nickname) => {
+      const result = await setNicknameAction({ serverId, userId, nickname });
+      if (!result.ok) {
+        toast.error(result.fieldErrors?.nickname ?? result.error ?? "Couldn't change the nickname.");
+        return false;
+      }
+      toast.success(nickname ? `Nickname set to ${nickname}.` : "Nickname cleared.");
+    },
+  });
+}
 
 export interface Person {
   id: string;
@@ -51,7 +76,7 @@ export function PersonMenuItems({
   person: Person;
   /** Where a popped-out profile window appears. */
   anchor?: HTMLElement | null;
-  /** Overrides "View profile" (the member list opens its own popover). Defaults to the server profile window. */
+  /** Overrides "Profile" (the member list opens its own popover). Defaults to the server profile window. */
   onViewProfile?: () => void;
   /** Context-specific rows around the person rows (e.g. "Mark as read" on a DM). */
   before?: MenuItem[];
@@ -79,21 +104,7 @@ export function PersonMenuItems({
 
   function changeServerNickname() {
     if (!serverCtx || !member) return;
-    confirmAction({
-      title: self ? "Change your nickname" : `Change ${name}'s nickname`,
-      body: `Everyone in ${serverCtx.server.name} sees it. Leave it empty to go back to ${self ? "your" : "their"} display name.`,
-      confirmLabel: "Save",
-      danger: false,
-      reason: { label: "Server nickname", placeholder: person.display_name, maxLength: 32, initial: member.nickname ?? "" },
-      onConfirm: async (nickname) => {
-        const result = await setNicknameAction({ serverId: serverCtx.server.id, userId: person.id, nickname });
-        if (!result.ok) {
-          toast.error(result.fieldErrors?.nickname ?? result.error ?? "Couldn't change the nickname.");
-          return false;
-        }
-        toast.success(nickname ? `Nickname set to ${nickname}.` : "Nickname cleared.");
-      },
-    });
+    promptServerNickname({ serverId: serverCtx.server.id, serverName: serverCtx.server.name, userId: person.id, displayName: person.display_name, current: member.nickname, self });
   }
 
   function changeFriendNickname() {
@@ -114,10 +125,88 @@ export function PersonMenuItems({
     });
   }
 
+  // ---- Discord's extras: mention, call, note, and per-person call controls ----
+  const call = useContext(CallContext);
+  const router = useRouter();
+  const supabase = useOptionalSupabase();
+  const ringer = useRinger();
+  const lk = call?.room?.remoteParticipants.get(person.id);
+  const inMyCall = !self && !!lk && call?.status !== "idle";
+  // Where they are in voice in this server (my own room, or what presence says), for moderation.
+  const voiceChannel = inMyCall && call?.target?.kind !== "dm" ? (call?.target?.channelId ?? null) : (serverCtx?.presence.get(person.id)?.voice_channel_id ?? null);
+  const sources = lk?.permissions?.canPublishSources ?? [];
+  const serverMuted = sources.length > 0 && !sources.includes(2 /* MICROPHONE */);
+  const serverDeafened = lk?.permissions?.canSubscribe === false;
+  const canModerateVoice = !!voiceChannel && !!perms?.kick;
+
+  async function startCall() {
+    if (!call) return;
+    const dm = await openDmAction({ userId: person.id });
+    if (!dm.ok || !dm.data) {
+      toast.error(dm.error ?? "Couldn't start the call.");
+      return;
+    }
+    const id = dm.data.conversationId;
+    router.push(`/tambayan/dm/${id}`);
+    await call.join({ kind: "dm", serverId: "", serverName: "Direct Message", channelId: id, channelName: name });
+    void ringer?.ringDm(id);
+  }
+
+  async function editNote() {
+    if (!supabase) return;
+    const { data } = await supabase.from("user_notes").select("note").eq("target_id", person.id).maybeSingle();
+    confirmAction({
+      title: `Note about ${name}`,
+      body: "Only you can see it.",
+      confirmLabel: "Save",
+      danger: false,
+      reason: { label: "Note", placeholder: "Click to add a note", maxLength: 256, initial: data?.note ?? "" },
+      onConfirm: async (note) => {
+        const { error } = note
+          ? await supabase.from("user_notes").upsert({ owner_id: me.id, target_id: person.id, note, updated_at: new Date().toISOString() })
+          : await supabase.from("user_notes").delete().eq("owner_id", me.id).eq("target_id", person.id);
+        if (error) {
+          toast.error("Couldn't save the note.");
+          return false;
+        }
+        toast.success(note ? "Note saved." : "Note removed.");
+      },
+    });
+  }
+
+  function moderate(action: "mute" | "unmute" | "deafen" | "undeafen" | "disconnect" | "move", toChannelId?: string) {
+    if (!voiceChannel) return;
+    void moderateVoiceAction({ channelId: voiceChannel, userId: person.id, action, toChannelId }).then((result) => {
+      if (!result.ok) toast.error(result.error ?? "Couldn't do that.");
+    });
+  }
+  const moveTargets = (serverCtx?.channels ?? []).filter((c) => c.type === "voice" && c.id !== voiceChannel && !c.is_private);
+
   const items: MenuItem[] = [
     ...before,
-    { label: "View profile", icon: <UserRound className={icon} aria-hidden />, onSelect: () => viewProfile?.(), hidden: !viewProfile },
+    { label: "Profile", icon: <UserRound className={icon} aria-hidden />, onSelect: () => viewProfile?.(), hidden: !viewProfile },
+    { label: "Mention", icon: <AtSign className={icon} aria-hidden />, onSelect: () => requestMention(person.username), hidden: !serverCtx },
     { label: "Message", icon: <MessageCircle className={icon} aria-hidden />, onSelect: () => void friends.message(person.id), hidden: self || !social || status === "blocked" },
+    { label: "Start a Call", icon: <Phone className={icon} aria-hidden />, onSelect: () => void startCall(), hidden: self || !social || !call || status !== "accepted" },
+    { label: "Add Note", hint: "Only visible to you", icon: <StickyNote className={icon} aria-hidden />, onSelect: () => void editNote(), hidden: self || !supabase },
+    {
+      label: "User Volume",
+      onSelect: () => undefined,
+      hidden: !inMyCall,
+      control: (
+        <input
+          type="range"
+          min={0}
+          max={100}
+          defaultValue={Math.round((call?.mix.people[person.id] ?? 1) * 100)}
+          onChange={(e) => call?.setParticipantVolume(person.id, Number(e.target.value) / 100)}
+          aria-label={`Volume for ${name}`}
+          className="w-full accent-sun"
+        />
+      ),
+    },
+    { label: "Mute", icon: <VolumeX className={icon} aria-hidden />, multi: true, checked: !!call?.mix.muted?.[person.id], onSelect: () => call?.toggleLocalMute(person.id), hidden: !inMyCall },
+    { label: "Disable Video", icon: <VideoOff className={icon} aria-hidden />, multi: true, checked: !!call?.mix.videoOff?.[person.id], onSelect: () => call?.toggleVideoOff(person.id), hidden: !inMyCall },
     { label: "Add Friend", icon: <UserPlus className={icon} aria-hidden />, onSelect: () => void friends.add(person.username), hidden: status !== "none" },
     { label: "Accept friend request", icon: <UserCheck className={icon} aria-hidden />, onSelect: () => void friends.accept(person.id), hidden: status !== "incoming" },
     { label: "Ignore friend request", icon: <UserX className={icon} aria-hidden />, onSelect: () => void friends.ignore(person.id), hidden: status !== "incoming" },
@@ -221,7 +310,14 @@ export function PersonMenuItems({
     },
   ];
 
-  return <ContextMenuItems items={items} />;
+  const voiceItems: MenuItem[] = [
+    { label: "Server Mute", icon: <MicOff className={icon} aria-hidden />, multi: true, checked: serverMuted, danger: true, group: "Voice", onSelect: () => moderate(serverMuted ? "unmute" : "mute"), hidden: !canModerateVoice },
+    { label: "Server Deafen", icon: <HeadphoneOff className={icon} aria-hidden />, multi: true, checked: serverDeafened, danger: true, group: "Voice", onSelect: () => moderate(serverDeafened ? "undeafen" : "deafen"), hidden: !canModerateVoice },
+    { label: "Disconnect", icon: <PhoneOff className={icon} aria-hidden />, danger: true, group: "Voice", onSelect: () => moderate("disconnect"), hidden: !canModerateVoice },
+    ...moveTargets.map((c) => ({ label: c.name, icon: <ArrowRightLeft className={icon} aria-hidden />, group: "Move to", onSelect: () => moderate("move", c.id), hidden: !canModerateVoice })),
+  ];
+
+  return <ContextMenuItems items={[...items, ...voiceItems]} />;
 }
 
 const ROLES = ["member", "moderator", "admin"] as const;

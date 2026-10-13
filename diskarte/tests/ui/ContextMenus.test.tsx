@@ -20,6 +20,8 @@ vi.mock("@/actions/moderation", () => moderation);
 vi.mock("@/actions/servers", async () => (await import("../mocks/actions")).serverActions);
 vi.mock("@/actions/messages", async () => (await import("../mocks/actions")).messageActions);
 vi.mock("sonner", async () => (await import("../mocks/actions")).toastMock);
+const voiceActions = vi.hoisted(() => ({ moderateVoiceAction: vi.fn(async () => ({ ok: true })) }));
+vi.mock("@/actions/voice", () => voiceActions);
 
 const { serverActions } = await import("../mocks/actions");
 const { MemberList } = await import("@/components/server/MemberList");
@@ -32,7 +34,7 @@ const { RuntimeConfigProvider } = await import("@/components/providers/RuntimeCo
 const { PresenceProvider } = await import("@/components/providers/PresenceProvider");
 const { CallProvider } = await import("@/components/voice/CallProvider");
 const { MEMBERS, RUNTIME, GENERAL, CHANNELS } = await import("../fixtures/layout");
-const { MEMBER_ID, MOD_ID, OWNER_ID, SERVER_ID, ServerFixture, server } = await import("../fixtures/server");
+const { MEMBER_ID, MOD_ID, OWNER_ID, SERVER_ID, ServerFixture, presenceFor, server } = await import("../fixtures/server");
 
 type SocialValue = NonNullable<React.ContextType<typeof SocialContext>>;
 type FriendEntry = NonNullable<SocialValue["friends"]>[number];
@@ -61,8 +63,10 @@ function Shell({
   friends,
   blocked,
   profiles,
+  presence,
   children,
 }: {
+  presence?: Map<string, ReturnType<typeof presenceFor>>;
   meId?: string;
   role?: "admin" | "moderator" | "member";
   friends?: FriendEntry[];
@@ -72,7 +76,7 @@ function Shell({
 }) {
   return (
     <RuntimeConfigProvider value={RUNTIME}>
-      <ServerFixture members={MEMBERS} meId={meId} myRole={role} overrides={{ channels: CHANNELS, roles: [TROPA], memberRoles: new Map([[MOD_ID, [TROPA.id]]]) }}>
+      <ServerFixture members={MEMBERS} meId={meId} myRole={role} presence={presence} overrides={{ channels: CHANNELS, roles: [TROPA], memberRoles: new Map([[MOD_ID, [TROPA.id]]]) }}>
         <PresenceProvider>
           <CallProvider>
             <Social friends={friends} blocked={blocked} profiles={profiles}>
@@ -95,6 +99,7 @@ const since = "2026-09-01T00:00:00Z";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
   navigation.reset(`/tambayan/${SERVER_ID}/${GENERAL.id}`);
 });
 
@@ -186,7 +191,7 @@ describe("Right-click a person", () => {
     );
     openMenu(row("Juan"));
     for (const name of ["Add Friend", "Message", "Block"]) expect(screen.queryByRole("menuitem", { name })).toBeNull();
-    expect(item("View profile")).toBeInTheDocument();
+    expect(item("Profile")).toBeInTheDocument();
   });
 
   it("renames yourself in the server, and gives friends a private nickname", async () => {
@@ -239,6 +244,38 @@ describe("Right-click a person", () => {
     );
     openMenu(row("Maria"));
     expect(screen.queryByRole("menuitemcheckbox", { name: /Tropa/ })).toBeNull();
+  });
+
+  it("mentions someone in the chat box", () => {
+    const heard = vi.fn();
+    window.addEventListener("diskarte:mention", (e) => heard((e as CustomEvent).detail));
+    render(
+      <Shell meId={MEMBER_ID} role="member">
+        <MemberList />
+      </Shell>,
+    );
+    openMenu(row("Maria"));
+    fireEvent.click(item("Mention"));
+    expect(heard).toHaveBeenCalledWith("maria");
+  });
+
+  it("gives moderators Server Mute, Disconnect and Move to for someone in voice", async () => {
+    const voice = CHANNELS.find((c) => c.type === "voice")!;
+    const other = CHANNELS.filter((c) => c.type === "voice")[1];
+    render(
+      <Shell presence={new Map([[MEMBER_ID, presenceFor(MEMBER_ID, { voice_channel_id: voice.id })]])}>
+        <MemberList />
+      </Shell>,
+    );
+    openMenu(row("Juan"));
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: /Server Mute/ }));
+    await waitFor(() => expect(voiceActions.moderateVoiceAction).toHaveBeenCalledWith({ channelId: voice.id, userId: MEMBER_ID, action: "mute", toChannelId: undefined }));
+    openMenu(row("Juan"));
+    fireEvent.click(within(screen.getByRole("group", { name: "Move to" })).getByRole("menuitem", { name: other.name }));
+    await waitFor(() => expect(voiceActions.moderateVoiceAction).toHaveBeenCalledWith({ channelId: voice.id, userId: MEMBER_ID, action: "move", toChannelId: other.id }));
+    // Not for someone who isn't in voice, and never for regular members.
+    openMenu(row("Maria"));
+    expect(screen.queryByRole("menuitemcheckbox", { name: /Server Mute/ })).toBeNull();
   });
 
   it("asks before blocking", async () => {
@@ -368,6 +405,21 @@ describe("Right-click a message", () => {
 });
 
 describe("Right-click channels and servers", () => {
+  it("mutes a channel (dimmed), and Hide Muted Channels hides it", async () => {
+    render(
+      <Shell meId={MEMBER_ID} role="member">
+        <ChannelSidebar />
+      </Shell>,
+    );
+    const chika = () => screen.queryByRole("link", { name: "chika" });
+    openMenu(chika()!);
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: /Mute Channel/ }));
+    await waitFor(() => expect(chika()).toHaveClass("opacity-50"));
+    fireEvent.click(screen.getByTestId("server-menu"));
+    fireEvent.click(await screen.findByRole("menuitemcheckbox", { name: /Hide Muted Channels/ }));
+    await waitFor(() => expect(chika()).toBeNull());
+  });
+
   it("lets managers delete a channel after confirming", async () => {
     render(
       <Shell>
