@@ -1,6 +1,6 @@
 "use client";
 
-import { Film, ImageIcon, Maximize2, Music, Play } from "lucide-react";
+import { Film, ImageIcon, Maximize2, Mic, Music, Play } from "lucide-react";
 import { useState, type MouseEvent } from "react";
 import { useMediaViewer, type MediaItem } from "@/components/chat/MediaViewer";
 import { SmartImage } from "@/components/ui/SmartImage";
@@ -8,7 +8,7 @@ import { useLowData } from "@/hooks/useLowData";
 import { useSignedUrls } from "@/hooks/useSignedUrls";
 import { useDisplayPrefs } from "@/lib/display-prefs";
 import { imageQuality } from "@/lib/low-data";
-import { isAudioAttachment, isImageAttachment, isVideoAttachment, type Attachment } from "@/lib/messages";
+import { formatDuration, isAudioAttachment, isImageAttachment, isVideoAttachment, type Attachment } from "@/lib/messages";
 import { formatBytes } from "@/lib/utils";
 
 /** Renders allow-listed attachments from short-lived signed URLs (private bucket). */
@@ -116,9 +116,9 @@ export function Attachments({ attachments }: { attachments: Attachment[] }) {
       {audio.map((a) => (
         <div key={a.path} className="flex max-w-sm flex-col gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2">
           <div className="flex items-center gap-2">
-            <Music className="size-5 shrink-0 text-sun" aria-hidden />
-            <p className="min-w-0 flex-1 truncate text-sm font-medium text-slate-200">{a.name}</p>
-            <span className="text-xs text-slate-500">{formatBytes(a.size)}</span>
+            {a.voice ? <Mic className="size-5 shrink-0 text-sun" aria-hidden /> : <Music className="size-5 shrink-0 text-sun" aria-hidden />}
+            <p className="min-w-0 flex-1 truncate text-sm font-medium text-slate-200">{a.voice ? "Voice message" : a.name}</p>
+            <span className="text-xs tabular-nums text-slate-500">{a.voice && a.duration !== undefined ? formatDuration(a.duration) : formatBytes(a.size)}</span>
           </div>
           {urls[a.path] && <audio src={urls[a.path]} controls preload="none" className="w-full" aria-label={a.name} />}
         </div>

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CLASSIC_REACTIONS, isValidReaction, PINOY_REACTIONS, splitGlyphs } from "@/lib/emoji";
 import { glyphLabel, toGlyphCode } from "@/lib/glyphs";
-import { attachmentPrefix, parseAttachments, previewText } from "@/lib/messages";
+import { attachmentPrefix, formatDuration, isAudioAttachment, parseAttachments, previewText } from "@/lib/messages";
 import { playSfx, SFX_NAMES, setSfxEnabled, sfxEnabled } from "@/lib/sfx";
 import { safeFileName, sniffMatches, validateAttachment } from "@/lib/uploads";
 
@@ -45,6 +45,17 @@ describe("messages helpers", () => {
   });
 });
 
+describe("voice messages", () => {
+  it("keeps the voice flag and length, and plays recordings as audio", () => {
+    const path = "10000000-0000-4000-8000-000000000001/20000000-0000-4000-8000-000000000001/00000000-0000-4000-8000-00000000000a/3f2a1c4e-8b7d-4e6f-9a0b-1c2d3e4f5a6b.webm";
+    const [a] = parseAttachments([{ path, name: "voice-message.webm", size: 4000, type: "audio/webm", voice: true, duration: 12.4 }]);
+    expect(a).toMatchObject({ voice: true, duration: 12.4 });
+    expect(isAudioAttachment(a)).toBe(true);
+    expect(formatDuration(12.4)).toBe("0:12");
+    expect(formatDuration(75)).toBe("1:15");
+  });
+});
+
 describe("uploads", () => {
   it("sanitises file names", () => {
     expect(safeFileName("../../etc/passwd")).toBe("etcpasswd");
@@ -76,6 +87,11 @@ describe("uploads", () => {
     expect(sniffMatches("video/mp4", ascii("ftyp", 4))).toBe(true);
     expect(sniffMatches("image/png", ascii("<svg onload=alert(1)>"))).toBe(false);
     expect(sniffMatches("video/mp4", ascii("<html>"))).toBe(false);
+    // Voice recordings.
+    expect(sniffMatches("audio/webm", bytes(0x1a, 0x45, 0xdf, 0xa3))).toBe(true);
+    expect(sniffMatches("audio/ogg", ascii("OggS"))).toBe(true);
+    expect(sniffMatches("audio/mp4", ascii("ftyp", 4))).toBe(true);
+    expect(sniffMatches("audio/webm", ascii("<html>"))).toBe(false);
   });
 });
 

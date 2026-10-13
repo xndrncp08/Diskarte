@@ -12,6 +12,9 @@ export const ATTACHMENT_TYPES = {
   "image/gif": "gif",
   "audio/mpeg": "mp3",
   "video/mp4": "mp4",
+  "audio/webm": "webm",
+  "audio/ogg": "ogg",
+  "audio/mp4": "m4a",
 } as const;
 export type AttachmentMime = keyof typeof ATTACHMENT_TYPES;
 export const ATTACHMENT_ACCEPT = Object.keys(ATTACHMENT_TYPES).join(",");
@@ -66,7 +69,7 @@ export function isAllowedAttachmentType(type: string): type is AttachmentMime {
 export function validateAttachment(file: File): string | null {
   if (file.size === 0) return `${file.name}: the file is empty.`;
   if (file.size > MAX_ATTACHMENT_BYTES) return `${file.name}: files can be up to 10 MB.`;
-  if (!isAllowedAttachmentType(file.type)) return `${file.name}: only JPG, PNG, WEBP, GIF, MP3 or MP4 files are allowed.`;
+  if (!isAllowedAttachmentType(file.type)) return `${file.name}: only JPG, PNG, WEBP, GIF, MP3, MP4 or voice recordings are allowed.`;
   return null;
 }
 
@@ -86,7 +89,12 @@ export function sniffMatches(type: AttachmentMime, head: Uint8Array): boolean {
     case "audio/mpeg":
       return ascii(0, "ID3") || (head[0] === 0xff && (head[1] & 0xe0) === 0xe0);
     case "video/mp4":
+    case "audio/mp4":
       return ascii(4, "ftyp");
+    case "audio/webm":
+      return at(0, 0x1a, 0x45, 0xdf, 0xa3);
+    case "audio/ogg":
+      return ascii(0, "OggS");
   }
 }
 
