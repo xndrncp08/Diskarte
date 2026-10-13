@@ -55,7 +55,7 @@ export function ActivityStage({ controls }: { controls: ActivityControls }) {
       {activity.game.kind === "watch" && <WatchParty state={activity.game.state} onChange={(state: WatchState) => update({ kind: "watch", state })} />}
       {activity.game.kind === "tictactoe" && <TicTacToeBoard game={activity.game.state} me={me} nameOf={nameOf} onChange={(state: TicTacToe) => update({ kind: "tictactoe", state })} />}
       {activity.game.kind === "trivia" && (
-        <TriviaGame game={activity.game.state} me={me} nameOf={nameOf} isDriver={isDriver} onChange={(state: Trivia) => update({ kind: "trivia", state })} />
+        <TriviaGame game={activity.game.state} me={me} nameOf={nameOf} isDriver={isDriver} players={controls.players} onChange={(state: Trivia) => update({ kind: "trivia", state })} />
       )}
     </section>
   );

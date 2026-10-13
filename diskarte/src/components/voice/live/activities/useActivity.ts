@@ -72,7 +72,10 @@ export function useActivity() {
     return everyone.sort()[0] === me;
   }, [room, me]);
 
-  return { activity, me, start, update, end, isDriver };
+  /** People in the call right now (you included). */
+  const players = useCallback(() => (room ? room.remoteParticipants.size + 1 : 1), [room]);
+
+  return { activity, me, start, update, end, isDriver, players };
 }
 
 export type ActivityControls = ReturnType<typeof useActivity>;
