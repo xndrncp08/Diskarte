@@ -3,6 +3,7 @@
 import { memo, useEffect, useState } from "react";
 import { useLowData } from "@/hooks/useLowData";
 import { useDisplayPrefs } from "@/lib/display-prefs";
+import { isGiphyMedia } from "@/lib/gifs";
 import { extractLinks, type LinkPreview } from "@/lib/unfurl";
 
 // One request per link per page load, shared by every message that shows it.
@@ -58,5 +59,13 @@ function Embed({ url }: { url: string }) {
 export const LinkEmbeds = memo(function LinkEmbeds({ content }: { content: string }) {
   const { embeds } = useDisplayPrefs();
   if (!embeds || !content.includes("http")) return null;
-  return extractLinks(content).map((url) => <Embed key={url} url={url} />);
+  return extractLinks(content).map((url) =>
+    isGiphyMedia(url) ? (
+      // GIPHY files show straight from GIPHY's CDN (allowed by the CSP), no preview fetch.
+      // eslint-disable-next-line @next/next/no-img-element -- animated GIF of unknown size
+      <img key={url} src={url} alt="GIF" loading="lazy" className="mt-1.5 block max-h-72 max-w-xs rounded-lg" data-testid="gif-embed" />
+    ) : (
+      <Embed key={url} url={url} />
+    ),
+  );
 });
