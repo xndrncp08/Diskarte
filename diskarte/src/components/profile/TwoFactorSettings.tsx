@@ -18,8 +18,12 @@ export function TwoFactorSettings() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    const { data } = await supabase.auth.mfa.listFactors();
-    setFactorId(data?.totp.find((f) => f.status === "verified")?.id ?? null);
+    try {
+      const { data } = await supabase.auth.mfa.listFactors();
+      setFactorId(data?.totp.find((f) => f.status === "verified")?.id ?? null);
+    } catch {
+      setFactorId(null);
+    }
   }, [supabase]);
 
   useEffect(() => {
