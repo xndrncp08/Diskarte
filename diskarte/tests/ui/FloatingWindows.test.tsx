@@ -49,94 +49,63 @@ beforeEach(() => {
   );
 });
 
-describe("FloatingWindow", () => {
-  it("is a non-modal dialog that focuses its content and leaves the page usable", async () => {
-    const user = userEvent.setup();
+describe("FloatingWindow (a centred dialog)", () => {
+  it("is a modal dialog over a backdrop that focuses its content and doesn't move", async () => {
     render(<Harness />);
-    expect(frame()).toHaveAttribute("aria-modal", "false");
+    expect(frame()).toHaveAttribute("aria-modal", "true");
     await waitFor(() => expect(screen.getByRole("button", { name: "Inside" })).toHaveFocus());
-    // The page behind keeps working: type in the chat while the window stays open.
-    await user.type(screen.getByLabelText("Chat box"), "hello");
-    expect(screen.getByLabelText("Chat box")).toHaveValue("hello");
-    expect(frame()).toBeInTheDocument();
-    expect(document.body.style.overflow).toBe("");
+    expect(frame().querySelector("[data-window-handle]")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Move window" })).toBeNull();
   });
 
-  it("drags by the title bar and remembers where it was left", async () => {
-    render(<Harness />);
-    await waitFor(() => expect(frame().style.visibility).not.toBe("hidden"));
-    const start = { x: parseFloat(frame().style.left), y: parseFloat(frame().style.top) };
-    const bar = frame().querySelector("[data-window-handle]")!;
-    fireEvent.pointerDown(bar, { button: 0, clientX: start.x + 40, clientY: start.y + 10, pointerId: 1 });
-    fireEvent.pointerMove(bar, { clientX: start.x + 140, clientY: start.y + 60, pointerId: 1 });
-    fireEvent.pointerUp(bar, { pointerId: 1 });
-    expect(parseFloat(frame().style.left)).toBe(start.x + 100);
-    expect(parseFloat(frame().style.top)).toBe(start.y + 50);
-    expect(JSON.parse(localStorage.getItem("diskarte:window:test-window")!)).toEqual({ x: start.x + 100, y: start.y + 50 });
-  });
-
-  it("moves with the arrow keys from its Move button, staying on screen", async () => {
-    const user = userEvent.setup();
-    render(<Harness />);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Inside" })).toHaveFocus());
-    const left = parseFloat(frame().style.left);
-    screen.getByRole("button", { name: "Move window" }).focus();
-    await user.keyboard("{ArrowRight}");
-    expect(parseFloat(frame().style.left)).toBe(left + 16);
-    for (let i = 0; i < 200; i++) fireEvent.keyDown(screen.getByRole("button", { name: "Move window" }), { key: "ArrowUp", shiftKey: true });
-    expect(parseFloat(frame().style.top)).toBe(0);
-  });
-
-  it("closes on Escape only while focus is inside it, and restores focus", async () => {
+  it("closes on Escape wherever focus is, and restores focus to what opened it", async () => {
     const user = userEvent.setup();
     render(<Harness initiallyOpen={false} />);
-    await user.click(screen.getByRole("button", { name: "Open window" }));
+    const opener = screen.getByRole("button", { name: "Open window" });
+    await user.click(opener);
     await waitFor(() => expect(screen.getByRole("button", { name: "Inside" })).toHaveFocus());
-    screen.getByLabelText("Chat box").focus();
+    (document.activeElement as HTMLElement).blur();
     await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Test window" })).toBeNull());
+    expect(opener).toHaveFocus();
+  });
+
+  it("closes when the backdrop is clicked, not when the dialog is", async () => {
+    render(<Harness />);
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Inside" }));
     expect(frame()).toBeInTheDocument();
-    screen.getByRole("button", { name: "Inside" }).focus();
-    await user.keyboard("{Escape}");
+    fireEvent.pointerDown(document.querySelector("[data-window-layer]")!);
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Test window" })).toBeNull());
   });
 
-  it("keeps Tab inside the window, and F6 hops between the window and the page", async () => {
+  it("keeps Tab inside the dialog", async () => {
     const user = userEvent.setup();
     render(<Harness />);
     const inside = screen.getByRole("button", { name: "Inside" });
     await waitFor(() => expect(inside).toHaveFocus());
-    // Last focusable → Tab wraps to the first (the Move button), Shift+Tab wraps back.
     await user.tab();
-    expect(screen.getByRole("button", { name: "Move window" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();
     await user.tab({ shift: true });
     expect(inside).toHaveFocus();
-    await user.tab({ shift: true });
-    expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();
-    // F6: out to the page (where focus was before the window), and back into the window.
-    screen.getByLabelText("Chat box").focus();
-    inside.focus();
-    await user.keyboard("{F6}");
-    expect(frame()).not.toContainElement(document.activeElement as HTMLElement);
-    await user.keyboard("{F6}");
-    expect(frame()).toContainElement(document.activeElement as HTMLElement);
   });
 
-  it("brings the clicked window to the front", async () => {
+  it("only the top dialog answers Escape", async () => {
+    const user = userEvent.setup();
+    const closeA = vi.fn();
+    const closeB = vi.fn();
     render(
       <>
-        <FloatingWindow id="a" open onClose={() => undefined} title="Window A">
+        <FloatingWindow id="a" open onClose={closeA} title="Window A">
           <button type="button">A</button>
         </FloatingWindow>
-        <FloatingWindow id="b" open onClose={() => undefined} title="Window B">
+        <FloatingWindow id="b" open onClose={closeB} title="Window B">
           <button type="button">B</button>
         </FloatingWindow>
       </>,
     );
-    const a = screen.getByRole("dialog", { name: "Window A" });
-    const b = screen.getByRole("dialog", { name: "Window B" });
-    expect(Number(b.style.zIndex)).toBeGreaterThan(Number(a.style.zIndex));
-    fireEvent.pointerDown(within(a).getByRole("button", { name: "A" }));
-    expect(Number(a.style.zIndex)).toBeGreaterThan(Number(b.style.zIndex));
+    await user.keyboard("{Escape}");
+    expect(closeB).toHaveBeenCalled();
+    expect(closeA).not.toHaveBeenCalled();
   });
 });
 
