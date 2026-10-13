@@ -151,6 +151,6 @@ describe("attachment guardrails", () => {
     await asService(db);
     const bucket = await one<{ file_size_limit: number; allowed_mime_types: string[] }>(db, "select file_size_limit, allowed_mime_types from storage.buckets where id = 'attachments'");
     expect(Number(bucket.file_size_limit)).toBe(10 * 1024 * 1024);
-    expect(bucket.allowed_mime_types.sort()).toEqual(["audio/mpeg", "image/gif", "image/jpeg", "image/png", "image/webp", "video/mp4"]);
+    expect(bucket.allowed_mime_types.sort()).toEqual(["audio/mp4", "audio/mpeg", "audio/ogg", "audio/webm", "image/gif", "image/jpeg", "image/png", "image/webp", "video/mp4"]);
   });
 });

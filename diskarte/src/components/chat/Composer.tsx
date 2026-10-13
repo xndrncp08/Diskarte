@@ -10,6 +10,7 @@ import { typingLabel } from "@/hooks/useTyping";
 import { formatDuration } from "@/lib/community";
 import { MAX_ATTACHMENTS, MESSAGE_MAX, type Attachment } from "@/lib/messages";
 import { ATTACHMENT_ACCEPT, uploadAttachment } from "@/lib/uploads";
+import { VoiceRecorder } from "./VoiceRecorder";
 import { onMentionRequest } from "@/lib/mention";
 import { cn, formatBytes } from "@/lib/utils";
 import { EmojiPicker } from "./EmojiPicker";
@@ -163,6 +164,19 @@ export function Composer({
     else previous.uploads.forEach((u) => u.preview && URL.revokeObjectURL(u.preview));
   }
 
+  // A voice message goes out on its own, straight away (like Discord), replying if a reply is open.
+  async function sendVoice(file: File, seconds: number) {
+    if (!serverId) return;
+    try {
+      const attachment = await uploadAttachment(supabase, { serverId, channelId, userId: me.id, file });
+      const replyId = replyTo?.id ?? null;
+      onCancelReply();
+      await onSend("", [{ ...attachment, voice: true, duration: seconds }], replyId);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
@@ -304,6 +318,7 @@ export function Composer({
               <button type="button" aria-label="Attach files" onClick={() => fileInput.current?.click()} className="touch-target relative rounded-md p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white pointer-coarse:p-3">
                 <Paperclip className="size-5" aria-hidden />
               </button>
+              <VoiceRecorder disabled={cooldown > 0} onRecorded={(file, seconds) => void sendVoice(file, seconds)} />
             </>
           )}
           <span aria-hidden className="flex-1 @sm:hidden" />

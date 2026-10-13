@@ -27,10 +27,10 @@ export const MESSAGE_SELECT = `*, author:profiles!messages_author_id_fkey(${AUTH
 
 export const MAX_ATTACHMENTS = 10;
 
-export const ATTACHMENT_MIME = ["image/jpeg", "image/png", "image/webp", "image/gif", "audio/mpeg", "video/mp4"] as const;
+export const ATTACHMENT_MIME = ["image/jpeg", "image/png", "image/webp", "image/gif", "audio/mpeg", "video/mp4", "audio/webm", "audio/ogg", "audio/mp4"] as const;
 export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
 /** `<server uuid>/<channel uuid>/<user uuid>/<random uuid>.<ext>` — nothing user-controlled. */
-export const ATTACHMENT_PATH_RE = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp|gif|mp3|mp4)$/;
+export const ATTACHMENT_PATH_RE = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp|gif|mp3|mp4|webm|ogg|m4a)$/;
 
 export const attachmentSchema = z.object({
   path: z.string().max(200).regex(ATTACHMENT_PATH_RE, "Invalid path"),
@@ -39,6 +39,9 @@ export const attachmentSchema = z.object({
   type: z.enum(ATTACHMENT_MIME),
   width: z.number().int().positive().max(20000).optional(),
   height: z.number().int().positive().max(20000).optional(),
+  /** A recorded voice message (shown as a compact player) and its length in seconds. */
+  voice: z.boolean().optional(),
+  duration: z.number().nonnegative().max(3600).optional(),
 });
 
 export type Attachment = z.infer<typeof attachmentSchema>;
@@ -65,7 +68,13 @@ export function isVideoAttachment(a: Attachment) {
 }
 
 export function isAudioAttachment(a: Attachment) {
-  return a.type === "audio/mpeg";
+  return a.type.startsWith("audio/");
+}
+
+/** 75 → "1:15". */
+export function formatDuration(seconds: number) {
+  const s = Math.max(0, Math.floor(seconds));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
 /** One-line plain-text preview of a Markdown message (reply bars, notifications, pins). */
