@@ -84,6 +84,7 @@ function snapshot(): AdminSnapshot {
     broadcasts: [
       { id: "b1", author_id: ADMIN.id, title: "Maintenance tonight", body: "Back soon", tone: "warning", targets: ["announcements"], message_ids: [], sticky: true, sticky_until: null, retracted_at: null, created_at: ago(60) },
     ],
+    traffic: { today: 12, signed_in_today: 5, week: 40, month: 95, daily: Array.from({ length: 30 }, (_, i) => ({ day: `2026-09-${String(i + 1).padStart(2, "0")}`, count: i % 7 })) },
     reports: [
       {
         id: "30000000-0000-4000-8000-000000000001",
@@ -240,6 +241,16 @@ describe("Super Admin Control Center", () => {
     await user.click(screen.getByRole("button", { name: "Take down banner: Maintenance tonight" }));
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Take down" }));
     expect(adminActions.retractBroadcastAction).toHaveBeenCalledWith({ broadcastId: "b1" });
+  });
+
+  it("shows site traffic: unique visitors today, 7 and 30 days, and a 30-day chart", async () => {
+    const user = userEvent.setup();
+    renderCenter();
+    await screen.findAllByTestId("roster-row");
+    await user.click(screen.getByRole("tab", { name: "Traffic" }));
+    expect(screen.getByTestId("traffic-today")).toHaveTextContent("Today");
+    expect(screen.getByTestId("traffic-30-days")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /^2026-09-01: 0,/ })).toBeInTheDocument();
   });
 
   it("shows live voice stages and the audit trail", async () => {

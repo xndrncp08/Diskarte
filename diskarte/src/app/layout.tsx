@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { cookies, headers } from "next/headers";
 import { Inter, JetBrains_Mono, Press_Start_2P, Silkscreen } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { AppToaster } from "@/components/AppToaster";
 import { RuntimeConfigProvider } from "@/components/providers/RuntimeConfig";
+import { VisitBeacon } from "@/components/VisitBeacon";
 import { tryGetPublicEnv } from "@/lib/env";
 import { isTheme, THEME_COOKIE } from "@/lib/theme";
 import "./globals.css";
@@ -59,8 +61,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           }
         >
           {children}
+          <VisitBeacon />
         </RuntimeConfigProvider>
         <AppToaster />
+        <Analytics />
       </body>
     </html>
   );

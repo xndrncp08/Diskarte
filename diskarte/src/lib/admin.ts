@@ -113,6 +113,15 @@ export interface AdminOverview {
   last7: { day: string; count: number }[];
 }
 
+/** Unique browsers that opened the site (Manila days). */
+export interface SiteTraffic {
+  today: number;
+  signed_in_today: number;
+  week: number;
+  month: number;
+  daily: { day: string; count: number }[];
+}
+
 export interface VoiceParticipant {
   identity: string;
   name: string;
@@ -167,6 +176,8 @@ export interface AdminSnapshot {
   broadcasts: Broadcast[];
   /** null when the problem reports migration isn't applied yet (the rest of the Control Center still works). */
   reports: ProblemReport[] | null;
+  /** null when the site visits migration isn't applied yet. */
+  traffic: SiteTraffic | null;
   generatedAt: string;
 }
 
