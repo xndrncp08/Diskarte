@@ -100,8 +100,10 @@ describe("Settings dialog", () => {
     const accountTab = within(dialog).getByRole("tab", { name: "Account & Sessions" });
     expect(accountTab).toHaveAttribute("aria-selected", "true");
     expect(accountTab).toHaveFocus();
-    await user.keyboard("{ArrowRight}");
-    expect(within(dialog).getByRole("tab", { name: "Report a problem" })).toHaveAttribute("aria-selected", "true");
+    for (const name of ["Appearance", "Voice & Video", "Notifications", "Advanced", "Report a problem"]) {
+      await user.keyboard("{ArrowRight}");
+      expect(within(dialog).getByRole("tab", { name })).toHaveAttribute("aria-selected", "true");
+    }
     expect(within(dialog).getByRole("heading", { name: "Report a problem" })).toBeInTheDocument();
     await user.keyboard("{ArrowRight}");
     expect(profileTab).toHaveAttribute("aria-selected", "true");

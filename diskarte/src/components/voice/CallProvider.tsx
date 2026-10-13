@@ -2,9 +2,10 @@
 
 import type { ConnectionQuality, DisconnectReason, LocalTrackPublication, Participant, RemoteParticipant, RemoteTrackPublication, Room } from "livekit-client";
 import dynamic from "next/dynamic";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useOptionalSupabase } from "@/components/providers/RuntimeConfig";
+import { DEFAULT_VOICE_PREFS, micProcessing, readVoicePrefs, setVoicePrefs, subscribeVoicePrefs } from "@/lib/voice-prefs";
 import { useBroadcastSpeaking, useServerPresence, useVoicePresence } from "@/components/providers/PresenceProvider";
 import type { SignalLevel } from "@/components/retro/SignalBars";
 import { getLowDataMode, subscribeLowDataMode } from "@/lib/low-data";
@@ -91,7 +92,6 @@ const SoundboardReceiver = dynamic(() => import("./SoundboardReceiver").then((m)
 
 /** Exported for tests; app code uses <CallProvider> / useCall(). */
 export const CallContext = createContext<CallContextValue | null>(null);
-const NS_KEY = "diskarte:noise-suppression";
 
 export function qualityToLevel(quality: ConnectionQuality | string): SignalLevel {
   switch (quality) {
@@ -118,11 +118,7 @@ export function mediaErrorMessage(err: unknown, device: "mic" | "camera" | "scre
 }
 
 function readNoiseSuppression() {
-  try {
-    return localStorage.getItem(NS_KEY) !== "off";
-  } catch {
-    return true;
-  }
+  return micProcessing(readVoicePrefs()).noiseSuppression;
 }
 
 // ---- voice pre-warming ------------------------------------------------------------------------
@@ -308,15 +304,19 @@ export function CallProvider({ children }: { children: ReactNode }) {
       }
 
       const lk = await loadLivekit();
-      const ns = readNoiseSuppression();
+      // Devices and mic processing from Settings → Voice & Video.
+      const prefs = readVoicePrefs();
+      const processing = micProcessing(prefs);
+      const ns = processing.noiseSuppression;
       // Low-data mode: 360p camera, 720p/5fps screen share, and low simulcast layers for others.
       const lowData = getLowDataMode();
       const next = new lk.Room({
         adaptiveStream: true,
         dynacast: true,
         disconnectOnPageLeave: true,
-        audioCaptureDefaults: { echoCancellation: true, noiseSuppression: ns, autoGainControl: true },
-        videoCaptureDefaults: { resolution: (lowData ? lk.VideoPresets.h360 : lk.VideoPresets.h720).resolution },
+        audioCaptureDefaults: { ...processing, ...(prefs.inputId ? { deviceId: prefs.inputId } : {}) },
+        ...(prefs.outputId ? { audioOutput: { deviceId: prefs.outputId } } : {}),
+        videoCaptureDefaults: { resolution: (lowData ? lk.VideoPresets.h360 : lk.VideoPresets.h720).resolution, ...(prefs.cameraId ? { deviceId: prefs.cameraId } : {}) },
         publishDefaults: {
           simulcast: true,
           screenShareEncoding: (lowData ? lk.ScreenSharePresets.h720fps5 : lk.ScreenSharePresets.h1080fps15).encoding,
@@ -402,6 +402,8 @@ export function CallProvider({ children }: { children: ReactNode }) {
       setState((s) => ({ ...s, status: "connected", noiseSuppression: ns, muted: false, deafened: false }));
       try {
         await next.localParticipant.setMicrophoneEnabled(true);
+        // Push to talk: the mic is published (permission asked now) but stays off until the key is held.
+        if (readVoicePrefs().pushToTalk) await next.localParticipant.setMicrophoneEnabled(false);
       } catch (err) {
         toast.error(mediaErrorMessage(err, "mic"));
         setState((s) => ({ ...s, muted: true }));
@@ -479,16 +481,14 @@ export function CallProvider({ children }: { children: ReactNode }) {
 
   const toggleNoiseSuppression = useCallback(async () => {
     const enabled = !state.noiseSuppression;
-    try {
-      localStorage.setItem(NS_KEY, enabled ? "on" : "off");
-    } catch {
-      // ignore storage failures
-    }
+    // Flipping it by hand makes your input profile Custom, keeping the other processing as it was.
+    const processing = micProcessing(readVoicePrefs());
+    setVoicePrefs({ profile: "custom", echoCancellation: processing.echoCancellation, autoGainControl: processing.autoGainControl, noiseSuppression: enabled });
     setState((s) => ({ ...s, noiseSuppression: enabled }));
     const mic = roomRef.current?.localParticipant.getTrackPublication("microphone" as Parameters<Room["localParticipant"]["getTrackPublication"]>[0])?.audioTrack;
     if (mic && "restartTrack" in mic) {
       await (mic as { restartTrack: (o: MediaTrackConstraints) => Promise<void> })
-        .restartTrack({ noiseSuppression: enabled, echoCancellation: true, autoGainControl: true })
+        .restartTrack({ ...processing, noiseSuppression: enabled })
         .catch(() => toast.error("Couldn't apply noise suppression."));
     }
     toast(enabled ? "Noise suppression: on" : "Noise suppression: off");
@@ -563,6 +563,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => () => void roomRef.current?.disconnect(), []);
 
+
   // A full page reload mid-call (a new deploy makes the next navigation one, or a refresh) would drop
   // you: remember the call when the page unloads and rejoin it, muted/deafened as you were.
   const latest = useRef(state);
@@ -595,6 +596,34 @@ export function CallProvider({ children }: { children: ReactNode }) {
     // Once per page load.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Push to talk (Settings → Voice & Video): hold the key to talk; typing in a text box never triggers it.
+  const prefs = useSyncExternalStore(subscribeVoicePrefs, readVoicePrefs, () => DEFAULT_VOICE_PREFS);
+  const pttActive = state.status === "connected" && prefs.pushToTalk && !state.muted;
+  useEffect(() => {
+    if (!pttActive) return;
+    const typing = (t: EventTarget | null) => t instanceof HTMLElement && (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName));
+    const down = (e: KeyboardEvent) => {
+      if (e.code !== prefs.pttKey || e.repeat || typing(e.target)) return;
+      void roomRef.current?.localParticipant.setMicrophoneEnabled(true);
+    };
+    const release = () => void roomRef.current?.localParticipant.setMicrophoneEnabled(false);
+    const up = (e: KeyboardEvent) => {
+      if (e.code === prefs.pttKey) release();
+    };
+    release();
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    // Switching windows while holding the key would otherwise leave the mic on.
+    window.addEventListener("blur", release);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", release);
+      // Push to talk switched off mid-call: back to an open mic (unless you're muted).
+      if (!readVoicePrefs().pushToTalk && latest.current.status === "connected" && !latest.current.muted) void roomRef.current?.localParticipant.setMicrophoneEnabled(true);
+    };
+  }, [pttActive, prefs.pttKey]);
 
   const value = useMemo<CallContextValue>(
     () => ({

@@ -6,12 +6,20 @@ import { AccountSettings, type AccountInfo } from "@/components/profile/AccountS
 import { ProfileBuilder } from "@/components/profile/ProfileBuilder";
 import { ReportProblemForm } from "@/components/profile/ReportProblemForm";
 import { SignOutButton } from "@/components/profile/SignOutButton";
+import { VoiceSettings } from "@/components/profile/VoiceSettings";
+import { LowDataToggle } from "@/components/profile/LowDataToggle";
+import { SoundSettings } from "@/components/profile/SoundSettings";
+import { ThemePicker } from "@/components/profile/ThemePicker";
 import { cn } from "@/lib/utils";
 import type { SettingsTab } from "./SettingsDialog";
 
 const TABS: { id: SettingsTab; label: string }[] = [
   { id: "profile", label: "My Profile" },
   { id: "account", label: "Account & Sessions" },
+  { id: "appearance", label: "Appearance" },
+  { id: "voice", label: "Voice & Video" },
+  { id: "notifications", label: "Notifications" },
+  { id: "advanced", label: "Advanced" },
   { id: "report", label: "Report a problem" },
 ];
 
@@ -67,6 +75,35 @@ export function SettingsPanels({ account, tab, onTab }: { account: AccountInfo; 
           <>
             <h2 className="mb-6 text-2xl font-extrabold text-white">My Profile</h2>
             <ProfileBuilder profile={me} mode="settings" />
+          </>
+        ) : tab === "appearance" ? (
+          <>
+            <h2 className="mb-6 text-2xl font-extrabold text-white">Appearance</h2>
+            <section className="space-y-3">
+              <h3 className="text-sm font-semibold text-white">Theme</h3>
+              <ThemePicker className="max-w-md" />
+            </section>
+          </>
+        ) : tab === "notifications" ? (
+          <>
+            <h2 className="mb-6 text-2xl font-extrabold text-white">Notifications</h2>
+            <section className="space-y-3">
+              <h3 className="text-sm font-semibold text-white">Sounds</h3>
+              <SoundSettings className="max-w-md" />
+            </section>
+          </>
+        ) : tab === "advanced" ? (
+          <>
+            <h2 className="mb-6 text-2xl font-extrabold text-white">Advanced</h2>
+            <section className="space-y-3">
+              <h3 className="text-sm font-semibold text-white">Data saver</h3>
+              <LowDataToggle className="max-w-md" />
+            </section>
+          </>
+        ) : tab === "voice" ? (
+          <>
+            <h2 className="mb-6 text-2xl font-extrabold text-white">Voice &amp; Video</h2>
+            <VoiceSettings />
           </>
         ) : tab === "report" ? (
           <>
