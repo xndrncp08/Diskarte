@@ -3,7 +3,8 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createFakeSupabase } from "../fixtures/fake-supabase";
-import { MEMBER_ID, MOD_ID, OWNER_ID, SERVER_ID, ServerFixture, makeMember } from "../fixtures/server";
+import { MEMBER_ID, MOD_ID, OWNER_ID, SERVER_ID, ServerFixture, makeChannel, makeMember } from "../fixtures/server";
+import type { Channel } from "@/lib/servers";
 
 const tables: Record<string, unknown[]> = {};
 const fake = createFakeSupabase(tables);
@@ -19,9 +20,11 @@ const { ConfirmHost } = await import("@/components/ui/ConfirmHost");
 const members = [makeMember(OWNER_ID, "Kapitan", "admin"), makeMember(MOD_ID, "Maria", "moderator"), makeMember(MEMBER_ID, "Juan", "member")];
 const VIP = { id: "50000000-0000-4000-8000-000000000001", server_id: SERVER_ID, name: "VIP", color: "#facc15", position: 0, created_at: "2026-10-01T00:00:00Z" };
 
-function Shell({ children, myRole = "admin" as const }: { children: ReactNode; myRole?: "admin" }) {
+const upsertChannel = vi.fn();
+
+function Shell({ children, myRole = "admin" as const, channels }: { children: ReactNode; myRole?: "admin"; channels?: Channel[] }) {
   return (
-    <ServerFixture members={members} myRole={myRole} overrides={{ roles: [VIP], memberRoles: new Map([[MOD_ID, [VIP.id]]]) }}>
+    <ServerFixture members={members} myRole={myRole} overrides={{ roles: [VIP], memberRoles: new Map([[MOD_ID, [VIP.id]]]), upsertChannel, ...(channels ? { channels } : {}) }}>
       {children}
       <ConfirmHost />
     </ServerFixture>
@@ -49,7 +52,7 @@ describe("roles", () => {
 describe("private channels", () => {
   it("lets an admin make a channel private and pick the people and roles let in", async () => {
     const user = userEvent.setup();
-    vi.mocked(serverActions.createChannelAction).mockResolvedValueOnce({ ok: true, data: { channelId: "20000000-0000-4000-8000-000000000099" } } as never);
+    vi.mocked(serverActions.createChannelAction).mockResolvedValueOnce({ ok: true, data: { channelId: "20000000-0000-4000-8000-000000000099", channel: { id: "20000000-0000-4000-8000-000000000099" } } } as never);
     render(
       <Shell>
         <ChannelDialog open onClose={() => undefined} />
@@ -73,5 +76,40 @@ describe("private channels", () => {
         roleIds: [VIP.id],
       }),
     );
+  });
+});
+
+describe("creating a channel", () => {
+  it("puts a voice channel where voice channels live, and shows it in the sidebar at once", async () => {
+    const user = userEvent.setup();
+    // Like Diskarte HQ: everything under one custom category.
+    const hq = [makeChannel("20000000-0000-4000-8000-0000000000a1", "announcements", "text", 0, "Diskarte HQ"), makeChannel("20000000-0000-4000-8000-0000000000a3", "Lounge", "voice", 1, "Hangout")];
+    const created = { ...makeChannel("20000000-0000-4000-8000-0000000000b1", "Tambayan", "voice", 2, "Hangout") };
+    vi.mocked(serverActions.createChannelAction).mockResolvedValueOnce({ ok: true, data: { channelId: created.id, channel: created } } as never);
+    render(
+      <Shell channels={hq}>
+        <ChannelDialog open onClose={() => undefined} />
+      </Shell>,
+    );
+    expect(screen.getByLabelText("Category")).toHaveValue("Diskarte HQ");
+    await user.click(screen.getByRole("radio", { name: /Voice/ }));
+    expect(screen.getByLabelText("Category")).toHaveValue("Hangout");
+    await user.type(screen.getByLabelText("Channel name"), "Tambayan");
+    await user.click(screen.getByRole("button", { name: "Create" }));
+    await waitFor(() => expect(serverActions.createChannelAction).toHaveBeenCalledWith(expect.objectContaining({ type: "voice", category: "Hangout" })));
+    await waitFor(() => expect(upsertChannel).toHaveBeenCalledWith(created));
+  });
+
+  it("keeps a category you typed when you switch the type", async () => {
+    const user = userEvent.setup();
+    render(
+      <Shell>
+        <ChannelDialog open onClose={() => undefined} />
+      </Shell>,
+    );
+    await user.clear(screen.getByLabelText("Category"));
+    await user.type(screen.getByLabelText("Category"), "Games");
+    await user.click(screen.getByRole("radio", { name: /Voice/ }));
+    expect(screen.getByLabelText("Category")).toHaveValue("Games");
   });
 });
