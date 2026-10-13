@@ -50,11 +50,19 @@ export function useFriends() {
   return { friends, blocked, profiles, reload: load };
 }
 
+/** The later of two ISO timestamps (a missing one loses). */
+export function latest(a: string, b: string | undefined): string {
+  return b && Date.parse(b) > Date.parse(a) ? b : a;
+}
+
 /** My DM conversations (1:1 and groups), newest first, with unread state. */
 export function useConversations() {
   const supabase = useSupabase();
   const { me } = useMe();
   const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
+  // What this tab has read, so a reload that races the read receipt (or a device clock behind the
+  // server's) can never turn a conversation you've seen back to unread.
+  const readMarks = useRef(new Map<string, string>());
 
   const load = useCallback(async () => {
     const { data: mine } = await supabase.from("dm_participants").select("conversation_id, last_read_at").eq("user_id", me.id);
@@ -79,7 +87,7 @@ export function useConversations() {
           name: c.name,
           ownerId: c.owner_id,
           lastMessageAt: c.last_message_at,
-          lastReadAt: readAt.get(c.id) ?? c.created_at,
+          lastReadAt: latest(readAt.get(c.id) ?? c.created_at, readMarks.current.get(c.id)),
           others: (participants ?? [])
             .filter((p) => p.conversation_id === c.id && p.user_id !== me.id)
             .map((p) => byId.get(p.user_id))
@@ -101,10 +109,18 @@ export function useConversations() {
     );
   }, [supabase, me.id, load, reload]);
 
-  /** Optimistically clear the unread dot (the RPC updates last_read_at). */
+  /** Clear the unread dot now (read up to at least the newest message you saw); the RPC saves it. */
   const markRead = useCallback(
     (conversationId: string) => {
-      setConversations((prev) => prev?.map((c) => (c.id === conversationId ? { ...c, lastReadAt: new Date().toISOString() } : c)) ?? prev);
+      setConversations(
+        (prev) =>
+          prev?.map((c) => {
+            if (c.id !== conversationId) return c;
+            const mark = latest(new Date().toISOString(), c.lastMessageAt);
+            readMarks.current.set(c.id, latest(mark, readMarks.current.get(c.id)));
+            return { ...c, lastReadAt: latest(c.lastReadAt, mark) };
+          }) ?? prev,
+      );
       void supabase.rpc("mark_dm_read", { p_conversation_id: conversationId });
     },
     [supabase],
