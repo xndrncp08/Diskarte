@@ -286,6 +286,11 @@ export interface Database {
       member_warnings: TableDef<{ id: string; server_id: string; user_id: string; moderator_id: string | null; reason: string; acknowledged_at: string | null; created_at: string }, never>;
       privacy_settings: TableDef<{ user_id: string; friend_requests_from: string; updated_at: string }, { user_id?: string; friend_requests_from: string; updated_at?: string }>;
       server_invites: TableDef<{ code: string; server_id: string; created_by: string | null; max_uses: number | null; uses: number; expires_at: string | null; created_at: string }, never>;
+      server_events: TableDef<
+        { id: string; server_id: string; channel_id: string | null; location: string | null; name: string; description: string; starts_at: string; ends_at: string | null; created_by: string | null; created_at: string },
+        { id?: string; server_id: string; channel_id?: string | null; location?: string | null; name: string; description?: string; starts_at: string; ends_at?: string | null; created_by?: string | null }
+      >;
+      event_rsvps: TableDef<{ event_id: string; server_id: string; user_id: string; created_at: string }, { event_id: string; server_id: string; user_id?: string }>;
       saved_messages: TableDef<{ user_id: string; message_id: string; saved_at: string }, { user_id?: string; message_id: string; saved_at?: string }>;
       channel_reads: TableDef<{ user_id: string; channel_id: string; last_read_at: string }, never>;
       message_mentions: TableDef<{ message_id: string; user_id: string; channel_id: string; server_id: string; created_at: string }, never>;
