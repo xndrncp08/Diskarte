@@ -13,9 +13,11 @@ const STATUS_TEXT = { connecting: "Connectingâ€¦", reconnecting: "Reconnectingâ€
 /** Floating active-call widget pinned above the user panel while you browse other channels. */
 export function CallDock() {
   const call = useCall();
-  // In a minimized sidebar the tray's call controls take over; one set at a time.
+  // In a minimized sidebar the tray's call controls take over; one set at a time. Unmounted outright:
+  // an exit animation inside a hidden panel may never finish, leaving two docks in the page.
   const navHidden = useNavHidden();
-  const visible = call.status !== "idle" && call.target && !navHidden;
+  const visible = call.status !== "idle" && call.target;
+  if (navHidden) return null;
   return (
     <AnimatePresence>
       {visible && (
