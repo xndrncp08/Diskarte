@@ -422,34 +422,49 @@ export function ChannelSidebar() {
 
   return (
     <aside aria-label={`${server.name} channels`} className="flex h-full w-60 shrink-0 flex-col max-md:glass max-md:border-y-0 max-md:border-l-0 md:w-full md:overflow-hidden">
-      <Menu
-        label="Server menu"
-        items={serverItems}
-        trigger={({ toggle, open, id }) => (
+      <div className="flex border-b border-white/5">
+        <Menu
+          label="Server menu"
+          className="min-w-0 flex-1"
+          items={serverItems}
+          trigger={({ toggle, open, id }) => (
+            <button
+              type="button"
+              onClick={toggle}
+              aria-expanded={open}
+              aria-controls={id}
+              aria-haspopup="menu"
+              className="flex h-12 w-full items-center justify-between px-4 text-left font-bold text-white transition-colors hover:bg-white/5"
+              data-testid="server-menu"
+              {...headerMenu.triggerProps}
+            >
+              <span className="flex min-w-0 items-center gap-1.5">
+                <span className="truncate">{server.name}</span>
+                {server.is_system && <BadgeCheck className="size-4 shrink-0 fill-sun text-abyss" aria-label="Official server" />}
+                {boost > 0 && (
+                  <span className="shrink-0 rounded bg-fuchsia-500/20 px-1 font-pixel text-[8px] text-fuchsia-200" title={`Boost level ${boost}`}>
+                    <Rocket className="mr-0.5 inline size-2.5" aria-hidden />
+                    {boost}
+                  </span>
+                )}
+              </span>
+              <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} aria-hidden />
+            </button>
+          )}
+        />
+        {!server.is_system && (
           <button
             type="button"
-            onClick={toggle}
-            aria-expanded={open}
-            aria-controls={id}
-            aria-haspopup="menu"
-            className="flex h-12 w-full items-center justify-between border-b border-white/5 px-4 text-left font-bold text-white transition-colors hover:bg-white/5"
-            data-testid="server-menu"
-            {...headerMenu.triggerProps}
+            aria-label="Invite people"
+            title="Invite people"
+            onClick={() => setDialog({ kind: "invite" })}
+            className="flex w-11 shrink-0 items-center justify-center text-slate-400 transition-colors hover:bg-white/5 hover:text-sun"
+            data-testid="invite-button"
           >
-            <span className="flex min-w-0 items-center gap-1.5">
-              <span className="truncate">{server.name}</span>
-              {server.is_system && <BadgeCheck className="size-4 shrink-0 fill-sun text-abyss" aria-label="Official server" />}
-              {boost > 0 && (
-                <span className="shrink-0 rounded bg-fuchsia-500/20 px-1 font-pixel text-[8px] text-fuchsia-200" title={`Boost level ${boost}`}>
-                  <Rocket className="mr-0.5 inline size-2.5" aria-hidden />
-                  {boost}
-                </span>
-              )}
-            </span>
-            <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} aria-hidden />
+            <UserPlus className="size-4" aria-hidden />
           </button>
         )}
-      />
+      </div>
       <ContextMenu menu={headerMenu} label="Server menu">
         <ContextMenuItems items={serverItems} />
       </ContextMenu>
@@ -466,6 +481,20 @@ export function ChannelSidebar() {
         >
           <Radio className="size-4" aria-hidden /> LFG Board
         </Link>
+        {/* Just you here: the one thing worth doing next is bringing people in. */}
+        {!server.is_system && members.length === 1 && (
+          <button
+            type="button"
+            onClick={() => setDialog({ kind: "invite" })}
+            className="mb-3 flex w-full items-center gap-2.5 rounded-lg border border-dashed border-sun/40 bg-sun/5 px-2.5 py-2 text-left transition-colors hover:border-sun/70 hover:bg-sun/10"
+          >
+            <UserPlus className="size-5 shrink-0 text-sun" aria-hidden />
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-white">Invite your friends</span>
+              <span className="block text-xs text-slate-400">It&apos;s quiet in here. Send them a link.</span>
+            </span>
+          </button>
+        )}
         {categories.map(({ category, channels: list }) => (
           <section key={category} className="mb-4">
             <CategoryHeader
