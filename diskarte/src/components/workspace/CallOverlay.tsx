@@ -32,7 +32,7 @@ export function CallOverlay() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 12, scale: 0.98 }}
           transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-          className="pointer-events-auto flex h-12 items-center gap-3 rounded-2xl border border-white/10 bg-slate-900/70 py-1.5 pl-3 pr-1.5 shadow-2xl shadow-black/50 backdrop-blur-2xl"
+          className="pointer-events-auto flex h-12 shrink-0 items-center gap-3 rounded-2xl border border-white/10 bg-slate-900/70 py-1.5 pl-3 pr-1.5 shadow-2xl shadow-black/50 backdrop-blur-2xl"
           data-testid="call-dock"
         >
           <ConnectionMeter />
@@ -58,7 +58,8 @@ export function CallOverlay() {
             </Tooltip>
           )}
           <MixerButton size="sm" />
-          <div className="shrink-0">
+          {/* The small controls stretch to fill their row, so the row needs a real width (6 buttons). */}
+          <div className="w-52 shrink-0">
             <VoiceControls size="sm" />
           </div>
         </motion.div>
