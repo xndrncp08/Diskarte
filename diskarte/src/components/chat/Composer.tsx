@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Loader2, Lock, Paperclip, SendHorizontal, ShieldAlert, Turtle, X } from "lucide-react";
+import { Clock, FileText, Loader2, Lock, Paperclip, SendHorizontal, ShieldAlert, Turtle, X } from "lucide-react";
 import { useCallback, useEffect, useEffectEvent, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useMe } from "@/components/providers/MeProvider";
@@ -75,7 +75,7 @@ export function Composer({
   /** Replaces the input with a notice (e.g. verification required). */
   locked?: string | null;
   /** "read-only": a creators-only channel (lock icon); "verification": confirm your account first. */
-  lockKind?: "read-only" | "verification";
+  lockKind?: "read-only" | "verification" | "timeout";
 }) {
   const supabase = useSupabase();
   const { me } = useMe();
@@ -208,7 +208,7 @@ export function Composer({
     return (
       <div className="px-4 pb-safe">
         <p className="glass mb-6 flex items-center gap-3 rounded-xl px-4 py-3 text-sm text-slate-300" role="status" data-testid="composer-locked" data-lock={lockKind}>
-          {lockKind === "read-only" ? <Lock className="size-5 shrink-0 text-sun" aria-hidden /> : <ShieldAlert className="size-5 shrink-0 text-sun" aria-hidden />}
+          {lockKind === "timeout" ? <Clock className="size-5 shrink-0 text-sun" aria-hidden /> : lockKind === "read-only" ? <Lock className="size-5 shrink-0 text-sun" aria-hidden /> : <ShieldAlert className="size-5 shrink-0 text-sun" aria-hidden />}
           {locked}
         </p>
       </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canManageMember, channelSchema, firstTextChannel, groupChannels, hasRole, inviteUrl, parseInviteInput, serverInitials, serverSchema, slugifyChannelName } from "@/lib/servers";
+import { canManageMember, channelSchema, isTimedOut, firstTextChannel, groupChannels, hasRole, inviteUrl, parseInviteInput, serverInitials, serverSchema, slugifyChannelName } from "@/lib/servers";
 import { channels, makeChannel } from "../../../tests/fixtures/server";
 
 describe("slugifyChannelName", () => {
@@ -44,14 +44,21 @@ describe("roles", () => {
 
   it("mirrors the database RBAC guards", () => {
     const target = (role: "member" | "moderator" | "admin", user_id = "t") => ({ role, user_id });
-    expect(canManageMember({ actorRole: "admin", actorId: "a", target: target("member"), ownerId: owner })).toEqual({ changeRole: true, kick: true, rename: true });
-    expect(canManageMember({ actorRole: "admin", actorId: "a", target: target("admin"), ownerId: owner })).toEqual({ changeRole: false, kick: false, rename: false });
-    expect(canManageMember({ actorRole: "admin", actorId: owner, target: target("admin"), ownerId: owner })).toEqual({ changeRole: true, kick: true, rename: true });
-    expect(canManageMember({ actorRole: "moderator", actorId: "m", target: target("member"), ownerId: owner })).toEqual({ changeRole: false, kick: true, rename: true });
-    expect(canManageMember({ actorRole: "moderator", actorId: "m", target: target("moderator"), ownerId: owner })).toEqual({ changeRole: false, kick: false, rename: false });
-    expect(canManageMember({ actorRole: "member", actorId: "x", target: target("member"), ownerId: owner })).toEqual({ changeRole: false, kick: false, rename: false });
-    expect(canManageMember({ actorRole: "admin", actorId: "a", target: target("admin", owner), ownerId: owner })).toEqual({ changeRole: false, kick: false, rename: false });
-    expect(canManageMember({ actorRole: "admin", actorId: "a", target: target("admin", "a"), ownerId: owner })).toEqual({ changeRole: false, kick: false, rename: true });
+    expect(canManageMember({ actorRole: "admin", actorId: "a", target: target("member"), ownerId: owner })).toEqual({ timeout: true, changeRole: true, kick: true, rename: true });
+    expect(canManageMember({ actorRole: "admin", actorId: "a", target: target("admin"), ownerId: owner })).toEqual({ timeout: false, changeRole: false, kick: false, rename: false });
+    expect(canManageMember({ actorRole: "admin", actorId: owner, target: target("admin"), ownerId: owner })).toEqual({ timeout: false, changeRole: true, kick: true, rename: true });
+    expect(canManageMember({ actorRole: "moderator", actorId: "m", target: target("member"), ownerId: owner })).toEqual({ timeout: true, changeRole: false, kick: true, rename: true });
+    expect(canManageMember({ actorRole: "moderator", actorId: "m", target: target("moderator"), ownerId: owner })).toEqual({ timeout: false, changeRole: false, kick: false, rename: false });
+    expect(canManageMember({ actorRole: "member", actorId: "x", target: target("member"), ownerId: owner })).toEqual({ timeout: false, changeRole: false, kick: false, rename: false });
+    expect(canManageMember({ actorRole: "admin", actorId: "a", target: target("admin", owner), ownerId: owner })).toEqual({ timeout: false, changeRole: false, kick: false, rename: false });
+    expect(canManageMember({ actorRole: "admin", actorId: "a", target: target("admin", "a"), ownerId: owner })).toEqual({ timeout: false, changeRole: false, kick: false, rename: true });
+  });
+
+  it("knows when a timeout is still running", () => {
+    expect(isTimedOut({ timeout_until: "2026-10-13T10:00:00Z" }, Date.parse("2026-10-13T09:59:00Z"))).toBe(true);
+    expect(isTimedOut({ timeout_until: "2026-10-13T10:00:00Z" }, Date.parse("2026-10-13T10:00:01Z"))).toBe(false);
+    expect(isTimedOut({ timeout_until: null })).toBe(false);
+    expect(isTimedOut(undefined)).toBe(false);
   });
 });
 

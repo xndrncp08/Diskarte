@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence } from "framer-motion";
-import { Ban, BellRing, Crown, PictureInPicture2, Shield, ShieldCheck, UserMinus, UserRound } from "lucide-react";
+import { Ban, BellRing, Clock, Crown, PictureInPicture2, Shield, ShieldCheck, UserMinus, UserRound } from "lucide-react";
 import { useEffect, useRef, useState, useTransition, type ReactNode, type RefObject } from "react";
 import { toast } from "sonner";
 import { banMemberAction, setBadgeAction } from "@/actions/moderation";
@@ -23,7 +23,7 @@ import { closeMemberProfile, openMemberProfile, useOpenMemberProfiles } from "./
 import { InertWhenExiting } from "@/components/ui/InertWhenExiting";
 import { BADGES, BADGE_KINDS } from "@/lib/community";
 import { statusTone, visibleStatus, type PresencePayload } from "@/lib/presence";
-import { canManageMember, ROLE_LABEL, ROLE_RANK, type MemberWithProfile } from "@/lib/servers";
+import { canManageMember, isTimedOut, ROLE_LABEL, ROLE_RANK, type MemberWithProfile } from "@/lib/servers";
 import type { BadgeKind, MemberRole } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
 
@@ -309,6 +309,7 @@ function MemberRow({ member, presence, dim }: { member: MemberWithProfile; prese
               {member.nickname ?? member.profile.display_name}
             </span>
             <RoleIcon role={member.role} owner={member.user_id === server.owner_id} />
+            {isTimedOut(member) && <Clock className="size-3.5 shrink-0 text-amber-300" aria-label="Timed out" />}
             <Badges badges={badges.get(member.user_id)} compact />
           </span>
           {status !== "offline" && (customStatus || customEmoji) && (

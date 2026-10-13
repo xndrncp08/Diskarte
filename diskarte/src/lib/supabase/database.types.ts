@@ -113,6 +113,8 @@ export interface Database {
           role: MemberRole;
           nickname: string | null;
           joined_at: string;
+          /** Timed out (can't send, react or join voice) until then. Only timeout_member() sets it. */
+          timeout_until?: string | null;
         };
         Insert: {
           server_id: string;
@@ -280,6 +282,7 @@ export interface Database {
       >;
       polls: TableDef<{ message_id: string; channel_id: string; options: string[]; multi: boolean; ends_at: string; created_at: string }, never>;
       poll_votes: TableDef<{ message_id: string; channel_id: string; user_id: string; option: number; created_at: string }, never>;
+      member_warnings: TableDef<{ id: string; server_id: string; user_id: string; moderator_id: string | null; reason: string; acknowledged_at: string | null; created_at: string }, never>;
       saved_messages: TableDef<{ user_id: string; message_id: string; saved_at: string }, { user_id?: string; message_id: string; saved_at?: string }>;
       channel_reads: TableDef<{ user_id: string; channel_id: string; last_read_at: string }, never>;
       message_mentions: TableDef<{ message_id: string; user_id: string; channel_id: string; server_id: string; created_at: string }, never>;
@@ -482,6 +485,10 @@ export interface Database {
       mark_channel_read: { Args: { p_channel: string }; Returns: undefined };
       mark_channel_unread: { Args: { p_channel: string; p_from: string }; Returns: undefined };
       create_poll: { Args: { p_channel: string; p_question: string; p_options: string[]; p_multi: boolean; p_hours: number }; Returns: string };
+      timeout_member: { Args: { p_server: string; p_user: string; p_minutes: number; p_reason?: string }; Returns: string };
+      remove_timeout: { Args: { p_server: string; p_user: string }; Returns: undefined };
+      warn_member: { Args: { p_server: string; p_user: string; p_reason: string }; Returns: string };
+      acknowledge_warnings: { Args: { p_server: string }; Returns: undefined };
       vote_poll: { Args: { p_message: string; p_options: number[] }; Returns: undefined };
       search_messages: {
         Args: { p_server: string; p_query: string; p_channel?: string | null; p_author?: string | null; p_before?: string | null; p_limit?: number };

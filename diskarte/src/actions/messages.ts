@@ -79,6 +79,7 @@ export async function sendMessageAction(input: z.input<typeof sendSchema>): Prom
   }
   if (error?.message?.includes("VERIFICATION_REQUIRED")) return { ok: false, error: messageError(error.message), code: "VERIFICATION_REQUIRED" };
   if (error?.message?.includes("READ_ONLY_CHANNEL")) return { ok: false, error: messageError(error.message), code: "READ_ONLY_CHANNEL" };
+  if (error?.message?.includes("TIMED_OUT")) return { ok: false, error: messageError(error.message), code: "TIMED_OUT" };
   return { ok: false, error: messageError(error?.message) };
 }
 

@@ -1,10 +1,10 @@
 "use client";
 
-import { ArrowRightLeft, AtSign, Ban, BellRing, Gavel, HeadphoneOff, MessageCircle, MicOff, PencilLine, Phone, PhoneOff, ShieldOff, StickyNote, UserCheck, UserMinus, UserPlus, UserRound, UserX, VideoOff, VolumeX } from "lucide-react";
+import { AlarmClockOff, ArrowRightLeft, AtSign, Ban, BellRing, Clock, Gavel, TriangleAlert, HeadphoneOff, MessageCircle, MicOff, PencilLine, Phone, PhoneOff, ShieldOff, StickyNote, UserCheck, UserMinus, UserPlus, UserRound, UserX, VideoOff, VolumeX } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useContext } from "react";
 import { toast } from "sonner";
-import { banMemberAction } from "@/actions/moderation";
+import { banMemberAction, removeTimeoutAction, timeoutMemberAction, warnMemberAction } from "@/actions/moderation";
 import { assignRoleAction, kickMemberAction, setMemberRoleAction, setNicknameAction } from "@/actions/servers";
 import { openDmAction } from "@/actions/social";
 import { moderateVoiceAction } from "@/actions/voice";
@@ -19,7 +19,8 @@ import type { MenuItem } from "@/components/ui/Menu";
 import { CallContext } from "@/components/voice/CallProvider";
 import { useRinger } from "@/components/voice/IncomingCalls";
 import { useFriendActions } from "@/hooks/useFriendActions";
-import { canManageMember, ROLE_LABEL } from "@/lib/servers";
+import { TIMEOUT_OPTIONS } from "@/lib/community";
+import { canManageMember, isTimedOut, ROLE_LABEL } from "@/lib/servers";
 import { requestMention } from "@/lib/mention";
 import { friendStatus } from "@/lib/social";
 
@@ -93,6 +94,7 @@ export function PersonMenuItems({
   const name = member?.nickname ?? person.display_name;
   const status = social ? friendStatus(me.id, person.id, social.friends, social.blocked) : null;
   const perms = serverCtx && member ? canManageMember({ actorRole: serverCtx.myRole, actorId: me.id, target: member, ownerId: serverCtx.server.owner_id }) : null;
+  const timedOut = isTimedOut(member);
   const viewProfile = onViewProfile ?? (member ? () => openMemberProfile(member.user_id, anchor) : undefined);
 
   function setRole(role: (typeof ROLES)[number]) {
@@ -265,6 +267,58 @@ export function PersonMenuItems({
           }),
       };
     }),
+    {
+      label: "Remove Timeout",
+      icon: <AlarmClockOff className={icon} aria-hidden />,
+      group: "Moderation",
+      hidden: !perms?.timeout || !timedOut,
+      onSelect: () =>
+        void removeTimeoutAction({ serverId: serverCtx!.server.id, userId: person.id }).then((result) =>
+          result.ok ? toast.success(`${name} can talk again.`) : toast.error(result.error ?? "Couldn't remove the timeout."),
+        ),
+    },
+    ...TIMEOUT_OPTIONS.map((o) => ({
+      label: o.label,
+      icon: <Clock className={icon} aria-hidden />,
+      group: `Timeout ${name}`,
+      hidden: !perms?.timeout || timedOut,
+      onSelect: () =>
+        confirmAction({
+          title: `Timeout ${name} for ${o.label}?`,
+          body: "They can still read, but can't send messages, react or join voice until it ends.",
+          confirmLabel: "Timeout",
+          reason: { label: "Reason (optional)", placeholder: "Spamming, off-topic…" },
+          onConfirm: async (reason) => {
+            const result = await timeoutMemberAction({ serverId: serverCtx!.server.id, userId: person.id, minutes: o.minutes, reason });
+            if (!result.ok) {
+              toast.error(result.error ?? "Couldn't time them out.");
+              return false;
+            }
+            toast.success(`Timed out ${name} for ${o.label}.`);
+          },
+        }),
+    })),
+    {
+      label: `Warn ${name}`,
+      icon: <TriangleAlert className={icon} aria-hidden />,
+      group: "Moderation",
+      hidden: !perms?.kick,
+      onSelect: () =>
+        confirmAction({
+          title: `Warn ${name}?`,
+          body: "They'll see this the next time they open the server. It's logged in the audit log.",
+          confirmLabel: "Warn",
+          reason: { label: "Reason", placeholder: "Keep it friendly, no spam.", maxLength: 300 },
+          onConfirm: async (reason) => {
+            const result = await warnMemberAction({ serverId: serverCtx!.server.id, userId: person.id, reason });
+            if (!result.ok) {
+              toast.error(result.error ?? "Couldn't warn them.");
+              return false;
+            }
+            toast.success(`Warned ${name}.`);
+          },
+        }),
+    },
     {
       label: `Kick ${name}`,
       icon: <UserMinus className={icon} aria-hidden />,

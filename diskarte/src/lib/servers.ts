@@ -18,6 +18,11 @@ export function hasRole(role: MemberRole | null | undefined, min: MemberRole) {
 }
 
 /** Mirrors the members_guard / members_delete_guard triggers so the UI only offers allowed actions. */
+/** Timed out right now? (Lapsed timeouts stay in the row until the next one.) */
+export function isTimedOut(member: { timeout_until?: string | null } | null | undefined, now = Date.now()) {
+  return !!member?.timeout_until && Date.parse(member.timeout_until) > now;
+}
+
 export function canManageMember(opts: { actorRole: MemberRole | null; actorId: string; target: { role: MemberRole; user_id: string }; ownerId: string | null }) {
   const { actorRole, actorId, target, ownerId } = opts;
   const isSelf = target.user_id === actorId;
@@ -25,6 +30,8 @@ export function canManageMember(opts: { actorRole: MemberRole | null; actorId: s
   const actorIsOwner = actorId === ownerId;
   return {
     changeRole: actorRole === "admin" && !isSelf && !targetIsOwner && (target.role !== "admin" || actorIsOwner),
+    // Discord's rule: admins (and the owner) can't be timed out.
+    timeout: target.role !== "admin" && !isSelf && !targetIsOwner && hasRole(actorRole, "moderator") && (ROLE_RANK[target.role] < ROLE_RANK[actorRole ?? "member"] || actorIsOwner),
     kick: !isSelf && !targetIsOwner && hasRole(actorRole, "moderator") && (ROLE_RANK[target.role] < ROLE_RANK[actorRole ?? "member"] || actorIsOwner),
     // Same rule as members_guard: yourself, or moderators renaming someone below them (owners anyone).
     rename: isSelf || (hasRole(actorRole, "moderator") && (ROLE_RANK[target.role] < ROLE_RANK[actorRole ?? "member"] || actorIsOwner)),
