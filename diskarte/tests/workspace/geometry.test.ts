@@ -12,7 +12,9 @@ import {
   raisePanel,
   reflowPanels,
   settleOnGrid,
+  fillGap,
   magnetize,
+  makeRoom,
   snapMove,
   snapResize,
   toFraction,
@@ -29,6 +31,26 @@ describe("clampRect", () => {
 
   it("never asks for more than a tiny canvas has", () => {
     expect(clampRect({ x: 0, y: 0, w: 50, h: 50 }, { x: 0, y: 0, w: 300, h: 200 })).toEqual({ x: 0, y: 0, w: 300, h: 200 });
+  });
+});
+
+describe("fillGap / makeRoom", () => {
+  const nav: Rect = { x: 0, y: 0, w: 320, h: 800 };
+  const main: Rect = { x: 332, y: 0, w: 500, h: 800 };
+  const voice: Rect = { x: 844, y: 0, w: 356, h: 800 };
+
+  it("grows the neighbour into a closed panel's space", () => {
+    expect(fillGap({ nav, main }, "nav")).toEqual({ main: { x: 0, y: 0, w: 832, h: 800 } });
+  });
+
+  it("meets in the middle when there are neighbours on both sides", () => {
+    const out = fillGap({ nav, main, voice }, "main");
+    expect(out.nav).toEqual({ x: 0, y: 0, w: 582 - 6, h: 800 });
+    expect(out.voice).toEqual({ x: 582 + 6, y: 0, w: 1200 - 588, h: 800 });
+  });
+
+  it("gives the space back when the panel returns", () => {
+    expect(makeRoom({ nav, main: { x: 0, y: 0, w: 832, h: 800 } }, "nav")).toEqual({ main: { x: 332, y: 0, w: 500, h: 800 } });
   });
 });
 

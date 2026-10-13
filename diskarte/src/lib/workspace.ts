@@ -255,6 +255,60 @@ export function coupledNeighbours(rects: Rects, id: PanelId, side: Side, thresho
   });
 }
 
+function overlapArea(a: Rect, b: Rect) {
+  return Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+}
+
+/**
+ * A panel is closing or minimizing: the panels docked beside it grow into its space (both sides
+ * meet in the middle), side by side first, then above / below. Returns only the panels that change;
+ * nothing changes if growing would cover a panel that isn't moving.
+ */
+export function fillGap(rects: Rects, gone: PanelId): Rects {
+  const r = rects[gone];
+  if (!r) return {};
+  for (const [lead, trail] of [["w", "e"], ["n", "s"]] as const) {
+    const axis = AXIS[lead];
+    const size = SIZE[axis];
+    const before = coupledNeighbours(rects, gone, lead);
+    const after = coupledNeighbours(rects, gone, trail);
+    if (!before.length && !after.length) continue;
+    const mid = before.length && after.length ? r[axis] + r[size] / 2 : null;
+    const end = mid === null ? r[axis] + r[size] : mid - GAP / 2;
+    const start = mid === null ? r[axis] : mid + GAP / 2;
+    const out: Rects = {};
+    for (const id of before) out[id] = { ...rects[id]!, [size]: end - rects[id]![axis] };
+    for (const id of after) out[id] = { ...rects[id]!, [axis]: start, [size]: rects[id]![axis] + rects[id]![size] - start };
+    const still = PANEL_IDS.filter((id) => id !== gone && !out[id] && rects[id]).map((id) => rects[id]!);
+    if (Object.values(out).some((c) => still.some((o) => overlapArea(c!, o) > 0))) continue;
+    return out;
+  }
+  return {};
+}
+
+/**
+ * A panel is coming back: panels now covering its spot give way — each keeps its largest part
+ * beside, above or below it (with the docking gap) that still meets the minimum size.
+ */
+export function makeRoom(rects: Rects, back: PanelId): Rects {
+  const r = rects[back];
+  if (!r) return {};
+  const out: Rects = {};
+  for (const id of PANEL_IDS) {
+    const o = rects[id];
+    if (id === back || !o || overlapArea(o, r) === 0) continue;
+    const parts: Rect[] = [
+      { ...o, w: r.x - GAP - o.x },
+      { ...o, x: r.x + r.w + GAP, w: o.x + o.w - (r.x + r.w + GAP) },
+      { ...o, h: r.y - GAP - o.y },
+      { ...o, y: r.y + r.h + GAP, h: o.y + o.h - (r.y + r.h + GAP) },
+    ].filter((c) => c.w >= MIN_W && c.h >= MIN_H);
+    const best = parts.sort((a, b) => b.w * b.h - a.w * a.h)[0];
+    if (best) out[id] = best;
+  }
+  return out;
+}
+
 /** Mirror rectangles across the canvas on one axis, so leading-edge cases reuse the trailing logic. */
 function mirror(rects: Rects, axis: "x" | "y", bounds: Rect): Rects {
   const size = SIZE[axis];
