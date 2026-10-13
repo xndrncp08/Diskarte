@@ -113,7 +113,8 @@ describe("incoming call pop-up", () => {
     const popup = await screen.findByRole("dialog", { name: `Incoming call from ${MARIA.display_name}` });
     expect(popup).toHaveTextContent(`${MARIA.display_name} is video calling you`);
     expect(popup.querySelector(`[data-preset='${MARIA.avatar_preset}']`)).not.toBeNull(); // caller's salakot avatar
-    expect(sfx).toHaveBeenCalledWith("ring");
+    // The chime starts in an effect right after the pop-up renders.
+    await waitFor(() => expect(sfx).toHaveBeenCalledWith("ring"));
 
     await user.click(within(popup).getByRole("button", { name: "Accept" }));
     expect(calls.respondRingAction).toHaveBeenCalledWith({ ringId: incoming.id, accept: true });

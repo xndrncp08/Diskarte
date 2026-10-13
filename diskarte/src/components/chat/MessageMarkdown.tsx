@@ -1,4 +1,4 @@
-import { memo, type ReactNode } from "react";
+import { memo, useState, type ReactNode } from "react";
 import { CircleCheck, Info, OctagonAlert, TriangleAlert } from "lucide-react";
 import ReactMarkdown, { defaultUrlTransform, type Components } from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
@@ -48,6 +48,62 @@ export function remarkGlyphs() {
     node.children = next;
   };
   return (tree: MdNode) => walk(tree);
+}
+
+/**
+ * Remark plugin: `||spoiler||` (Discord's) hides what's between the bars — even across **bold** or
+ * links — until it's clicked. Unpaired bars stay as text. Code spans aren't text, so `||` there is literal.
+ */
+export function remarkSpoilers() {
+  const MARK = Symbol("mark");
+  const walk = (node: MdNode) => {
+    if (!node.children) return;
+    node.children.forEach(walk);
+    if (!node.children.some((c) => c.type === "text" && c.value?.includes("||"))) return;
+    // Split text on || into marks, then pair them up.
+    const parts: (MdNode | typeof MARK)[] = [];
+    for (const child of node.children) {
+      if (child.type !== "text" || !child.value?.includes("||")) {
+        parts.push(child);
+        continue;
+      }
+      child.value.split("||").forEach((piece, i) => {
+        if (i > 0) parts.push(MARK);
+        if (piece) parts.push({ type: "text", value: piece });
+      });
+    }
+    const out: MdNode[] = [];
+    let open: MdNode[] | null = null;
+    for (const part of parts) {
+      if (part === MARK) {
+        if (open) {
+          out.push({ type: "spoiler", data: { hName: "spoiler" }, children: open });
+          open = null;
+        } else open = [];
+      } else (open ?? out).push(part);
+    }
+    if (open) out.push({ type: "text", value: "||" }, ...open);
+    node.children = out;
+  };
+  return (tree: MdNode) => walk(tree);
+}
+
+/** Hidden until clicked (or Enter/Space), like Discord. */
+function Spoiler({ children }: { children?: ReactNode }) {
+  const [shown, setShown] = useState(false);
+  return (
+    <span
+      role={shown ? undefined : "button"}
+      tabIndex={shown ? undefined : 0}
+      aria-label={shown ? undefined : "Spoiler, click to show"}
+      onClick={() => setShown(true)}
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setShown(true))}
+      className={shown ? "rounded bg-white/10 px-0.5" : "cursor-pointer select-none rounded bg-slate-600 px-0.5 text-transparent [&_*]:invisible"}
+      data-spoiler={shown ? "shown" : "hidden"}
+    >
+      {children}
+    </span>
+  );
 }
 
 export type CalloutTone = "info" | "success" | "warning" | "critical";
@@ -113,6 +169,7 @@ const components = {
       </div>
     );
   },
+  spoiler: ({ children }: { children?: ReactNode }) => <Spoiler>{children}</Spoiler>,
   glyph: ({ node }: { node?: { properties?: { code?: unknown } } }) => <Glyph code={String(node?.properties?.code ?? "")} label className="size-[1.25em]" />,
   a: ({ href, children }: { href?: string; children?: React.ReactNode }) =>
     href ? (
@@ -133,7 +190,7 @@ export const MessageMarkdown = memo(function MessageMarkdown({ content }: { cont
   return (
     <div className="chat-markdown text-[15px] text-slate-200">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkHtmlAsText, remarkCallouts, remarkGlyphs]}
+        remarkPlugins={[remarkGfm, remarkHtmlAsText, remarkCallouts, remarkSpoilers, remarkGlyphs]}
         rehypePlugins={[[rehypeHighlight, { detect: false }]]}
         skipHtml
         disallowedElements={["img", "iframe", "script", "style"]}
