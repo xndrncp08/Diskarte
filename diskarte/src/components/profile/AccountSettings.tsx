@@ -1,5 +1,7 @@
 import { ChangePasswordForm } from "@/components/profile/ChangePasswordForm";
 import { DangerZone } from "@/components/profile/DangerZone";
+import { DataExport } from "@/components/profile/DataExport";
+import { TwoFactorSettings } from "@/components/profile/TwoFactorSettings";
 import { SignOutButton } from "@/components/profile/SignOutButton";
 
 export interface AccountInfo {
@@ -50,7 +52,15 @@ export function AccountSettings({ account, username, createdAt }: { account: Acc
         </section>
       )}
 
+      <section className="glass rounded-2xl p-5">
+        <h2 className="mb-3 font-pixel text-[10px] text-sun">TWO-FACTOR</h2>
+        <TwoFactorSettings />
+      </section>
 
+      <section className="glass rounded-2xl p-5">
+        <h2 className="mb-3 font-pixel text-[10px] text-sun">YOUR DATA</h2>
+        <DataExport username={username} />
+      </section>
 
       <section className="glass rounded-2xl p-5">
         <h2 className="mb-1 font-pixel text-[10px] text-sun">SESSIONS</h2>

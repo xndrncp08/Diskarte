@@ -29,6 +29,14 @@ create table auth.sessions (
   updated_at timestamptz default now()
 );
 
+-- Supabase Auth's MFA factors (only what the policies read).
+create table auth.mfa_factors (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  factor_type text not null default 'totp',
+  status text not null default 'unverified'
+);
+
 create function auth.uid() returns uuid
 language sql stable
 as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
