@@ -55,6 +55,15 @@ export function isWatchState(value: unknown): value is WatchState {
 }
 
 /** postMessage command for the embedded player. */
-export function playerCommand(func: "playVideo" | "pauseVideo" | "seekTo" | "mute" | "unMute", args: unknown[] = []) {
+export function playerCommand(func: "playVideo" | "pauseVideo" | "seekTo" | "mute" | "unMute" | "setVolume", args: unknown[] = []) {
   return JSON.stringify({ event: "command", func, args });
+}
+
+/** 75 → "1:15", 3725 → "1:02:05". */
+export function formatClock(seconds: number) {
+  const t = Math.max(0, Math.floor(seconds));
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
+  const s = String(t % 60).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
 }
