@@ -143,7 +143,9 @@ export function useMenuKeyboard(open: boolean, panel: RefObject<HTMLElement | nu
     };
     document.addEventListener("keydown", onKey);
     const frame = requestAnimationFrame(() =>
-      (panel.current?.querySelector<HTMLElement>("[aria-checked=true]") ?? panel.current?.querySelector<HTMLElement>(ITEM_SELECTOR))?.focus(),
+      // A menu that starts with choices (the status switcher) opens on the current one; a menu that
+      // starts with actions (the server menu) opens on its first row.
+      (panel.current?.querySelector(ITEM_SELECTOR)?.getAttribute("role") === "menuitemradio" ? (panel.current.querySelector<HTMLElement>("[aria-checked=true]") ?? panel.current.querySelector<HTMLElement>(ITEM_SELECTOR)) : panel.current?.querySelector<HTMLElement>(ITEM_SELECTOR))?.focus(),
     );
     return () => {
       cancelAnimationFrame(frame);

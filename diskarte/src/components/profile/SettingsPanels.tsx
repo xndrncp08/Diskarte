@@ -8,6 +8,7 @@ import { ReportProblemForm } from "@/components/profile/ReportProblemForm";
 import { SignOutButton } from "@/components/profile/SignOutButton";
 import { VoiceSettings } from "@/components/profile/VoiceSettings";
 import { LowDataToggle } from "@/components/profile/LowDataToggle";
+import { NotificationSettings } from "@/components/profile/NotificationSettings";
 import { SoundSettings } from "@/components/profile/SoundSettings";
 import { ThemePicker } from "@/components/profile/ThemePicker";
 import { cn } from "@/lib/utils";
@@ -87,6 +88,10 @@ export function SettingsPanels({ account, tab, onTab }: { account: AccountInfo; 
         ) : tab === "notifications" ? (
           <>
             <h2 className="mb-6 text-2xl font-extrabold text-white">Notifications</h2>
+            <section className="mb-8 space-y-3">
+              <h3 className="text-sm font-semibold text-white">Alerts</h3>
+              <NotificationSettings />
+            </section>
             <section className="space-y-3">
               <h3 className="text-sm font-semibold text-white">Sounds</h3>
               <SoundSettings className="max-w-md" />

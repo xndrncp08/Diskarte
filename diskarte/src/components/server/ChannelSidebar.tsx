@@ -28,6 +28,7 @@ import { useVoiceRoster } from "@/hooks/useVoiceRoster";
 import { useChannelUnread } from "@/components/providers/UnreadsProvider";
 import { readChannelMutes, serverMutes, subscribeChannelMutes, toggleChannelMute, toggleHideMuted } from "@/lib/channel-mute";
 import { rememberChannel } from "@/lib/last-channel";
+import { DEFAULT_NOTIFY_PREFS, readNotifyPrefs, serverNotify, setServerNotify, subscribeNotifyPrefs } from "@/lib/notify-prefs";
 import { boostLevel } from "@/lib/community";
 import { signalLevel, type PresencePayload } from "@/lib/presence";
 import { groupChannels, hasRole, type Channel, type MemberWithProfile } from "@/lib/servers";
@@ -385,6 +386,7 @@ export function ChannelSidebar() {
   const [leaving, startLeave] = useTransition();
   const canManageChannels = hasRole(myRole, "moderator");
   const mutes = serverMutes(useSyncExternalStore(subscribeChannelMutes, readChannelMutes, () => "{}"), server.id);
+  const notify = serverNotify(useSyncExternalStore(subscribeNotifyPrefs, readNotifyPrefs, () => DEFAULT_NOTIFY_PREFS), server.id);
   const isOwner = server.owner_id === me.id;
 
   function leave() {
@@ -426,6 +428,10 @@ export function ChannelSidebar() {
       },
     },
     { label: "Hide Muted Channels", icon: <EyeOff className="size-4" aria-hidden />, multi: true, checked: mutes.hide, onSelect: () => toggleHideMuted(server.id) },
+    // Discord's Notification Settings: what alerts you from this server, and muting it.
+    { label: "Only @mentions", group: "Notification Settings", checked: notify.level === "mentions", onSelect: () => setServerNotify(server.id, { level: "mentions" }) },
+    { label: "Nothing", group: "Notification Settings", checked: notify.level === "nothing", onSelect: () => setServerNotify(server.id, { level: "nothing" }) },
+    { label: "Mute Server", group: "Notification Settings", icon: <BellOff className="size-4" aria-hidden />, multi: true, checked: notify.muted, onSelect: () => setServerNotify(server.id, { muted: !notify.muted }) },
     {
       label: "Create channel",
       icon: <Plus className="size-4" aria-hidden />,

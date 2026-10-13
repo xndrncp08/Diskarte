@@ -11,6 +11,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import type { Server } from "@/lib/servers";
 import { lastChannelIn, readLastChannels, subscribeLastChannels } from "@/lib/last-channel";
 import { readChannelMutes, serverMutes, subscribeChannelMutes } from "@/lib/channel-mute";
+import { DEFAULT_NOTIFY_PREFS, readNotifyPrefs, serverNotify, subscribeNotifyPrefs } from "@/lib/notify-prefs";
 import { serverUnread, useOptionalUnreads } from "@/components/providers/UnreadsProvider";
 import { cn } from "@/lib/utils";
 import { NotificationHub } from "@/components/workspace/NotificationHub";
@@ -53,7 +54,10 @@ function MentionBadge({ count, top = false }: { count: number; top?: boolean }) 
 function useServerBadge(serverId: string) {
   const unreads = useOptionalUnreads();
   const mutes = serverMutes(useSyncExternalStore(subscribeChannelMutes, readChannelMutes, () => "{}"), serverId);
-  return unreads ? serverUnread(unreads.channels, serverId, mutes.muted) : { unread: false, mentions: 0 };
+  const muted = serverNotify(useSyncExternalStore(subscribeNotifyPrefs, readNotifyPrefs, () => DEFAULT_NOTIFY_PREFS), serverId).muted;
+  const badge = unreads ? serverUnread(unreads.channels, serverId, mutes.muted) : { unread: false, mentions: 0 };
+  // A muted server shows no unread pill (mentions still count, like Discord).
+  return { ...badge, unread: badge.unread && !muted, muted };
 }
 
 type RailEntry = Server & { entryChannelId?: string | null };
@@ -92,7 +96,9 @@ function RailServer({ server, active, official = false }: { server: RailEntry; a
         <Tooltip label={server.name}>
           <Link href={href} aria-label={label} aria-current={active ? "page" : undefined} draggable={false} className="group relative flex" {...menu.triggerProps}>
             <Pill active={active} unread={badge.unread} />
-            <ServerIcon server={server} active={active} />
+            <span className={cn("flex", badge.muted && !active && "opacity-40")}>
+              <ServerIcon server={server} active={active} />
+            </span>
             <MentionBadge count={badge.mentions} />
           </Link>
         </Tooltip>
