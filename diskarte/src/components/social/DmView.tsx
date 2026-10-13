@@ -22,7 +22,7 @@ import { useDirectChat } from "@/hooks/useDirectChat";
 import type { ChatMessage } from "@/hooks/useChannelChat";
 import { isGroupedWithPrevious, sameDay } from "@/lib/chat-format";
 import type { Server } from "@/lib/servers";
-import { conversationTitle, type SocialProfile } from "@/lib/social";
+import { conversationTitle, withNickname, type SocialProfile } from "@/lib/social";
 import type { Tables } from "@/lib/supabase/database.types";
 import { WorkspacePanel } from "@/components/workspace/WorkspacePanel";
 import { ConversationAvatar, HomeSidebar } from "./HomeSidebar";
@@ -45,11 +45,11 @@ export function DmView({
   canSend: boolean;
 }) {
   const { me } = useMe();
-  const { markRead, reloadConversations } = useSocial();
+  const { markRead, reloadConversations, nicknames } = useSocial();
   const { setNavOpen } = useShellUI();
   const call = useCall();
   const router = useRouter();
-  const others = useMemo(() => participants.filter((p) => p.id !== me.id), [participants, me.id]);
+  const others = useMemo(() => participants.filter((p) => p.id !== me.id).map((p) => withNickname(p, nicknames)), [participants, me.id, nicknames]);
   const title = conversationTitle({ kind: conversation.kind, name: conversation.name, others });
   const chat = useDirectChat(conversation.id, initial, participants, () => markRead(conversation.id));
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
@@ -68,7 +68,7 @@ export function DmView({
   }, [chat.messages.length]);
 
   const byId = new Map(chat.messages.map((m) => [m.id, m]));
-  const names = new Map(participants.map((p) => [p.id, p.display_name]));
+  const names = new Map(participants.map((p) => [p.id, withNickname(p, nicknames).display_name]));
   const ringer = useRinger();
   const prewarm = usePrewarm();
   const callTarget = { kind: "dm" as const, serverId: "", serverName: "Direct Message", channelId: conversation.id, channelName: title };

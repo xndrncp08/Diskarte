@@ -48,6 +48,7 @@ export const serverActions = {
   deleteServerAction: vi.fn(async () => ({ ok: true })),
   setMemberRoleAction: vi.fn(async () => ({ ok: true })),
   kickMemberAction: vi.fn(async () => ({ ok: true })),
+  setNicknameAction: vi.fn(async () => ({ ok: true })),
   createServerAction: vi.fn(async () => ({ ok: true, data: { serverId: "10000000-0000-4000-8000-000000000001" } })),
   joinServerAction: vi.fn(async () => ({ ok: true, data: { serverId: "10000000-0000-4000-8000-000000000001" } })),
 };

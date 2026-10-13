@@ -9,7 +9,7 @@ export interface ConfirmRequest {
   confirmLabel?: string;
   danger?: boolean;
   /** Adds an optional free-text reason (e.g. a ban reason), passed to `onConfirm`. */
-  reason?: { label: string; placeholder?: string; maxLength?: number };
+  reason?: { label: string; placeholder?: string; maxLength?: number; initial?: string };
   /** Resolve `false` to keep the dialog open (the action failed and already said why). */
   onConfirm: (reason: string) => Promise<boolean | void> | boolean | void;
 }
@@ -50,11 +50,11 @@ export function ConfirmHost() {
   );
   const [pending, startTransition] = useTransition();
   const [reason, setReason] = useState("");
-  // A new request starts with an empty reason (state reset during render, keyed on the request).
+  // A new request starts with its initial text (state reset during render, keyed on the request).
   const [shown, setShown] = useState<ConfirmRequest | null>(null);
   if (request !== shown) {
     setShown(request);
-    setReason("");
+    setReason(request?.reason?.initial ?? "");
   }
 
   function confirm() {

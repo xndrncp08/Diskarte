@@ -44,14 +44,14 @@ describe("roles", () => {
 
   it("mirrors the database RBAC guards", () => {
     const target = (role: "member" | "moderator" | "admin", user_id = "t") => ({ role, user_id });
-    expect(canManageMember({ actorRole: "admin", actorId: "a", target: target("member"), ownerId: owner })).toEqual({ changeRole: true, kick: true });
-    expect(canManageMember({ actorRole: "admin", actorId: "a", target: target("admin"), ownerId: owner })).toEqual({ changeRole: false, kick: false });
-    expect(canManageMember({ actorRole: "admin", actorId: owner, target: target("admin"), ownerId: owner })).toEqual({ changeRole: true, kick: true });
-    expect(canManageMember({ actorRole: "moderator", actorId: "m", target: target("member"), ownerId: owner })).toEqual({ changeRole: false, kick: true });
-    expect(canManageMember({ actorRole: "moderator", actorId: "m", target: target("moderator"), ownerId: owner })).toEqual({ changeRole: false, kick: false });
-    expect(canManageMember({ actorRole: "member", actorId: "x", target: target("member"), ownerId: owner })).toEqual({ changeRole: false, kick: false });
-    expect(canManageMember({ actorRole: "admin", actorId: "a", target: target("admin", owner), ownerId: owner })).toEqual({ changeRole: false, kick: false });
-    expect(canManageMember({ actorRole: "admin", actorId: "a", target: target("admin", "a"), ownerId: owner })).toEqual({ changeRole: false, kick: false });
+    expect(canManageMember({ actorRole: "admin", actorId: "a", target: target("member"), ownerId: owner })).toEqual({ changeRole: true, kick: true, rename: true });
+    expect(canManageMember({ actorRole: "admin", actorId: "a", target: target("admin"), ownerId: owner })).toEqual({ changeRole: false, kick: false, rename: false });
+    expect(canManageMember({ actorRole: "admin", actorId: owner, target: target("admin"), ownerId: owner })).toEqual({ changeRole: true, kick: true, rename: true });
+    expect(canManageMember({ actorRole: "moderator", actorId: "m", target: target("member"), ownerId: owner })).toEqual({ changeRole: false, kick: true, rename: true });
+    expect(canManageMember({ actorRole: "moderator", actorId: "m", target: target("moderator"), ownerId: owner })).toEqual({ changeRole: false, kick: false, rename: false });
+    expect(canManageMember({ actorRole: "member", actorId: "x", target: target("member"), ownerId: owner })).toEqual({ changeRole: false, kick: false, rename: false });
+    expect(canManageMember({ actorRole: "admin", actorId: "a", target: target("admin", owner), ownerId: owner })).toEqual({ changeRole: false, kick: false, rename: false });
+    expect(canManageMember({ actorRole: "admin", actorId: "a", target: target("admin", "a"), ownerId: owner })).toEqual({ changeRole: false, kick: false, rename: true });
   });
 });
 

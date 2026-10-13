@@ -112,3 +112,44 @@ export function useConversations() {
 
   return { conversations, reload: load, markRead };
 }
+
+/** My private nicknames for other people (friends list and DMs only), and a setter; empty clears one. */
+export function useFriendNicknames() {
+  const supabase = useSupabase();
+  const { me } = useMe();
+  const [nicknames, setNicknames] = useState<ReadonlyMap<string, string>>(() => new Map());
+
+  useEffect(() => {
+    let live = true;
+    // A missing table (migration not applied yet) just means no nicknames.
+    void supabase
+      .from("friend_nicknames")
+      .select("target_id, nickname")
+      .then(({ data }) => {
+        if (live && data) setNicknames(new Map(data.map((r) => [r.target_id, r.nickname])));
+      });
+    return () => {
+      live = false;
+    };
+  }, [supabase, me.id]);
+
+  const setNickname = useCallback(
+    async (targetId: string, raw: string) => {
+      const nickname = raw.replace(/[\u0000-\u001F\u007F]/g, "").trim().slice(0, 32);
+      const { error } = nickname
+        ? await supabase.from("friend_nicknames").upsert({ owner_id: me.id, target_id: targetId, nickname })
+        : await supabase.from("friend_nicknames").delete().eq("owner_id", me.id).eq("target_id", targetId);
+      if (error) return false;
+      setNicknames((prev) => {
+        const next = new Map(prev);
+        if (nickname) next.set(targetId, nickname);
+        else next.delete(targetId);
+        return next;
+      });
+      return true;
+    },
+    [supabase, me.id],
+  );
+
+  return { nicknames, setNickname };
+}

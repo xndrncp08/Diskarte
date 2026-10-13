@@ -1,10 +1,10 @@
 "use client";
 
-import { AtSign, Ban, BellRing, Gavel, MessageCircle, ShieldOff, UserCheck, UserMinus, UserPlus, UserRound, UserX } from "lucide-react";
+import { AtSign, Ban, BellRing, Gavel, MessageCircle, PencilLine, ShieldOff, UserCheck, UserMinus, UserPlus, UserRound, UserX } from "lucide-react";
 import { useContext } from "react";
 import { toast } from "sonner";
 import { banMemberAction } from "@/actions/moderation";
-import { kickMemberAction, setMemberRoleAction } from "@/actions/servers";
+import { kickMemberAction, setMemberRoleAction, setNicknameAction } from "@/actions/servers";
 import { useMe } from "@/components/providers/MeProvider";
 import { useOptionalServer } from "@/components/providers/ServerProvider";
 import { useOptionalSocial } from "@/components/providers/SocialProvider";
@@ -77,6 +77,43 @@ export function PersonMenuItems({
     );
   }
 
+  function changeServerNickname() {
+    if (!serverCtx || !member) return;
+    confirmAction({
+      title: self ? "Change your nickname" : `Change ${name}'s nickname`,
+      body: `Everyone in ${serverCtx.server.name} sees it. Leave it empty to go back to ${self ? "your" : "their"} display name.`,
+      confirmLabel: "Save",
+      danger: false,
+      reason: { label: "Server nickname", placeholder: person.display_name, maxLength: 32, initial: member.nickname ?? "" },
+      onConfirm: async (nickname) => {
+        const result = await setNicknameAction({ serverId: serverCtx.server.id, userId: person.id, nickname });
+        if (!result.ok) {
+          toast.error(result.fieldErrors?.nickname ?? result.error ?? "Couldn't change the nickname.");
+          return false;
+        }
+        toast.success(nickname ? `Nickname set to ${nickname}.` : "Nickname cleared.");
+      },
+    });
+  }
+
+  function changeFriendNickname() {
+    if (!social) return;
+    confirmAction({
+      title: `Nickname for ${person.display_name}`,
+      body: "Only you see it, in your friends list and DMs. Leave it empty to remove it.",
+      confirmLabel: "Save",
+      danger: false,
+      reason: { label: "Friend nickname", placeholder: person.display_name, maxLength: 32, initial: social.nicknames.get(person.id) ?? "" },
+      onConfirm: async (nickname) => {
+        if (!(await social.setNickname(person.id, nickname))) {
+          toast.error("Couldn't save the nickname.");
+          return false;
+        }
+        toast.success(nickname ? `You call them ${nickname} now.` : "Nickname removed.");
+      },
+    });
+  }
+
   const items: MenuItem[] = [
     ...before,
     { label: "View profile", icon: <UserRound className={icon} aria-hidden />, onSelect: () => viewProfile?.(), hidden: !viewProfile },
@@ -91,6 +128,8 @@ export function PersonMenuItems({
       onSelect: () => void ring?.ring(name),
       hidden: !ring,
     },
+    { label: "Change nickname", icon: <PencilLine className={icon} aria-hidden />, onSelect: changeServerNickname, hidden: !member || !(self || perms?.rename) },
+    { label: social?.nicknames.has(person.id) ? "Edit friend nickname" : "Add friend nickname", icon: <PencilLine className={icon} aria-hidden />, onSelect: changeFriendNickname, hidden: status !== "accepted" },
     { label: "Copy username", icon: <AtSign className={icon} aria-hidden />, onSelect: () => void copyText(`@${person.username}`, "Username") },
     {
       label: "Remove Friend",
