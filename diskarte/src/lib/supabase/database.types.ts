@@ -182,6 +182,10 @@ export interface Database {
           sticker: string | null;
           thread_reply_count: number;
           thread_last_reply_at: string | null;
+          /** Set by create_poll(); the poll itself is in public.polls. (Absent before that migration.) */
+          has_poll?: boolean;
+          /** @everyone/@here from a moderator. */
+          mentions_everyone?: boolean;
           created_at: string;
         };
         Insert: {
@@ -274,6 +278,8 @@ export interface Database {
         { id: string; channel_id: string; server_id: string; user_id: string | null; role_id: string | null; created_at: string },
         { channel_id: string; server_id: string; user_id?: string | null; role_id?: string | null }
       >;
+      polls: TableDef<{ message_id: string; channel_id: string; options: string[]; multi: boolean; ends_at: string; created_at: string }, never>;
+      poll_votes: TableDef<{ message_id: string; channel_id: string; user_id: string; option: number; created_at: string }, never>;
       channel_reads: TableDef<{ user_id: string; channel_id: string; last_read_at: string }, never>;
       message_mentions: TableDef<{ message_id: string; user_id: string; channel_id: string; server_id: string; created_at: string }, never>;
       user_notes: TableDef<{ owner_id: string; target_id: string; note: string; updated_at: string }, { owner_id?: string; target_id: string; note: string; updated_at?: string }>;
@@ -473,6 +479,8 @@ export interface Database {
         Returns: { channel_id: string; server_id: string; last_message_at: string | null; read_at: string; mentions: number }[];
       };
       mark_channel_read: { Args: { p_channel: string }; Returns: undefined };
+      create_poll: { Args: { p_channel: string; p_question: string; p_options: string[]; p_multi: boolean; p_hours: number }; Returns: string };
+      vote_poll: { Args: { p_message: string; p_options: number[] }; Returns: undefined };
       search_messages: {
         Args: { p_server: string; p_query: string; p_channel?: string | null; p_author?: string | null; p_before?: string | null; p_limit?: number };
         Returns: Database["public"]["Tables"]["messages"]["Row"][];
