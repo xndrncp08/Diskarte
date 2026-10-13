@@ -183,7 +183,7 @@ function CanvasPanel({ id, title, children, className, closable = false }: Works
         id === "main" && "max-md:relative max-md:flex-1",
         (id === "voice" || id === "admin") && "max-md:hidden",
         // Tablet and up: a glass panel on the canvas.
-        "md:absolute md:left-0 md:top-0 md:z-[var(--pz)] md:h-[var(--ph)] md:w-[var(--pw)] md:flex-col md:overflow-hidden md:rounded-3xl md:border md:border-white/10 md:bg-slate-900/60 md:shadow-2xl md:shadow-black/50 md:backdrop-blur-2xl md:[transform:translate3d(var(--px),var(--py),0)]",
+        "md:absolute md:left-0 md:top-0 md:z-[var(--pz)] md:h-[var(--ph)] md:w-[var(--pw)] md:flex-col md:overflow-hidden md:rounded-3xl md:border md:border-white/10 md:bg-midnight/60 md:shadow-2xl md:shadow-black/50 md:backdrop-blur-2xl md:[transform:translate3d(var(--px),var(--py),0)]",
         "md:transition-[opacity,transform,scale,border-color] md:duration-300 md:ease-[cubic-bezier(0.23,1,0.32,1)] md:data-[dragging]:transition-none md:group-data-[resizing]/ws:transition-none md:data-[coupled]:border-sun/40 md:data-[snapped]:border-sun/50",
         !rect && "md:invisible",
         hidden && "md:pointer-events-none md:invisible md:scale-95 md:opacity-0",

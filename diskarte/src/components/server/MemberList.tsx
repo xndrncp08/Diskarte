@@ -294,7 +294,7 @@ function MemberRow({ member, presence, dim }: { member: MemberWithProfile; prese
         {...menu.triggerProps}
       >
         {/* Live presence drives the dot and the ring: other members see a status change instantly. */}
-        <span data-status-ring={tone} className={cn("shrink-0 rounded-full ring-2 ring-offset-2 ring-offset-[#0b1020] transition-shadow duration-300", STATUS_RING[tone])}>
+        <span data-status-ring={tone} className={cn("flex shrink-0 rounded-full ring-2 ring-offset-2 ring-offset-[#0b1020] transition-shadow duration-300", STATUS_RING[tone])}>
           <UserAvatar profile={member.profile} size={32} status={tone} ring="#0b1020" />
         </span>
         <span className="min-w-0 flex-1">

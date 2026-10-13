@@ -294,7 +294,7 @@ function WindowFrame({ onClose, title, id, remember = true, icon, anchor, classN
       exit={{ opacity: 0, scale: 0.98, y: 4, pointerEvents: "none" }}
       transition={{ duration: 0.16, ease: [0.23, 1, 0.32, 1] }}
       className={cn(
-        "fixed flex flex-col overflow-hidden border border-white/10 bg-slate-900/80 text-slate-100 shadow-2xl shadow-black/60 backdrop-blur-xl",
+        "fixed flex flex-col overflow-hidden border border-white/10 bg-midnight/80 text-slate-100 shadow-2xl shadow-black/60 backdrop-blur-xl",
         phone ? "pt-safe inset-0 rounded-none" : cn("max-h-[calc(100dvh-1rem)] max-w-[calc(100vw-1rem)] rounded-2xl", className),
         dragging && "select-none",
       )}

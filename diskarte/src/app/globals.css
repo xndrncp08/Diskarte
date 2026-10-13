@@ -49,8 +49,47 @@
 
 :root {
   color-scheme: dark;
-  --background: #020617;
+  --background: var(--color-abyss);
   --foreground: #f8fafc;
+  /* Second backdrop glow (the first follows the accent). */
+  --glow-2: rgb(0 56 168 / 0.22);
+}
+
+/* Themes (src/lib/theme.ts): accent + backdrop. Solar is the default @theme palette above. */
+html[data-theme="bayan"] {
+  --color-sun: #60a5fa;
+  --color-sun-deep: #3b82f6;
+  --color-midnight: #0c1a3a;
+  --color-abyss: #030a1c;
+  --glow-2: rgb(206 17 38 / 0.2);
+}
+html[data-theme="neon"] {
+  --color-sun: #22d3ee;
+  --color-sun-deep: #06b6d4;
+  --color-midnight: #071a22;
+  --color-abyss: #020a0e;
+  --glow-2: rgb(217 70 239 / 0.18);
+}
+html[data-theme="ube"] {
+  --color-sun: #c4b5fd;
+  --color-sun-deep: #a78bfa;
+  --color-midnight: #1a1033;
+  --color-abyss: #0a0616;
+  --glow-2: rgb(236 72 153 / 0.16);
+}
+html[data-theme="sampaguita"] {
+  --color-sun: #f9a8d4;
+  --color-sun-deep: #f472b6;
+  --color-midnight: #24101d;
+  --color-abyss: #0d050b;
+  --glow-2: rgb(255 248 236 / 0.08);
+}
+html[data-theme="kalikasan"] {
+  --color-sun: #4ade80;
+  --color-sun-deep: #22c55e;
+  --color-midnight: #0b1f17;
+  --color-abyss: #030b08;
+  --glow-2: rgb(250 204 21 / 0.12);
 }
 
 html,
@@ -124,7 +163,7 @@ body {
  * rounded, frosted panel hovering over the ambient backdrop instead of a rigid full-height column.
  */
 @utility float-card {
-  background-color: rgb(15 23 42 / 0.5);
+  background-color: color-mix(in srgb, var(--color-midnight) 50%, transparent);
   backdrop-filter: blur(40px) saturate(150%);
   -webkit-backdrop-filter: blur(40px) saturate(150%);
   border: 1px solid rgb(255 255 255 / 0.1);
@@ -135,7 +174,7 @@ body {
 }
 
 @utility glass-strong {
-  background-color: rgb(2 6 23 / 0.72);
+  background-color: color-mix(in srgb, var(--color-abyss) 72%, transparent);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
   border: 1px solid rgb(255 255 255 / 0.12);
@@ -256,9 +295,9 @@ body {
 /* Ambient page backdrop: Philippine-sun glow over midnight with a pixel grid. */
 .diskarte-backdrop {
   background:
-    radial-gradient(60rem 30rem at 85% -10%, rgb(255 184 0 / 0.16), transparent 60%),
-    radial-gradient(40rem 30rem at -10% 110%, rgb(0 56 168 / 0.22), transparent 60%),
-    linear-gradient(180deg, #0f172a 0%, #020617 100%);
+    radial-gradient(60rem 30rem at 85% -10%, color-mix(in srgb, var(--color-sun) 16%, transparent), transparent 60%),
+    radial-gradient(40rem 30rem at -10% 110%, var(--glow-2), transparent 60%),
+    linear-gradient(180deg, var(--color-midnight) 0%, var(--color-abyss) 100%);
 }
 
 .diskarte-backdrop::before {

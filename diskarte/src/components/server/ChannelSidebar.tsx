@@ -102,6 +102,8 @@ function ChannelRow({
   onDialog: (dialog: DialogState) => void;
 }) {
   const drag = useDragControls();
+  // A row dragged by its name must not also follow its link on release.
+  const dragged = useRef(false);
   const { server, removeChannel } = useServer();
   const { setNavOpen } = useShellUI();
   const prewarm = usePrewarm();
@@ -144,6 +146,7 @@ function ChannelRow({
       value={channel.id}
       dragListener={false}
       dragControls={drag}
+      onDragStart={() => (dragged.current = true)}
       onDragEnd={reorder?.onDragEnd}
       layout="position"
       className="relative rounded-md"
@@ -155,6 +158,16 @@ function ChannelRow({
       <div
         className={cn("group relative flex items-center rounded-md transition-colors", active ? "bg-white/10 text-white" : "text-slate-400 hover:bg-white/5 hover:text-slate-200")}
         {...menu.triggerProps}
+        onPointerDown={(e) => {
+          menu.triggerProps.onPointerDown(e);
+          dragged.current = false;
+          // Mice drag the whole row (it only lifts after a few pixels, so clicks still open it); touch keeps the grip so the list scrolls.
+          if (reorder && e.pointerType === "mouse" && e.button === 0 && !(e.target as Element).closest("button")) drag.start(e);
+        }}
+        onClickCapture={(e) => {
+          menu.triggerProps.onClickCapture(e);
+          if (dragged.current) e.preventDefault();
+        }}
       >
         {active && (
           <motion.span
@@ -168,6 +181,7 @@ function ChannelRow({
           href={`/tambayan/${server.id}/${channel.id}`}
           onClick={() => setNavOpen(false)}
           aria-current={active ? "page" : undefined}
+          draggable={false}
           className="flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1.5 text-[15px] pointer-coarse:min-h-11 pointer-coarse:py-2.5"
           data-channel-type={channel.type}
           {...(channel.type === "voice" ? prewarm({ serverId: server.id, serverName: server.name, channelId: channel.id, channelName: channel.name }) : {})}
