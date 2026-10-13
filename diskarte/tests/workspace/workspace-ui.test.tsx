@@ -346,7 +346,7 @@ describe("micro-roster drawer", () => {
 });
 
 describe("active call on the canvas", () => {
-  it("keeps the call in the floating overlay and a Voice panel while you browse, without touching the connection", async () => {
+  it("keeps the call controls in the sidebar (the tray when it is hidden) and a Voice panel while you browse, without touching the connection", async () => {
     const user = userEvent.setup();
     navigation.set(channelUrl(TAMBAYAN.id));
     livekitMock.tracks = [mockCameraPlaceholder(mockParticipant(OWNER_ID, { isLocal: true })), mockCameraPlaceholder(mockParticipant(MOD_ID))];
@@ -354,9 +354,9 @@ describe("active call on the canvas", () => {
     await user.click(await screen.findByTestId("join-voice"));
     const dock = await screen.findByTestId("call-dock");
     await waitFor(() => expect(dock).toHaveTextContent("Voice Connected"));
-    // One set of call controls: in the tray, not duplicated in the channel sidebar.
+    // One set of call controls: in the sidebar above the user panel, not duplicated in the tray.
     expect(screen.getAllByTestId("call-dock")).toHaveLength(1);
-    expect(within(screen.getByRole("region", { name: "Workspace tray" })).getByTestId("call-dock")).toBe(dock);
+    expect(panelEl("nav").contains(dock)).toBe(true);
     // On the call's own page the stage is the main view, so there's no separate Voice panel.
     expect(document.querySelector('[data-panel="voice"]')).toBeNull();
 
@@ -370,10 +370,13 @@ describe("active call on the canvas", () => {
     await user.click(screen.getByRole("button", { name: "Minimize Voice · Tambayan 1" }));
     expect(dock).toHaveTextContent("Voice Connected");
     expect(room.disconnect).not.toHaveBeenCalled();
-    await user.click(within(dock).getByRole("button", { name: "Show call" }));
+    // With the sidebar hidden the controls move to the tray, which can bring the call panel back.
+    await user.click(screen.getByRole("button", { name: "Minimize Channels" }));
+    const trayDock = await within(screen.getByRole("region", { name: "Workspace tray" })).findByTestId("call-dock");
+    await user.click(within(trayDock).getByRole("button", { name: "Show call" }));
     expect(panelEl("voice")).not.toHaveAttribute("data-minimized");
 
-    await user.click(within(dock).getByRole("button", { name: "Disconnect" }));
+    await user.click(within(trayDock).getByRole("button", { name: "Disconnect" }));
     await waitFor(() => expect(screen.queryByTestId("call-dock")).toBeNull());
     expect(room.disconnect).toHaveBeenCalled();
     expect(document.querySelector('[data-panel="voice"]')).toBeNull();

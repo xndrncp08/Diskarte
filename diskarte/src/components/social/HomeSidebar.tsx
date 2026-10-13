@@ -9,7 +9,6 @@ import { createGroupDmAction, leaveDmAction } from "@/actions/social";
 import { useSocial } from "@/components/providers/SocialProvider";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { WorkspacePanel } from "@/components/workspace/WorkspacePanel";
-import { useIsCanvas } from "@/components/workspace/WorkspaceProvider";
 import { ServerContextMenu } from "@/components/shell/ServerContextMenu";
 import { ServerIcon } from "@/components/shell/ServerIcon";
 import { useShellUI } from "@/components/shell/ShellUI";
@@ -130,7 +129,6 @@ export function HomeSidebar({ servers = [] }: { servers?: Server[] }) {
   const { conversations, friends, profiles } = useSocial();
   const { setNavOpen } = useShellUI();
   const pathname = usePathname();
-  const isCanvas = useIsCanvas();
   const [groupOpen, setGroupOpen] = useState(false);
   const incoming = friends?.filter((f) => f.status === "incoming").length ?? 0;
   const accepted = (friends ?? []).filter((f) => f.status === "accepted");
@@ -192,7 +190,7 @@ export function HomeSidebar({ servers = [] }: { servers?: Server[] }) {
           )}
         </nav>
         {/* On the canvas the call lives in the workspace tray. */}
-        {!isCanvas && <CallDock />}
+        <CallDock />
         <UserPanel />
       </aside>
       <Modal open={groupOpen} onClose={() => setGroupOpen(false)} title="New group DM">

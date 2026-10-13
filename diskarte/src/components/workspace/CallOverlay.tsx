@@ -9,20 +9,23 @@ import { ConnectionMeter } from "@/components/voice/ConnectionMeter";
 import { VoiceControls } from "@/components/voice/VoiceControls";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { useVoicePanelAvailable } from "./VoicePanel";
-import { useWorkspace, useWorkspaceStore } from "./WorkspaceProvider";
+import { useMountedPanels, useWorkspace, useWorkspaceStore } from "./WorkspaceProvider";
 
 const STATUS_TEXT = { connecting: "Connecting…", reconnecting: "Reconnecting…", connected: "Voice Connected", idle: "" } as const;
 
 /**
- * Floating active-call controls, docked in the canvas tray: they persist over every panel and page,
- * so you can minimize chat, switch channels or rearrange the workspace without dropping audio.
+ * Floating active-call controls in the canvas tray, for when the sidebar (and its call dock) is
+ * minimized or closed: the call stays in reach over every panel and page.
  */
 export function CallOverlay() {
   const call = useCall();
   const store = useWorkspaceStore();
   const voiceAvailable = useVoicePanelAvailable();
   const voiceHidden = useWorkspace((s) => s.panels.voice.minimized || s.panels.voice.closed);
-  const visible = call.status !== "idle" && call.target;
+  // The sidebar shows the call controls above your user panel; the tray takes over while it's hidden.
+  const navOpen = useWorkspace((s) => !s.panels.nav.minimized && !s.panels.nav.closed);
+  const sidebarShown = useMountedPanels().has("nav") && navOpen;
+  const visible = call.status !== "idle" && call.target && !sidebarShown;
 
   return (
     <AnimatePresence>

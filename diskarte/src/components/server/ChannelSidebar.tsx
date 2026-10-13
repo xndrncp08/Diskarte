@@ -21,7 +21,6 @@ import { confirmAction } from "@/components/ui/ConfirmHost";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ContextMenu, ContextMenuItems, copyText, useContextMenu } from "@/components/ui/ContextMenu";
 import { CallDock } from "@/components/voice/CallDock";
-import { useIsCanvas } from "@/components/workspace/WorkspaceProvider";
 import { useCall, usePrewarm } from "@/components/voice/CallProvider";
 import { Menu, type MenuItem } from "@/components/ui/Menu";
 import { useOnline } from "@/hooks/useOnline";
@@ -330,8 +329,6 @@ export function ChannelSidebar() {
   const { server, channels, myRole, health, members, badges, upsertChannel } = useServer();
   const { me } = useMe();
   const { setNavOpen } = useShellUI();
-  // Phones keep the call dock in the drawer; on the canvas the call controls float in the tray.
-  const isCanvas = useIsCanvas();
   const params = useParams<{ channelId?: string }>();
   const pathname = usePathname();
   const onLfg = pathname === `/tambayan/${server.id}/lfg`;
@@ -527,7 +524,7 @@ export function ChannelSidebar() {
         ))}
       </nav>
 
-      {!isCanvas && <CallDock />}
+      <CallDock />
       <div className="flex items-center justify-between border-t border-white/5 px-3 py-1.5">
         <span className="font-silk text-[10px] uppercase tracking-wider text-slate-500">Realtime</span>
         <SignalBars level={signalLevel(health, online)} showLabel />
