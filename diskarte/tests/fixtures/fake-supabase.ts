@@ -137,6 +137,11 @@ export function createFakeSupabase(tables: Record<string, unknown[]> = {}) {
         authed += 1;
       }),
     },
+    auth: {
+      mfa: {
+        listFactors: vi.fn(async () => ({ data: { all: [], totp: [], phone: [] }, error: null })),
+      },
+    },
     from: vi.fn((table: string) => builder(table)),
     rpc: vi.fn(async () => ({ data: null, error: null })),
     storage: {
