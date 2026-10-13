@@ -12,6 +12,20 @@ export const getSessionUser = cache(async () => {
   return data.user;
 });
 
+/**
+ * Signed in, has two-factor on, but this session hasn't passed the second step (aal1). The
+ * database refuses such sessions anyway (public.mfa_pre_request); this sends them to /mfa.
+ */
+export const needsSecondFactor = cache(async () => {
+  const user = await getSessionUser();
+  if (!user?.factors?.some((f) => f.status === "verified")) return false;
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  return data?.claims?.aal !== "aal2";
+});
+
+export const MFA_PATH = "/mfa";
+
 export const getCurrentProfile = cache(async (): Promise<Tables<"profiles"> | null> => {
   const user = await getSessionUser();
   if (!user) return null;
@@ -49,6 +63,7 @@ export function signedOutPath(nextPath: string) {
 export async function requireProfile(nextPath = "/tambayan") {
   const user = await getSessionUser();
   if (!user) redirect(signedOutPath(nextPath));
+  if (await needsSecondFactor()) redirect(`${MFA_PATH}?next=${encodeURIComponent(nextPath)}`);
   if (mustChangePassword(user) && nextPath !== "/reset-password") redirect(FIRST_LOGIN_PATH);
   const profile = await getCurrentProfile();
   if (!profile) {
