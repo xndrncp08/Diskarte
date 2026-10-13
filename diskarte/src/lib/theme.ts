@@ -1,6 +1,7 @@
 /**
  * UI themes: each one recolours the accent and the ambient backdrop (CSS in globals.css under
- * html[data-theme=…]). Saved per browser and applied before first paint by THEME_BOOT_SCRIPT.
+ * html[data-theme=…]). Saved in a cookie so the root layout renders it on <html>: no flash, and no
+ * client-only attribute for React to wipe when it re-renders the root.
  */
 export const THEMES = [
   { id: "solar", name: "Solar", accent: "#ffb800", base: "#0f172a" },
@@ -13,11 +14,11 @@ export const THEMES = [
 
 export type ThemeId = (typeof THEMES)[number]["id"];
 
-const STORAGE_KEY = "diskarte:theme";
+export const THEME_COOKIE = "diskarte-theme";
 const DEFAULT: ThemeId = "solar";
 const listeners = new Set<() => void>();
 
-function isTheme(value: unknown): value is ThemeId {
+export function isTheme(value: unknown): value is ThemeId {
   return THEMES.some((t) => t.id === value);
 }
 
@@ -28,11 +29,7 @@ export function getTheme(): ThemeId {
 
 export function setTheme(theme: ThemeId) {
   document.documentElement.dataset.theme = theme;
-  try {
-    localStorage.setItem(STORAGE_KEY, theme);
-  } catch {
-    // Private mode: keep it for this session only.
-  }
+  document.cookie = `${THEME_COOKIE}=${theme}; path=/; max-age=31536000; samesite=lax${location.protocol === "https:" ? "; secure" : ""}`;
   listeners.forEach((l) => l());
 }
 
@@ -42,6 +39,3 @@ export function subscribeTheme(listener: () => void) {
     listeners.delete(listener);
   };
 }
-
-/** Inline <head> script: sets data-theme from storage before the first paint, so there's no flash. */
-export const THEME_BOOT_SCRIPT = `try{var t=localStorage.getItem(${JSON.stringify(STORAGE_KEY)});if(${JSON.stringify(THEMES.map((t) => t.id))}.indexOf(t)>=0)document.documentElement.dataset.theme=t}catch(e){}`;
