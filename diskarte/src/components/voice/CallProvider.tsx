@@ -10,6 +10,7 @@ import { useBroadcastSpeaking, useServerPresence, useVoicePresence } from "@/com
 import type { SignalLevel } from "@/components/retro/SignalBars";
 import { getLowDataMode, subscribeLowDataMode } from "@/lib/low-data";
 import { playSfx } from "@/lib/sfx";
+import { recordDiagnostic } from "@/lib/diagnostics";
 
 export type CallStatus = "idle" | "connecting" | "connected" | "reconnecting";
 
@@ -373,10 +374,10 @@ export function CallProvider({ children }: { children: ReactNode }) {
           }
           handlers.forEach((h) => h(parsed, participant?.identity ?? null));
         })
-        .on(lk.RoomEvent.Reconnecting, () => setState((s) => ({ ...s, status: "reconnecting", quality: 1 })))
-        .on(lk.RoomEvent.Reconnected, () => setState((s) => ({ ...s, status: "connected" })))
+        .on(lk.RoomEvent.Reconnecting, () => { recordDiagnostic("call", "reconnecting"); setState((s) => ({ ...s, status: "reconnecting", quality: 1 })); })
+        .on(lk.RoomEvent.Reconnected, () => { recordDiagnostic("call", "recovered"); setState((s) => ({ ...s, status: "connected" })); })
         .on(lk.RoomEvent.ConnectionQualityChanged, (quality: ConnectionQuality, participant: Participant) => {
-          if (participant.isLocal) setState((s) => ({ ...s, quality: qualityToLevel(quality) }));
+          if (participant.isLocal) { const level = qualityToLevel(quality); recordDiagnostic("call", level <= 1 ? "quality-poor" : "quality-good"); setState((s) => ({ ...s, quality: level })); }
         })
         .on(lk.RoomEvent.LocalTrackUnpublished, (publication: LocalTrackPublication) => {
           // Browser "Stop sharing" button or a revoked camera.
@@ -407,6 +408,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
         })
         .on(lk.RoomEvent.Disconnected, (reason?: DisconnectReason) => {
           if (roomRef.current !== next) return;
+          recordDiagnostic("call", "disconnected");
           if (!leaving.current) {
             playSfx("leave");
             toast(reason === (lk.DisconnectReason.DUPLICATE_IDENTITY as DisconnectReason) ? "You joined voice from another tab." : "You were disconnected from voice.");

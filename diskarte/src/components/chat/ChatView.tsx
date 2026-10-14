@@ -50,13 +50,6 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
   // and when you come back to the tab.
   const markRead = useOptionalUnreads()?.markRead;
   const newest = chat.messages.at(-1)?.id;
-  useEffect(() => {
-    if (!markRead) return;
-    const mark = () => document.visibilityState === "visible" && markRead(channel.id);
-    mark();
-    document.addEventListener("visibilitychange", mark);
-    return () => document.removeEventListener("visibilitychange", mark);
-  }, [markRead, channel.id, newest]);
   // Read-only channels (Diskarte HQ's #announcements) take posts from admins only — the database enforces
   // it too; verification-gated channels need a confirmed account.
   const readOnly = channel.read_only && myRole !== "admin";
@@ -75,6 +68,12 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
   const [pinsOpen, setPinsOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<ChatMessage | null>(null);
   const { listRef, atBottom, unseen, onScroll, scrollToBottom } = useConversationScroll(`${me.id}:${channel.id}`, chat.messages, me.id, chat.loadOlder, chat.hasMore);
+  useEffect(() => {
+    if (!markRead || !atBottom || messageTarget) return;
+    const mark = () => document.visibilityState === "visible" && markRead(channel.id);
+    mark(); document.addEventListener("visibilitychange", mark);
+    return () => document.removeEventListener("visibilitychange", mark);
+  }, [markRead, channel.id, newest, atBottom, messageTarget]);
 
   const messageKeys = useMemo(() => chat.messages.map((m) => m.id), [chat.messages]);
   const byId = useMemo(() => new Map(chat.messages.map((m) => [m.id, m])), [chat.messages]);
@@ -277,6 +276,7 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
         )}
 
         <OfflineBanner queued={chat.queuedCount} />
+        {chat.recovery.problem && <div role="status" className="flex items-center justify-between gap-2 px-4 py-2 text-sm text-amber-200"><span>History couldn’t sync after reconnecting.</span><button type="button" onClick={() => void chat.recovery.recover()} className="min-h-11 rounded-lg px-3 hover:bg-white/10">Retry sync</button></div>}
         <Composer
           channelName={channel.name}
           serverId={server.id}
