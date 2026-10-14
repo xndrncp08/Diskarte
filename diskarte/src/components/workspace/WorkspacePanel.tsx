@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useShellUI } from "@/components/shell/ShellUI";
 import { cn } from "@/lib/utils";
 import { ResizeHandle } from "./ResizeHandle";
-import { NAV_WIDTH, useLayout } from "./WorkspaceProvider";
+import { NAV_WIDTH, useIsCanvas, useLayout } from "./WorkspaceProvider";
 
 export type PanelId = "nav" | "main";
 
@@ -23,10 +23,11 @@ export interface WorkspacePanelProps {
 export function WorkspacePanel({ id, title, children, className }: WorkspacePanelProps) {
   const { navOpen } = useShellUI();
   const [layout, setLayout] = useLayout();
+  const desktop = useIsCanvas();
 
   if (id === "main") {
     return (
-      <main id="main-content" tabIndex={-1} aria-label={title} data-panel="main" className={cn("relative flex min-w-0 flex-1 outline-none md:bg-abyss/40", className)}>
+      <main id="main-content" tabIndex={-1} inert={navOpen && !desktop} aria-label={title} data-panel="main" className={cn("relative flex min-h-0 min-w-0 flex-1 outline-none md:bg-abyss/40", className)}>
         {children}
       </main>
     );
@@ -36,6 +37,8 @@ export function WorkspacePanel({ id, title, children, className }: WorkspacePane
       role="region"
       aria-label={title}
       data-panel="nav"
+      data-mobile-navigation=""
+      inert={!desktop && !navOpen}
       style={{ "--nav-w": `${layout.nav}px` } as React.CSSProperties}
       className={cn(
         "flex min-w-0 outline-none",

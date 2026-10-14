@@ -7,6 +7,8 @@ import { createContext, useContext, useState, useSyncExternalStore, type ReactNo
  * columns are resizable and the member list toggles; widths and the toggle are saved per browser.
  */
 export interface LayoutState {
+  mode: "columns" | "floating";
+  panels: Partial<Record<"nav" | "main", PanelRect>>;
   /** Channel column width in px. */
   nav: number;
   /** Member column width in px. */
@@ -14,19 +16,23 @@ export interface LayoutState {
   membersOpen: boolean;
 }
 
+export interface PanelRect { x: number; y: number; width: number; height: number }
+
 // Below ~232px the user panel can't fit your name beside mic, deafen and settings.
 export const NAV_WIDTH = { min: 232, max: 420, initial: 240 };
 export const ROSTER_WIDTH = { min: 200, max: 400, initial: 248 };
 const STORAGE_KEY = "diskarte:layout:v2";
-const DEFAULT: LayoutState = { nav: NAV_WIDTH.initial, roster: ROSTER_WIDTH.initial, membersOpen: true };
+const DEFAULT: LayoutState = { mode: "columns", panels: {}, nav: NAV_WIDTH.initial, roster: ROSTER_WIDTH.initial, membersOpen: true };
 
-const clamp = (v: number, { min, max }: { min: number; max: number }) => Math.round(Math.min(max, Math.max(min, v)));
+const clamp = (v: number, { min, max }: { min: number; max: number }) => Math.round(Math.min(max, Math.max(min, Number.isFinite(v) ? v : min)));
 
 /** Saved layout, or the default; anything malformed falls back field by field. */
 export function parseLayout(raw: string | null): LayoutState {
   try {
     const v = raw ? (JSON.parse(raw) as Partial<LayoutState>) : {};
     return {
+      mode: v.mode === "floating" ? "floating" : "columns",
+      panels: Object.fromEntries(Object.entries(v.panels ?? {}).filter(([key, r]) => ["nav", "main"].includes(key) && r && [r.x, r.y, r.width, r.height].every((n) => typeof n === "number" && Number.isFinite(n)))),
       nav: typeof v.nav === "number" ? clamp(v.nav, NAV_WIDTH) : DEFAULT.nav,
       roster: typeof v.roster === "number" ? clamp(v.roster, ROSTER_WIDTH) : DEFAULT.roster,
       membersOpen: typeof v.membersOpen === "boolean" ? v.membersOpen : DEFAULT.membersOpen,
@@ -59,7 +65,7 @@ function createLayoutStore(): LayoutStore {
     subscribe: (l) => (listeners.add(l), () => void listeners.delete(l)),
     set: (patch) => {
       const next = { ...read(), ...patch };
-      state = { nav: clamp(next.nav, NAV_WIDTH), roster: clamp(next.roster, ROSTER_WIDTH), membersOpen: next.membersOpen };
+      state = { ...next, nav: clamp(next.nav, NAV_WIDTH), roster: clamp(next.roster, ROSTER_WIDTH) };
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       } catch {

@@ -1,9 +1,9 @@
 "use client";
 
-import { AtSign, LogOut, Menu as MenuIcon, Phone, PhoneOff, Video } from "lucide-react";
+import { ArrowDown, AtSign, LogOut, Menu as MenuIcon, Phone, PhoneOff, Video } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { leaveDmAction, type DirectMessage } from "@/actions/social";
 import { Composer } from "@/components/chat/Composer";
@@ -18,6 +18,8 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useCall, usePrewarm } from "@/components/voice/CallProvider";
 import { useRinger } from "@/components/voice/IncomingCalls";
 import { StageSkeleton } from "@/components/voice/StageSkeleton";
+import { useConversationScroll } from "@/hooks/useConversationScroll";
+import { VirtualMessageList } from "@/components/chat/VirtualMessageList";
 import { useDirectChat } from "@/hooks/useDirectChat";
 import type { ChatMessage } from "@/hooks/useChannelChat";
 import { isGroupedWithPrevious, sameDay } from "@/lib/chat-format";
@@ -58,16 +60,14 @@ export function DmView({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [leaving, startLeave] = useTransition();
-  const bottom = useRef<HTMLDivElement>(null);
+  const { listRef, atBottom, unseen, onScroll, scrollToBottom } = useConversationScroll(`${me.id}:${conversation.id}`, chat.messages, me.id, chat.loadOlder, chat.hasMore);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const inCall = call.target?.kind === "dm" && call.target.channelId === conversation.id;
 
   useEffect(() => {
     markRead(conversation.id);
   }, [markRead, conversation.id, lastMessageAt]);
 
-  useEffect(() => {
-    bottom.current?.scrollIntoView?.({ block: "end" });
-  }, [chat.messages.length]);
 
   const byId = new Map(chat.messages.map((m) => [m.id, m]));
   const names = new Map(participants.map((p) => [p.id, withNickname(p, nicknames).display_name]));
@@ -80,7 +80,7 @@ export function DmView({
     onDelete: (m) => void chat.remove(m.id),
     onRetry: (m) => void chat.retry(m),
     onDiscard: chat.discard,
-    onJump: (id) => document.getElementById(`message-${id}`)?.scrollIntoView({ block: "center", behavior: "smooth" }),
+    onJump: (id) => { listRef.current?.scrollToKey(id); },
     nameOf: (id) => names.get(id) ?? "Someone",
   };
 
@@ -106,7 +106,7 @@ export function DmView({
     <>
       <HomeSidebar servers={servers} />
       <WorkspacePanel id="main" title={title}>
-        <section className="flex min-w-0 flex-1 flex-col md:overflow-hidden" aria-label={title}>
+        <section className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden" aria-label={title}>
           <header className="flex h-12 shrink-0 items-center gap-2 border-b border-white/5 bg-black/20 px-3 backdrop-blur-md">
             <button type="button" onClick={() => setNavOpen(true)} aria-label="Open navigation" className="touch-target relative rounded-md p-1.5 text-slate-300 hover:bg-white/10 md:hidden">
               <MenuIcon className="size-5" aria-hidden />
@@ -145,10 +145,10 @@ export function DmView({
             </div>
           )}
 
-          <div className="scrollbar-thin flex-1 overflow-y-auto pb-2" aria-live="polite">
-            {chat.hasMore ? (
+          <VirtualMessageList ref={listRef} keys={chat.messages.map((m) => m.id)} onScroll={onScroll}
+            header={chat.hasMore ? (
               <div className="flex justify-center py-3">
-                <Button variant="ghost" size="sm" onClick={() => void chat.loadOlder()}>
+                <Button variant="ghost" size="sm" disabled={chat.loadingOlder} onClick={() => void chat.loadOlder()}>
                   Load older messages
                 </Button>
               </div>
@@ -161,7 +161,8 @@ export function DmView({
                 </p>
               </div>
             )}
-            {chat.messages.map((m, i) => {
+            renderItem={(i) => {
+              const m = chat.messages[i];
               const prev = chat.messages[i - 1];
               const newDay = !prev || !sameDay(prev.created_at, m.created_at);
               return (
@@ -183,13 +184,15 @@ export function DmView({
                     mentioned={false}
                     editing={editingId === m.id}
                     setEditing={setEditingId}
+                    active={activeId === m.id}
+                    onActivate={setActiveId}
                     actions={actions}
                   />
                 </div>
               );
-            })}
-            <div ref={bottom} />
-          </div>
+            }}
+          />
+          {!atBottom && <button type="button" onClick={scrollToBottom} className="absolute bottom-40 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-sun px-4 py-2 text-xs font-bold text-abyss"><ArrowDown className="size-4" aria-hidden />{unseen ? `${unseen} new messages` : "Jump to present"}</button>}
 
           <OfflineBanner queued={chat.queuedCount} />
           <Composer

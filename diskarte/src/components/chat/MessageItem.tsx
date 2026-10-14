@@ -8,6 +8,7 @@ import { ContextMenu, ContextMenuItems, copyText, useContextMenu, useContextMenu
 import { Glyph } from "@/components/ui/Glyph";
 import type { MenuItem } from "@/components/ui/Menu";
 import type { ChatMessage } from "@/hooks/useChannelChat";
+import { useSwipeReply } from "@/hooks/useSwipeReply";
 import { QUICK_REACTIONS } from "@/lib/emoji";
 import { parseAttachments, previewText, type Reaction } from "@/lib/messages";
 import { cn } from "@/lib/utils";
@@ -240,6 +241,7 @@ export const MessageItem = memo(function MessageItem({
   // A message that's only a GIF link shows the GIF alone (the link stays visible if previews are off).
   const gifOnly = embeds && isGifOnlyMessage(message.content);
   const menu = useContextMenu({ disabled: !interactive || editing });
+  const swipe = useSwipeReply(() => actions.onReply(message), !interactive || editing || message.pending || message.failed || message.queued);
   const attachments = parseAttachments(message.attachments);
   const name = message.author?.display_name ?? "Deleted user";
 
@@ -251,6 +253,10 @@ export const MessageItem = memo(function MessageItem({
       data-message-id={message.id}
       data-active={active || undefined}
       {...menu.triggerProps}
+      onPointerDown={(e) => { menu.triggerProps.onPointerDown(e); swipe.onPointerDown(e); }}
+      onPointerMove={(e) => { menu.triggerProps.onPointerMove(e); swipe.onPointerMove(e); }}
+      onPointerUp={(e) => { menu.triggerProps.onPointerUp(); swipe.onPointerUp(e); }}
+      onPointerCancel={(e) => { menu.triggerProps.onPointerCancel(); swipe.onPointerCancel(e); }}
       onClick={(e) => {
         // Touch screens have no hover: tapping a message (not one of its controls) toggles its actions.
         if (!onActivate || !window.matchMedia?.("(pointer: coarse)").matches) return;
@@ -258,7 +264,7 @@ export const MessageItem = memo(function MessageItem({
         onActivate(active ? null : message.id);
       }}
       className={cn(
-        "group relative flex gap-3 rounded-md px-3 transition-colors",
+        "group relative flex touch-pan-y gap-3 rounded-md px-3 transition-colors",
         grouped ? "py-0.5" : "mt-3 pb-0.5 pt-1",
         mentioned ? "border-l-2 border-sun bg-sun/[0.07] hover:bg-sun/10" : "hover:bg-white/[0.03]",
         (message.pending || message.queued) && "opacity-60",

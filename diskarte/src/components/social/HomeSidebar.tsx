@@ -45,7 +45,7 @@ function ConversationAvatar({ conversation, size = 32 }: { conversation: Convers
 export { ConversationAvatar };
 
 /** A DM in the Home list; right-click: mark read, the person's menu (1:1) or leave (group). */
-function DmRow({ conversation: c, active }: { conversation: ConversationSummary; active: boolean }) {
+export function DmRow({ conversation: c, active }: { conversation: ConversationSummary; active: boolean }) {
   const { setNavOpen } = useShellUI();
   const { markRead, reloadConversations } = useSocial();
   const router = useRouter();
