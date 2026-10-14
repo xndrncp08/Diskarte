@@ -4,7 +4,7 @@ import { motion, Reorder, useDragControls } from "framer-motion";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
-import { BadgeCheck, BellOff, ChevronDown, ChevronsDownUp, ChevronsUpDown, EyeOff, GripVertical, Hash, HeadphoneOff, Heart, Link2, Lock, LogOut, MessagesSquare, MicOff, Pencil, PencilLine, Plus, Radio, Rocket, Settings, ShieldCheck, Trash2, UserPlus, Video, Volume2 } from "lucide-react";
+import { BadgeCheck, BellOff, CheckCheck, ChevronDown, ChevronsDownUp, ChevronsUpDown, EyeOff, GripVertical, Hash, HeadphoneOff, Heart, Link2, Lock, LogOut, MessagesSquare, MicOff, Pencil, PencilLine, Plus, Radio, Rocket, Settings, ShieldCheck, Trash2, UserPlus, Video, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { toast } from "sonner";
 import { deleteChannelAction, leaveServerAction, reorderChannelsAction } from "@/actions/servers";
@@ -25,7 +25,7 @@ import { useCall, usePrewarm } from "@/components/voice/CallProvider";
 import { Menu, type MenuItem } from "@/components/ui/Menu";
 import { useOnline } from "@/hooks/useOnline";
 import { useVoiceRoster } from "@/hooks/useVoiceRoster";
-import { useChannelUnread } from "@/components/providers/UnreadsProvider";
+import { useChannelUnread, useOptionalUnreads } from "@/components/providers/UnreadsProvider";
 import { readChannelMutes, serverMutes, subscribeChannelMutes, toggleChannelMute, toggleHideMuted } from "@/lib/channel-mute";
 import { rememberChannel } from "@/lib/last-channel";
 import { DEFAULT_NOTIFY_PREFS, readNotifyPrefs, serverNotify, setServerNotify, subscribeNotifyPrefs } from "@/lib/notify-prefs";
@@ -405,7 +405,9 @@ export function ChannelSidebar() {
     });
   }
 
+  const unreads = useOptionalUnreads();
   const serverItems: MenuItem[] = [
+    { label: "Mark As Read", icon: <CheckCheck className="size-4" aria-hidden />, onSelect: () => unreads?.markAllRead(server.id), hidden: !unreads },
     // Everyone is already in Diskarte HQ.
     { label: "Invite people", icon: <UserPlus className="size-4" aria-hidden />, onSelect: () => setDialog({ kind: "invite" }), hidden: server.is_system },
     {

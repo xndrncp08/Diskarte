@@ -29,6 +29,8 @@ interface UnreadsValue {
   /** A channel got a message (live, from the open server's realtime). */
   noteActivity: (channelId: string, serverId: string, at: string) => void;
   refresh: () => void;
+  /** Discord's "Mark As Read": one server's channels, or (no id) every channel and DM. */
+  markAllRead: (serverId?: string) => void;
 }
 
 const UnreadsContext = createContext<UnreadsValue | null>(null);
@@ -148,6 +150,25 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
     [supabase],
   );
 
+  const markAllRead = useCallback(
+    (serverId?: string) => {
+      const now = new Date().toISOString();
+      setChannels((prev) => {
+        const next = new Map(prev);
+        for (const [id, c] of prev) {
+          if (serverId && c.serverId !== serverId) continue;
+          const at = later(now, c.lastMessageAt) as string;
+          marks.current.set(id, at);
+          rewinds.current.delete(id);
+          next.set(id, { ...c, readAt: at, mentions: 0 });
+        }
+        return next;
+      });
+      void supabase?.rpc("mark_all_read", serverId ? { p_server: serverId } : {});
+    },
+    [supabase],
+  );
+
   const noteActivity = useCallback((channelId: string, serverId: string, at: string) => {
     setChannels((prev) => {
       const c = prev.get(channelId);
@@ -156,7 +177,7 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const value = useMemo(() => ({ channels, markRead, markUnread, noteActivity, refresh: () => void refresh() }), [channels, markRead, markUnread, noteActivity, refresh]);
+  const value = useMemo(() => ({ channels, markRead, markUnread, noteActivity, markAllRead, refresh: () => void refresh() }), [channels, markRead, markUnread, noteActivity, markAllRead, refresh]);
   return <UnreadsContext.Provider value={value}>{children}</UnreadsContext.Provider>;
 }
 

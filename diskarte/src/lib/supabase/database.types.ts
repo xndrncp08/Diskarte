@@ -504,6 +504,7 @@ export interface Database {
       create_invite: { Args: { p_server: string; p_max_age_minutes: number; p_max_uses: number }; Returns: string };
       revoke_invite: { Args: { p_code: string }; Returns: undefined };
       export_my_data: { Args: Record<string, never>; Returns: Json };
+      mark_all_read: { Args: { p_server?: string }; Returns: undefined };
       vote_poll: { Args: { p_message: string; p_options: number[] }; Returns: undefined };
       search_messages: {
         Args: { p_server: string; p_query: string; p_channel?: string | null; p_author?: string | null; p_before?: string | null; p_limit?: number };

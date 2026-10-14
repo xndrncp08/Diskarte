@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, MessageCircle, UserPlus } from "lucide-react";
+import { Bell, CheckCheck, MessageCircle, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { useOptionalSocial } from "@/components/providers/SocialProvider";
+import { isUnread as isChannelUnread, useOptionalUnreads } from "@/components/providers/UnreadsProvider";
 import { SavedMessages } from "./SavedMessages";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { Popover } from "@/components/ui/Popover";
@@ -19,7 +20,16 @@ export function NotificationHub() {
   const social = useOptionalSocial();
   const attention = social?.attention ?? 0;
   const requests = (social?.friends ?? []).filter((f) => f.status === "incoming");
-  const unread = (social?.conversations ?? []).filter(isUnread).slice(0, 8);
+  const unreadAll = (social?.conversations ?? []).filter(isUnread);
+  const unread = unreadAll.slice(0, 8);
+  const unreads = useOptionalUnreads();
+  const unreadChannels = [...(unreads?.channels.values() ?? [])].some((c) => isChannelUnread(c) || c.mentions > 0);
+
+  // Everything: every channel's unread pill and mention badge, and every DM.
+  function markAllRead() {
+    unreads?.markAllRead();
+    for (const c of unreadAll) social?.markRead(c.id);
+  }
   const [tab, setTab] = useState<"inbox" | "saved">("inbox");
 
   return (
@@ -68,6 +78,11 @@ export function NotificationHub() {
               </button>
             ))}
           </div>
+          {tab === "inbox" && (unreadAll.length > 0 || unreadChannels) && (
+            <button type="button" onClick={markAllRead} className="mb-1 flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold text-sun hover:bg-white/5">
+              <CheckCheck className="size-3.5" aria-hidden /> Mark all as read
+            </button>
+          )}
           {tab === "saved" ? (
             <SavedMessages onOpen={close} />
           ) : requests.length === 0 && unread.length === 0 ? (
