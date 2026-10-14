@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { motion, Reorder, useDragControls } from "framer-motion";
-import { BadgeCheck, Plus, ShieldCheck } from "lucide-react";
+import { BadgeCheck, Compass, Plus, ShieldCheck } from "lucide-react";
 import { useRef, useState, useSyncExternalStore } from "react";
 import { DiskarteLogo } from "@/components/brand/DiskarteLogo";
 import { useOptionalSocial } from "@/components/providers/SocialProvider";
@@ -203,6 +203,7 @@ function ControlCenterButton() {
 export function ServerRail({ servers }: { servers: RailEntry[] }) {
   const params = useParams<{ serverId?: string }>();
   const activeId = params.serverId;
+  const pathname = usePathname();
   const [adding, setAdding] = useState(false);
   const attention = useOptionalSocial()?.attention ?? 0;
   // Diskarte HQ, the global server everyone belongs to, is pinned first with a gold ring.
@@ -225,7 +226,7 @@ export function ServerRail({ servers }: { servers: RailEntry[] }) {
     >
       <nav aria-label="Servers" className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 overflow-y-auto scrollbar-none">
         <Tooltip label="Home">
-          <Link href="/tambayan" aria-label={attention ? `Home (${attention} new)` : "Home"} aria-current={!activeId ? "page" : undefined} className="group relative flex">
+          <Link href="/tambayan" aria-label={attention ? `Home (${attention} new)` : "Home"} aria-current={!activeId && pathname !== "/tambayan/explore" ? "page" : undefined} className="group relative flex">
             <Pill active={!activeId} />
             <span className={cn("flex size-12 items-center justify-center bg-midnight transition-[border-radius,background-color] duration-200", !activeId ? "rounded-2xl bg-sun/15" : "rounded-[50%] group-hover:rounded-2xl")}>
               <DiskarteLogo size={40} title="Diskarte home" />
@@ -270,6 +271,16 @@ export function ServerRail({ servers }: { servers: RailEntry[] }) {
           >
             <Plus className="size-6" aria-hidden />
           </button>
+        </Tooltip>
+        <Tooltip label="Explore servers">
+          <Link
+            href="/tambayan/explore"
+            aria-label="Explore servers"
+            aria-current={pathname === "/tambayan/explore" ? "page" : undefined}
+            className="flex size-12 shrink-0 items-center justify-center rounded-[50%] bg-midnight text-signal-green transition-[border-radius,background-color,color] duration-200 hover:rounded-2xl hover:bg-signal-green hover:text-white aria-[current=page]:rounded-2xl aria-[current=page]:bg-signal-green aria-[current=page]:text-white"
+          >
+            <Compass className="size-6" aria-hidden />
+          </Link>
         </Tooltip>
       </nav>
 

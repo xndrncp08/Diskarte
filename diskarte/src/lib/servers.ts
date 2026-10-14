@@ -47,6 +47,20 @@ export function inviteExpiry(expiresAt: string | null, now = Date.now()) {
   return `Expires in ${days} day${days === 1 ? "" : "s"}`;
 }
 
+/** Explore categories (servers.category accepts exactly these). */
+export const SERVER_CATEGORIES = [
+  { id: "gaming", label: "Gaming" },
+  { id: "study", label: "Study" },
+  { id: "creators", label: "Creators" },
+  { id: "friends", label: "Friends" },
+  { id: "music", label: "Music" },
+  { id: "tech", label: "Tech" },
+  { id: "anime", label: "Anime" },
+  { id: "sports", label: "Sports" },
+  { id: "other", label: "Other" },
+] as const;
+export type ServerCategory = (typeof SERVER_CATEGORIES)[number]["id"];
+
 export function canManageMember(opts: { actorRole: MemberRole | null; actorId: string; target: { role: MemberRole; user_id: string }; ownerId: string | null }) {
   const { actorRole, actorId, target, ownerId } = opts;
   const isSelf = target.user_id === actorId;

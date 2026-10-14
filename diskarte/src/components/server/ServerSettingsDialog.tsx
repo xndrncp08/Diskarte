@@ -1,5 +1,6 @@
 "use client";
 
+import { Switch } from "@/components/ui/Switch";
 import { useRouter } from "next/navigation";
 import { ImagePlus, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useId, useRef, useState, useTransition, type ChangeEvent, type FormEvent, type ReactNode } from "react";
@@ -12,7 +13,7 @@ import { ServerIcon } from "@/components/shell/ServerIcon";
 import { Button } from "@/components/ui/Button";
 import { InputField, TextareaField } from "@/components/ui/Field";
 import { FloatingWindow } from "@/components/ui/FloatingWindow";
-import { hasRole } from "@/lib/servers";
+import { hasRole, SERVER_CATEGORIES } from "@/lib/servers";
 import { uploadPublicImage } from "@/lib/uploads";
 import { cn } from "@/lib/utils";
 import { AuditLogPanel } from "./settings/AuditLogPanel";
@@ -123,6 +124,8 @@ function ServerSettingsForm({ onClose }: { onClose: () => void }) {
   const supabase = useSupabase();
   const router = useRouter();
   const [iconUrl, setIconUrl] = useState<string | null>(server.icon_url);
+  const [isPublic, setIsPublic] = useState(server.is_public ?? false);
+  const [category, setCategory] = useState(server.category ?? "other");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState(false);
   const [confirmName, setConfirmName] = useState("");
@@ -153,6 +156,8 @@ function ServerSettingsForm({ onClose }: { onClose: () => void }) {
         name: String(form.get("name") ?? ""),
         description: String(form.get("description") ?? ""),
         iconUrl,
+        ...(isPublic !== (server.is_public ?? false) ? { isPublic } : {}),
+        ...(category !== (server.category ?? "other") ? { category } : {}),
       });
       if (!result.ok) {
         setErrors(result.fieldErrors ?? {});
@@ -206,6 +211,22 @@ function ServerSettingsForm({ onClose }: { onClose: () => void }) {
         </div>
         <InputField label="Name" name="name" defaultValue={server.name} minLength={2} maxLength={64} required error={errors.name} />
         <TextareaField label="Description" name="description" defaultValue={server.description} maxLength={280} rows={3} error={errors.description} />
+        {!server.is_system && (
+          <div className="space-y-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+            <Switch checked={isPublic} onChange={setIsPublic} label="Show in Explore" hint="Anyone on Diskarte can find this server and join without an invite. Bans still apply." />
+            <label className="block text-sm font-semibold text-white">
+              Category
+              <select value={category} onChange={(e) => setCategory(e.target.value)} className="mt-1 h-10 w-full rounded-lg border border-white/10 bg-black/40 px-3 text-sm font-normal text-white">
+                {SERVER_CATEGORIES.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {errors.category && <p className="text-xs text-red-300">{errors.category}</p>}
+          </div>
+        )}
         <Button type="submit" loading={pending} disabled={uploading}>
           Save
         </Button>
