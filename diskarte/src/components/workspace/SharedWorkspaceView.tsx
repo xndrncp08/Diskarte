@@ -14,7 +14,7 @@ import { confirmAction } from "@/components/ui/ConfirmHost";
 import { MessageMarkdown } from "@/components/chat/MessageMarkdown";
 import { subscribeDbChanges } from "@/lib/realtime";
 import { hasRole } from "@/lib/servers";
-import { boardSchema, focusSchema, noteSchema, type BoardCard, type WorkspaceDocument } from "@/lib/workspace-documents";
+import { boardSchema, focusSchema, noteSchema, workspaceLoadIssue, type BoardCard, type WorkspaceDocument } from "@/lib/workspace-documents";
 
 const field = "min-h-11 w-full rounded-lg border border-white/15 bg-midnight px-3 text-base outline-none focus:border-sun";
 const icons = { note: BookOpen, board: Columns3, focus: Timer };
@@ -23,13 +23,14 @@ const defaults = { note: { text: "" }, board: { cards: [] }, focus: { goal: "", 
 
 export function SharedWorkspaceView() {
   const supabase = useSupabase();
-  const { server, channels } = useServer();
+  const { server, channels, myRole } = useServer();
   const { setNavOpen } = useShellUI();
   const options = channels.filter((c) => c.type !== "voice");
   const [channelId, setChannelId] = useState(options[0]?.id ?? "");
   const [documents, setDocuments] = useState<WorkspaceDocument[] | null>(null);
   const [editable, setEditable] = useState(false);
   const [problem, setProblem] = useState("");
+  const [problemKind, setProblemKind] = useState<ReturnType<typeof workspaceLoadIssue>["kind"]>("connection");
   const [selected, setSelected] = useState<WorkspaceDocument | null>(null);
   const [creating, setCreating] = useState<WorkspaceDocument["kind"] | null>(null);
   const [title, setTitle] = useState("");
@@ -47,8 +48,13 @@ export function SharedWorkspaceView() {
       if (generation.current !== token) return;
       if (docs.error || permission.error) throw docs.error ?? permission.error;
       setDocuments(docs.data ?? []); setEditable(permission.data === true); setProblem("");
-    } catch { if (generation.current === token) setProblem("Workspace couldn’t load. Your connection or channel permissions may have changed."); }
-  }, [channelId, supabase]);
+    } catch (error) {
+      if (generation.current !== token) return;
+      const issue = workspaceLoadIssue(error);
+      setProblem(issue.message); setProblemKind(issue.kind); setEditable(false);
+      if (issue.kind !== "connection") { setDocuments(null); setSelected(null); }
+    }
+  }, [channelId, supabase, setSelected]);
   useEffect(() => {
     if (!channelId) return;
     void Promise.resolve().then(load);
@@ -74,7 +80,12 @@ export function SharedWorkspaceView() {
         <p className="text-sm text-slate-400">Plan, study and keep resources together in {server.name}. Each item follows its channel’s permissions.</p>
         <label className="block max-w-sm text-sm">Channel<select value={channelId} onChange={(e) => { setChannelId(e.target.value); setDocuments(null); setEditable(false); }} className={`${field} mt-1`}>{options.map((c) => <option value={c.id} key={c.id}>#{c.name}</option>)}</select></label>
         {editable && <div className="flex flex-wrap gap-2">{(["note", "board", "focus"] as const).map((kind) => <Button key={kind} variant="secondary" onClick={() => { setCreating(kind); setTitle(names[kind]); }}><Plus className="size-4" aria-hidden />{names[kind]}</Button>)}</div>}
-        {problem && <div role="status" className="space-y-2 text-amber-200"><p>{problem}</p><Button variant="secondary" onClick={() => void load()}>Try again</Button></div>}
+        {problem && <div role="status" className="space-y-3 rounded-xl border border-amber-300/25 p-4 text-amber-200">
+          <p>{problem}</p>
+          {problemKind === "setup" && hasRole(myRole, "admin") && <details><summary className="cursor-pointer text-sm">Server setup instructions</summary><p className="mt-2 text-sm">Apply <code className="break-all">supabase/migrations/20261014010000_shared_workspace.sql</code> to the app’s Supabase project using its SQL Editor or the linked Supabase CLI. Then check again.</p></details>}
+          {problemKind === "setup" && !hasRole(myRole, "admin") && <p className="text-sm">Ask a server administrator to enable this feature.</p>}
+          {problemKind === "session" ? <a href="/login" className="inline-flex min-h-11 items-center rounded-lg bg-white/10 px-3">Sign in again</a> : <Button variant="secondary" onClick={() => void load()}>{problemKind === "setup" ? "Check setup again" : "Try again"}</Button>}
+        </div>}
         {!channelId ? <p>No text channels are available.</p> : documents === null && !problem ? <p role="status">Loading workspace…</p> : documents?.length === 0 ? <p className="py-8 text-slate-400">No shared items here yet.{editable ? " Create a note, task board or focus session." : " Channel editors can add shared items."}</p> : <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label="Shared items">{documents?.map((doc) => { const Icon = icons[doc.kind]; return <li key={doc.id}><button type="button" onClick={() => setSelected(doc)} className="glass flex min-h-32 w-full flex-col rounded-2xl p-4 text-left hover:border-sun/40"><Icon className="mb-3 size-5 text-sun" aria-hidden /><span className="font-semibold">{doc.title}</span><span className="mt-1 text-xs text-slate-400">{names[doc.kind]} · Revision {doc.revision}</span></button></li>; })}</ul>}
       </div>
     </div>

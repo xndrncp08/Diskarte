@@ -14,6 +14,17 @@ const { SharedWorkspaceView } = await import("@/components/workspace/SharedWorks
 
 beforeEach(() => { vi.mocked(fake.client.rpc).mockResolvedValue({ data: true, error: null } as never); save.mockClear(); });
 describe("shared workspace editing", () => {
+  it("identifies unapplied migrations instead of reporting a misleading permission error", async () => {
+    vi.mocked(fake.client.rpc).mockResolvedValue({ data: null, error: { code: "PGRST202" } } as never);
+    render(<ServerFixture members={members}><SharedWorkspaceView /></ServerFixture>);
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("database migration hasn’t been applied"));
+    expect(screen.getByText("Server setup instructions")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Shared note" })).toBeNull();
+    vi.mocked(fake.client.rpc).mockResolvedValue({ data: true, error: null } as never);
+    await userEvent.setup().click(screen.getByRole("button", { name: "Check setup again" }));
+    expect(await screen.findByRole("button", { name: /Study notes/ })).toBeInTheDocument();
+    expect(screen.queryByText(/database migration hasn’t been applied/)).toBeNull();
+  });
   it("preserves local notes after a concurrent-save conflict", async () => {
     const user = userEvent.setup();
     render(<ServerFixture members={members}><SharedWorkspaceView /></ServerFixture>);
