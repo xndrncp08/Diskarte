@@ -301,6 +301,7 @@ export interface Database {
       event_rsvps: TableDef<{ event_id: string; server_id: string; user_id: string; created_at: string }, { event_id: string; server_id: string; user_id?: string }>;
       server_emojis: TableDef<{ id: string; server_id: string; name: string; path: string; created_by: string | null; created_at: string }, { id?: string; server_id: string; name: string; path: string; created_by?: string | null }>;
       saved_messages: TableDef<{ user_id: string; message_id: string; saved_at: string }, { user_id?: string; message_id: string; saved_at?: string }>;
+      workspace_documents: TableDef<{ id: string; server_id: string; channel_id: string; kind: "note" | "board" | "focus"; title: string; content: Json; revision: number; created_by: string | null; updated_by: string | null; created_at: string; updated_at: string }, never>;
       channel_reads: TableDef<{ user_id: string; channel_id: string; last_read_at: string }, never>;
       message_mentions: TableDef<{ message_id: string; user_id: string; channel_id: string; server_id: string; created_at: string }, never>;
       user_notes: TableDef<{ owner_id: string; target_id: string; note: string; updated_at: string }, { owner_id?: string; target_id: string; note: string; updated_at?: string }>;
@@ -524,6 +525,9 @@ export interface Database {
         Args: { p_query: string; p_server?: string | null; p_channel?: string | null; p_author?: string | null; p_after?: string | null; p_before?: string | null; p_kind?: string | null; p_cursor_date?: string | null; p_cursor_id?: string | null; p_limit?: number };
         Returns: { source: string; id: string; server_id: string | null; channel_id: string | null; conversation_id: string | null; thread_id: string | null; author_id: string | null; content: string; created_at: string; attachments: Json }[];
       };
+      save_workspace_document: { Args: { p_channel: string; p_kind: string; p_title: string; p_content: Json; p_id?: string | null; p_revision?: number; p_timer?: string | null }; Returns: Database["public"]["Tables"]["workspace_documents"]["Row"][] };
+      delete_workspace_document: { Args: { p_id: string; p_revision: number }; Returns: undefined };
+      can_edit_workspace: { Args: { p_channel: string }; Returns: boolean };
       admin_site_traffic: { Args: Record<string, never>; Returns: Json };
     };
     Enums: {
