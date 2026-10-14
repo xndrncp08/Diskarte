@@ -29,6 +29,10 @@ Do not delete shared documents, drop new tables or reverse migration history to 
 
 ## Troubleshooting
 
+For the workspace error, run `npm run db:check --prefix diskarte`. This read-only check uses the app’s public Supabase configuration (loading `diskarte/.env.local` on Node 22) and never fetches document content or uses the service-role key. Exit 2 means the workspace schema is missing; exit 1 means configuration or connectivity prevented verification. An anonymous permission denial counts as schema presence, not a permission failure. This check does not establish authenticated editing or Realtime correctness.
+
+If schema is missing, confirm the target project and backup first, then apply `supabase/migrations/20261014010000_shared_workspace.sql` using Supabase SQL Editor or the linked CLI in the migration order above. Rerun the check and test the workspace with an authorized account. A successful application deployment does not apply SQL migrations automatically.
+
 | Symptom | Check and recovery |
 | --- | --- |
 | Explore/search/workspace unavailable | Confirm the three release migrations and RPC grants are applied to the same Supabase project used by the app. Do not loosen RLS to resolve errors. |
