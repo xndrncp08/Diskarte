@@ -15,6 +15,7 @@ import { DEFAULT_NOTIFY_PREFS, readNotifyPrefs, serverNotify, subscribeNotifyPre
 import { serverUnread, useOptionalUnreads } from "@/components/providers/UnreadsProvider";
 import { cn } from "@/lib/utils";
 import { NotificationHub } from "@/components/workspace/NotificationHub";
+import { WorkspaceControls } from "@/components/workspace/WorkspaceControls";
 import { usePlatformRole } from "@/components/admin/AdminAccess";
 import { useContextMenu } from "@/components/ui/ContextMenu";
 import { AddServerDialog } from "./AddServerDialog";
@@ -285,6 +286,7 @@ export function ServerRail({ servers }: { servers: RailEntry[] }) {
       </nav>
 
       <section aria-label="Workspace controls" className="flex shrink-0 flex-col items-center gap-1.5 border-t border-white/[0.06] pt-2">
+        <WorkspaceControls servers={servers} />
         <ControlCenterButton />
         <NotificationHub />
       </section>
