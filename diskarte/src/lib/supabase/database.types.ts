@@ -520,6 +520,10 @@ export interface Database {
         Args: { p_server: string; p_query: string; p_channel?: string | null; p_author?: string | null; p_before?: string | null; p_limit?: number };
         Returns: Database["public"]["Tables"]["messages"]["Row"][];
       };
+      search_all_messages: {
+        Args: { p_query: string; p_server?: string | null; p_channel?: string | null; p_author?: string | null; p_after?: string | null; p_before?: string | null; p_kind?: string | null; p_cursor_date?: string | null; p_cursor_id?: string | null; p_limit?: number };
+        Returns: { source: string; id: string; server_id: string | null; channel_id: string | null; conversation_id: string | null; thread_id: string | null; author_id: string | null; content: string; created_at: string; attachments: Json }[];
+      };
       admin_site_traffic: { Args: Record<string, never>; Returns: Json };
     };
     Enums: {

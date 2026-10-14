@@ -2,7 +2,7 @@
 
 import { ArrowDown, AtSign, LogOut, Menu as MenuIcon, Phone, PhoneOff, Video } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { leaveDmAction, type DirectMessage } from "@/actions/social";
@@ -32,6 +32,7 @@ import { ConversationAvatar, HomeSidebar } from "./HomeSidebar";
 const VoiceStage = dynamic(() => import("@/components/voice/live/VoiceStage").then((m) => m.VoiceStage), { ssr: false, loading: () => <StageSkeleton /> });
 
 const NO_REACTIONS: never[] = [];
+const MessageContext = dynamic(() => import("@/components/chat/MessageContext").then((m) => m.MessageContext), { ssr: false });
 
 export function DmView({
   servers,
@@ -47,6 +48,7 @@ export function DmView({
   canSend: boolean;
 }) {
   const { me } = useMe();
+  const messageTarget = useSearchParams().get("message");
   const { markRead, reloadConversations, nicknames, conversations } = useSocial();
   // Re-mark whenever the newest message moves on while you're looking at it.
   const lastMessageAt = conversations?.find((c) => c.id === conversation.id)?.lastMessageAt;
@@ -104,6 +106,7 @@ export function DmView({
 
   return (
     <>
+      {messageTarget && <MessageContext conversationId={conversation.id} />}
       <HomeSidebar servers={servers} />
       <WorkspacePanel id="main" title={title}>
         <section className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden" aria-label={title}>

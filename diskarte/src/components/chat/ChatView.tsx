@@ -1,6 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
+import dynamic from "next/dynamic";
+import { useSearchParams } from "next/navigation";
 import { ArrowDown, Hash, Loader2, Pin } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -29,11 +31,13 @@ import { CreatePollButton } from "./Poll";
 import { ForwardDialog } from "./ForwardDialog";
 import { ThreadPanel } from "./ThreadPanel";
 import { Timestamp } from "./Timestamp";
+const MessageContext = dynamic(() => import("./MessageContext").then((m) => m.MessageContext), { ssr: false });
 
 const NO_REACTIONS: Reaction[] = [];
 
 
 export function ChatView({ channel: initialChannel, initial }: { channel: Channel; initial: { messages: MessageWithAuthor[]; reactions: Reaction[]; hasMore: boolean } }) {
+  const messageTarget = useSearchParams().get("message");
   const { me, verified } = useMe();
   const { server, myRole, members, channels } = useServer();
   // Slow mode / verification settings change live (ServerProvider keeps channels current).
@@ -165,6 +169,7 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1">
+      {messageTarget && <MessageContext channelId={channel.id} />}
       <motion.section
         className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
         aria-label={`#${channel.name}`}
