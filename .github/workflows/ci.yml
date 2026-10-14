@@ -123,6 +123,8 @@ jobs:
           # Only the E2E specs use it (to grant platform roles, like `npm run admin:grant`) — never the app.
           echo "::add-mask::$SERVICE"
           echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE" >> "$GITHUB_ENV"
+      - name: Verify workspace database readiness
+        run: npm run db:check --prefix diskarte
       - name: Start LiveKit (dev mode)
         run: docker run -d --name livekit --network host livekit/livekit-server:latest --dev --bind 0.0.0.0 --node-ip 127.0.0.1
       - name: Install Playwright browser

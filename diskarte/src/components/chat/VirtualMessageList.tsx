@@ -40,6 +40,8 @@ export const VirtualMessageList = forwardRef<VirtualMessageListHandle, Props>(fu
   const scroller = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLDivElement>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
+  const bottomFrame = useRef(0);
+  useLayoutEffect(() => () => cancelAnimationFrame(bottomFrame.current), []);
 
   // The welcome header / "load more" row sits above the virtual rows inside the same scroller.
   useLayoutEffect(() => {
@@ -74,15 +76,17 @@ export const VirtualMessageList = forwardRef<VirtualMessageListHandle, Props>(fu
         return scroller.current;
       },
       scrollToBottom(behavior: ScrollBehavior = "auto") {
+        cancelAnimationFrame(bottomFrame.current);
         if (keys.length === 0) return;
         virtualizer.scrollToIndex(keys.length - 1, { align: "end", behavior });
         // Rows measured after the jump can grow the list; settle on the real bottom next frame.
-        requestAnimationFrame(() => {
+        bottomFrame.current = requestAnimationFrame(() => {
           const el = scroller.current;
           if (el && behavior === "auto") el.scrollTop = el.scrollHeight;
         });
       },
       scrollToKey(key: string) {
+        cancelAnimationFrame(bottomFrame.current);
         const index = keys.indexOf(key);
         if (index < 0) return false;
         virtualizer.scrollToIndex(index, { align: "center" });
