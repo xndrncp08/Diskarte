@@ -6,7 +6,7 @@ import { z } from "zod";
 import { getSessionUser } from "@/lib/auth";
 import { fieldErrors, isAllowedImageUrl } from "@/lib/profile";
 import { limiters } from "@/lib/rate-limit";
-import { INVITE_AGES, INVITE_USES, parseInviteInput, type Channel } from "@/lib/servers";
+import { INVITE_AGES, INVITE_USES, parseInviteInput, SERVER_CATEGORIES, type Channel } from "@/lib/servers";
 import { channelSchema, serverSchema, uuidSchema } from "@/lib/schemas/servers";
 import { createClient } from "@/lib/supabase/server";
 
@@ -91,23 +91,43 @@ export async function joinServerAction(input: { invite: string }): Promise<Actio
   return { ok: true, data: { serverId: data } };
 }
 
-export async function updateServerAction(input: { serverId: string; name: string; description: string; iconUrl?: string | null }): Promise<ActionResult> {
+export async function updateServerAction(input: { serverId: string; name: string; description: string; iconUrl?: string | null; isPublic?: boolean; category?: string }): Promise<ActionResult> {
   const { limited } = await authed();
   if (limited) return RATE_LIMITED;
   if (!uuidSchema.safeParse(input.serverId).success) return { ok: false, error: "Invalid server" };
   const parsed = serverSchema.safeParse({ name: input.name, description: input.description });
   if (!parsed.success) return { ok: false, fieldErrors: fieldErrors(parsed.error) };
   if (input.iconUrl && !isAllowedImageUrl(input.iconUrl)) return { ok: false, fieldErrors: { icon: "Invalid icon URL" } };
+  if (input.category !== undefined && !SERVER_CATEGORIES.some((c) => c.id === input.category)) return { ok: false, fieldErrors: { category: "Pick a category" } };
 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("servers")
-    .update({ name: parsed.data.name, description: parsed.data.description, ...(input.iconUrl !== undefined ? { icon_url: input.iconUrl } : {}) })
+    .update({
+      name: parsed.data.name,
+      description: parsed.data.description,
+      ...(input.iconUrl !== undefined ? { icon_url: input.iconUrl } : {}),
+      // Only sent when changed, so saving works before the discovery migration is applied.
+      ...(input.isPublic !== undefined ? { is_public: input.isPublic } : {}),
+      ...(input.category !== undefined ? { category: input.category } : {}),
+    })
     .eq("id", input.serverId)
     .select("id");
   if (error || !data?.length) return { ok: false, error: dbError(error?.message, "Only admins can edit the server.") };
   revalidatePath("/tambayan", "layout");
   return { ok: true };
+}
+
+/** Join a server listed in Explore (no invite needed). */
+export async function joinPublicServerAction(input: { serverId: string }): Promise<ActionResult<{ serverId: string }>> {
+  const { limited } = await authed();
+  if (limited) return RATE_LIMITED;
+  if (!uuidSchema.safeParse(input.serverId).success) return { ok: false, error: "Invalid server" };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("join_public_server", { p_server: input.serverId });
+  if (error || !data) return { ok: false, error: dbError(error?.message, "Couldn't join. Try again.") };
+  revalidatePath("/tambayan", "layout");
+  return { ok: true, data: { serverId: data } };
 }
 
 export async function deleteServerAction(input: { serverId: string; confirmName: string }): Promise<ActionResult> {

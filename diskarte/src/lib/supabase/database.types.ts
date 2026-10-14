@@ -73,6 +73,9 @@ export interface Database {
           /** null only for the system server (Diskarte HQ), which belongs to nobody. */
           owner_id: string | null;
           /** The global "super server" every account belongs to. */
+          /** Listed in Explore (admins opt in). Absent before the discovery migration. */
+          is_public?: boolean;
+          category?: string;
           is_system: boolean;
           invite_code: string;
           automod_enabled: boolean;
@@ -90,6 +93,8 @@ export interface Database {
           description?: string;
           icon_url?: string | null;
           owner_id: string | null;
+          is_public?: boolean;
+          category?: string;
           is_system?: boolean;
           invite_code?: string;
           automod_enabled?: boolean;
@@ -505,6 +510,11 @@ export interface Database {
       revoke_invite: { Args: { p_code: string }; Returns: undefined };
       export_my_data: { Args: Record<string, never>; Returns: Json };
       mark_all_read: { Args: { p_server?: string }; Returns: undefined };
+      discover_servers: {
+        Args: { p_query?: string; p_category?: string | null; p_limit?: number; p_offset?: number };
+        Returns: { id: string; name: string; description: string; icon_url: string | null; category: string; member_count: number; active_members: number; is_member: boolean }[];
+      };
+      join_public_server: { Args: { p_server: string }; Returns: string };
       vote_poll: { Args: { p_message: string; p_options: number[] }; Returns: undefined };
       search_messages: {
         Args: { p_server: string; p_query: string; p_channel?: string | null; p_author?: string | null; p_before?: string | null; p_limit?: number };
