@@ -25,13 +25,15 @@ export function useConversationRecovery(target: string, kind: "channel" | "dm", 
   const supabase = useSupabase();
   const latest = useRef(messages);
   const deleted = useRef(new Set<string>());
-  const running = useRef(false);
-  const active = useRef(false);
+  const scope = useRef<{ target: string; kind: string; threadId: string | null } | null>(null);
+  const running = useRef<typeof scope.current>(null);
   const [problem, setProblem] = useState(false);
   useEffect(() => { latest.current = messages; }, [messages]);
   const recover = useCallback(async () => {
-    if (running.current || !active.current || !navigator.onLine) return;
-    running.current = true;
+    const session = scope.current;
+    if (!session || session.target !== target || session.kind !== kind || session.threadId !== threadId || running.current === session || !navigator.onLine) return;
+    running.current = session;
+    const current = () => scope.current === session;
     const started = performance.now();
     const snapshot = latest.current.filter((m) => !m.pending && !m.queued && !m.failed);
     try {
@@ -53,7 +55,7 @@ export function useConversationRecovery(target: string, kind: "channel" | "dm", 
       const fetched: ChatMessage[] = [];
       // Refresh known rows, including edits, pins and deletions missed while disconnected.
       for (let offset = 0; offset < snapshot.length; offset += 100) {
-        if (!active.current) return;
+        if (!current()) return;
         const ids = snapshot.slice(offset, offset + 100).map((m) => m.id);
         if (kind === "channel") {
           const { data, error } = await channelQuery().in("id", ids).limit(100);
@@ -67,7 +69,7 @@ export function useConversationRecovery(target: string, kind: "channel" | "dm", 
       }
       // Forward keyset pagination closes gaps even if more than one page arrived offline.
       let cursor = snapshot.at(-1);
-      while (active.current) {
+      while (current()) {
         const after = cursor ? `created_at.gt."${cursor.created_at}",and(created_at.eq."${cursor.created_at}",id.gt."${cursor.id}")` : null;
         let batch: ChatMessage[];
         if (kind === "channel") {
@@ -79,24 +81,26 @@ export function useConversationRecovery(target: string, kind: "channel" | "dm", 
           const { data, error } = await q.order("created_at", { ascending: !!cursor }).order("id", { ascending: !!cursor }).limit(100);
           if (error) throw error; batch = await normalizeDm(data);
         }
+        if (!current()) return;
         fetched.push(...batch);
         if (!cursor && batch.length === 100) setHasMore?.(true);
         const last = batch.at(-1);
         if (!cursor || batch.length < 100 || !last || last.id === cursor.id) break;
         cursor = last;
       }
-      if (!active.current) return;
-      setMessages((previous) => reconcileHistory(previous, snapshot, fetched, deleted.current));
+      if (!current()) return;
+      setMessages((previous) => current() ? reconcileHistory(previous, snapshot, fetched, deleted.current) : previous);
       setProblem(false); recordDiagnostic("message", "recovered", performance.now() - started);
-    } catch { if (active.current) { setProblem(true); recordDiagnostic("message", "error"); } }
-    finally { running.current = false; }
+    } catch { if (current()) { setProblem(true); recordDiagnostic("message", "error"); } }
+    finally { if (running.current === session) running.current = null; }
   }, [kind, target, threadId, setMessages, setHasMore, supabase]);
   useEffect(() => {
-    active.current = true;
+    scope.current = { target, kind, threadId };
+    deleted.current.clear();
     const reconnect = () => void recover();
     window.addEventListener("online", reconnect);
-    return () => { active.current = false; window.removeEventListener("online", reconnect); };
-  }, [recover]);
+    return () => { scope.current = null; window.removeEventListener("online", reconnect); };
+  }, [recover, target, kind, threadId]);
   const joined = useRef(false);
   const status = useCallback((value: string) => {
     if (value === "SUBSCRIBED") { if (joined.current) void recover(); joined.current = true; }
