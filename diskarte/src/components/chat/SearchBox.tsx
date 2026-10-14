@@ -28,13 +28,16 @@ export function SearchBox() {
   const [loading, setLoading] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const asked = useRef<{ text: string; author: string | null; channel: string | null } | null>(null);
+  const generation = useRef(0);
 
 
   async function run(before: string | null) {
     const a = asked.current;
     if (!a) return;
+    const token = ++generation.current;
     setLoading(true);
     const { data, error } = await supabase.rpc("search_messages", { p_server: server.id, p_query: a.text, p_author: a.author, p_channel: a.channel, p_before: before, p_limit: PAGE });
+    if (token !== generation.current) return;
     setLoading(false);
     if (error) {
       setProblem("Search isn't available right now.");
@@ -59,6 +62,8 @@ export function SearchBox() {
   }
 
   function close() {
+    generation.current++;
+    setLoading(false);
     asked.current = null;
     setHits(null);
     setProblem(null);
@@ -105,7 +110,7 @@ export function SearchBox() {
                     type="button"
                     onClick={() => {
                       close();
-                      router.push(`/tambayan/${server.id}/${m.channel_id}`);
+                      router.push(`/tambayan/${server.id}/${m.channel_id}?message=${m.id}`);
                     }}
                     className="block w-full rounded-lg border border-white/5 bg-white/[0.03] p-2.5 text-left hover:border-white/15 hover:bg-white/[0.06]"
                     data-testid="search-hit"

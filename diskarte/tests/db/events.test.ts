@@ -29,6 +29,23 @@ beforeAll(async () => {
 const schedule = "insert into public.server_events (server_id, channel_id, name, starts_at) values ($1, $2, $3, now() + interval '1 day') returning id";
 
 describe("scheduled events", () => {
+  it("hides private-channel events and RSVPs until channel access is granted", async () => {
+    await asUser(db, owner);
+    const privateVoice = (await one<{ id: string }>(db, "insert into public.channels (server_id, name, type, is_private) values ($1, 'staff-call', 'voice', true) returning id", [serverId])).id;
+    const privateEvent = (await one<{ id: string }>(db, schedule, [serverId, privateVoice, "Private planning"])).id;
+    await db.query("insert into public.event_rsvps (event_id, server_id) values ($1, $2)", [privateEvent, serverId]);
+    await asUser(db, juan);
+    expect(await rows(db, "select id from public.server_events where id = $1", [privateEvent])).toEqual([]);
+    expect(await rows(db, "select user_id from public.event_rsvps where event_id = $1", [privateEvent])).toEqual([]);
+    expect(await failure(db, "insert into public.event_rsvps (event_id, server_id) values ($1, $2)", [privateEvent, serverId])).toMatch(/row-level security/);
+    await asUser(db, owner);
+    await db.query("insert into public.channel_access (channel_id, server_id, user_id) values ($1, $2, $3)", [privateVoice, serverId, juan]);
+    await asUser(db, juan);
+    expect(await rows(db, "select name from public.server_events where id = $1", [privateEvent])).toEqual([{ name: "Private planning" }]);
+    await db.query("insert into public.event_rsvps (event_id, server_id) values ($1, $2)", [privateEvent, serverId]);
+    await asUser(db, owner);
+    await db.query("delete from public.server_events where id = $1", [privateEvent]);
+  });
   it("lets moderators schedule in a voice channel of this server, not members", async () => {
     await asUser(db, juan);
     expect(await failure(db, schedule, [serverId, voice, "Game night"])).toMatch(/row-level security/);

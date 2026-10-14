@@ -32,7 +32,7 @@ describe("message search", () => {
     expect(result).toHaveTextContent("Adobong manok");
     expect(result).toHaveTextContent(channels[1].name);
     await user.click(result);
-    expect(navigation.path).toBe(`/tambayan/${SERVER_ID}/${channels[1].id}`);
+    expect(navigation.path).toBe(`/tambayan/${SERVER_ID}/${channels[1].id}?message=${hit.id}`);
     expect(screen.queryByRole("region", { name: "Search results" })).toBeNull();
   });
 

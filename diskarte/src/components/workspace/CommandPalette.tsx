@@ -35,6 +35,7 @@ export function CommandPalette({ servers, onClose }: { servers: Server[]; onClos
     { id: "messages", label: "Messages", run: () => go("/tambayan/messages") },
     { id: "friends", label: "Friends", run: () => go("/tambayan/friends") },
     { id: "explore", label: "Explore communities", run: () => go("/tambayan/explore") },
+    { id: "search", label: "Search all messages", run: () => go("/tambayan/search") },
     ...(settings ? [{ id: "settings", label: "User settings", run: () => { onClose(); settings.openSettings(); } }] : []),
     ...servers.map((s) => ({ id: s.id, label: s.name, run: () => go(`/tambayan/${s.id}`) })),
     ...(social?.conversations ?? []).map((c) => ({ id: c.id, label: `DM · ${conversationTitle(c)}`, run: () => go(`/tambayan/dm/${c.id}`) })),
