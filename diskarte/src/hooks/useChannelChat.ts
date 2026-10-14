@@ -6,8 +6,9 @@ import { deleteMessageAction, editMessageAction, sendMessageAction, setPinnedAct
 import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { useServer } from "@/components/providers/ServerProvider";
-import { AUTHOR_COLUMNS, MESSAGE_SELECT, olderThan, PAGE_SIZE, type Attachment, type Message, type MessageAuthor, type MessageWithAuthor, type Reaction } from "@/lib/messages";
+import { AUTHOR_COLUMNS, MESSAGE_SELECT, parseAttachments, olderThan, PAGE_SIZE, type Attachment, type Message, type MessageAuthor, type MessageWithAuthor, type Reaction } from "@/lib/messages";
 import { dequeue, enqueue, isNetworkError, outboxFor, type OutboxEntry } from "@/lib/outbox";
+import { useOutboxRetry } from "./useOutboxRetry";
 import { subscribeDbChanges } from "@/lib/realtime";
 import { playSfx } from "@/lib/sfx";
 
@@ -70,6 +71,7 @@ export function useChannelChat(
   const [reactions, setReactions] = useState(() => groupReactions(initial.reactions));
   const [hasMore, setHasMore] = useState(initial.hasMore);
   const [loadingOlder, setLoadingOlder] = useState(false);
+  const loading = useRef(false);
   const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
 
   const authors = useRef(new Map<string, MessageAuthor>());
@@ -150,9 +152,10 @@ export function useChannelChat(
 
   // ---- pagination ----------------------------------------------------------------------
   const loadOlder = useCallback(async () => {
-    if (loadingOlder || !hasMore) return;
+    if (loading.current || !hasMore) return;
     const oldest = messages.find((m) => !m.pending && !m.queued);
     if (!oldest) return;
+    loading.current = true;
     setLoadingOlder(true);
     try {
       let query = supabase.from("messages").select(MESSAGE_SELECT).eq("channel_id", channelId).or(olderThan(oldest));
@@ -180,15 +183,16 @@ export function useChannelChat(
     } catch {
       toast.error("Couldn't load older messages.");
     } finally {
+      loading.current = false;
       setLoadingOlder(false);
     }
-  }, [supabase, channelId, threadId, messages, hasMore, loadingOlder]);
+  }, [supabase, channelId, threadId, messages, hasMore]);
 
   // ---- sending, offline outbox, slow mode -----------------------------------------------
   const slowmode = scope.slowmodeExempt ? 0 : (scope.slowmodeSeconds ?? 0);
 
   const toMessage = useCallback(
-    (entry: OutboxEntry, attachments: Attachment[] = []): ChatMessage => ({
+    (entry: OutboxEntry, attachments: Attachment[] = entry.attachments ?? []): ChatMessage => ({
       id: entry.id,
       channel_id: channelId,
       server_id: "",
@@ -227,12 +231,12 @@ export function useChannelChat(
           title: entry.title ?? null,
         });
       } catch (err) {
-        if (!isNetworkError(err)) throw err;
-        enqueue(entry);
-        setMessages((prev) => prev.map((m) => (m.id === entry.id ? { ...m, pending: false, queued: true } : m)));
-        return "queued";
+        const queued = isNetworkError(err) && enqueue(entry);
+        setMessages((prev) => prev.map((m) => (m.id === entry.id ? { ...m, pending: false, queued, failed: !queued } : m)));
+        if (!queued) toast.error("Couldn't send. Your message is available to retry.");
+        return queued ? "queued" : "failed";
       }
-      dequeue(entry.id);
+      dequeue(entry.id, me.id);
       if (result.ok && result.data) {
         const saved = result.data.message;
         setMessages((prev) => prev.map((m) => (m.id === entry.id ? { ...saved, author: saved.author ?? me } : m)).sort(byTime));
@@ -255,9 +259,10 @@ export function useChannelChat(
   const send = useCallback(
     async (content: string, attachments: Attachment[] = [], replyToId: string | null = null, extras: SendExtras = {}): Promise<SendResult> => {
       const entry: OutboxEntry = {
-        id: crypto.randomUUID(),
+        id: crypto.randomUUID(), userId: me.id,
         target: channelId,
         content,
+        attachments,
         replyToId,
         threadId,
         sticker: extras.sticker ?? null,
@@ -265,62 +270,64 @@ export function useChannelChat(
         createdAt: new Date().toISOString(),
       };
       const offline = typeof navigator !== "undefined" && navigator.onLine === false;
-      // Attachments are uploaded files: they can't wait in the outbox, so they need a connection.
-      if (offline && attachments.length === 0) {
-        enqueue(entry);
-        setMessages((prev) => [...prev, { ...toMessage(entry), queued: true }]);
+      // Uploads have already finished; persist their paths with the text for an idempotent retry.
+      if (offline) {
+        const queued = enqueue(entry);
+        setMessages((prev) => [...prev, { ...toMessage(entry), queued, failed: !queued }]);
         playSfx("send");
-        return "queued";
+        return queued ? "queued" : "failed";
       }
       setMessages((prev) => [...prev, { ...toMessage(entry, attachments), pending: true }]);
       playSfx("send");
       return deliver(entry, attachments);
     },
-    [channelId, threadId, toMessage, deliver],
+    [channelId, threadId, me.id, toMessage, deliver],
   );
 
   // Queued messages from a previous visit (or reload) show up and flush when online.
   const flushing = useRef(false);
   const flush = useCallback(async () => {
     if (flushing.current || (typeof navigator !== "undefined" && navigator.onLine === false)) return;
-    const queue = outboxFor(channelId).filter((e) => e.threadId === threadId);
+    const queue = outboxFor(channelId, me.id).filter((e) => e.threadId === threadId);
     if (queue.length === 0) return;
     flushing.current = true;
     try {
       for (const entry of queue) {
         setMessages((prev) => (prev.some((m) => m.id === entry.id) ? prev.map((m) => (m.id === entry.id ? { ...m, queued: false, pending: true } : m)) : [...prev, { ...toMessage(entry), pending: true }].sort(byTime)));
-        if ((await deliver(entry, [])) === "queued") break;
+        if ((await deliver(entry, entry.attachments ?? [])) === "queued") break;
       }
     } finally {
       flushing.current = false;
     }
-  }, [channelId, threadId, toMessage, deliver]);
+  }, [channelId, threadId, me.id, toMessage, deliver]);
 
   useEffect(() => {
-    const queued = outboxFor(channelId).filter((e) => e.threadId === threadId);
+    const queued = outboxFor(channelId, me.id).filter((e) => e.threadId === threadId);
     if (queued.length) {
       // Restoring persisted, not-yet-sent messages is exactly the external sync effects are for.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setMessages((prev) => [...prev, ...queued.filter((e) => !prev.some((m) => m.id === e.id)).map((e) => ({ ...toMessage(e), queued: true }))].sort(byTime));
       void flush();
     }
-    const onOnline = () => void flush();
-    window.addEventListener("online", onOnline);
-    return () => window.removeEventListener("online", onOnline);
-  }, [channelId, threadId, toMessage, flush]);
 
-  const retry = useCallback(
-    async (message: ChatMessage) => {
-      setMessages((prev) => prev.filter((m) => m.id !== message.id));
-      return send(message.content, (message.attachments as unknown as Attachment[]) ?? [], message.reply_to_id, { sticker: message.sticker, title: message.title ?? null });
-    },
-    [send],
-  );
+  }, [channelId, threadId, me.id, toMessage, flush]);
+
+  useOutboxRetry(flush);
+
+  const retrying = useRef(new Set<string>());
+  const retry = useCallback(async (m: ChatMessage) => {
+    if (retrying.current.has(m.id)) return;
+    retrying.current.add(m.id);
+    const entry: OutboxEntry = { id: m.id, userId: me.id, target: channelId, content: m.content, replyToId: m.reply_to_id, threadId: m.thread_id, sticker: m.sticker, title: m.title, createdAt: m.created_at, attachments: parseAttachments(m.attachments) };
+    setMessages((prev) => prev.map((row) => row.id === m.id ? { ...row, pending: true, queued: false, failed: false } : row));
+    try { return await deliver(entry, entry.attachments ?? []); }
+    finally { retrying.current.delete(m.id); }
+  }, [channelId, me.id, deliver]);
 
   const discard = useCallback((id: string) => {
-    dequeue(id);
+    dequeue(id, me.id);
     setMessages((prev) => prev.filter((m) => m.id !== id));
-  }, []);
+  }, [me.id]);
 
   // ---- edits, deletes, pins, reactions ----------------------------------------------------
   const edit = useCallback(
@@ -328,9 +335,9 @@ export function useChannelChat(
       const before = messages.find((m) => m.id === id);
       if (!before) return false;
       setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, content, edited_at: new Date().toISOString() } : m)));
-      const result = await editMessageAction({ messageId: id, content });
+      const result = await editMessageAction({ messageId: id, content }).catch(() => ({ ok: false, error: "Connection lost. Try again." }));
       if (!result.ok) {
-        setMessages((prev) => prev.map((m) => (m.id === id ? before : m)));
+        setMessages((prev) => prev.map((m) => (m.id === id && m.content === content ? before : m)));
         toast.error(result.error ?? "Couldn't edit.");
         return false;
       }
@@ -341,11 +348,11 @@ export function useChannelChat(
 
   const remove = useCallback(
     async (id: string) => {
-      const before = messages;
+      const before = messages.find((m) => m.id === id);
       setMessages((prev) => prev.filter((m) => m.id !== id));
-      const result = await deleteMessageAction({ messageId: id });
+      const result = await deleteMessageAction({ messageId: id }).catch(() => ({ ok: false, error: "Connection lost. Try again." }));
       if (!result.ok) {
-        setMessages(before);
+        setMessages((prev) => before && !prev.some((m) => m.id === id) ? [...prev, before].sort(byTime) : prev);
         toast.error(result.error ?? "Couldn't delete.");
         return false;
       }
@@ -356,7 +363,7 @@ export function useChannelChat(
 
   const setPinned = useCallback(async (id: string, pinned: boolean) => {
     setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, pinned, pinned_at: pinned ? new Date().toISOString() : null } : m)));
-    const result = await setPinnedAction({ messageId: id, pinned });
+    const result = await setPinnedAction({ messageId: id, pinned }).catch(() => ({ ok: false, error: "Connection lost. Try again." }));
     if (!result.ok) {
       setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, pinned: !pinned } : m)));
       toast.error(result.error ?? "Couldn't pin.");
@@ -382,7 +389,7 @@ export function useChannelChat(
           return next;
         });
       optimistic(!mine);
-      const result = await toggleReactionAction({ messageId, emoji, on: !mine });
+      const result = await toggleReactionAction({ messageId, emoji, on: !mine }).catch(() => ({ ok: false, error: "Connection lost. Try again." }));
       if (!result.ok) {
         optimistic(mine);
         toast.error(result.error ?? "Couldn't add the reaction.");

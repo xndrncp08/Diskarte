@@ -5,8 +5,9 @@ import { toast } from "sonner";
 import { deleteDirectMessageAction, editDirectMessageAction, sendDirectMessageAction, type DirectMessage } from "@/actions/social";
 import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
-import { olderThan, PAGE_SIZE, type MessageAuthor } from "@/lib/messages";
+import { parseAttachments, olderThan, PAGE_SIZE, type MessageAuthor } from "@/lib/messages";
 import { dequeue, enqueue, isNetworkError, outboxFor, type OutboxEntry } from "@/lib/outbox";
+import { useOutboxRetry } from "./useOutboxRetry";
 import { subscribeDbChanges } from "@/lib/realtime";
 import { playSfx } from "@/lib/sfx";
 import type { ChatMessage, SendExtras, SendResult } from "./useChannelChat";
@@ -47,6 +48,8 @@ export function useDirectChat(conversationId: string, initial: { messages: Direc
     return initial.messages.map((m) => dmToChat(m, m.author_id ? (known.get(m.author_id) ?? null) : null));
   });
   const [hasMore, setHasMore] = useState(initial.hasMore);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const loading = useRef(false);
   const incoming = useRef(onIncoming);
   useEffect(() => {
     incoming.current = onIncoming;
@@ -76,8 +79,11 @@ export function useDirectChat(conversationId: string, initial: { messages: Direc
 
   const loadOlder = useCallback(async () => {
     const oldest = messages.find((m) => !m.pending && !m.queued);
-    if (!oldest || !hasMore) return;
-    const { data } = await supabase
+    if (!oldest || !hasMore || loading.current) return;
+    loading.current = true;
+    setLoadingOlder(true);
+    try {
+    const { data, error } = await supabase
       .from("direct_messages")
       .select("*")
       .eq("conversation_id", conversationId)
@@ -85,10 +91,13 @@ export function useDirectChat(conversationId: string, initial: { messages: Direc
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .limit(PAGE_SIZE + 1);
+    if (error) throw error;
     const rows = data ?? [];
     setHasMore(rows.length > PAGE_SIZE);
     const older = rows.slice(0, PAGE_SIZE).reverse().map((m) => dmToChat(m, authorOf(m.author_id)));
     setMessages((prev) => [...older.filter((o) => !prev.some((p) => p.id === o.id)), ...prev]);
+    } catch { toast.error("Couldn't load older messages. Try again."); }
+    finally { loading.current = false; setLoadingOlder(false); }
   }, [supabase, conversationId, messages, hasMore, authorOf]);
 
   const toMessage = useCallback(
@@ -106,12 +115,12 @@ export function useDirectChat(conversationId: string, initial: { messages: Direc
       try {
         result = await sendDirectMessageAction({ id: entry.id, conversationId, content: entry.content, replyToId: entry.replyToId, sticker: entry.sticker });
       } catch (err) {
-        if (!isNetworkError(err)) throw err;
-        enqueue(entry);
-        setMessages((prev) => prev.map((m) => (m.id === entry.id ? { ...m, pending: false, queued: true } : m)));
-        return "queued";
+        const queued = isNetworkError(err) && enqueue(entry);
+        setMessages((prev) => prev.map((m) => (m.id === entry.id ? { ...m, pending: false, queued, failed: !queued } : m)));
+        if (!queued) toast.error("Couldn't send. Your message is available to retry.");
+        return queued ? "queued" : "failed";
       }
-      dequeue(entry.id);
+      dequeue(entry.id, me.id);
       if (result.ok && result.data) {
         const saved = result.data.message;
         setMessages((prev) => prev.map((m) => (m.id === entry.id ? dmToChat(saved, me) : m)).sort(byTime));
@@ -135,23 +144,23 @@ export function useDirectChat(conversationId: string, initial: { messages: Direc
         toast.error("Attachments aren't supported in DMs yet.");
         return "rejected";
       }
-      const entry: OutboxEntry = { id: crypto.randomUUID(), target: conversationId, content, replyToId, threadId: null, sticker: extras.sticker ?? null, createdAt: new Date().toISOString() };
+      const entry: OutboxEntry = { id: crypto.randomUUID(), userId: me.id, target: conversationId, content, replyToId, threadId: null, sticker: extras.sticker ?? null, createdAt: new Date().toISOString() };
       playSfx("send");
       if (typeof navigator !== "undefined" && navigator.onLine === false) {
-        enqueue(entry);
-        setMessages((prev) => [...prev, { ...toMessage(entry), queued: true }]);
-        return "queued";
+        const queued = enqueue(entry);
+        setMessages((prev) => [...prev, { ...toMessage(entry), queued, failed: !queued }]);
+        return queued ? "queued" : "failed";
       }
       setMessages((prev) => [...prev, { ...toMessage(entry), pending: true }]);
       return deliver(entry);
     },
-    [conversationId, toMessage, deliver],
+    [conversationId, me.id, toMessage, deliver],
   );
 
   const flushing = useRef(false);
   const flush = useCallback(async () => {
     if (flushing.current || (typeof navigator !== "undefined" && navigator.onLine === false)) return;
-    const queue = outboxFor(conversationId);
+    const queue = outboxFor(conversationId, me.id);
     if (!queue.length) return;
     flushing.current = true;
     try {
@@ -162,28 +171,26 @@ export function useDirectChat(conversationId: string, initial: { messages: Direc
     } finally {
       flushing.current = false;
     }
-  }, [conversationId, toMessage, deliver]);
+  }, [conversationId, me.id, toMessage, deliver]);
 
   useEffect(() => {
-    const queued = outboxFor(conversationId);
+    const queued = outboxFor(conversationId, me.id);
     if (queued.length) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- restoring persisted, unsent messages
       setMessages((prev) => [...prev, ...queued.filter((e) => !prev.some((m) => m.id === e.id)).map((e) => ({ ...toMessage(e), queued: true }))].sort(byTime));
       void flush();
     }
-    const onOnline = () => void flush();
-    window.addEventListener("online", onOnline);
-    return () => window.removeEventListener("online", onOnline);
-  }, [conversationId, toMessage, flush]);
+
+  }, [conversationId, me.id, toMessage, flush]);
 
   const edit = useCallback(
     async (id: string, content: string) => {
       const before = messages.find((m) => m.id === id);
       if (!before) return false;
       setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, content, edited_at: new Date().toISOString() } : m)));
-      const result = await editDirectMessageAction({ messageId: id, content });
+      const result = await editDirectMessageAction({ messageId: id, content }).catch(() => ({ ok: false, error: "Connection lost. Try again." }));
       if (!result.ok) {
-        setMessages((prev) => prev.map((m) => (m.id === id ? before : m)));
+        setMessages((prev) => prev.map((m) => (m.id === id && m.content === content ? before : m)));
         toast.error(result.error ?? "Couldn't edit.");
         return false;
       }
@@ -194,29 +201,33 @@ export function useDirectChat(conversationId: string, initial: { messages: Direc
 
   const remove = useCallback(
     async (id: string) => {
-      const before = messages;
+      const before = messages.find((m) => m.id === id);
       setMessages((prev) => prev.filter((m) => m.id !== id));
-      const result = await deleteDirectMessageAction({ messageId: id });
+      const result = await deleteDirectMessageAction({ messageId: id }).catch(() => ({ ok: false, error: "Connection lost. Try again." }));
       if (!result.ok) {
-        setMessages(before);
+        setMessages((prev) => before && !prev.some((m) => m.id === id) ? [...prev, before].sort(byTime) : prev);
         toast.error(result.error ?? "Couldn't delete.");
       }
     },
     [messages],
   );
 
-  const retry = useCallback(
-    (m: ChatMessage) => {
-      setMessages((prev) => prev.filter((x) => x.id !== m.id));
-      return send(m.content, [], m.reply_to_id, { sticker: m.sticker });
-    },
-    [send],
-  );
+  useOutboxRetry(flush);
+
+  const retrying = useRef(new Set<string>());
+  const retry = useCallback(async (m: ChatMessage) => {
+    if (retrying.current.has(m.id)) return;
+    retrying.current.add(m.id);
+    const entry: OutboxEntry = { id: m.id, userId: me.id, target: conversationId, content: m.content, replyToId: m.reply_to_id, threadId: m.thread_id, sticker: m.sticker, title: m.title, createdAt: m.created_at, attachments: parseAttachments(m.attachments) };
+    setMessages((prev) => prev.map((row) => row.id === m.id ? { ...row, pending: true, queued: false, failed: false } : row));
+    try { return await deliver(entry); }
+    finally { retrying.current.delete(m.id); }
+  }, [conversationId, me.id, deliver]);
 
   const discard = useCallback((id: string) => {
-    dequeue(id);
+    dequeue(id, me.id);
     setMessages((prev) => prev.filter((m) => m.id !== id));
-  }, []);
+  }, [me.id]);
 
-  return { messages, hasMore, loadOlder, send, edit, remove, retry, discard, queuedCount: messages.filter((m) => m.queued).length };
+  return { messages, hasMore, loadingOlder, loadOlder, send, edit, remove, retry, discard, queuedCount: messages.filter((m) => m.queued).length };
 }

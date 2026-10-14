@@ -72,7 +72,7 @@ export async function sendMessageAction(input: z.input<typeof sendSchema>): Prom
 
   // A retried send (offline queue, flaky network) whose first attempt already landed.
   if (error?.code === "23505") {
-    const { data: existing } = await supabase.from("messages").select(MESSAGE_SELECT).eq("id", id).eq("author_id", user.id).maybeSingle();
+    const { data: existing } = await supabase.from("messages").select(MESSAGE_SELECT).eq("id", id).eq("channel_id", channelId).eq("author_id", user.id).maybeSingle();
     if (existing) return { ok: true, data: { message: existing as unknown as MessageWithAuthor } };
   }
   if (error.code === "PGRST116") return { ok: false, error: communityError("AUTOMOD_BLOCKED"), code: "AUTOMOD_BLOCKED" };

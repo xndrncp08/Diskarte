@@ -108,29 +108,42 @@ describe("stickers", () => {
 });
 
 describe("offline outbox", () => {
-  const entry = (id: string, target = "c1"): OutboxEntry => ({ id, target, content: `msg ${id}`, replyToId: null, threadId: null, sticker: null, createdAt: "2026-09-27T00:00:00Z" });
+  const entry = (id: string, target = "c1"): OutboxEntry => ({ id, userId: "me", target, content: `msg ${id}`, replyToId: null, threadId: null, sticker: null, createdAt: "2026-09-27T00:00:00Z" });
 
   it("persists entries per target and removes them when sent", () => {
     enqueue(entry("a"));
     enqueue(entry("b"));
     enqueue(entry("c", "c2"));
     enqueue(entry("a")); // re-queueing the same id doesn't duplicate
-    expect(outboxFor("c1").map((e) => e.id)).toEqual(["b", "a"]);
+    expect(outboxFor("c1", "me").map((e) => e.id)).toEqual(["b", "a"]);
     expect(outboxSize()).toBe(3);
-    dequeue("a");
-    expect(outboxFor("c1").map((e) => e.id)).toEqual(["b"]);
+    dequeue("a", "me");
+    expect(outboxFor("c1", "me").map((e) => e.id)).toEqual(["b"]);
   });
 
   it("ignores corrupt storage", () => {
-    store.set("diskarte:outbox", '[{"id":1},"x",null]');
-    expect(outboxFor("c1")).toEqual([]);
-    store.set("diskarte:outbox", "{not json");
+    store.set("diskarte:outbox:v2", '[{"id":1},"x",null]');
+    expect(outboxFor("c1", "me")).toEqual([]);
+    store.set("diskarte:outbox:v2", "{not json");
     expect(outboxSize()).toBe(0);
   });
 
   it("recognises network failures", () => {
     expect(isNetworkError(new TypeError("Failed to fetch"))).toBe(true);
     expect(isNetworkError(new Error("RATE_LIMITED"))).toBe(false);
+  });
+
+  it("never replays another account's unsent messages", () => {
+    enqueue(entry("private"));
+    expect(outboxFor("c1", "someone-else")).toEqual([]);
+    dequeue("private", "someone-else");
+    expect(outboxFor("c1", "me")).toHaveLength(1);
+  });
+
+  it("refuses a full queue without losing the oldest unsent message", () => {
+    for (let i = 0; i < 50; i++) expect(enqueue(entry(String(i)))).toBe(true);
+    expect(enqueue(entry("overflow"))).toBe(false);
+    expect(outboxFor("c1", "me")[0].id).toBe("0");
   });
 });
 

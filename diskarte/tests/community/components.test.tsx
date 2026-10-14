@@ -135,14 +135,14 @@ describe("offline queue & slow mode (useChannelChat)", () => {
     });
     expect(outcome).toBe("queued");
     expect(result.current.queuedCount).toBe(1);
-    expect(JSON.parse(localStorage.getItem("diskarte:outbox")!)).toHaveLength(1);
+    expect(JSON.parse(localStorage.getItem("diskarte:outbox:v2")!)).toHaveLength(1);
     expect(messageActions.sendMessageAction).not.toHaveBeenCalled();
 
     vi.mocked(messageActions.sendMessageAction).mockImplementation(async (input) => ({ ok: true, data: { message: msg(input.id as string, { author_id: OWNER_ID, content: input.content as string }) } }));
     await act(async () => setOnline(true));
     await waitFor(() => expect(result.current.queuedCount).toBe(0));
     expect(messageActions.sendMessageAction).toHaveBeenCalledWith(expect.objectContaining({ content: "pag-online na" }));
-    expect(localStorage.getItem("diskarte:outbox")).toBeNull();
+    expect(localStorage.getItem("diskarte:outbox:v2")).toBeNull();
   });
 
   it("falls back to the queue when the network drops mid-send", async () => {

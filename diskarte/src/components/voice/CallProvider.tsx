@@ -89,7 +89,7 @@ export interface AudioMix {
  */
 let livekitModule: Promise<typeof import("livekit-client")> | null = null;
 export function loadLivekit() {
-  livekitModule ??= import("livekit-client");
+  livekitModule ??= import("livekit-client").catch((error) => { livekitModule = null; throw error; });
   return livekitModule;
 }
 
@@ -143,6 +143,7 @@ function requestToken(target: CallTarget): Promise<TokenResponse> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(target.kind === "dm" ? { conversationId: target.channelId } : { channelId: target.channelId }),
+    signal: AbortSignal.timeout(15_000),
   })
     .then(async (res) => ({ ok: res.ok, body: (await res.json().catch(() => null)) as TokenResponse["body"] }))
     .catch(() => ({ ok: false, body: null }));
@@ -233,6 +234,8 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const [room, setRoom] = useState<Room | null>(null);
   const [speaking, setSpeaking] = useState<string[]>([]);
   const roomRef = useRef<Room | null>(null);
+  const joinAttempt = useRef(0);
+  const joiningTarget = useRef<string | null>(null);
   const current = useRef<CallTarget | null>(null);
   // Looks up a channel's name (for "moved you to …"), through the browser Supabase client.
   const supabase = useOptionalSupabase();
@@ -277,7 +280,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
   /** Disconnects the room; resolves once LiveKit has closed it (or after a short safety timeout). */
   const disconnect = useCallback(() => {
     const current = roomRef.current;
-    if (!current) return Promise.resolve();
+    if (!current) { teardown(); return Promise.resolve(); }
     leaving.current = true;
     playSfx("leave");
     // Tell everyone watching the server right away that we left the voice channel, instead of waiting
@@ -288,16 +291,23 @@ export function CallProvider({ children }: { children: ReactNode }) {
     return Promise.race([closed, new Promise<void>((r) => setTimeout(r, DISCONNECT_TIMEOUT_MS))]).then(() => undefined);
   }, [teardown, setVoice]);
 
-  const leave = useCallback(() => void disconnect(), [disconnect]);
+  const leave = useCallback(() => {
+    ++joinAttempt.current;
+    joiningTarget.current = null;
+    void disconnect();
+  }, [disconnect]);
 
   const join = useCallback(
-    async (target: CallTarget) => {
-      if (roomRef.current && state.target?.channelId === target.channelId) return;
+    async (target: CallTarget, restore?: { muted: boolean; deafened: boolean }) => {
+      if (joiningTarget.current === targetKey(target) || (roomRef.current && current.current?.channelId === target.channelId)) return;
+      const attempt = ++joinAttempt.current;
+      joiningTarget.current = targetKey(target);
       // Switching rooms: show "connecting" for the new one now, but fully close the old room (and drop
       // its voice presence) before connecting, so we never sit in two rooms or two rosters at once.
       const previous = roomRef.current ? disconnect() : null;
       setState((s) => ({ ...s, status: "connecting", target, camera: false, screen: false }));
       if (previous) await previous;
+      if (attempt !== joinAttempt.current) return;
       leaving.current = false;
 
       // A token minted on hover saves the round trip; a stale or failed one falls back to a fresh request.
@@ -305,15 +315,24 @@ export function CallProvider({ children }: { children: ReactNode }) {
       warmed.current.delete(targetKey(target));
       let response = cached && Date.now() - cached.at < PREWARM_FRESH_MS ? await cached.request : null;
       if (!response?.ok || !response.body?.token) response = await requestToken(target);
+      if (attempt !== joinAttempt.current) return;
       const body = response.body;
       if (!response.ok || !body?.token || !body.url) {
         playSfx("error");
         toast.error(body?.error ?? "Couldn't connect to voice. Try again.");
         setState((s) => ({ ...IDLE, noiseSuppression: s.noiseSuppression }));
+        joiningTarget.current = null;
         return;
       }
 
-      const lk = await loadLivekit();
+      const lk = await loadLivekit().catch(() => null);
+      if (attempt !== joinAttempt.current) return;
+      if (!lk) {
+        joiningTarget.current = null;
+        teardown();
+        toast.error("Couldn't load voice. Check your connection and try again.");
+        return;
+      }
       // Devices and mic processing from Settings → Voice & Video.
       const prefs = readVoicePrefs();
       const processing = micProcessing(prefs);
@@ -400,18 +419,23 @@ export function CallProvider({ children }: { children: ReactNode }) {
       try {
         await next.connect(body.url, body.token, { autoSubscribe: true });
       } catch {
+        next.removeAllListeners();
+        void next.disconnect();
         if (roomRef.current === next) {
+          joiningTarget.current = null;
           playSfx("error");
           toast.error("Couldn't reach the voice server.");
           teardown();
         }
         return;
       }
-      if (roomRef.current !== next) return;
+      if (roomRef.current !== next || attempt !== joinAttempt.current) return;
+      joiningTarget.current = null;
       playSfx("join");
-      setState((s) => ({ ...s, status: "connected", noiseSuppression: ns, muted: false, deafened: false }));
+      const startMuted = restore?.muted === true || restore?.deafened === true;
+      setState((s) => ({ ...s, status: "connected", noiseSuppression: ns, muted: startMuted, deafened: restore?.deafened === true }));
       try {
-        await next.localParticipant.setMicrophoneEnabled(true);
+        await next.localParticipant.setMicrophoneEnabled(!startMuted);
         // Push to talk: the mic is published (permission asked now) but stays off until the key is held.
         if (readVoicePrefs().pushToTalk) await next.localParticipant.setMicrophoneEnabled(false);
       } catch (err) {
@@ -419,11 +443,12 @@ export function CallProvider({ children }: { children: ReactNode }) {
         setState((s) => ({ ...s, muted: true }));
       }
     },
-    [disconnect, teardown, state.target?.channelId],
+    [disconnect, teardown],
   );
 
   const prewarm = useCallback((target: CallTarget) => {
-    void loadLivekit(); // the ~650 KB SDK starts downloading now instead of on click
+    if (getLowDataMode()) return;
+    void loadLivekit().catch(() => undefined);
     const key = targetKey(target);
     const now = Date.now();
     if (roomRef.current && current.current?.channelId === target.channelId) return;
@@ -573,7 +598,12 @@ export function CallProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  useEffect(() => () => void roomRef.current?.disconnect(), []);
+  useEffect(() => () => {
+    ++joinAttempt.current;
+    joiningTarget.current = null;
+    roomRef.current?.removeAllListeners();
+    void roomRef.current?.disconnect();
+  }, []);
 
 
   // A full page reload mid-call (a new deploy makes the next navigation one, or a refresh) would drop
@@ -599,12 +629,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
     const saved = takeRejoin();
     if (!saved) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- restoring the call is the external sync here
-    void join(saved.target).then(async () => {
-      const r = roomRef.current;
-      if (!r || current.current?.channelId !== saved.target.channelId || !(saved.muted || saved.deafened)) return;
-      await r.localParticipant.setMicrophoneEnabled(false).catch(() => undefined);
-      setState((s) => ({ ...s, muted: true, deafened: saved.deafened }));
-    });
+    void join(saved.target, saved);
     // Once per page load.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

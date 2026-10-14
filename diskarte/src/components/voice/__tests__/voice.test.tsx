@@ -60,6 +60,38 @@ describe("switching and leaving voice channels", () => {
   const other = { ...target, channelId: "20000000-0000-4000-8000-000000000004", channelName: "Chill & Music" };
   afterEach(() => vi.useRealTimers());
 
+  it("cancels a pending token request when Leave is pressed", async () => {
+    let respond!: (r: Response) => void;
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((r) => { respond = r; })));
+    const { result } = renderHook(() => useCall(), { wrapper });
+    let joining!: Promise<void>;
+    act(() => { joining = result.current.join(target); });
+    act(() => result.current.leave());
+    await act(async () => {
+      respond(new Response(JSON.stringify({ token: "late", url: "wss://proj.livekit.cloud" })));
+      await joining;
+    });
+    expect(roomInstances).toHaveLength(0);
+    expect(result.current.status).toBe("idle");
+  });
+
+  it("only joins the latest channel when token requests complete out of order", async () => {
+    const responses: ((r: Response) => void)[] = [];
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((r) => responses.push(r))));
+    const { result } = renderHook(() => useCall(), { wrapper });
+    let first!: Promise<void>, second!: Promise<void>;
+    act(() => { first = result.current.join(target); second = result.current.join(other); });
+    await act(async () => {
+      responses[1](new Response(JSON.stringify({ token: "new", url: "wss://proj.livekit.cloud" })));
+      await second;
+      responses[0](new Response(JSON.stringify({ token: "old", url: "wss://proj.livekit.cloud" })));
+      await first;
+    });
+    expect(roomInstances).toHaveLength(1);
+    expect(result.current.target).toEqual(other);
+    expect(roomInstances[0].connect).toHaveBeenCalledWith(expect.any(String), "new", expect.any(Object));
+  });
+
   it("disconnects the old room before connecting the new one, and moves my voice presence", async () => {
     const { result } = renderHook(() => useCall(), { wrapper });
     await act(async () => {
@@ -333,6 +365,7 @@ describe("rejoining after a page reload", () => {
     expect(again.result.current.target?.channelId).toBe(target.channelId);
     await vi.waitFor(() => expect(again.result.current.muted).toBe(true));
     expect(roomInstances.at(-1)!.localParticipant.setMicrophoneEnabled).toHaveBeenLastCalledWith(false);
+    expect(roomInstances.at(-1)!.localParticipant.setMicrophoneEnabled).not.toHaveBeenCalledWith(true);
     expect(sessionStorage.getItem("diskarte:rejoin")).toBeNull();
   });
 });
