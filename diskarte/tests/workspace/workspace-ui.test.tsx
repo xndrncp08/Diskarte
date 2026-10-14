@@ -91,8 +91,8 @@ describe("column layout", () => {
   });
 
   it("ignores a corrupt saved layout", () => {
-    expect(parseLayout("{nope")).toEqual({ nav: 240, roster: 248, membersOpen: true });
-    expect(parseLayout(JSON.stringify({ nav: 9999, roster: "x", membersOpen: false }))).toEqual({ nav: 420, roster: 248, membersOpen: false });
+    expect(parseLayout("{nope")).toEqual({ mode: "columns", panels: {}, nav: 240, roster: 248, membersOpen: true });
+    expect(parseLayout(JSON.stringify({ nav: 9999, roster: "x", membersOpen: false, mode: "weird", panels: { nav: { x: "a" } } }))).toEqual({ mode: "columns", panels: {}, nav: 420, roster: 248, membersOpen: false });
   });
 });
 

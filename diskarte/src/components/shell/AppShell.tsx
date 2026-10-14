@@ -2,7 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useEffect, useMemo, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useAppViewport } from "@/hooks/useAppViewport";
+import { MobileNavigation } from "./MobileNavigation";
 import { useSwipeDrawer } from "@/hooks/useSwipeDrawer";
 import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
@@ -13,7 +15,7 @@ import { AdminAccessProvider } from "@/components/admin/AdminAccess";
 import { BroadcastBanner } from "@/components/broadcast/BroadcastBanner";
 import type { PlatformRole } from "@/lib/admin";
 import { cn } from "@/lib/utils";
-import { useLayout, WorkspaceProvider } from "@/components/workspace/WorkspaceProvider";
+import { useIsCanvas, useLayout, WorkspaceProvider } from "@/components/workspace/WorkspaceProvider";
 import { UnreadsProvider } from "@/components/providers/UnreadsProvider";
 import { DmNotifier } from "./DmNotifier";
 import { ServerRail } from "./ServerRail";
@@ -38,8 +40,29 @@ function MembershipWatcher({ userId }: { userId: string }) {
 function Frame({ servers, children }: { servers: Server[]; children: ReactNode }) {
   const { navOpen, setNavOpen } = useShellUI();
   const swipe = useSwipeDrawer(navOpen, setNavOpen);
+  const desktop = useIsCanvas();
+  const frame = useRef<HTMLDivElement>(null);
+  useAppViewport(frame);
+  useEffect(() => {
+    if (!navOpen || desktop) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const controls = () => Array.from(frame.current?.querySelectorAll<HTMLElement>("[data-mobile-navigation] a[href], [data-mobile-navigation] button:not([disabled]), [data-mobile-navigation] input") ?? []).filter((el) => el.getClientRects().length > 0);
+    controls()[0]?.focus();
+    const key = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); setNavOpen(false); }
+      if (event.key !== "Tab" || document.querySelector('[role="dialog"]')) return;
+      const nodes = controls();
+      const index = nodes.indexOf(document.activeElement as HTMLElement);
+      if (event.shiftKey && index <= 0) { event.preventDefault(); nodes.at(-1)?.focus(); }
+      else if (!event.shiftKey && (index === nodes.length - 1 || index < 0)) { event.preventDefault(); nodes[0]?.focus(); }
+    };
+    const back = () => setNavOpen(false);
+    window.addEventListener("keydown", key);
+    window.addEventListener("popstate", back);
+    return () => { window.removeEventListener("keydown", key); window.removeEventListener("popstate", back); previous?.focus({ preventScroll: true }); };
+  }, [navOpen, desktop, setNavOpen]);
   return (
-    <div className="diskarte-backdrop relative flex h-dvh overflow-hidden" data-testid="shell" {...swipe}>
+    <div ref={frame} className="diskarte-backdrop app-viewport relative flex h-dvh overflow-hidden" data-testid="shell" {...swipe}>
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-lg focus:bg-sun focus:px-4 focus:py-2 focus:font-semibold focus:text-abyss"
@@ -61,6 +84,8 @@ function Frame({ servers, children }: { servers: Server[]; children: ReactNode }
         )}
       </AnimatePresence>
       <div
+        data-mobile-navigation=""
+        inert={!desktop && !navOpen}
         className={cn(
           "fixed inset-y-0 left-0 z-40 transition-transform duration-200 ease-out md:relative md:z-10 md:flex md:translate-x-0",
           navOpen ? "translate-x-0" : "-translate-x-full",
@@ -75,6 +100,7 @@ function Frame({ servers, children }: { servers: Server[]; children: ReactNode }
         <div className="flex min-h-0 min-w-0 flex-1" data-workspace="">
           {children}
         </div>
+        <MobileNavigation />
       </div>
     </div>
   );

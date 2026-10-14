@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { ArrowDown, Hash, Loader2, Pin } from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
@@ -12,6 +12,7 @@ import { ChannelHeader } from "@/components/server/ChannelHeader";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { mentionsUser, useChannelChat, type ChatMessage } from "@/hooks/useChannelChat";
+import { useConversationScroll } from "@/hooks/useConversationScroll";
 import { useTimedOut } from "@/hooks/useTimedOut";
 import { useTyping } from "@/hooks/useTyping";
 import { isGroupedWithPrevious, sameDay } from "@/lib/chat-format";
@@ -19,7 +20,7 @@ import { READ_ONLY_NOTICE, VERIFY_NOTICE, type MessageWithAuthor, type Reaction 
 import { hasRole, type Channel } from "@/lib/servers";
 import { cn } from "@/lib/utils";
 import { Composer } from "./Composer";
-import { VirtualMessageList, type VirtualMessageListHandle } from "./VirtualMessageList";
+import { VirtualMessageList } from "./VirtualMessageList";
 import { openMemberProfile } from "@/components/server/memberProfiles";
 import { MessageItem, type MessageActions } from "./MessageItem";
 import { OfflineBanner } from "./OfflineBanner";
@@ -69,54 +70,13 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
   const [activeId, setActiveId] = useState<string | null>(null);
   const [pinsOpen, setPinsOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<ChatMessage | null>(null);
-  const [atBottom, setAtBottom] = useState(true);
-  const [unseen, setUnseen] = useState(0);
-
-  const listRef = useRef<VirtualMessageListHandle>(null);
-  const prevHeight = useRef(0);
-  const prevFirstId = useRef<string | undefined>(chat.messages[0]?.id);
-  const prevCount = useRef(chat.messages.length);
+  const { listRef, atBottom, unseen, onScroll, scrollToBottom } = useConversationScroll(`${me.id}:${channel.id}`, chat.messages, me.id, chat.loadOlder, chat.hasMore);
 
   const messageKeys = useMemo(() => chat.messages.map((m) => m.id), [chat.messages]);
   const byId = useMemo(() => new Map(chat.messages.map((m) => [m.id, m])), [chat.messages]);
   const liveIds = useMemo(() => new Set(chat.messages.map((m) => m.id)), [chat.messages]);
   const names = useMemo(() => new Map(members.map((m) => [m.user_id, m.nickname ?? m.profile.display_name])), [members]);
   const threadRoot = threadRootId ? (byId.get(threadRootId) ?? null) : null;
-
-  // Keep the viewport anchored: stick to bottom for new messages, preserve position when older ones prepend.
-  useLayoutEffect(() => {
-    const el = listRef.current?.element;
-    if (!el) return;
-    const firstId = chat.messages[0]?.id;
-    const grewAtTop = firstId !== prevFirstId.current && prevCount.current > 0 && chat.messages.length > prevCount.current;
-    if (grewAtTop) {
-      el.scrollTop += el.scrollHeight - prevHeight.current;
-    } else if (chat.messages.length > prevCount.current) {
-      const last = chat.messages[chat.messages.length - 1];
-      if (atBottom || last?.author_id === me.id) listRef.current?.scrollToBottom();
-      else setUnseen((n) => n + (chat.messages.length - prevCount.current));
-    } else if (prevCount.current === 0 || atBottom) {
-      listRef.current?.scrollToBottom();
-    }
-    prevFirstId.current = firstId;
-    prevCount.current = chat.messages.length;
-    prevHeight.current = el.scrollHeight;
-  }, [chat.messages, atBottom, me.id]);
-
-  function onScroll() {
-    const el = listRef.current?.element;
-    if (!el) return;
-    const bottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-    if (bottom !== atBottom) setAtBottom(bottom);
-    if (bottom && unseen) setUnseen(0);
-    prevHeight.current = el.scrollHeight;
-    if (el.scrollTop < 240 && chat.hasMore && !chat.loadingOlder) void chat.loadOlder();
-  }
-
-  function scrollToBottom() {
-    listRef.current?.scrollToBottom("smooth");
-    setUnseen(0);
-  }
 
   const jumpTo = useCallback((id: string) => {
     // The target may be outside the rendered window: scroll the virtualizer there, then flash it.
@@ -204,9 +164,9 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
   }
 
   return (
-    <div className="flex min-w-0 flex-1">
+    <div className="flex min-h-0 min-w-0 flex-1">
       <motion.section
-        className="relative flex min-w-0 flex-1 flex-col md:overflow-hidden"
+        className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
         aria-label={`#${channel.name}`}
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
