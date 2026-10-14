@@ -16,7 +16,7 @@ export function RosterDrawer({ children }: { children: ReactNode; count?: number
       aria-label="Member roster"
       data-roster="open"
       style={{ width: layout.roster }}
-      className="relative flex shrink-0 flex-col border-l border-white/[0.06] bg-midnight/60 max-md:hidden"
+      className="relative ml-auto flex shrink-0 flex-col border-l border-white/[0.06] bg-midnight/60 max-lg:hidden"
     >
       <ResizeHandle label="Resize member list" side="left" value={layout.roster} {...ROSTER_WIDTH} onChange={(roster) => setLayout({ roster })} />
       <div className="flex min-h-0 flex-1">{children}</div>

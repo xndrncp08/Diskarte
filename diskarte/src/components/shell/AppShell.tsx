@@ -97,7 +97,7 @@ function Frame({ servers, children }: { servers: Server[]; children: ReactNode }
           context would trap the phone drawer panels (z-40) beneath the drawer backdrop (z-30). */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <BroadcastBanner />
-        <div className="flex min-h-0 min-w-0 flex-1" data-workspace="">
+        <div className="relative flex min-h-0 min-w-0 flex-1" data-workspace="">
           {children}
         </div>
         <MobileNavigation />

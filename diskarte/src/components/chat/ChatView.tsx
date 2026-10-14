@@ -97,7 +97,7 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
       setTimeout(() => el.classList.remove("ring-2", "ring-sun/60"), 1600);
     };
     requestAnimationFrame(flash);
-  }, []);
+  }, [listRef]);
 
   // Saved messages (bookmarks) among what's loaded, Forward, and Mark Unread.
   const supabase = useSupabase();
