@@ -16,6 +16,8 @@ Browser ──HTTPS──▶ Render (Next.js container) ──▶ Supabase (Post
 
 All configuration is read **at runtime**, so the same Docker image works locally, in CI and on Render.
 
+For the October 14 changes, follow the [safe migration, backup and rollback procedure](OPERATIONS.md) and review the [verified release scope](RELEASE-2026-10-14.md). New features require the corresponding migrations before they work on a hosted project.
+
 ---
 
 ## 1. Supabase (database, auth, realtime, storage)
