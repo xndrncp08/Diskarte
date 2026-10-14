@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createFakeSupabase } from "../fixtures/fake-supabase";
 import { MEMBER_ID, OWNER_ID, SERVER_ID, ServerFixture, makeMember } from "../fixtures/server";
+import { ConfirmHost } from "@/components/ui/ConfirmHost";
 
 const tables: Record<string, unknown[]> = {};
 let fake = createFakeSupabase(tables);
@@ -23,6 +24,18 @@ beforeEach(() => {
   tables.event_rsvps = [{ event_id: "e1", server_id: SERVER_ID, user_id: OWNER_ID }];
   fake = createFakeSupabase(tables);
 });
+
+function mockWrites(result: { data: { id: string } | null; error: null | { code: string } }) {
+  const from = vi.mocked(fake.client.from);
+  const read = from.getMockImplementation()! as (table: string) => ReturnType<typeof fake.client.from>;
+  const chain = {
+    eq: vi.fn(() => chain), is: vi.fn(() => chain), select: vi.fn(() => chain),
+    maybeSingle: vi.fn(async () => result),
+  };
+  const update = vi.fn((values: unknown) => { void values; return chain; }), remove = vi.fn(() => chain);
+  from.mockImplementation((table: string) => ({ ...read(table), update, delete: remove }) as never);
+  return { update, remove, chain };
+}
 
 describe("events", () => {
   it("shows LIVE, lists what's not over with interest counts, and lets members join a live voice event", async () => {
@@ -56,5 +69,48 @@ describe("events", () => {
     expect(await screen.findByRole("button", { name: "Cancel Game night" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Create Event/ }));
     expect(await screen.findByLabelText("Event topic")).toBeInTheDocument();
+  });
+
+  it.each(["conflict", "network"])("preserves moderator edits after a %s failure", async (failure) => {
+    const writes = mockWrites({ data: null, error: null });
+    if (failure === "network") writes.chain.maybeSingle.mockRejectedValue(new TypeError("Failed to fetch"));
+    const user = userEvent.setup();
+    render(<ServerFixture members={members}><EventsButton /></ServerFixture>);
+    await user.click(await screen.findByTestId("events-button"));
+    await user.click(await screen.findByRole("button", { name: "Edit Meetup" }));
+    const topic = screen.getByLabelText("Event topic");
+    await user.clear(topic); await user.type(topic, "Updated meetup");
+    await user.click(screen.getByRole("button", { name: "Save event" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(failure === "conflict" ? "event changed" : "Couldn’t save");
+    expect(topic).toHaveValue("Updated meetup");
+    expect(writes.update).toHaveBeenCalledOnce();
+    expect(writes.chain.eq).toHaveBeenCalledWith("name", "Meetup");
+    expect(writes.chain.is).toHaveBeenCalledWith("channel_id", null);
+  });
+
+  it("allows editing a live event without altering its start time or creator", async () => {
+    const writes = mockWrites({ data: { id: "e1" }, error: null });
+    const user = userEvent.setup();
+    render(<ServerFixture members={members}><EventsButton /></ServerFixture>);
+    await user.click(await screen.findByTestId("events-button"));
+    await user.click(await screen.findByRole("button", { name: "Edit Game night" }));
+    await user.type(screen.getByLabelText("Description"), " — bring friends");
+    await user.click(screen.getByRole("button", { name: "Save event" }));
+    await waitFor(() => expect(screen.queryByLabelText("Event topic")).toBeNull());
+    expect(writes.update.mock.calls[0][0]).toMatchObject({ starts_at: (tables.server_events[0] as { starts_at: string }).starts_at });
+    expect(writes.update.mock.calls[0][0]).not.toHaveProperty("created_by");
+  });
+
+  it("requires confirmation before removing an event and its RSVPs", async () => {
+    const writes = mockWrites({ data: { id: "e1" }, error: null });
+    const user = userEvent.setup();
+    render(<ServerFixture members={members}><EventsButton /><ConfirmHost /></ServerFixture>);
+    await user.click(await screen.findByTestId("events-button"));
+    await user.click(await screen.findByRole("button", { name: "Cancel Game night" }));
+    expect(writes.remove).not.toHaveBeenCalled();
+    expect(screen.getByText("This removes the event and everyone’s RSVPs.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancel event" }));
+    await waitFor(() => expect(writes.remove).toHaveBeenCalledOnce());
+    expect(writes.chain.eq).toHaveBeenCalledWith("id", "e1");
   });
 });

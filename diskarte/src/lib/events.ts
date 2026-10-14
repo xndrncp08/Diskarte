@@ -22,3 +22,32 @@ export function toLocalInput(date: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
+
+/** RFC 5545: UTC dates, escaped text and CRLF lines folded at 75 UTF-8 octets. */
+export function eventCalendar(event: ServerEvent, location = event.location ?? "", now = new Date()) {
+  const date = (value: string | Date) => new Date(value).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const text = (value: string) => value.replace(/\r\n?/g, "\n").replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "").replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/[,;]/g, "\\$&");
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Diskarte//Community Events//EN", "BEGIN:VEVENT",
+    `UID:${text(event.id)}@diskarte`, `DTSTAMP:${date(now)}`, `DTSTART:${date(event.starts_at)}`,
+    ...(event.ends_at ? [`DTEND:${date(event.ends_at)}`] : []),
+    `SUMMARY:${text(event.name)}`, `DESCRIPTION:${text(event.description)}`, `LOCATION:${text(location)}`,
+    "END:VEVENT", "END:VCALENDAR"];
+  const encoder = new TextEncoder();
+  return lines.map((line) => {
+    let folded = "", bytes = 0;
+    for (const char of line) {
+      const size = encoder.encode(char).length;
+      if (bytes + size > 75) { folded += "\r\n "; bytes = 1; }
+      folded += char; bytes += size;
+    }
+    return folded;
+  }).join("\r\n") + "\r\n";
+}
+
+export function downloadEventCalendar(event: ServerEvent, location?: string) {
+  const url = URL.createObjectURL(new Blob([eventCalendar(event, location)], { type: "text/calendar;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url; link.download = `diskarte-event-${event.id}.ics`;
+  document.body.appendChild(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

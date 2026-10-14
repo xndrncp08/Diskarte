@@ -1,8 +1,8 @@
 "use client";
 
-import { CalendarDays, Check, MapPin, Plus, Star, Trash2, Volume2 } from "lucide-react";
+import { CalendarDays, Check, Download, MapPin, Pencil, Plus, Star, Trash2, Volume2 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Timestamp } from "@/components/chat/Timestamp";
 import { useMe } from "@/components/providers/MeProvider";
@@ -10,12 +10,13 @@ import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { useServer } from "@/components/providers/ServerProvider";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { activeEvents, eventStatus, toLocalInput, type ServerEvent } from "@/lib/events";
+import { confirmAction } from "@/components/ui/ConfirmHost";
+import { activeEvents, downloadEventCalendar, eventStatus, toLocalInput, type ServerEvent } from "@/lib/events";
 import { subscribeDbChanges } from "@/lib/realtime";
 import { hasRole } from "@/lib/servers";
 import { cn } from "@/lib/utils";
 
-const field = "mt-1 h-10 w-full rounded-lg border border-white/10 bg-black/40 px-3 text-sm font-normal text-white outline-none focus:border-sun/70";
+const field = "mt-1 min-h-11 w-full rounded-lg border border-white/10 bg-black/40 px-3 text-base font-normal text-white outline-none focus:border-sun/70";
 
 /** Discord's Events: the sidebar row (with a count, or LIVE) and the dialog to browse, RSVP and schedule. */
 export function EventsButton() {
@@ -27,6 +28,13 @@ export function EventsButton() {
   const [rsvps, setRsvps] = useState<{ event_id: string; user_id: string }[]>([]);
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<ServerEvent | null>(null);
+  const [problem, setProblem] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [pending, setPending] = useState<string[]>([]);
+  const pendingIds = useRef(new Set<string>());
+  const generation = useRef(0);
+  const invalidate = useCallback(() => { generation.current++; }, []);
   // Re-evaluated each minute so "LIVE" and the list follow the clock.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -35,40 +43,58 @@ export function EventsButton() {
   }, []);
 
   const load = useCallback(async () => {
-    const [e, r] = await Promise.all([
-      supabase.from("server_events").select("*").eq("server_id", server.id).order("starts_at"),
-      supabase.from("event_rsvps").select("event_id, user_id").eq("server_id", server.id),
-    ]);
-    if (e.data) setEvents(e.data);
-    if (r.data) setRsvps(r.data);
+    const token = ++generation.current;
+    try {
+      const [e, r] = await Promise.all([
+        supabase.from("server_events").select("*").eq("server_id", server.id).order("starts_at"),
+        supabase.from("event_rsvps").select("event_id, user_id").eq("server_id", server.id),
+      ]);
+      if (token !== generation.current) return;
+      if (e.error || r.error) throw e.error ?? r.error;
+      setEvents(e.data ?? []); setRsvps(r.data ?? []); setProblem("");
+    } catch {
+      if (token === generation.current) { setEvents([]); setRsvps([]); setProblem("Couldn’t load events. Check your connection and channel access, then retry."); }
+    } finally { if (token === generation.current) setLoading(false); }
   }, [supabase, server.id]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch; realtime keeps it current
     void load();
-    return subscribeDbChanges(supabase, `server:${server.id}:events`, (channel) =>
+    const off = subscribeDbChanges(supabase, `server:${server.id}:events`, (channel) =>
       channel
         .on("postgres_changes", { event: "*", schema: "public", table: "server_events", filter: `server_id=eq.${server.id}` }, () => void load())
         .on("postgres_changes", { event: "*", schema: "public", table: "event_rsvps", filter: `server_id=eq.${server.id}` }, () => void load()),
+      (status) => { if (status === "SUBSCRIBED") void load(); },
     );
-  }, [supabase, server.id, load]);
+    const resume = () => { if (document.visibilityState === "visible") void load(); };
+    window.addEventListener("online", resume); document.addEventListener("visibilitychange", resume);
+    return () => { invalidate(); off(); window.removeEventListener("online", resume); document.removeEventListener("visibilitychange", resume); };
+  }, [supabase, server.id, load, invalidate]);
 
   const active = activeEvents(events, now);
   const live = active.some((e) => eventStatus(e, now) === "live");
 
   async function toggleInterest(event: ServerEvent, interested: boolean) {
-    const { error } = interested
-      ? await supabase.from("event_rsvps").delete().eq("event_id", event.id).eq("user_id", me.id)
-      : await supabase.from("event_rsvps").insert({ event_id: event.id, server_id: server.id });
-    if (error) return void toast.error("Couldn't update that.");
-    void load();
+    if (pendingIds.current.has(event.id)) return;
+    pendingIds.current.add(event.id); setPending([...pendingIds.current]);
+    try {
+      const { error } = interested
+        ? await supabase.from("event_rsvps").delete().eq("event_id", event.id).eq("user_id", me.id)
+        : await supabase.from("event_rsvps").insert({ event_id: event.id, server_id: server.id });
+      if (error && !(error.code === "23505" && !interested)) throw error;
+      await load();
+    } catch { toast.error("Couldn’t update your interest. Try again."); }
+    finally { pendingIds.current.delete(event.id); setPending([...pendingIds.current]); }
   }
 
-  async function cancel(event: ServerEvent) {
-    const { error } = await supabase.from("server_events").delete().eq("id", event.id);
-    if (error) return void toast.error("Couldn't cancel the event.");
-    toast.success(`Cancelled ${event.name}.`);
-    void load();
+  function cancel(event: ServerEvent) {
+    confirmAction({ title: `Cancel ${event.name}?`, body: "This removes the event and everyone’s RSVPs.", confirmLabel: "Cancel event", onConfirm: async () => {
+      try {
+        const { data, error } = await supabase.from("server_events").delete().eq("id", event.id).select("id").maybeSingle();
+        if (error || !data) throw error ?? new Error("Not found");
+        toast.success(`Cancelled ${event.name}.`); await load();
+      } catch { toast.error("Couldn’t cancel the event. Check your permissions and retry."); return false; }
+    } });
   }
 
   return (
@@ -87,9 +113,9 @@ export function EventsButton() {
           active.length > 0 && <span className="rounded-full bg-white/10 px-1.5 text-xs tabular-nums">{active.length}</span>
         )}
       </button>
-      <Modal open={open} onClose={() => (setOpen(false), setCreating(false))} title={creating ? "Create an event" : `${active.length} Event${active.length === 1 ? "" : "s"}`} className="max-w-lg">
-        {creating ? (
-          <CreateEventForm onDone={() => (setCreating(false), void load())} />
+      <Modal open={open} onClose={() => { setOpen(false); setCreating(false); setEditing(null); }} title={editing ? "Edit event" : creating ? "Create an event" : `${active.length} Event${active.length === 1 ? "" : "s"}`} className="max-w-lg">
+        {creating || editing ? (
+          <EventForm key={editing?.id ?? "new"} initial={editing} onDone={() => { setCreating(false); setEditing(null); void load(); }} />
         ) : (
           <>
             {canSchedule && (
@@ -97,7 +123,9 @@ export function EventsButton() {
                 <Plus className="size-4" aria-hidden /> Create Event
               </Button>
             )}
-            {active.length === 0 && <p className="py-8 text-center text-sm text-slate-400">No upcoming events{canSchedule ? ". Schedule one so people know when to show up." : "."}</p>}
+            {loading && <p role="status" className="py-4 text-sm text-slate-400">Loading events…</p>}
+            {problem && <div role="alert" className="space-y-2 py-4 text-sm text-amber-200"><p>{problem}</p><Button variant="secondary" onClick={() => void load()}>Retry events</Button></div>}
+            {!loading && !problem && active.length === 0 && <p className="py-8 text-center text-sm text-slate-400">No upcoming events{canSchedule ? ". Schedule one so people know when to show up." : "."}</p>}
             <ul className="scrollbar-thin max-h-[60vh] space-y-2 overflow-y-auto" data-testid="events-list">
               {active.map((e) => {
                 const status = eventStatus(e, now);
@@ -116,16 +144,18 @@ export function EventsButton() {
                       {channel?.name ?? e.location ?? "Somewhere"}
                     </p>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <Button size="sm" variant={interested ? "primary" : "secondary"} onClick={() => void toggleInterest(e, interested)} aria-pressed={interested}>
+                      <Button size="sm" loading={pending.includes(e.id)} variant={interested ? "primary" : "secondary"} onClick={() => void toggleInterest(e, interested)} aria-pressed={interested}>
                         {interested ? <Check className="size-4" aria-hidden /> : <Star className="size-4" aria-hidden />} Interested · {count}
                       </Button>
+                      <Button size="sm" variant="ghost" aria-label={`Add ${e.name} to calendar`} onClick={() => { try { downloadEventCalendar(e, channel?.name); } catch { toast.error("Couldn’t export the event."); } }}><Download className="size-4" aria-hidden />Calendar</Button>
                       {status === "live" && channel && (
                         <Link href={`/tambayan/${server.id}/${channel.id}`} onClick={() => setOpen(false)} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-500">
                           Join
                         </Link>
                       )}
+                      {canSchedule && <button type="button" onClick={() => setEditing(e)} aria-label={`Edit ${e.name}`} className="ml-auto flex size-11 items-center justify-center rounded-md text-slate-400 hover:bg-white/10 hover:text-white"><Pencil className="size-4" aria-hidden /></button>}
                       {canSchedule && (
-                        <button type="button" onClick={() => void cancel(e)} aria-label={`Cancel ${e.name}`} className="ml-auto rounded-md p-1.5 text-slate-400 hover:bg-white/10 hover:text-red-300">
+                        <button type="button" onClick={() => cancel(e)} aria-label={`Cancel ${e.name}`} className="flex size-11 items-center justify-center rounded-md text-slate-400 hover:bg-white/10 hover:text-red-300">
                           <Trash2 className="size-4" aria-hidden />
                         </button>
                       )}
@@ -141,40 +171,53 @@ export function EventsButton() {
   );
 }
 
-function CreateEventForm({ onDone }: { onDone: () => void }) {
+function EventForm({ initial, onDone }: { initial: ServerEvent | null; onDone: () => void }) {
   const supabase = useSupabase();
   const { me } = useMe();
   const { server, channels } = useServer();
   const voice = channels.filter((c) => c.type === "voice");
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [where, setWhere] = useState(voice[0]?.id ?? "elsewhere");
-  const [location, setLocation] = useState("");
-  const [starts, setStarts] = useState(() => toLocalInput(new Date(Date.now() + 60 * 60 * 1000)));
-  const [ends, setEnds] = useState("");
+  const [name, setName] = useState(initial?.name ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [where, setWhere] = useState(initial ? initial.channel_id ?? "elsewhere" : voice[0]?.id ?? "elsewhere");
+  const [location, setLocation] = useState(initial?.location ?? "");
+  const [starts, setStarts] = useState(() => toLocalInput(new Date(initial?.starts_at ?? Date.now() + 60 * 60 * 1000)));
+  const [ends, setEnds] = useState(() => initial?.ends_at ? toLocalInput(new Date(initial.ends_at)) : "");
   const [busy, setBusy] = useState(false);
+  const saving = useRef(false);
+  const [problem, setProblem] = useState("");
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (saving.current) return;
     const startsAt = new Date(starts);
     const endsAt = ends ? new Date(ends) : null;
-    if (Number.isNaN(startsAt.getTime()) || startsAt.getTime() < Date.now() - 60_000) return void toast.error("Pick a start time in the future.");
-    if (endsAt && endsAt <= startsAt) return void toast.error("The end has to be after the start.");
-    setBusy(true);
-    const { error } = await supabase.from("server_events").insert({
-      server_id: server.id,
-      created_by: me.id,
+    if (!name.trim()) return void setProblem("Enter an event topic.");
+    if (Number.isNaN(startsAt.getTime()) || (!initial && startsAt.getTime() < Date.now() - 60_000)) return void setProblem("Pick a valid start time in the future.");
+    if (endsAt && (Number.isNaN(endsAt.getTime()) || endsAt <= startsAt)) return void setProblem("The end has to be after the start.");
+    saving.current = true; setBusy(true); setProblem("");
+    const values = {
       name: name.trim(),
       description: description.trim(),
       channel_id: where === "elsewhere" ? null : where,
       location: where === "elsewhere" ? location.trim() || null : null,
-      starts_at: startsAt.toISOString(),
-      ends_at: endsAt?.toISOString() ?? null,
-    });
-    setBusy(false);
-    if (error) return void toast.error("Couldn't schedule it. Only moderators can create events.");
-    toast.success(`Scheduled ${name.trim()}.`);
-    onDone();
+      starts_at: initial && starts === toLocalInput(new Date(initial.starts_at)) ? initial.starts_at : startsAt.toISOString(),
+      ends_at: initial?.ends_at && ends === toLocalInput(new Date(initial.ends_at)) ? initial.ends_at : endsAt?.toISOString() ?? null,
+    };
+    try {
+      if (initial) {
+        let update = supabase.from("server_events").update(values).eq("id", initial.id);
+        // Compare the editable fields so a stale form cannot overwrite another moderator’s changes.
+        for (const key of ["name", "description", "channel_id", "location", "starts_at", "ends_at"] as const) update = initial[key] === null ? update.is(key, null) : update.eq(key, initial[key]!);
+        const { data, error } = await update.select("id").maybeSingle();
+        if (error) throw error;
+        if (!data) { setProblem("This event changed or you no longer have access. Your edits are preserved; go back and reopen the event to review it."); return; }
+      } else {
+        const { error } = await supabase.from("server_events").insert({ ...values, server_id: server.id, created_by: me.id });
+        if (error) throw error;
+      }
+      toast.success(`${initial ? "Updated" : "Scheduled"} ${name.trim()}.`); onDone();
+    } catch { setProblem("Couldn’t save the event. Your edits are preserved. Check your connection and moderator permissions, then retry."); }
+    finally { saving.current = false; setBusy(false); }
   }
 
   return (
@@ -214,12 +257,13 @@ function CreateEventForm({ onDone }: { onDone: () => void }) {
         Description
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} maxLength={1000} rows={3} className={cn(field, "h-auto py-2")} />
       </label>
+      {problem && <p role="alert" className="text-sm text-amber-200">{problem}</p>}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" onClick={onDone}>
           Back
         </Button>
         <Button type="submit" loading={busy}>
-          Create Event
+          {initial ? "Save event" : "Create Event"}
         </Button>
       </div>
     </form>
