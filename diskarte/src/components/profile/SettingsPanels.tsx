@@ -13,6 +13,7 @@ import { AccessibilitySettings, ChatSettings } from "@/components/profile/Displa
 import { PrivacySettings } from "@/components/profile/PrivacySettings";
 import { SoundSettings } from "@/components/profile/SoundSettings";
 import { ThemePicker } from "@/components/profile/ThemePicker";
+import { PwaSettings } from "@/components/profile/PwaSettings";
 import { cn } from "@/lib/utils";
 import type { SettingsTab } from "./SettingsDialog";
 
@@ -124,6 +125,7 @@ export function SettingsPanels({ account, tab, onTab }: { account: AccountInfo; 
               <h3 className="text-sm font-semibold text-white">Data saver</h3>
               <LowDataToggle className="max-w-md" />
             </section>
+            <PwaSettings />
           </>
         ) : tab === "voice" ? (
           <>

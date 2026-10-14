@@ -6,6 +6,12 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Diskarte",
     description: "Tara, Tambay Tayo. Ang Bagong Istambayan ng Bayan.",
     start_url: "/tambayan",
+    id: "/tambayan",
+    scope: "/",
+    shortcuts: [
+      { name: "Messages", url: "/tambayan/messages", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
+      { name: "Explore", url: "/tambayan/explore", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
+    ],
     display: "standalone",
     background_color: "#020617",
     theme_color: "#0F172A",

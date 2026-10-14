@@ -39,6 +39,8 @@ export function SessionProviders({
     root.style.setProperty("--chat-font-size", `${display.fontSize}px`);
     root.toggleAttribute("data-reduce-motion", display.reducedMotion === "on");
     root.toggleAttribute("data-underline-links", display.underlineLinks);
+    root.toggleAttribute("data-reduce-transparency", display.reducedTransparency);
+    root.toggleAttribute("data-high-contrast", display.highContrast);
   }, [display]);
   return (
     <MeProvider profile={profile} verified={verified}>

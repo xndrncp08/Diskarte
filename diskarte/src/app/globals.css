@@ -111,6 +111,10 @@ button, [role="button"], [role="tab"] { -webkit-user-select: none; user-select: 
   .glass, .glass-strong, .float-card { background: var(--color-midnight); backdrop-filter: none; -webkit-backdrop-filter: none; border-color: #64748b; }
   .diskarte-backdrop::before { display: none; }
 }
+html:is([data-reduce-transparency], [data-high-contrast]) :is(.glass, .glass-strong, .float-card) { background: var(--color-midnight); backdrop-filter: none; -webkit-backdrop-filter: none; border-color: #64748b; }
+html:is([data-reduce-transparency], [data-high-contrast]) .diskarte-backdrop::before { display: none; }
+html[data-high-contrast] :is(.text-slate-400, .text-slate-500, .text-slate-600) { color: #cbd5e1; }
+html[data-high-contrast] :focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 
 body {
   font-family: var(--font-sans);

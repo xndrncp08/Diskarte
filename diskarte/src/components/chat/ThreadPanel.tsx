@@ -150,6 +150,7 @@ function ThreadBody({ channel, root, initial, locked }: { channel: Channel; root
         channelName={channel.name}
         serverId={server.id}
         channelId={channel.id}
+        draftScope={root.id}
         placeholder="Reply in thread…"
         replyTo={replyTo}
         onCancelReply={() => setReplyTo(null)}

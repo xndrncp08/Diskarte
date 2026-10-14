@@ -4,6 +4,7 @@ import { Inter, JetBrains_Mono, Press_Start_2P, Silkscreen } from "next/font/goo
 import { Analytics } from "@vercel/analytics/next";
 import { AppToaster } from "@/components/AppToaster";
 import { RuntimeConfigProvider } from "@/components/providers/RuntimeConfig";
+import { PwaProvider } from "@/components/providers/PwaProvider";
 import { VisitBeacon } from "@/components/VisitBeacon";
 import { tryGetPublicEnv } from "@/lib/env";
 import { isTheme, THEME_COOKIE } from "@/lib/theme";
@@ -61,7 +62,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               : null
           }
         >
-          {children}
+          <PwaProvider>{children}</PwaProvider>
           <VisitBeacon />
         </RuntimeConfigProvider>
         <AppToaster />

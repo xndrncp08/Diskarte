@@ -18,6 +18,8 @@ export interface DisplayPrefs {
   hour24: boolean;
   reducedMotion: "system" | "on";
   underlineLinks: boolean;
+  reducedTransparency: boolean;
+  highContrast: boolean;
 }
 
 export const FONT_SIZES = [12, 14, 15, 16, 18, 20] as const;
@@ -31,6 +33,8 @@ export const DEFAULT_DISPLAY_PREFS: DisplayPrefs = {
   hour24: false,
   reducedMotion: "system",
   underlineLinks: false,
+  reducedTransparency: false,
+  highContrast: false,
 };
 
 const KEY = "diskarte:display-prefs";
@@ -51,6 +55,8 @@ export function parseDisplayPrefs(raw: string | null): DisplayPrefs {
       hour24: v.hour24 === true,
       reducedMotion: v.reducedMotion === "on" ? "on" : "system",
       underlineLinks: v.underlineLinks === true,
+      reducedTransparency: v.reducedTransparency === true,
+      highContrast: v.highContrast === true,
     };
   } catch {
     return DEFAULT_DISPLAY_PREFS;

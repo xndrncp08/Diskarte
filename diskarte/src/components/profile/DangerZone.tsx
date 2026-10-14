@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { InputField } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { clearOutbox } from "@/lib/outbox";
+import { clearDrafts } from "@/lib/drafts";
 
 /** Settings → Danger zone: permanent account deletion behind a type-your-username confirmation. */
 export function DangerZone({ username }: { username: string }) {
@@ -50,6 +51,7 @@ export function DeleteAccountDialog({ open, onClose, username }: { open: boolean
     setError(null);
     startTransition(async () => {
       clearOutbox();
+      clearDrafts();
       // On success the action signs out and redirects, so it only returns on failure.
       const result = await deleteAccountAction({ confirm });
       setError(result.fieldErrors?.confirm ?? result.error ?? "Couldn't delete your account. Try again.");

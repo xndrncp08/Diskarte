@@ -1,4 +1,4 @@
-import { isGlyphCode, type GlyphCode } from "@/lib/glyphs";
+import type { GlyphCode } from "@/lib/glyphs";
 import type { ZodError } from "zod";
 import type { PresenceStatus } from "@/lib/supabase/database.types";
 

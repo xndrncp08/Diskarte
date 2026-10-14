@@ -20,7 +20,7 @@ describe("/api/gifs", () => {
 
   it("searches GIPHY server-side and returns only what the picker needs", async () => {
     vi.stubEnv("GIPHY_API_KEY", "secret-key");
-    const fetchMock = vi.fn(async (_url: string) =>
+    const fetchMock = vi.fn(async () =>
       Response.json({
         data: [
           { id: "abc", title: "Happy Cat", images: { fixed_width: { url: "https://media1.giphy.com/media/abc/200w.gif", webp: "https://media1.giphy.com/media/abc/200w.webp", width: "200", height: "150" }, downsized: { url: "https://media1.giphy.com/media/abc/giphy.gif?cid=x&rid=giphy.gif" } } },

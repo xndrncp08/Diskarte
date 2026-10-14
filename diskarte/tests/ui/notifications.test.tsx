@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { desktopNotify, parseNotifyPrefs, readNotifyPrefs, resetNotifyPrefsCache, serverNotify, setNotifyPrefs, setServerNotify } from "@/lib/notify-prefs";
+import { desktopNotify, notificationsQuiet, parseNotifyPrefs, readNotifyPrefs, resetNotifyPrefsCache, serverNotify, setNotifyPrefs, setServerNotify } from "@/lib/notify-prefs";
 
 const { NotificationSettings } = await import("@/components/profile/NotificationSettings");
 
@@ -26,6 +26,16 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("notification preferences", () => {
+  it("handles overnight quiet hours, exact boundaries and temporary pauses", () => {
+    const prefs = { desktop: true, dms: true, servers: {}, quietHours: { enabled: true, start: 22 * 60, end: 8 * 60 } };
+    expect(notificationsQuiet(prefs, new Date(2026, 9, 14, 22))).toBe(true);
+    expect(notificationsQuiet(prefs, new Date(2026, 9, 14, 7, 59))).toBe(true);
+    expect(notificationsQuiet(prefs, new Date(2026, 9, 14, 8))).toBe(false);
+    expect(notificationsQuiet(prefs, new Date(2026, 9, 14, 21, 59))).toBe(false);
+    expect(notificationsQuiet({ ...prefs, doNotDisturbUntil: new Date(2026, 9, 14, 12).getTime() }, new Date(2026, 9, 14, 11))).toBe(true);
+    setServerNotify("s1", { muted: true, muteUntil: Date.now() - 1 });
+    expect(serverNotify(readNotifyPrefs(), "s1").muted).toBe(false);
+  });
   it("default to @mentions per server, unmuted, desktop off, DMs on; bad data falls back", () => {
     expect(parseNotifyPrefs(null)).toEqual({ desktop: false, dms: true, servers: {} });
     expect(parseNotifyPrefs("{oops")).toEqual({ desktop: false, dms: true, servers: {} });

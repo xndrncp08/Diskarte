@@ -16,6 +16,7 @@ import { cn, formatBytes } from "@/lib/utils";
 import { EmojiPicker } from "./EmojiPicker";
 import { GifPicker } from "./GifPicker";
 import { StickerPicker } from "./StickerPicker";
+import { useDraft } from "@/lib/drafts";
 
 /** Seconds left until `until` (a Date.now() timestamp), ticking while it's in the future. */
 function useCountdown(until: number | null | undefined) {
@@ -55,9 +56,11 @@ export function Composer({
   locked,
   lockKind = "verification",
   extra,
+  draftScope = "main",
 }: {
   /** More toolbar buttons (the channel's "Create poll"). */
   extra?: ReactNode;
+  draftScope?: string;
   channelName: string;
   /** Attachments upload under this server/channel; omit it (DMs) to hide the attach button. */
   serverId?: string;
@@ -81,8 +84,15 @@ export function Composer({
 }) {
   const supabase = useSupabase();
   const { me } = useMe();
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useDraft(me.id, `${channelId}:${draftScope}`);
+  const sending = useRef(false);
   const [uploads, setUploads] = useState<PendingUpload[]>([]);
+  const liveUploads = useRef<PendingUpload[]>([]);
+  const alive = useRef(true);
+  const updateUploads = useCallback((change: (previous: PendingUpload[]) => PendingUpload[]) => {
+    liveUploads.current = change(liveUploads.current);
+    setUploads(liveUploads.current);
+  }, []);
   const [dragging, setDragging] = useState(false);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -105,63 +115,85 @@ export function Composer({
   useEffect(() => onMentionRequest((username) => mention(username)), []);
 
   // Release preview object URLs on unmount (removal/sending revoke their own).
-  const liveUploads = useRef<PendingUpload[]>([]);
   useEffect(() => {
-    liveUploads.current = uploads;
-  }, [uploads]);
-  useEffect(() => () => liveUploads.current.forEach((u) => u.preview && URL.revokeObjectURL(u.preview)), []);
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      liveUploads.current.forEach((u) => {
+        if (u.preview) URL.revokeObjectURL(u.preview);
+        if (u.attachment) void supabase.storage.from("attachments").remove([u.attachment.path]).catch(() => undefined);
+      });
+    };
+  }, [supabase]);
+
+  const upload = useCallback(async (item: PendingUpload) => {
+    if (!serverId) return;
+    updateUploads((prev) => prev.map((u) => u.key === item.key ? { ...u, status: "uploading" } : u));
+    try {
+      const attachment = await uploadAttachment(supabase, { serverId, channelId, userId: me.id, file: item.file });
+      if (!alive.current || !liveUploads.current.some((u) => u.key === item.key)) {
+        await supabase.storage.from("attachments").remove([attachment.path]); return;
+      }
+      updateUploads((prev) => prev.map((u) => u.key === item.key ? { ...u, status: "done", attachment } : u));
+    } catch (error) {
+      if (!alive.current || !liveUploads.current.some((u) => u.key === item.key)) return;
+      toast.error(error instanceof Error ? error.message : "Upload failed. Try again.");
+      updateUploads((prev) => prev.map((u) => u.key === item.key ? { ...u, status: "error" } : u));
+    }
+  }, [serverId, channelId, me.id, supabase, updateUploads]);
 
   const addFiles = useCallback(
     (files: File[]) => {
       if (!serverId) return;
-      const room = MAX_ATTACHMENTS - uploads.length;
+      const room = MAX_ATTACHMENTS - liveUploads.current.length;
       if (files.length > room) toast.error(`Up to ${MAX_ATTACHMENTS} files per message.`);
       for (const file of files.slice(0, Math.max(0, room))) {
         const key = crypto.randomUUID();
         const preview = file.type.startsWith("image/") && file.type !== "image/svg+xml" ? URL.createObjectURL(file) : null;
-        setUploads((prev) => [...prev, { key, file, preview, status: "uploading" }]);
-        uploadAttachment(supabase, { serverId, channelId, userId: me.id, file })
-          .then((attachment) => setUploads((prev) => prev.map((u) => (u.key === key ? { ...u, status: "done", attachment } : u))))
-          .catch((err: Error) => {
-            toast.error(err.message);
-            setUploads((prev) => prev.map((u) => (u.key === key ? { ...u, status: "error" } : u)));
-          });
+        const item: PendingUpload = { key, file, preview, status: "uploading" };
+        updateUploads((prev) => [...prev, item]);
+        void upload(item);
       }
     },
-    [supabase, serverId, channelId, me.id, uploads.length],
+    [serverId, upload, updateUploads],
   );
 
   async function removeUpload(key: string) {
     const target = uploads.find((u) => u.key === key);
-    setUploads((prev) => prev.filter((u) => u.key !== key));
+    updateUploads((prev) => prev.filter((u) => u.key !== key));
     if (target?.preview) URL.revokeObjectURL(target.preview);
-    if (target?.attachment) await supabase.storage.from("attachments").remove([target.attachment.path]);
+    if (target?.attachment) await supabase.storage.from("attachments").remove([target.attachment.path]).catch(() => undefined);
   }
 
   const busy = uploads.some((u) => u.status === "uploading");
+  const failedUpload = uploads.some((u) => u.status === "error");
   const ready = uploads.filter((u) => u.status === "done" && u.attachment).map((u) => u.attachment!);
 
   async function submit() {
     const content = draft.trim();
-    if ((!content && ready.length === 0) || busy || cooldown > 0) return;
+    if ((!content && ready.length === 0) || busy || failedUpload || cooldown > 0 || sending.current) return;
     if (content.length > MESSAGE_MAX) {
       toast.error(`${MESSAGE_MAX} characters max.`);
       return;
     }
     const previous = { draft, uploads, replyTo };
+    sending.current = true;
     setDraft("");
-    setUploads([]);
+    updateUploads(() => []);
     onCancelReply();
     onStopTyping();
-    const result = await onSend(content, ready, previous.replyTo?.id ?? null);
+    let result: SendResult;
+    try { result = await onSend(content, ready, previous.replyTo?.id ?? null); }
+    catch { result = "rejected"; toast.error("Message couldn’t send. Your draft has been restored."); }
+    finally { sending.current = false; }
     if (result === "rejected") {
       // Slow mode / auto-mod / verification: nothing was posted, so hand the draft back.
       setDraft((d) => d || previous.draft);
-      setUploads(previous.uploads);
+      updateUploads((current) => [...previous.uploads, ...current]);
       return;
     }
     // A failed text message stays in the list with Retry; a failed files-only send restores the tray.
-    if (result === "failed" && !content) setUploads(previous.uploads);
+    if (result === "failed" && !content) updateUploads((current) => [...previous.uploads, ...current]);
     else previous.uploads.forEach((u) => u.preview && URL.revokeObjectURL(u.preview));
   }
 
@@ -274,6 +306,7 @@ export function Composer({
                   {u.file.name}
                 </p>
                 <p className={cn("text-[10px]", u.status === "error" ? "text-red-300" : "text-slate-500")}>{u.status === "error" ? "Failed" : formatBytes(u.file.size)}</p>
+                {u.status === "error" && <button type="button" aria-label={`Retry ${u.file.name}`} onClick={() => void upload(u)} className="mt-1 min-h-11 w-full rounded bg-white/10 text-xs text-sun">Retry upload</button>}
                 {u.status === "uploading" && (
                   <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/50">
                     <Loader2 className="size-5 animate-spin text-sun" aria-label="Uploading" />
@@ -283,7 +316,7 @@ export function Composer({
                   type="button"
                   aria-label={`Remove ${u.file.name}`}
                   onClick={() => void removeUpload(u.key)}
-                  className="absolute -right-1.5 -top-1.5 rounded-full bg-red-500 p-0.5 text-white shadow"
+                  className="absolute right-0 top-0 flex size-8 items-center justify-center rounded-full bg-red-500 text-white shadow pointer-coarse:size-11"
                 >
                   <X className="size-3" aria-hidden />
                 </button>
@@ -338,6 +371,7 @@ export function Composer({
             onKeyDown={onKeyDown}
             onPaste={onPaste}
             rows={1}
+            enterKeyHint="send"
             maxLength={MESSAGE_MAX + 100}
             placeholder={placeholder ?? `Message #${channelName}`}
             className="order-first max-h-60 min-h-6 basis-full resize-none bg-transparent @sm:order-none @sm:flex-1 @sm:basis-auto px-1 py-1.5 text-[15px] text-slate-100 outline-none placeholder:text-slate-500"
@@ -356,7 +390,7 @@ export function Composer({
           {extra}
           <button
             type="submit"
-            disabled={(!draft.trim() && ready.length === 0) || busy || cooldown > 0}
+            disabled={(!draft.trim() && ready.length === 0) || busy || failedUpload || cooldown > 0}
             aria-label="Send message"
             className="touch-target relative rounded-md p-1.5 text-sun transition-opacity hover:bg-white/10 disabled:opacity-30 pointer-coarse:p-3"
           >
