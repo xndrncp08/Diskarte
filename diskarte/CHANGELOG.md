@@ -11,4 +11,4 @@
 - Restricted private-channel events and RSVP visibility; added structured server errors and session-only connection diagnostics.
 - Expanded database, security, UI, concurrency, recovery, PWA and performance regression tests.
 
-See [delivery scope and limitations](RELEASE-2026-10-14.md) and [migration/recovery operations](OPERATIONS.md). The full platform master prompt is not complete; hosted migrations, live deployment, hardware testing and the authenticated multi-user browser suite remain pending.
+See [delivery scope and limitations](RELEASE-2026-10-14.md) and [migration/recovery operations](OPERATIONS.md). GitHub CI passed the full authenticated browser suite and Docker checks. The full platform master prompt is not complete; production migrations, live deployment, hardware testing and the explicitly listed product work remain pending.

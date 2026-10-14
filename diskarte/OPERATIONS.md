@@ -19,7 +19,7 @@ Database backups contain Storage metadata, not the attachment/avatar/soundboard 
 
 Restore into an isolated project first. Check user counts, community memberships, messages, attachments, RPC signatures, private Realtime authorization and RLS using member/non-member accounts. Re-enable the required Realtime publications and restore authentication redirects/provider configuration. A backup is not verified until a restoration drill succeeds.
 
-No production backup, restore, or hosted migration was executed during the October 14 development session; authenticated management credentials and Docker were unavailable.
+No production backup, restore, or hosted migration was executed during the October 14 development session; authenticated management credentials were unavailable. Docker was unavailable locally; GitHub CI subsequently applied the migrations to a temporary Supabase stack and passed its full browser and Docker checks.
 
 ## Rollback
 
