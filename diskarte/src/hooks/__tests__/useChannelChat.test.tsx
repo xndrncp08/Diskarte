@@ -1,7 +1,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { MessageWithAuthor } from "@/lib/messages";
+import type { Attachment, MessageWithAuthor } from "@/lib/messages";
+import { clearOutbox, outboxFor } from "@/lib/outbox";
 import { createFakeSupabase } from "../../../tests/fixtures/fake-supabase";
 import { MEMBER_ID, MOD_ID, OWNER_ID, ServerFixture, makeMember } from "../../../tests/fixtures/server";
 
@@ -61,6 +62,7 @@ async function setup() {
 }
 
 beforeEach(() => {
+  clearOutbox();
   sfx.mockReset();
   vi.mocked(actions.sendMessageAction).mockReset();
 });
@@ -135,6 +137,47 @@ describe("useChannelChat history", () => {
 });
 
 describe("useChannelChat mutations", () => {
+  it("keeps the same id on retry, including a double tap", async () => {
+    vi.mocked(actions.sendMessageAction).mockResolvedValueOnce({ ok: false, error: "Try again" });
+    const { result } = await setup();
+    await act(async () => { await result.current.send("one copy"); });
+    const failed = result.current.messages.at(-1)!;
+    let finish!: (value: Awaited<ReturnType<typeof actions.sendMessageAction>>) => void;
+    vi.mocked(actions.sendMessageAction).mockImplementationOnce(() => new Promise((r) => { finish = r; }));
+    let retry!: Promise<unknown>;
+    act(() => { retry = result.current.retry(failed); void result.current.retry(failed); });
+    expect(actions.sendMessageAction).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(actions.sendMessageAction).mock.calls[1][0].id).toBe(failed.id);
+    await act(async () => {
+      finish({ ok: true, data: { message: msg(failed.id, OWNER_ID, "one copy", failed.created_at) } });
+      await retry;
+    });
+    expect(result.current.messages.filter((m) => m.id === failed.id)).toHaveLength(1);
+  });
+
+  it("preserves uploaded files across a network failure and outbox flush", async () => {
+    const attachment: Attachment = { path: `${CHANNEL}/${CHANNEL}/${OWNER_ID}/${CHANNEL}.png`, name: "image.png", size: 20, type: "image/png" };
+    vi.mocked(actions.sendMessageAction).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const { result } = await setup();
+    await act(async () => { expect(await result.current.send("photo", [attachment])).toBe("queued"); });
+    expect(outboxFor(CHANNEL, OWNER_ID)[0].attachments).toEqual([attachment]);
+    vi.mocked(actions.sendMessageAction).mockImplementationOnce(async (input) => ({ ok: true, data: { message: { ...msg(input.id, OWNER_ID, "photo", new Date().toISOString()), attachments: input.attachments ?? [] } } }));
+    await act(async () => { await result.current.flush(); });
+    expect(vi.mocked(actions.sendMessageAction).mock.calls[1][0].attachments).toEqual([attachment]);
+    expect(outboxFor(CHANNEL, OWNER_ID)).toEqual([]);
+  });
+
+  it("restores only the failed deletion while preserving concurrent incoming messages", async () => {
+    let finish!: (value: { ok: boolean; error: string }) => void;
+    vi.mocked(actions.deleteMessageAction).mockImplementationOnce(() => new Promise((r) => { finish = r; }));
+    const { result } = await setup();
+    let removing!: Promise<unknown>;
+    act(() => { removing = result.current.remove("m1"); });
+    act(() => fake.emitDb("messages", "INSERT", { ...msg("m2", MEMBER_ID, "during delete", "2026-09-26T01:01:00Z") }));
+    await waitFor(() => expect(result.current.messages).toHaveLength(1));
+    await act(async () => { finish({ ok: false, error: "Offline" }); await removing; });
+    expect(result.current.messages.map((m) => m.id)).toEqual(["m1", "m2"]);
+  });
   it("sends optimistically with a client-generated id and dedupes the realtime echo", async () => {
     vi.mocked(actions.sendMessageAction).mockImplementation(async (input) => ({
       ok: true,

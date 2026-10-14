@@ -4,8 +4,12 @@
  * keeps its client-generated UUID, so a flush that races a slow earlier attempt is idempotent —
  * the server treats a duplicate id as "already sent".
  */
+import { parseAttachments, type Attachment } from "./messages";
+
 export interface OutboxEntry {
   id: string;
+  userId: string;
+  attachments?: Attachment[];
   /** Channel or DM conversation id. */
   target: string;
   content: string;
@@ -17,21 +21,28 @@ export interface OutboxEntry {
   createdAt: string;
 }
 
-const KEY = "diskarte:outbox";
+const KEY = "diskarte:outbox:v2";
 const MAX_ENTRIES = 50;
+let memory: OutboxEntry[] = [];
 
 function readAll(): OutboxEntry[] {
+  let raw: string | null;
   try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(KEY) ?? "[]");
-    return Array.isArray(parsed) ? parsed.filter(isEntry) : [];
+    raw = localStorage.getItem(KEY);
   } catch {
-    return [];
+    return memory;
   }
+  try {
+    const parsed: unknown = JSON.parse(raw ?? "[]");
+    memory = Array.isArray(parsed) ? parsed.filter(isEntry) : [];
+  } catch { memory = []; }
+  return memory;
 }
 
 function writeAll(entries: OutboxEntry[]) {
+  memory = entries;
   try {
-    if (entries.length) localStorage.setItem(KEY, JSON.stringify(entries.slice(-MAX_ENTRIES)));
+    if (entries.length) localStorage.setItem(KEY, JSON.stringify(entries));
     else localStorage.removeItem(KEY);
   } catch {
     // Storage full / blocked: the in-memory copy in the chat still shows the queued message.
@@ -43,6 +54,8 @@ function isEntry(value: unknown): value is OutboxEntry {
   return (
     !!v &&
     typeof v.id === "string" &&
+    typeof v.userId === "string" &&
+    v.userId.length > 0 &&
     typeof v.target === "string" &&
     typeof v.content === "string" &&
     typeof v.createdAt === "string" &&
@@ -52,16 +65,20 @@ function isEntry(value: unknown): value is OutboxEntry {
   );
 }
 
-export function outboxFor(target: string): OutboxEntry[] {
-  return readAll().filter((e) => e.target === target);
+export function outboxFor(target: string, userId: string): OutboxEntry[] {
+  return readAll().filter((e) => e.target === target && e.userId === userId).map((e) => ({ ...e, attachments: parseAttachments(e.attachments ?? []) }));
 }
 
 export function enqueue(entry: OutboxEntry) {
-  writeAll([...readAll().filter((e) => e.id !== entry.id), entry]);
+  const entries = readAll().filter((e) => !(e.id === entry.id && e.userId === entry.userId));
+  // A full queue must never silently evict somebody's unsent message.
+  if (entries.length >= MAX_ENTRIES) return false;
+  writeAll([...entries, entry]);
+  return true;
 }
 
-export function dequeue(id: string) {
-  writeAll(readAll().filter((e) => e.id !== id));
+export function dequeue(id: string, userId: string) {
+  writeAll(readAll().filter((e) => !(e.id === id && e.userId === userId)));
 }
 
 export function outboxSize(): number {
@@ -77,8 +94,10 @@ export function isNetworkError(err: unknown): boolean {
 
 /** Forget this account's unsent messages (sign-out on a shared device, account deletion). */
 export function clearOutbox() {
+  memory = [];
   try {
     localStorage.removeItem(KEY);
+    localStorage.removeItem("diskarte:outbox");
   } catch {
     // Storage blocked: nothing was persisted either.
   }
