@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createFakeSupabase } from "../fixtures/fake-supabase";
@@ -69,6 +69,29 @@ describe("events", () => {
     expect(await screen.findByRole("button", { name: "Cancel Game night" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Create Event/ }));
     expect(await screen.findByLabelText("Event topic")).toBeInTheDocument();
+  });
+
+  it("recovers missed deletions while open without polling hidden or closed views", async () => {
+    render(<ServerFixture members={members}><EventsButton /></ServerFixture>);
+    const button = screen.getByTestId("events-button");
+    await waitFor(() => expect(button).toHaveTextContent("LIVE"));
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(button);
+      await act(async () => { await Promise.resolve(); });
+      expect(screen.getByTestId("events-list")).toHaveTextContent("Meetup");
+      tables.server_events = tables.server_events.filter((event) => (event as { id: string }).id !== "e2");
+      await act(async () => { await vi.advanceTimersByTimeAsync(10_000); });
+      expect(screen.getByTestId("events-list")).not.toHaveTextContent("Meetup");
+      const visibility = vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+      const calls = fake.client.from.mock.calls.length;
+      await act(async () => { await vi.advanceTimersByTimeAsync(10_000); });
+      expect(fake.client.from.mock.calls).toHaveLength(calls);
+      visibility.mockRestore();
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
+      await act(async () => { await vi.advanceTimersByTimeAsync(10_000); });
+      expect(fake.client.from.mock.calls).toHaveLength(calls);
+    } finally { vi.useRealTimers(); }
   });
 
   it.each(["conflict", "network"])("preserves moderator edits after a %s failure", async (failure) => {

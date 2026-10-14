@@ -71,6 +71,15 @@ export function EventsButton() {
     return () => { invalidate(); off(); window.removeEventListener("online", resume); document.removeEventListener("visibilitychange", resume); };
   }, [supabase, server.id, load, invalidate]);
 
+  useEffect(() => {
+    if (!open) return;
+    // RLS-protected DELETE payloads omit server_id, so the filtered subscription can miss them.
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible" && navigator.onLine) void load();
+    }, 10_000);
+    return () => clearInterval(timer);
+  }, [open, load]);
+
   const active = activeEvents(events, now);
   const live = active.some((e) => eventStatus(e, now) === "live");
 
@@ -101,7 +110,7 @@ export function EventsButton() {
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => { setOpen(true); void load(); }}
         className="mb-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-semibold text-slate-300 transition-colors hover:bg-white/5 hover:text-white pointer-coarse:min-h-11"
         data-testid="events-button"
       >
