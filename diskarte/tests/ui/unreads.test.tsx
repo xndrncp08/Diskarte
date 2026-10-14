@@ -65,4 +65,16 @@ describe("unreads", () => {
     await waitFor(() => expect(fake.client.rpc).toHaveBeenCalled());
     expect(result.current).toEqual({ unread: false, mentions: 0 });
   });
+
+  it("marks a whole server read, or everything, and keeps it read across a refresh", async () => {
+    const { result } = renderHook(() => ({ ctx: useOptionalUnreads()!, chika: useChannelUnread(CHIKA) }), { wrapper });
+    await waitFor(() => expect(result.current.chika).toEqual({ unread: true, mentions: 2 }));
+    act(() => result.current.ctx.markAllRead(SERVER_ID));
+    expect(result.current.chika).toEqual({ unread: false, mentions: 0 });
+    expect(fake.client.rpc).toHaveBeenCalledWith("mark_all_read", { p_server: SERVER_ID });
+    await act(async () => result.current.ctx.refresh());
+    expect(result.current.chika.unread).toBe(false);
+    act(() => result.current.ctx.markAllRead());
+    expect(fake.client.rpc).toHaveBeenLastCalledWith("mark_all_read", {});
+  });
 });
