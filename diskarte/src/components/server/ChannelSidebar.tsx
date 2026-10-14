@@ -435,7 +435,9 @@ export function ChannelSidebar() {
     // Discord's Notification Settings: what alerts you from this server, and muting it.
     { label: "Only @mentions", group: "Notification Settings", checked: notify.level === "mentions", onSelect: () => setServerNotify(server.id, { level: "mentions" }) },
     { label: "Nothing", group: "Notification Settings", checked: notify.level === "nothing", onSelect: () => setServerNotify(server.id, { level: "nothing" }) },
-    { label: "Mute Server", group: "Notification Settings", icon: <BellOff className="size-4" aria-hidden />, multi: true, checked: notify.muted, onSelect: () => setServerNotify(server.id, { muted: !notify.muted }) },
+    { label: "Mute Server", group: "Notification Settings", icon: <BellOff className="size-4" aria-hidden />, multi: true, checked: notify.muted, onSelect: () => setServerNotify(server.id, { muted: !notify.muted, muteUntil: undefined }) },
+    { label: "Mute for 1 hour", group: "Notification Settings", onSelect: () => setServerNotify(server.id, { muted: true, muteUntil: Date.now() + 3600000 }) },
+    { label: "Mute for 8 hours", group: "Notification Settings", onSelect: () => setServerNotify(server.id, { muted: true, muteUntil: Date.now() + 8 * 3600000 }) },
     {
       label: "Create channel",
       icon: <Plus className="size-4" aria-hidden />,

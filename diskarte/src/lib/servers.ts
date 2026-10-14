@@ -1,5 +1,4 @@
-import type { ChannelType, MemberRole, Tables } from "@/lib/supabase/database.types";
-import { stripControl } from "@/lib/profile";
+import type { MemberRole, Tables } from "@/lib/supabase/database.types";
 
 export type Server = Tables<"servers">;
 export type Channel = Tables<"channels">;

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ATTACHMENT_MAX_BYTES, ATTACHMENT_MIME, ATTACHMENT_PATH_RE, cleanMessageContent, MESSAGE_MAX, type Attachment } from "@/lib/messages";
+import { ATTACHMENT_MAX_BYTES, ATTACHMENT_MIME, ATTACHMENT_PATH_RE, cleanMessageContent, MESSAGE_MAX } from "@/lib/messages";
 
 export const messageContentSchema = z
   .string()

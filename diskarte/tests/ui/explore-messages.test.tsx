@@ -11,7 +11,7 @@ const rpc = vi.fn(async (_fn: string, args: { p_category?: string | null }) => (
   ].filter((s) => !args.p_category || s.category === args.p_category),
   error: null,
 }));
-const joinPublicServerAction = vi.fn(async (_input: unknown) => ({ ok: true, data: { serverId: "s1" } }));
+const joinPublicServerAction = vi.fn(async (input: unknown) => { void input; return { ok: true, data: { serverId: "s1" } }; });
 vi.mock("next/navigation", () => ({ useRouter: () => router, usePathname: () => "/tambayan/messages" }));
 vi.mock("@/components/providers/RuntimeConfig", () => ({ useSupabase: () => ({ rpc }) }));
 vi.mock("@/actions/servers", () => ({ joinPublicServerAction: (i: unknown) => joinPublicServerAction(i as never) }));

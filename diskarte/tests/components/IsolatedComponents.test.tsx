@@ -139,7 +139,7 @@ describe("server options dropdown", () => {
     const before = columnsSignature();
     await user.click(screen.getByTestId("server-menu"));
     const menu = await screen.findByRole("menu", { name: "Server menu" });
-    expect(within(menu).getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Invite people", "Server settings", "Bantay-Bayan", "Support this server", "Edit Per-server Profile", "Create channel"]);
+    expect(within(menu).getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Invite people", "Server settings", "Bantay-Bayan", "Support this server", "Edit Per-server Profile", "Mute for 1 hour", "Mute for 8 hours", "Create channel"]);
     expect(within(menu).getByRole("menuitemcheckbox", { name: "Hide Muted Channels" })).toHaveAttribute("aria-checked", "false");
     expect(menu.parentElement).toBe(document.body); // escapes every overflow boundary
     expect(menu).toHaveClass("z-50");

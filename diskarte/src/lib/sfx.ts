@@ -3,6 +3,8 @@
  * Each cue layers short square/triangle notes (with optional pitch slides) and, for toggles, a tiny
  * noise "click", shaped by fast attack/decay envelopes. A persisted master volume scales everything.
  */
+import { notificationsQuiet } from "./notify-prefs";
+
 export type SfxName = "join" | "leave" | "mute" | "unmute" | "deafen" | "message" | "mention" | "send" | "error" | "start" | "ring";
 
 export interface Note {
@@ -197,6 +199,7 @@ function noise(ctx: AudioContext): AudioBuffer | null {
 
 /** Plays a cue. `volume` overrides the saved master volume (used by the settings preview). */
 export function playSfx(name: SfxName, volume?: number) {
+  if (volume === undefined && (name === "message" || name === "mention" || name === "ring") && notificationsQuiet()) return;
   const settings = getSfxSettings();
   if (!settings.enabled && volume === undefined) return;
   playCue(CUES[name], volume ?? settings.volume);

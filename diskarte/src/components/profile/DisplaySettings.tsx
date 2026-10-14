@@ -69,6 +69,8 @@ export function AccessibilitySettings() {
       />
       <Switch checked={prefs.roleColors} onChange={(roleColors) => setDisplayPrefs({ roleColors })} label="Show role colors in names" />
       <Switch checked={prefs.underlineLinks} onChange={(underlineLinks) => setDisplayPrefs({ underlineLinks })} label="Always underline links" />
+      <Switch checked={prefs.reducedTransparency} onChange={(reducedTransparency) => setDisplayPrefs({ reducedTransparency })} label="Reduce transparency" hint="Use solid surfaces for easier reading and less GPU work." />
+      <Switch checked={prefs.highContrast} onChange={(highContrast) => setDisplayPrefs({ highContrast })} label="Increase contrast" />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 import { signOutAction } from "@/app/(auth)/actions";
 import { existingDeviceId } from "@/lib/device";
 import { clearOutbox } from "@/lib/outbox";
+import { clearDrafts } from "@/lib/drafts";
 import { cn } from "@/lib/utils";
 
 function Submit({ scope, className }: { scope: "local" | "global"; className?: string }) {
@@ -41,7 +42,7 @@ export function SignOutButton({ scope = "local", className }: { scope?: "local" 
     setDevice(existingDeviceId() ?? "");
   }, []);
   return (
-    <form action={signOutAction} onSubmit={clearOutbox} className="contents">
+    <form action={signOutAction} onSubmit={() => { clearOutbox(); clearDrafts(); }} className="contents">
       <input type="hidden" name="scope" value={scope} />
       <input type="hidden" name="device" value={device} />
       <Submit scope={scope} className={className} />

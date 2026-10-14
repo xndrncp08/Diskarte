@@ -50,7 +50,11 @@ const nextConfig: NextConfig = {
   // Lets <SmartImage> know at runtime which hosts the optimiser accepts (falls back to <img> otherwise).
   env: { NEXT_PUBLIC_IMAGE_HOSTS: serializeImageHosts(IMAGE_HOSTS) },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }, { key: "Service-Worker-Allowed", value: "/" }] },
+      { source: "/offline.html", headers: [{ key: "Cache-Control", value: "no-store" }] },
+    ];
   },
 };
 
