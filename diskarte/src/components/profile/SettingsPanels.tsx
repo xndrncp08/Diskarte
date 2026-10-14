@@ -14,6 +14,7 @@ import { PrivacySettings } from "@/components/profile/PrivacySettings";
 import { SoundSettings } from "@/components/profile/SoundSettings";
 import { ThemePicker } from "@/components/profile/ThemePicker";
 import { PwaSettings } from "@/components/profile/PwaSettings";
+import { ConnectionDiagnostics } from "@/components/profile/ConnectionDiagnostics";
 import { cn } from "@/lib/utils";
 import type { SettingsTab } from "./SettingsDialog";
 
@@ -126,6 +127,7 @@ export function SettingsPanels({ account, tab, onTab }: { account: AccountInfo; 
               <LowDataToggle className="max-w-md" />
             </section>
             <PwaSettings />
+            <ConnectionDiagnostics />
           </>
         ) : tab === "voice" ? (
           <>

@@ -1,5 +1,6 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import type { BrowserSupabase } from "@/lib/supabase/browser";
+import { recordDiagnostic } from "./diagnostics";
 
 // ---- topic teardown registry -----------------------------------------------------------------
 // realtime-js hands back the *existing* channel for a topic until its removal has completed (an
@@ -53,7 +54,10 @@ export function subscribeDbChanges(
     .then(() => {
       if (cancelled) return;
       channel = bind(supabase.channel(`db:${topic}`, { config: { private: true } }));
-      channel.subscribe(onStatus);
+      channel.subscribe((status, error) => {
+        recordDiagnostic("realtime", status === "SUBSCRIBED" ? "connected" : status === "CLOSED" ? "disconnected" : "error");
+        onStatus?.(status, error);
+      });
     });
   return () => {
     cancelled = true;

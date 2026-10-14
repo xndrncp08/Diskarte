@@ -43,7 +43,7 @@ export function MessageContext({ channelId, conversationId }: { channelId?: stri
           };
           const [older, newer] = await Promise.all([
             query().or(olderThan(anchor)).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(10),
-            query().or(`created_at.gt.${anchor.created_at},and(created_at.eq.${anchor.created_at},id.gt.${anchor.id})`).order("created_at").order("id").limit(10),
+            query().or(`created_at.gt."${anchor.created_at}",and(created_at.eq."${anchor.created_at}",id.gt."${anchor.id}")`).order("created_at").order("id").limit(10),
           ]);
           if (older.error || newer.error) throw older.error ?? newer.error;
           result = [...(older.data ?? []).reverse(), anchor, ...(newer.data ?? [])];
@@ -54,7 +54,7 @@ export function MessageContext({ channelId, conversationId }: { channelId?: stri
           if (!anchor) { if (live) setProblem("This message was deleted or you no longer have access."); return; }
           const [older, newer] = await Promise.all([
             query().or(olderThan(anchor)).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(10),
-            query().or(`created_at.gt.${anchor.created_at},and(created_at.eq.${anchor.created_at},id.gt.${anchor.id})`).order("created_at").order("id").limit(10),
+            query().or(`created_at.gt."${anchor.created_at}",and(created_at.eq."${anchor.created_at}",id.gt."${anchor.id}")`).order("created_at").order("id").limit(10),
           ]);
           if (older.error || newer.error) throw older.error ?? newer.error;
           result = [...(older.data ?? []).reverse(), anchor, ...(newer.data ?? [])];

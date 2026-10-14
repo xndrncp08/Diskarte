@@ -52,12 +52,13 @@ export function createFakeSupabase(tables: Record<string, unknown[]> = {}) {
       lt: (col: string, val: string) => ((rows = rows.filter((r) => String(r[col]) < val)), api),
       gt: (col: string, val: string) => ((rows = rows.filter((r) => String(r[col]) > val)), api),
       in: (col: string, vals: unknown[]) => ((rows = rows.filter((r) => vals.includes(r[col]))), api),
-      // Only the keyset form the chat hooks use: `col.lt."v",and(col.eq."v",id.lt."w")`.
+      // Exact forward/backward keyset forms used by history and reconnect reconciliation.
       or: (filter: string) => {
-        const m = /^(\w+)\.lt\."([^"]+)",and\(\1\.eq\."\2",(\w+)\.lt\."([^"]+)"\)$/.exec(filter);
+        const m = /^(\w+)\.(lt|gt)\."([^"]+)",and\(\1\.eq\."\3",(\w+)\.\2\."([^"]+)"\)$/.exec(filter);
         if (!m) throw new Error(`fake supabase: unsupported or() filter ${filter}`);
-        const [, col, value, tie, tieValue] = m;
-        rows = rows.filter((r) => String(r[col]) < value || (String(r[col]) === value && String(r[tie]) < tieValue));
+        const [, col, comparison, value, tie, tieValue] = m;
+        const compare = (a: string, b: string) => comparison === "lt" ? a < b : a > b;
+        rows = rows.filter((r) => compare(String(r[col]), value) || (String(r[col]) === value && compare(String(r[tie]), tieValue)));
         return api;
       },
       order: (col: string, opts: { ascending?: boolean } = {}) => {

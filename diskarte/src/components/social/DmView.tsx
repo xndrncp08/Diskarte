@@ -57,7 +57,7 @@ export function DmView({
   const router = useRouter();
   const others = useMemo(() => participants.filter((p) => p.id !== me.id).map((p) => withNickname(p, nicknames)), [participants, me.id, nicknames]);
   const title = conversationTitle({ kind: conversation.kind, name: conversation.name, others });
-  const chat = useDirectChat(conversation.id, initial, participants, () => markRead(conversation.id));
+  const chat = useDirectChat(conversation.id, initial, participants);
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
@@ -67,8 +67,11 @@ export function DmView({
   const inCall = call.target?.kind === "dm" && call.target.channelId === conversation.id;
 
   useEffect(() => {
-    markRead(conversation.id);
-  }, [markRead, conversation.id, lastMessageAt]);
+    if (!atBottom || messageTarget) return;
+    const mark = () => { if (document.visibilityState === "visible") markRead(conversation.id); };
+    mark(); document.addEventListener("visibilitychange", mark);
+    return () => document.removeEventListener("visibilitychange", mark);
+  }, [markRead, conversation.id, lastMessageAt, atBottom, messageTarget]);
 
 
   const byId = new Map(chat.messages.map((m) => [m.id, m]));
@@ -198,6 +201,7 @@ export function DmView({
           {!atBottom && <button type="button" onClick={scrollToBottom} className="absolute bottom-40 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-sun px-4 py-2 text-xs font-bold text-abyss"><ArrowDown className="size-4" aria-hidden />{unseen ? `${unseen} new messages` : "Jump to present"}</button>}
 
           <OfflineBanner queued={chat.queuedCount} />
+          {chat.recovery.problem && <div role="status" className="flex items-center justify-between gap-2 px-4 py-2 text-sm text-amber-200"><span>History couldn’t sync after reconnecting.</span><button type="button" onClick={() => void chat.recovery.recover()} className="min-h-11 px-3">Retry sync</button></div>}
           <Composer
             channelName={title}
             channelId={conversation.id}

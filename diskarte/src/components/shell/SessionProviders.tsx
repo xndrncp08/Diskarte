@@ -6,6 +6,7 @@ import { MediaViewerProvider } from "@/components/chat/MediaViewer";
 import type { AccountInfo } from "@/components/profile/AccountSettings";
 import { SettingsDialogProvider } from "@/components/profile/SettingsDialog";
 import { MeProvider } from "@/components/providers/MeProvider";
+import { ClientDiagnostics } from "@/components/providers/ClientDiagnostics";
 import { PresenceProvider } from "@/components/providers/PresenceProvider";
 import { SocialProvider } from "@/components/providers/SocialProvider";
 import { AudioMixerProvider } from "@/components/voice/AudioMixer";
@@ -56,6 +57,7 @@ export function SessionProviders({
                       {children}
                       {/* Device heartbeat + live enforcement of bans, revoked sessions and status overrides. */}
                       <SessionGuard />
+                      <ClientDiagnostics />
                     </IncomingCallsProvider>
                   </MediaViewerProvider>
                 </AudioMixerProvider>

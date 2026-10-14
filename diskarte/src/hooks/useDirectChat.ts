@@ -11,29 +11,10 @@ import { useOutboxRetry } from "./useOutboxRetry";
 import { subscribeDbChanges } from "@/lib/realtime";
 import { playSfx } from "@/lib/sfx";
 import type { ChatMessage, SendExtras, SendResult } from "./useChannelChat";
-
-/** DM rows rendered through the channel MessageItem (no attachments, pins or threads). */
-export function dmToChat(dm: DirectMessage, author: MessageAuthor | null): ChatMessage {
-  return {
-    id: dm.id,
-    channel_id: dm.conversation_id,
-    server_id: "",
-    author_id: dm.author_id,
-    content: dm.content,
-    attachments: [],
-    reply_to_id: dm.reply_to_id,
-    pinned: false,
-    pinned_at: null,
-    pinned_by: null,
-    edited_at: dm.edited_at,
-    thread_id: null,
-    sticker: dm.sticker,
-    thread_reply_count: 0,
-    thread_last_reply_at: null,
-    created_at: dm.created_at,
-    author,
-  };
-}
+import { dmToChat } from "@/lib/direct-message";
+import { useConversationRecovery } from "./useConversationRecovery";
+import { recordDiagnostic } from "@/lib/diagnostics";
+export { dmToChat } from "@/lib/direct-message";
 
 const byTime = (a: ChatMessage, b: ChatMessage) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id);
 
@@ -48,6 +29,8 @@ export function useDirectChat(conversationId: string, initial: { messages: Direc
     return initial.messages.map((m) => dmToChat(m, m.author_id ? (known.get(m.author_id) ?? null) : null));
   });
   const [hasMore, setHasMore] = useState(initial.hasMore);
+  const recovery = useConversationRecovery(conversationId, "dm", messages, setMessages, null, setHasMore);
+  const { status: recoveryStatus, noteDelete } = recovery;
   const [loadingOlder, setLoadingOlder] = useState(false);
   const loading = useRef(false);
   const incoming = useRef(onIncoming);
@@ -72,10 +55,11 @@ export function useDirectChat(conversationId: string, initial: { messages: Direc
         })
         .on("postgres_changes", { event: "DELETE", schema: "public", table: "direct_messages" }, ({ old }) => {
           const id = (old as { id?: string }).id;
-          if (id) setMessages((prev) => prev.filter((m) => m.id !== id));
+          if (id) { noteDelete(id); setMessages((prev) => prev.filter((m) => m.id !== id)); }
         }),
+      recoveryStatus,
     );
-  }, [supabase, conversationId, me.id, authorOf]);
+  }, [supabase, conversationId, me.id, authorOf, recoveryStatus, noteDelete]);
 
   const loadOlder = useCallback(async () => {
     const oldest = messages.find((m) => !m.pending && !m.queued);
@@ -116,6 +100,7 @@ export function useDirectChat(conversationId: string, initial: { messages: Direc
         result = await sendDirectMessageAction({ id: entry.id, conversationId, content: entry.content, replyToId: entry.replyToId, sticker: entry.sticker });
       } catch (err) {
         const queued = isNetworkError(err) && enqueue(entry);
+        if (!queued) recordDiagnostic("message", "failed");
         setMessages((prev) => prev.map((m) => (m.id === entry.id ? { ...m, pending: false, queued, failed: !queued } : m)));
         if (!queued) toast.error("Couldn't send. Your message is available to retry.");
         return queued ? "queued" : "failed";
@@ -127,6 +112,7 @@ export function useDirectChat(conversationId: string, initial: { messages: Direc
         return "sent";
       }
       playSfx("error");
+      recordDiagnostic("message", "failed");
       toast.error(result.error ?? "Couldn't send.");
       if (result.code === "AUTOMOD_BLOCKED" || result.code === "DM_NOT_ALLOWED") {
         setMessages((prev) => prev.filter((m) => m.id !== entry.id));
@@ -229,5 +215,5 @@ export function useDirectChat(conversationId: string, initial: { messages: Direc
     setMessages((prev) => prev.filter((m) => m.id !== id));
   }, [me.id]);
 
-  return { messages, hasMore, loadingOlder, loadOlder, send, edit, remove, retry, discard, queuedCount: messages.filter((m) => m.queued).length };
+  return { messages, hasMore, loadingOlder, loadOlder, send, edit, remove, retry, discard, recovery, queuedCount: messages.filter((m) => m.queued).length };
 }

@@ -7,6 +7,7 @@ import { useOptionalSupabase } from "@/components/providers/RuntimeConfig";
 import { desktopNotify, readNotifyPrefs, serverNotify } from "@/lib/notify-prefs";
 import { subscribeDbChanges } from "@/lib/realtime";
 import { playSfx } from "@/lib/sfx";
+import { readChannelMutes, serverMutes } from "@/lib/channel-mute";
 
 /** How often the rail's unread state refreshes in the background (the open server is live). */
 export const UNREADS_POLL_MS = 30_000;
@@ -63,6 +64,7 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
     if (!supabase || !row.message_id || !row.channel_id || !row.server_id) return;
     const level = serverNotify(readNotifyPrefs(), row.server_id);
     if (level.muted || level.level === "nothing") return;
+    if (serverMutes(readChannelMutes(), row.server_id).muted.has(row.channel_id)) return;
     const href = `/tambayan/${row.server_id}/${row.channel_id}`;
     if (document.hasFocus() && window.location.pathname === href) return;
     playSfx("mention");

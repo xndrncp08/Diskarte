@@ -11,6 +11,8 @@ import { dequeue, enqueue, isNetworkError, outboxFor, type OutboxEntry } from "@
 import { useOutboxRetry } from "./useOutboxRetry";
 import { subscribeDbChanges } from "@/lib/realtime";
 import { playSfx } from "@/lib/sfx";
+import { useConversationRecovery } from "./useConversationRecovery";
+import { recordDiagnostic } from "@/lib/diagnostics";
 
 export type ChatMessage = MessageWithAuthor & { pending?: boolean; failed?: boolean; queued?: boolean };
 
@@ -70,6 +72,8 @@ export function useChannelChat(
   const [messages, setMessages] = useState<ChatMessage[]>(initial.messages);
   const [reactions, setReactions] = useState(() => groupReactions(initial.reactions));
   const [hasMore, setHasMore] = useState(initial.hasMore);
+  const recovery = useConversationRecovery(channelId, "channel", messages, setMessages, threadId, setHasMore);
+  const { status: recoveryStatus, noteDelete } = recovery;
   const [loadingOlder, setLoadingOlder] = useState(false);
   const loading = useRef(false);
   const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
@@ -115,6 +119,7 @@ export function useChannelChat(
         .on("postgres_changes", { event: "DELETE", schema: "public", table: "messages" }, ({ old }) => {
           const id = (old as { id?: string }).id;
           if (!id) return;
+          noteDelete(id);
           setMessages((prev) => prev.filter((m) => m.id !== id));
           setReactions((prev) => {
             if (!prev.has(id)) return prev;
@@ -147,8 +152,9 @@ export function useChannelChat(
             return next;
           });
         }),
+      recoveryStatus,
     );
-  }, [supabase, channelId, threadId, me.id, me.username, resolveAuthor]);
+  }, [supabase, channelId, threadId, me.id, me.username, resolveAuthor, recoveryStatus, noteDelete]);
 
   // ---- pagination ----------------------------------------------------------------------
   const loadOlder = useCallback(async () => {
@@ -232,6 +238,7 @@ export function useChannelChat(
         });
       } catch (err) {
         const queued = isNetworkError(err) && enqueue(entry);
+        if (!queued) recordDiagnostic("message", "failed");
         setMessages((prev) => prev.map((m) => (m.id === entry.id ? { ...m, pending: false, queued, failed: !queued } : m)));
         if (!queued) toast.error("Couldn't send. Your message is available to retry.");
         return queued ? "queued" : "failed";
@@ -244,6 +251,7 @@ export function useChannelChat(
         return "sent";
       }
       playSfx("error");
+      recordDiagnostic("message", "failed");
       toast.error(result.error ?? "Couldn't send.");
       if (result.code === "SLOWMODE" || result.code === "AUTOMOD_BLOCKED" || result.code === "VERIFICATION_REQUIRED" || result.code === "READ_ONLY_CHANNEL" || result.code === "TIMED_OUT" || result.code === "POST_TITLE_REQUIRED") {
         if (result.code === "SLOWMODE") setCooldownUntil(Date.now() + (result.retryAfter ?? slowmode) * 1000);
@@ -418,5 +426,6 @@ export function useChannelChat(
     queuedCount,
     cooldownUntil,
     flush,
+    recovery,
   };
 }
