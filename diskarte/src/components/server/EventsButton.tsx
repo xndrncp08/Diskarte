@@ -113,7 +113,7 @@ export function EventsButton() {
           active.length > 0 && <span className="rounded-full bg-white/10 px-1.5 text-xs tabular-nums">{active.length}</span>
         )}
       </button>
-      <Modal open={open} onClose={() => { setOpen(false); setCreating(false); setEditing(null); }} title={editing ? "Edit event" : creating ? "Create an event" : `${active.length} Event${active.length === 1 ? "" : "s"}`} className="max-w-lg">
+      <Modal open={open} onClose={() => { setOpen(false); setCreating(false); setEditing(null); }} title={editing ? "Edit event" : creating ? "Create an event" : `${active.length} Event${active.length === 1 ? "" : "s"}`} className="max-h-[calc(100dvh-2rem)] max-w-lg overflow-y-auto">
         {creating || editing ? (
           <EventForm key={editing?.id ?? "new"} initial={editing} onDone={() => { setCreating(false); setEditing(null); void load(); }} />
         ) : (
