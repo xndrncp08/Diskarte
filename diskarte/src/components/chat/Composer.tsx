@@ -37,6 +37,7 @@ interface PendingUpload {
   preview: string | null;
   status: "uploading" | "done" | "error";
   attachment?: Attachment;
+  voiceDuration?: number;
 }
 
 export function Composer({
@@ -63,7 +64,7 @@ export function Composer({
   extra?: ReactNode;
   draftScope?: string;
   channelName: string;
-  /** Attachments upload under this server/channel; omit it (DMs) to hide the attach button. */
+  /** Attachments upload under this server/channel; DMs use their private conversation folder. */
   serverId?: string;
   channelId: string;
   replyTo: ChatMessage | null;
@@ -128,14 +129,13 @@ export function Composer({
   }, [supabase]);
 
   const upload = useCallback(async (item: PendingUpload) => {
-    if (!serverId) return;
     updateUploads((prev) => prev.map((u) => u.key === item.key ? { ...u, status: "uploading" } : u));
     try {
       const attachment = await uploadAttachment(supabase, { serverId, channelId, userId: me.id, file: item.file });
       if (!alive.current || !liveUploads.current.some((u) => u.key === item.key)) {
         await supabase.storage.from("attachments").remove([attachment.path]); return;
       }
-      updateUploads((prev) => prev.map((u) => u.key === item.key ? { ...u, status: "done", attachment } : u));
+      updateUploads((prev) => prev.map((u) => u.key === item.key ? { ...u, status: "done", attachment: item.voiceDuration === undefined ? attachment : { ...attachment, voice: true, duration: item.voiceDuration } } : u));
     } catch (error) {
       if (!alive.current || !liveUploads.current.some((u) => u.key === item.key)) return;
       toast.error(error instanceof Error ? error.message : "Upload failed. Try again.");
@@ -145,7 +145,6 @@ export function Composer({
 
   const addFiles = useCallback(
     (files: File[]) => {
-      if (!serverId) return;
       const room = MAX_ATTACHMENTS - liveUploads.current.length;
       if (files.length > room) toast.error(`Up to ${MAX_ATTACHMENTS} files per message.`);
       for (const file of files.slice(0, Math.max(0, room))) {
@@ -156,7 +155,7 @@ export function Composer({
         void upload(item);
       }
     },
-    [serverId, upload, updateUploads],
+    [upload, updateUploads],
   );
 
   async function removeUpload(key: string) {
@@ -200,13 +199,18 @@ export function Composer({
 
   // A voice message goes out on its own, straight away (like Discord), replying if a reply is open.
   async function sendVoice(file: File, seconds: number) {
-    if (!serverId) return;
+    const item: PendingUpload = { key: crypto.randomUUID(), file, preview: null, status: "error", voiceDuration: seconds };
+    let voice: Attachment | undefined;
     try {
       const attachment = await uploadAttachment(supabase, { serverId, channelId, userId: me.id, file });
+      if (!alive.current) { await supabase.storage.from("attachments").remove([attachment.path]); return; }
       const replyId = replyTo?.id ?? null;
       onCancelReply();
-      await onSend("", [{ ...attachment, voice: true, duration: seconds }], replyId);
+      voice = { ...attachment, voice: true, duration: seconds };
+      const result = await onSend("", [voice], replyId);
+      if (result === "rejected") updateUploads((items) => [...items, { ...item, status: "done", attachment: voice }]);
     } catch (err) {
+      if (alive.current) updateUploads((items) => [...items, { ...item, ...(voice ? { status: "done", attachment: voice } : {}) }]);
       toast.error((err as Error).message);
     }
   }
@@ -267,7 +271,7 @@ export function Composer({
     <div
       className="relative px-4 pb-safe"
       onDragOver={(e) => {
-        if (serverId && e.dataTransfer.types.includes("Files")) {
+        if (e.dataTransfer.types.includes("Files")) {
           e.preventDefault();
           setDragging(true);
         }
@@ -334,7 +338,7 @@ export function Composer({
             void submit();
           }}
         >
-          {serverId && (
+          {
             <>
               <input
                 ref={fileInput}
@@ -356,7 +360,7 @@ export function Composer({
               </button>
               <VoiceRecorder disabled={cooldown > 0} onRecorded={(file, seconds) => void sendVoice(file, seconds)} />
             </>
-          )}
+          }
           <span aria-hidden className="flex-1 @sm:hidden" />
           <label htmlFor={`composer-${channelId}`} className="sr-only">
             Message #{channelName}

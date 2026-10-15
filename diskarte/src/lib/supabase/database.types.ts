@@ -318,6 +318,8 @@ export interface Database {
           conversation_id: string;
           author_id: string | null;
           content: string;
+          /** Absent on projects which have not applied the DM-media migration yet. */
+          attachments?: Json;
           sticker: string | null;
           reply_to_id: string | null;
           edited_at: string | null;
@@ -328,6 +330,7 @@ export interface Database {
           conversation_id: string;
           author_id?: string | null;
           content?: string;
+          attachments?: Json;
           sticker?: string | null;
           reply_to_id?: string | null;
           edited_at?: string | null;

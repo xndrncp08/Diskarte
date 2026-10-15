@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { deleteDirectMessageAction, editDirectMessageAction, sendDirectMessageAction, type DirectMessage } from "@/actions/social";
 import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
-import { parseAttachments, olderThan, PAGE_SIZE, type MessageAuthor } from "@/lib/messages";
+import { parseAttachments, olderThan, PAGE_SIZE, type Attachment, type MessageAuthor } from "@/lib/messages";
 import { dequeue, enqueue, isNetworkError, outboxFor, type OutboxEntry } from "@/lib/outbox";
 import { useOutboxRetry } from "./useOutboxRetry";
 import { subscribeDbChanges } from "@/lib/realtime";
@@ -87,7 +87,7 @@ export function useDirectChat(conversationId: string, initial: { messages: Direc
   const toMessage = useCallback(
     (entry: OutboxEntry): ChatMessage =>
       dmToChat(
-        { id: entry.id, conversation_id: conversationId, author_id: me.id, content: entry.content, sticker: entry.sticker, reply_to_id: entry.replyToId, edited_at: null, created_at: entry.createdAt },
+        { id: entry.id, conversation_id: conversationId, author_id: me.id, content: entry.content, attachments: (entry.attachments ?? []).map((a) => ({ ...a })), sticker: entry.sticker, reply_to_id: entry.replyToId, edited_at: null, created_at: entry.createdAt },
         me,
       ),
     [conversationId, me],
@@ -97,7 +97,7 @@ export function useDirectChat(conversationId: string, initial: { messages: Direc
     async (entry: OutboxEntry): Promise<SendResult> => {
       let result: Awaited<ReturnType<typeof sendDirectMessageAction>>;
       try {
-        result = await sendDirectMessageAction({ id: entry.id, conversationId, content: entry.content, replyToId: entry.replyToId, sticker: entry.sticker });
+        result = await sendDirectMessageAction({ id: entry.id, conversationId, content: entry.content, attachments: entry.attachments, replyToId: entry.replyToId, sticker: entry.sticker });
       } catch (err) {
         const queued = isNetworkError(err) && enqueue(entry);
         if (!queued) recordDiagnostic("message", "failed");
@@ -125,12 +125,8 @@ export function useDirectChat(conversationId: string, initial: { messages: Direc
   );
 
   const send = useCallback(
-    async (content: string, attachments: unknown[] = [], replyToId: string | null = null, extras: SendExtras = {}): Promise<SendResult> => {
-      if (attachments.length) {
-        toast.error("Attachments aren't supported in DMs yet.");
-        return "rejected";
-      }
-      const entry: OutboxEntry = { id: crypto.randomUUID(), userId: me.id, target: conversationId, content, replyToId, threadId: null, sticker: extras.sticker ?? null, createdAt: new Date().toISOString() };
+    async (content: string, attachments: Attachment[] = [], replyToId: string | null = null, extras: SendExtras = {}): Promise<SendResult> => {
+      const entry: OutboxEntry = { id: crypto.randomUUID(), userId: me.id, target: conversationId, content, attachments, replyToId, threadId: null, sticker: extras.sticker ?? null, createdAt: new Date().toISOString() };
       playSfx("send");
       if (typeof navigator !== "undefined" && navigator.onLine === false) {
         const queued = enqueue(entry);

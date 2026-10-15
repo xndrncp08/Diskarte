@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getSessionUser } from "@/lib/auth";
 import { communityError } from "@/lib/community";
-import { messageContentSchema } from "@/lib/schemas/messages";
+import { attachmentSchema, messageContentSchema } from "@/lib/schemas/messages";
+import { MAX_ATTACHMENTS, parseAttachments } from "@/lib/messages";
 import { limiters } from "@/lib/rate-limit";
 import { isStickerId } from "@/lib/stickers";
 import { createClient } from "@/lib/supabase/server";
@@ -131,6 +132,7 @@ const sendSchema = z.object({
   id: z.uuid(),
   conversationId: z.uuid(),
   content: messageContentSchema,
+  attachments: z.array(attachmentSchema).max(MAX_ATTACHMENTS).default([]),
   replyToId: z.uuid().nullish(),
   sticker: z.string().refine(isStickerId, "Unknown sticker").nullish(),
 });
@@ -140,18 +142,19 @@ export async function sendDirectMessageAction(input: z.input<typeof sendSchema>)
   if (limited) return RATE_LIMITED;
   const parsed = sendSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid message" };
-  const { id, conversationId: conversation, content, replyToId, sticker } = parsed.data;
-  if (!content && !sticker) return { ok: false, error: "The message is empty." };
+  const { id, conversationId: conversation, content, replyToId, sticker, attachments } = parsed.data;
+  if (!content && !sticker && !attachments.length) return { ok: false, error: "The message is empty." };
+  if (attachments.some((a) => !a.path.startsWith(`dm/${conversation}/${user.id}/`))) return { ok: false, error: "Upload these files to this conversation first." };
 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("direct_messages")
-    .insert({ id, conversation_id: conversation, author_id: user.id, content, reply_to_id: replyToId ?? null, sticker: sticker ?? null })
+    .insert({ id, conversation_id: conversation, author_id: user.id, content, reply_to_id: replyToId ?? null, sticker: sticker ?? null, ...(attachments.length ? { attachments } : {}) })
     .select("*")
     .single();
   if (data) return { ok: true, data: { message: data } };
   if (error?.code === "23505") {
-    const { data: existing } = await supabase.from("direct_messages").select("*").eq("id", id).eq("author_id", user.id).maybeSingle();
+    const { data: existing } = await supabase.from("direct_messages").select("*").eq("id", id).eq("conversation_id", conversation).eq("author_id", user.id).maybeSingle();
     if (existing) return { ok: true, data: { message: existing } };
   }
   const code = ["AUTOMOD_BLOCKED", "DM_NOT_ALLOWED", "RATE_LIMITED"].find((c) => error?.message?.includes(c));
@@ -164,8 +167,11 @@ export async function editDirectMessageAction(input: { messageId: string; conten
   const id = z.uuid().safeParse(input.messageId);
   const content = messageContentSchema.safeParse(input.content);
   if (!id.success || !content.success) return { ok: false, error: "Invalid message" };
-  if (!content.data) return { ok: false, error: "A message can't be empty — delete it instead." };
   const supabase = await createClient();
+  if (!content.data) {
+    const { data } = await supabase.from("direct_messages").select("attachments, sticker").eq("id", id.data).maybeSingle();
+    if (!data?.sticker && !parseAttachments(data?.attachments).length) return { ok: false, error: "A message can't be empty — delete it instead." };
+  }
   const { data, error } = await supabase.from("direct_messages").update({ content: content.data }).eq("id", id.data).select("id");
   if (error || !data?.length) return { ok: false, error: communityError(error?.message, "Only you can edit your messages.") };
   return { ok: true };
@@ -177,7 +183,9 @@ export async function deleteDirectMessageAction(input: { messageId: string }): P
   const id = z.uuid().safeParse(input.messageId);
   if (!id.success) return { ok: false, error: "Invalid message" };
   const supabase = await createClient();
-  const { data, error } = await supabase.from("direct_messages").delete().eq("id", id.data).select("id");
+  const { data, error } = await supabase.from("direct_messages").delete().eq("id", id.data).select("*");
   if (error || !data?.length) return { ok: false, error: communityError(error?.message, "Only you can delete your messages.") };
+  const paths = parseAttachments(data[0].attachments).map((a) => a.path);
+  if (paths.length) await supabase.storage.from("attachments").remove(paths);
   return { ok: true };
 }

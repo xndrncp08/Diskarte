@@ -187,4 +187,14 @@ describe("Composer", () => {
     await new Promise((r) => setTimeout(r, 50));
     expect(fake.uploads.length).toBe(before);
   });
+
+  it("uploads and sends DM media through the same composer without a server folder", async () => {
+    const props = renderComposer({ serverId: undefined });
+    const png = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])], "private.png", { type: "image/png" });
+    fireEvent.change(screen.getByLabelText("Attach files", { selector: "input" }), { target: { files: [png] } });
+    await vi.waitFor(() => expect(fake.uploads.at(-1)?.path).toMatch(new RegExp(`^dm/c/${OWNER_ID}/[0-9a-f-]{36}\\.png$`)));
+    await vi.waitFor(() => expect(screen.getByRole("button", { name: "Send message" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+    await vi.waitFor(() => expect(props.onSend).toHaveBeenCalledWith("", [expect.objectContaining({ path: expect.stringMatching(/^dm\//), name: "private.png" })], null));
+  });
 });

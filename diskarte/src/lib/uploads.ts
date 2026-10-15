@@ -118,13 +118,13 @@ async function readHead(file: File, bytes = 16): Promise<Uint8Array> {
  */
 export async function uploadAttachment(
   supabase: SupabaseClient,
-  opts: { serverId: string; channelId: string; userId: string; file: File },
+  opts: { serverId?: string; channelId: string; userId: string; file: File },
 ): Promise<{ path: string; name: string; size: number; type: AttachmentMime; width?: number; height?: number }> {
   const problem = validateAttachment(opts.file);
   if (problem) throw new Error(problem);
   const type = opts.file.type as AttachmentMime;
   if (!sniffMatches(type, await readHead(opts.file))) throw new Error(`${opts.file.name}: the contents don't match the file type.`);
-  const path = `${opts.serverId}/${opts.channelId}/${opts.userId}/${crypto.randomUUID()}.${ATTACHMENT_TYPES[type]}`;
+  const path = `${opts.serverId ?? "dm"}/${opts.channelId}/${opts.userId}/${crypto.randomUUID()}.${ATTACHMENT_TYPES[type]}`;
   const { error } = await supabase.storage.from("attachments").upload(path, opts.file, { contentType: type, upsert: false, cacheControl: "3600" });
   if (error) throw new Error(`${opts.file.name}: upload failed.`);
   const size = await imageSize(opts.file);

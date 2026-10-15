@@ -24,7 +24,7 @@ export const MAX_ATTACHMENTS = 10;
 export const ATTACHMENT_MIME = ["image/jpeg", "image/png", "image/webp", "image/gif", "audio/mpeg", "video/mp4", "audio/webm", "audio/ogg", "audio/mp4"] as const;
 export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
 /** `<server uuid>/<channel uuid>/<user uuid>/<random uuid>.<ext>` — nothing user-controlled. */
-export const ATTACHMENT_PATH_RE = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp|gif|mp3|mp4|webm|ogg|m4a)$/;
+export const ATTACHMENT_PATH_RE = /^(?:[0-9a-f-]{36}|dm)\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp|gif|mp3|mp4|webm|ogg|m4a)$/;
 
 export interface Attachment {
   path: string;
