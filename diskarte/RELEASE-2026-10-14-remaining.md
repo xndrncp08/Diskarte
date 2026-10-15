@@ -4,7 +4,7 @@ This report continues [the earlier delivery](RELEASE-2026-10-14.md). It covers i
 
 ## Implemented functionality
 
-- **Private cross-device state:** account-owned drafts and display/notification preferences, version checks, offline-local preservation, explicit conflict choices and reconnect refresh. Draft clearing synchronizes after sending. JSON key order does not cause false edits or write loops. Device-local fallback remains available when the migration/network is unavailable.
+- **Private cross-device state:** account-owned drafts and display/notification preferences, version checks, offline-local preservation, explicit conflict choices and reconnect refresh. Draft clearing synchronizes after sending. JSON key order does not cause false edits or write loops. Device-local fallback remains available when the migration/network is unavailable. Untouched empty drafts perform no write and consume no account-state row; clearing a previously saved draft still synchronizes its tombstone.
 - **DM media:** image, GIF, video, audio and recorded voice attachments using the existing allow-list and 10 MB limit. Preview, optimistic delivery, retry/outbox, signed media, deletion cleanup and permission-aware attachment search share the existing channel implementation. Uploads are private before sending; the database verifies stored object metadata, participant permissions and the uploader's conversation path. Arbitrary document formats such as PDFs remain unsupported.
 - **Conversation recovery:** restore a tab's reading anchor and intra-row offset, loading older pages until the anchor is found; cancel restoration when jumping to latest. Reconnect refreshes bounded reaction snapshots without losing concurrent live/optimistic changes. Positions do not persist after closing the tab.
 - **Community administration:** Gaming, Friends, Study, Creator and Team creation templates; read-only resource/announcement channels and forum defaults where appropriate. Owner-only JSON **settings** export includes channel/role/emoji configuration and excludes invite secrets. Existing ownership-transfer and custom emoji workflows were retained. Discovery now paginates, deduplicates results and recovers from failed joins/requests.
@@ -15,6 +15,7 @@ This report continues [the earlier delivery](RELEASE-2026-10-14.md). It covers i
 ## Mobile, desktop and appearance
 
 - Root visible-viewport variables now reach portal dialogs. Dialogs, full-screen mobile windows, popovers and context menus respect keyboard-sized/panned visual viewports and safe areas; desktop floating behavior remains.
+- Dialog bounds also follow visible keyboard height on tablets. Production CSS preserves standard glass blur and honors OS contrast/transparency preferences, with a dark focus ring in light high-contrast mode.
 - Opening dialogs/popovers preserve an input that the user has already focused instead of stealing focus on a delayed animation frame.
 - Dark, light and OS-following appearance retain Diskarte accent themes and glass surfaces. Cookie-backed initial mode avoids incorrect startup colors; system detection uses the existing CSP nonce. Light forms, Markdown, links and status colors were adjusted, while call/media surfaces retain their dark palette.
 - English/Filipino infrastructure translates core mobile navigation and settings headings. Time-zone selection, device reset and 24-hour clock preferences affect timestamps and daylight-saving-sensitive relative dates. **Full application translation is unfinished.**
@@ -38,11 +39,13 @@ All build-time code remains inside the self-contained app. No dependencies or se
 
 ## Verification and performance
 
-- Before final integration: **806 tests passed across 130 files**; lint, Next type generation/TypeScript and production build passed. After integration, **807 tests passed across 130 files in 57.92 seconds**, and lint, type checking and the production build passed again. Hosted CI results will be recorded separately.
-- Local production Chromium: **28 passed, 23 infrastructure-gated checks skipped**. Includes light/system axe checks, public mobile touch/overflow checks at 320/375/390/768/1440 px, PWA/cache/auth/security smoke checks. Authenticated new journeys cover device drafts/conflicts/appearance, private DM uploads, shared resources/whiteboards and capacity-limited events in CI's temporary backend.
+- Before final integration: **806 tests passed across 130 files**; lint, Next type generation/TypeScript and production build passed. After final refinements/integration, **808 tests passed across 130 files in 53.49 seconds**, and lint, type checking and the production build passed again.
+- Local production Chromium: **29 passed, 23 infrastructure-gated checks skipped**. Includes light/system axe checks, production glass/high-contrast/reduced-transparency checks, public mobile touch/overflow checks at 320/375/390/768/1440 px, PWA/cache/auth/security smoke checks. Authenticated new journeys cover device drafts/conflicts/appearance, private DM uploads, shared resources/whiteboards and capacity-limited events in CI's temporary backend.
 - PGlite applies all migrations on fresh databases, then tests old and new workflows, private-channel/DM boundaries, malformed uploads/content, revision conflicts, timeouts, MFA, ownership transfer and account deletion. This verifies forward compatibility with tested existing callers; a production database upgrade/restore has not been executed.
 - Event loading changes from two requests plus all RSVP identities to one bounded summary request. A component fixture verifies that a canonical count of 1,001 renders correctly without fetching attendee rows. No production query-latency improvement is claimed.
-- Appearance-stage vs final build: all emitted client JS totals **3,772,581 → 3,784,196 bytes**; independently gzip-compressed chunks **1,136,299 → 1,139,595 bytes** (+3,296 bytes, +0.29%). These include every lazy route/chunk, not initial-page transfer. No bundle reduction or hardware frame-rate gain is claimed. No production-sized load benchmark was run.
+- Appearance-stage vs final build: all emitted client JS totals **3,772,581 → 3,784,235 bytes**; independently gzip-compressed chunks **1,136,299 → 1,139,608 bytes** (+3,309 bytes, +0.29%). These include every lazy route/chunk, not initial-page transfer. No bundle reduction or hardware frame-rate gain is claimed. No production-sized load benchmark was run.
+
+[Hosted CI for the core implementation `0fbbd28`](https://github.com/xndrncp08/Diskarte/actions/runs/38683678707) passed all three jobs: **807 unit/component/database tests**, **50 browser checks passed / 1 skipped in 3.2 minutes**, and a **130 MB Docker image / 45 MB compressed**, including container health and non-root smoke checks. The skipped browser test is the authentication rate-limit test because the existing CI configuration raises the signup/auth budget for multi-user journeys. This run applied every new migration to real temporary Supabase and exercised LiveKit with fake media devices. The two final refinements have local regression coverage above and are included in the next pushed CI revision; do not interpret this earlier run as an exact-head result for those changes.
 
 ## Integration and operations
 
@@ -63,8 +66,10 @@ Integration branch is `main`, remote `origin` (`xndrncp08/Diskarte`). The remote
 | `fix/database-readiness` | `dd54e45` |
 | `test/platform-regressions` | `71b4166`, `3bf85b8` |
 | `fix/account-cleanup` | `5d70055` |
+| `fix/light-accessibility` | `8505eb6` |
+| `perf/empty-draft-sync` | `7ee4d29` |
 
-The final workstream merge is `afa9322`. No force pushes, unrelated branch deletions, attribution trailers or production SQL mutations were used.
+The final workstream merge is `1ab346a` (following the core merge `afa9322`). No force pushes, unrelated branch deletions, attribution trailers or production SQL mutations were used.
 
 The connected project now has the original workspace documents/permission function. The eight new migrations remain pending: the expanded readiness command returns exit **2**, correctly. Supabase CLI is signed out; no database URL or management token is configured. Production service-role, background-job and VAPID credentials are unavailable. No hosted migration, production backup/restore or live deployment is claimed. Pushing main can trigger the existing Render automation; hosting success still needs verification.
 
