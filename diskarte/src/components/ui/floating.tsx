@@ -9,7 +9,7 @@ export type Align = "start" | "center" | "end";
 export interface FloatingInput {
   anchor: { top: number; left: number; width: number; height: number };
   floating: { width: number; height: number };
-  viewport: { width: number; height: number };
+  viewport: { width: number; height: number; top?: number; left?: number };
   side: Side;
   align?: Align;
   offset?: number;
@@ -35,11 +35,12 @@ function clamp(value: number, min: number, max: number) {
  * 3. clamp both axes inside the viewport (minus padding) so it never creates scrollbars.
  */
 export function computeFloatingPosition({ anchor, floating, viewport, side, align = "start", offset = 8, padding = 8 }: FloatingInput): FloatingResult {
+  const viewTop = viewport.top ?? 0, viewLeft = viewport.left ?? 0;
   const room: Record<Side, number> = {
-    top: anchor.top - offset - padding,
-    bottom: viewport.height - (anchor.top + anchor.height) - offset - padding,
-    left: anchor.left - offset - padding,
-    right: viewport.width - (anchor.left + anchor.width) - offset - padding,
+    top: anchor.top - viewTop - offset - padding,
+    bottom: viewTop + viewport.height - (anchor.top + anchor.height) - offset - padding,
+    left: anchor.left - viewLeft - offset - padding,
+    right: viewLeft + viewport.width - (anchor.left + anchor.width) - offset - padding,
   };
   const needed = (s: Side) => (s === "top" || s === "bottom" ? floating.height : floating.width);
   let chosen = side;
@@ -56,10 +57,15 @@ export function computeFloatingPosition({ anchor, floating, viewport, side, alig
   }
 
   return {
-    top: Math.round(clamp(top, padding, viewport.height - floating.height - padding)),
-    left: Math.round(clamp(left, padding, viewport.width - floating.width - padding)),
+    top: Math.round(clamp(top, viewTop + padding, viewTop + viewport.height - floating.height - padding)),
+    left: Math.round(clamp(left, viewLeft + padding, viewLeft + viewport.width - floating.width - padding)),
     side: chosen,
   };
+}
+
+export function visibleViewport() {
+  const view = window.visualViewport;
+  return { width: view?.width ?? window.innerWidth, height: view?.height ?? window.innerHeight, top: view?.offsetTop ?? 0, left: view?.offsetLeft ?? 0 };
 }
 
 /**
@@ -67,7 +73,7 @@ export function computeFloatingPosition({ anchor, floating, viewport, side, alig
  * container, via capture) and resize. Returns fixed-position styles and the resolved side.
  */
 export function useFloating(open: boolean, anchorRef: RefObject<HTMLElement | null>, floatingRef: RefObject<HTMLElement | null>, opts: { side: Side; align?: Align; offset?: number }) {
-  const [position, setPosition] = useState<FloatingResult | null>(null);
+  const [position, setPosition] = useState<(FloatingResult & { maxWidth: number; maxHeight: number }) | null>(null);
   const { side, align, offset } = opts;
 
   const update = useCallback(() => {
@@ -76,16 +82,18 @@ export function useFloating(open: boolean, anchorRef: RefObject<HTMLElement | nu
     if (!anchor || !floating) return;
     const a = anchor.getBoundingClientRect();
     const f = floating.getBoundingClientRect();
-    setPosition(
-      computeFloatingPosition({
+    const viewport = visibleViewport();
+    const next = {
+      ...computeFloatingPosition({
         anchor: { top: a.top, left: a.left, width: a.width, height: a.height },
-        floating: { width: f.width || floating.offsetWidth, height: f.height || floating.offsetHeight },
-        viewport: { width: window.innerWidth, height: window.innerHeight },
+        floating: { width: floating.offsetWidth || f.width, height: floating.offsetHeight || f.height },
+        viewport,
         side,
         align,
         offset,
-      }),
-    );
+      }), maxWidth: Math.max(0, viewport.width - 16), maxHeight: Math.max(0, viewport.height - 16),
+    };
+    setPosition((previous) => previous && Object.keys(next).every((key) => next[key as keyof typeof next] === previous[key as keyof typeof next]) ? previous : next);
   }, [anchorRef, floatingRef, side, align, offset]);
 
   useLayoutEffect(() => {
@@ -94,15 +102,23 @@ export function useFloating(open: boolean, anchorRef: RefObject<HTMLElement | nu
     const frame = requestAnimationFrame(update); // re-measure once content/animation has laid out
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
+    window.visualViewport?.addEventListener("resize", update);
+    window.visualViewport?.addEventListener("scroll", update);
+    const observer = new ResizeObserver(update);
+    if (anchorRef.current) observer.observe(anchorRef.current);
+    if (floatingRef.current) observer.observe(floatingRef.current);
     return () => {
       cancelAnimationFrame(frame);
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
+      window.visualViewport?.removeEventListener("resize", update);
+      window.visualViewport?.removeEventListener("scroll", update);
+      observer.disconnect();
     };
-  }, [open, update]);
+  }, [open, update, anchorRef, floatingRef]);
 
   const style: CSSProperties = position
-    ? { position: "fixed", top: position.top, left: position.left }
+    ? { position: "fixed", top: position.top, left: position.left, maxWidth: position.maxWidth, maxHeight: position.maxHeight, overflowY: "auto" }
     : { position: "fixed", top: 0, left: 0, visibility: "hidden" };
   return { style, side: position?.side ?? side, update };
 }

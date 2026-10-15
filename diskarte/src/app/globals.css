@@ -148,6 +148,11 @@ html { -webkit-text-size-adjust: 100%; }
 button, [role="button"], [role="tab"] { -webkit-user-select: none; user-select: none; }
 .app-viewport { overscroll-behavior: none; }
 @media (max-width: 767px) {
+  .overlay-viewport { top: var(--app-top, 0); bottom: auto; height: var(--app-height, 100dvh); }
+  .overlay-viewport > [role="dialog"] { max-height: calc(var(--app-height, 100dvh) - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow-y: auto; }
+  .overlay-viewport[data-window-layer] > [data-window] { position: absolute; inset: 0; height: 100%; max-height: 100%; }
+  .overlay-viewport [data-window-body] { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+  [data-floating="context-menu"] { max-height: calc(var(--app-height, 100dvh) - 1rem); }
   .app-viewport { position: fixed; inset-inline: 0; top: var(--app-top, 0); height: var(--app-height, 100dvh); padding-top: env(safe-area-inset-top); padding-inline: env(safe-area-inset-left) env(safe-area-inset-right); }
   .app-viewport[data-keyboard="true"] .mobile-tabs { display: none; }
   .app-viewport [data-panel="nav"] { max-width: calc(100vw - 72px); }

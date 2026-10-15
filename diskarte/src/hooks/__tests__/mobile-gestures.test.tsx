@@ -69,7 +69,7 @@ describe("app viewport", () => {
     vi.stubGlobal("visualViewport", vv);
     Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
     const el = document.createElement("div");
-    renderHook(() => {
+    const hook = renderHook(() => {
       const ref = useRef<HTMLElement>(el);
       useAppViewport(ref);
     });
@@ -78,7 +78,10 @@ describe("app viewport", () => {
     vv.height = 450;
     listeners.get("resize")?.();
     expect(el.style.getPropertyValue("--app-height")).toBe("450px");
+    expect(document.documentElement.style.getPropertyValue("--app-height")).toBe("450px");
     expect(el.dataset.keyboard).toBe("true");
+    hook.unmount();
+    expect(document.documentElement.style.getPropertyValue("--app-height")).toBe("");
     vi.unstubAllGlobals();
   });
 });
