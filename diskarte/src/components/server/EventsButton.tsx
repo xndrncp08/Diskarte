@@ -2,6 +2,7 @@
 
 import { CalendarDays, Check, Download, MapPin, Pencil, Plus, Star, Trash2, Volume2 } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Timestamp } from "@/components/chat/Timestamp";
@@ -27,6 +28,17 @@ export function EventsButton() {
   const [events, setEvents] = useState<ServerEvent[]>([]);
   const [rsvps, setRsvps] = useState<{ event_id: string; user_id: string }[]>([]);
   const [open, setOpen] = useState(false);
+  const eventTarget = useSearchParams().get("event");
+  useEffect(() => {
+    if (!eventTarget) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- a notification deep link opens the existing event dialog
+    setOpen(true);
+  }, [eventTarget]);
+  useEffect(() => {
+    if (!open || !eventTarget) return;
+    const frame = requestAnimationFrame(() => document.getElementById(`event-${eventTarget}`)?.scrollIntoView({ block: "nearest" }));
+    return () => cancelAnimationFrame(frame);
+  }, [open, eventTarget, events]);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<ServerEvent | null>(null);
   const [problem, setProblem] = useState("");
@@ -153,7 +165,7 @@ export function EventsButton() {
                 const interested = rsvps.some((r) => r.event_id === e.id && r.user_id === me.id);
                 const channel = e.channel_id ? channels.find((c) => c.id === e.channel_id) : null;
                 return (
-                  <li key={e.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                  <li key={e.id} id={`event-${e.id}`} className={cn("rounded-xl border bg-white/[0.03] p-3", eventTarget === e.id ? "border-sun/60" : "border-white/10")}>
                     <p className={cn("text-xs font-semibold", status === "live" ? "text-emerald-300" : "text-slate-400")}>
                       {status === "live" ? "Happening now" : <Timestamp iso={e.starts_at} />}
                     </p>

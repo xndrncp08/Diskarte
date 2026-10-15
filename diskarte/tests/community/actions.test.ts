@@ -147,6 +147,18 @@ describe("social actions", () => {
     expect(rpcCall("create_group_dm")).toMatchObject({ p_name: "Squad" });
   });
 
+  it("preserves invitation DMs while an older database awaits push metadata", async () => {
+    let attempts = 0;
+    db.tableResult = () => {
+      attempts++;
+      const sent = db.calls.filter((call) => call.op === "insert").at(-1)!.args[0];
+      if (attempts === 1) { expect(sent).toHaveProperty("invite_server_id", SERVER); return { data:null,error:{code:"PGRST204",message:"Could not find invite_server_id"} }; }
+      expect(sent).not.toHaveProperty("invite_server_id");
+      return {data:{id:MSG},error:null};
+    };
+    expect(await social.sendDirectMessageAction({id:MSG,conversationId:CHANNEL,content:"Join us",inviteServerId:SERVER})).toMatchObject({ok:true});
+    expect(attempts).toBe(2);
+  });
   it("sends DMs, treating a duplicate id as already delivered and surfacing privacy refusals", async () => {
     const row = { id: MSG, conversation_id: CHANNEL, author_id: USER, content: "uy", sticker: null, reply_to_id: null, edited_at: null, created_at: "2026-09-27T00:00:00Z" };
     db.tableResult = (_t, ops) => (ops.includes("insert") ? { data: null, error: { message: "duplicate key", code: "23505" } } : { data: row, error: null });

@@ -8,6 +8,7 @@ import { SettingsDialogProvider } from "@/components/profile/SettingsDialog";
 import { AccountPreferencesSync } from "@/components/profile/AccountPreferencesSync";
 import { MeProvider } from "@/components/providers/MeProvider";
 import { ClientDiagnostics } from "@/components/providers/ClientDiagnostics";
+import { PushSession } from "@/components/notifications/PushSession";
 import { PresenceProvider } from "@/components/providers/PresenceProvider";
 import { SocialProvider } from "@/components/providers/SocialProvider";
 import { AudioMixerProvider } from "@/components/voice/AudioMixer";
@@ -70,6 +71,7 @@ export function SessionProviders({
                       {/* Device heartbeat + live enforcement of bans, revoked sessions and status overrides. */}
                       <SessionGuard />
                       <ClientDiagnostics />
+                      <PushSession />
                     </IncomingCallsProvider>
                   </MediaViewerProvider>
                 </AudioMixerProvider>

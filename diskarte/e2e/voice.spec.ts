@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 import { createServer, FULL, FULL_REASON, inviteLink, makeUser, newUserPage, signUpAndOnboard } from "./helpers";
 
 test.describe("WebRTC voice rooms", () => {
@@ -38,6 +39,13 @@ test.describe("WebRTC voice rooms", () => {
     const preview = page.getByRole("dialog", { name: /^Voice activity in Voice / });
     await expect(preview.getByLabel("2 connected participants")).toBeVisible();
     await expect(preview.getByRole("button", { name: `View ${friend.user.displayName}'s profile` })).toBeVisible();
+    for (const colorMode of ["dark","light"]) {
+      await page.evaluate((mode) => { document.documentElement.dataset.colorMode = mode; },colorMode);
+      const audit = await new AxeBuilder({page}).include("[data-voice-preview]").withTags(["wcag2a","wcag2aa","wcag21a","wcag21aa"]).analyze();
+      expect(audit.violations.map((violation) => `${violation.id}: ${violation.help}`)).toEqual([]);
+      await test.info().attach(`voice-preview-${colorMode}`,{body:await preview.screenshot(),contentType:"image/png"});
+    }
+    await page.evaluate(() => { document.documentElement.dataset.colorMode="dark"; });
     await page.keyboard.press("Escape"); await expect(preview).toHaveCount(0);
     await expect(dock).toContainText("Voice Connected");
 

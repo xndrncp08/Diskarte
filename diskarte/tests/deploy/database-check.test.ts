@@ -18,9 +18,9 @@ describe("database readiness", () => {
   it("probes schema without reading documents or using a service-role credential", async () => {
     const request = vi.fn<typeof fetch>().mockImplementation(async () => new Response(JSON.stringify({ code: "42501" }), { status: 401 }));
     const results = await checkDatabase({ SUPABASE_URL: "https://example.supabase.co/", SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test", SUPABASE_SERVICE_ROLE_KEY: "private" }, request);
-    expect(results.map((result: { state: string }) => result.state)).toEqual(Array(9).fill("present"));
+    expect(results.map((result: { state: string }) => result.state)).toEqual(Array(10).fill("present"));
     expect(request.mock.calls[0][0]).toBe("https://example.supabase.co/rest/v1/workspace_documents?select=id&limit=0");
-    expect(request.mock.calls.every(([url, options]) => options?.method === "GET" ? String(url).endsWith("limit=0") : ["can_edit_workspace", "get_reactions_snapshot", "export_server_settings", "list_server_events"].some((rpc) => String(url).endsWith(`rpc/${rpc}`)))).toBe(true);
+    expect(request.mock.calls.every(([url, options]) => options?.method === "GET" ? String(url).endsWith("limit=0") : ["can_edit_workspace", "get_reactions_snapshot", "export_server_settings", "list_server_events", "push_ready"].some((rpc) => String(url).endsWith(`rpc/${rpc}`)))).toBe(true);
     const options = request.mock.calls[1][1];
     expect(options?.headers).toEqual({ apikey: "sb_publishable_test", "Content-Type": "application/json" });
     expect(options?.body).toBe(JSON.stringify({ p_channel: "00000000-0000-0000-0000-000000000000" }));

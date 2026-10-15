@@ -44,7 +44,7 @@ export function VoiceActivityPreviewProvider({ children }: { children: ReactNode
   }, [target, close]);
   return <Context.Provider value={{ show, close, delay, hold, id, serverId: target?.server.id }}>
     {children}
-    {target?.sheet ? <Modal open title={`Voice activity in ${target.server.name}`} onClose={close} className="absolute inset-x-0 bottom-0 max-w-none rounded-b-none pb-[max(1.5rem,env(safe-area-inset-bottom))]"><div data-voice-preview><PreviewContent key={target.server.id} server={target.server} onOpen={close} /></div></Modal> : <FloatingPortal><AnimatePresence>{target && <DesktopPreview key={target.server.id} target={target} id={id} close={close} hold={hold} delay={delay} />}</AnimatePresence></FloatingPortal>}
+    {target?.sheet ? <Modal open title={`Voice activity in ${target.server.name}`} onClose={close} className="absolute inset-x-0 bottom-0 max-w-none rounded-b-none pb-[max(1.5rem,env(safe-area-inset-bottom))]"><div id={id} data-voice-preview><PreviewContent key={target.server.id} server={target.server} onOpen={close} /></div></Modal> : <FloatingPortal><AnimatePresence>{target && <DesktopPreview key={target.server.id} target={target} id={id} close={close} hold={hold} delay={delay} />}</AnimatePresence></FloatingPortal>}
   </Context.Provider>;
 }
 

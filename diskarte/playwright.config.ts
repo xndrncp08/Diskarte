@@ -19,6 +19,8 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : [["list"]],
   use: {
+    // Full Chromium supports OS-notification/badging interfaces absent in the minimal headless shell.
+    channel: "chromium",
     baseURL,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",

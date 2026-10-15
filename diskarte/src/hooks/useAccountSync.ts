@@ -28,6 +28,7 @@ export function useAccountSync(userId: string, key: string, value: Json, apply: 
   const baseline = useRef(encode(value));
   const writing = useRef<{ encoded: string; revision: number } | null>(null);
   const [ready, setReady] = useState(false);
+  const [acknowledged, setAcknowledged] = useState<{ scope: string; value: string } | null>(null);
   const [problem, setProblem] = useState("");
   const [conflict, setConflict] = useState<State | null>(null);
   const [cycle, setCycle] = useState(0);
@@ -48,6 +49,7 @@ export function useAccountSync(userId: string, key: string, value: Json, apply: 
     const receive = (row: State) => {
       if (scope.current !== token || row.key !== key || row.user_id !== userId || row.revision < meta.current.revision) return;
       const remote = encode(row.value), local = encode(latest.current);
+      setAcknowledged({ scope: `${userId}:${key}`, value: remote });
       const ownWrite = writing.current && row.revision === writing.current.revision + 1 && remote === writing.current.encoded;
       if (local === remote || ownWrite) {
         meta.current = { revision: row.revision, dirty: local !== remote }; baseline.current = remote;
@@ -105,13 +107,14 @@ export function useAccountSync(userId: string, key: string, value: Json, apply: 
         }
         if (data[0].revision < meta.current.revision) return;
         baseline.current = operation.encoded;
+        setAcknowledged({ scope: `${userId}:${key}`, value: operation.encoded });
         meta.current = { revision: data[0].revision, dirty: encode(latest.current) !== operation.encoded };
         persist(); setProblem(""); saved = true;
       } catch { if (scope.current === token) setProblem("Device sync couldn’t save. Your local changes are preserved; retry when connected."); }
       finally { if (scope.current === token) { writing.current = null; if (saved) setCycle((n) => n + 1); } }
     }, 700);
     return () => clearTimeout(timer);
-  }, [encoded, ready, conflict, cycle, supabase, key, enabled, persist]);
+  }, [encoded, ready, conflict, cycle, supabase, userId, key, enabled, persist]);
 
   const resolve = useCallback((remote: boolean) => {
     if (!conflict) return;
@@ -120,5 +123,5 @@ export function useAccountSync(userId: string, key: string, value: Json, apply: 
     if (remote) { latest.current = conflict.value; applyRef.current(conflict.value); }
     persist(); setConflict(null); setProblem(""); setCycle((n) => n + 1);
   }, [conflict, persist]);
-  return { problem: enabled ? problem : "", conflict, useRemote: () => resolve(true), keepLocal: () => resolve(false), retry: () => { setReady(false); setRetry((n) => n + 1); } };
+  return { pending: enabled && (!ready || !!conflict || acknowledged?.scope !== `${userId}:${key}` || acknowledged.value !== encoded), problem: enabled ? problem : "", conflict, useRemote: () => resolve(true), keepLocal: () => resolve(false), retry: () => { setReady(false); setRetry((n) => n + 1); } };
 }

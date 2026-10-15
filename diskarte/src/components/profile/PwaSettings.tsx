@@ -15,6 +15,6 @@ export function PwaSettings() {
     {pwa.error && <p role="status" className="text-sm text-amber-200">{pwa.error}</p>}
     <Button variant="secondary" onClick={() => void pwa.clearCache().then(() => setNote("Downloaded app files cleared. Your drafts and queued messages are preserved.")).catch(() => setNote("Cache couldn’t be cleared. Try again."))}>Clear downloaded app files</Button>
     {note && <p role="status" className="text-sm text-slate-300">{note}</p>}
-    <p className="text-xs text-slate-400">Offline caching stores app files and an offline page. Private conversations and attachments stay out of that cache. Background push notifications require server configuration and are not enabled.</p>
+    <p className="text-xs text-slate-400">Offline caching stores app files and an offline page. Private conversations and attachments stay out of that cache. Manage background notifications under Notifications; availability depends on browser support and server configuration.</p>
   </section>;
 }

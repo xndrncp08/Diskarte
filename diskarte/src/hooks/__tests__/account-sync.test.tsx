@@ -56,9 +56,11 @@ describe("cross-device state sync", () => {
     tables.account_state = [row("From my phone")];
     const hook = renderHook(() => useTestSync()); await settle();
     expect(hook.result.current.value).toBe("From my phone");
-    act(() => hook.result.current.setValue("")); await settle(800);
+    expect(hook.result.current.sync.pending).toBe(false);
+    act(() => hook.result.current.setValue("")); expect(hook.result.current.sync.pending).toBe(true); await settle(800);
     expect(tables.account_state[0]).toMatchObject({ value: "", revision: 2 });
     expect(fake.client.rpc).toHaveBeenCalledOnce();
+    expect(hook.result.current.sync.pending).toBe(false);
   });
   it("preserves divergent offline edits until the user explicitly chooses a version", async () => {
     tables.account_state = [row("Other device")];

@@ -8,6 +8,7 @@ import type { Json } from "@/lib/supabase/database.types";
 
 type Sync = ReturnType<typeof useAccountSync>;
 const Context = createContext<{ display: Sync; notifications: Sync } | null>(null);
+export function useNotificationSync() { return useContext(Context)?.notifications; }
 
 export function AccountPreferencesSync({ userId, children }: { userId: string; children: ReactNode }) {
   const [bound, setBound] = useState(false);

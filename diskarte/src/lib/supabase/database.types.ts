@@ -321,6 +321,7 @@ export interface Database {
           content: string;
           /** Absent on projects which have not applied the DM-media migration yet. */
           attachments?: Json;
+          invite_server_id?: string | null;
           sticker: string | null;
           reply_to_id: string | null;
           edited_at: string | null;
@@ -333,6 +334,7 @@ export interface Database {
           content?: string;
           attachments?: Json;
           sticker?: string | null;
+          invite_server_id?: string | null;
           reply_to_id?: string | null;
           edited_at?: string | null;
           created_at?: string;
@@ -540,6 +542,16 @@ export interface Database {
       get_reactions_snapshot: { Args: { p_channel: string; p_messages: string[] }; Returns: Json };
       save_account_state: { Args: { p_key: string; p_value: Json; p_revision: number }; Returns: Database["public"]["Tables"]["account_state"]["Row"][] };
       admin_site_traffic: { Args: Record<string, never>; Returns: Json };
+      push_ready: { Args: Record<string, never>; Returns: boolean };
+      register_push: { Args: { p_device: string; p_endpoint: string; p_p256dh: string; p_auth: string; p_label: string }; Returns: string };
+      list_push_devices: { Args: Record<string, never>; Returns: { id: string; device_id: string; label: string; created_at: string; last_delivered_at: string | null }[] };
+      remove_push_device: { Args: { p_device?: string; p_all?: boolean }; Returns: undefined };
+      request_push_test: { Args: { p_device: string }; Returns: undefined };
+      claim_push_jobs: { Args: { p_limit?: number }; Returns: { id: string; lease: string }[] };
+      prepare_push_job: { Args: { p_id: string; p_lease: string }; Returns: Json };
+      finish_push_job: { Args: { p_id: string; p_lease: string; p_result: string; p_status?: number | null; p_code?: string; p_delay?: number }; Returns: undefined };
+      tick_push: { Args: Record<string, never>; Returns: undefined };
+      wake_push: { Args: Record<string, never>; Returns: undefined };
     };
     Enums: {
       member_role: MemberRole;

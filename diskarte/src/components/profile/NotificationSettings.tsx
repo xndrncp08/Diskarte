@@ -4,6 +4,7 @@ import { useState, useSyncExternalStore } from "react";
 import { Switch } from "@/components/ui/Switch";
 import { DEFAULT_NOTIFY_PREFS, readNotifyPrefs, setNotifyPrefs, subscribeNotifyPrefs } from "@/lib/notify-prefs";
 import { Button } from "@/components/ui/Button";
+import { PushSettings } from "@/components/notifications/PushSettings";
 
 function usePermission() {
   return useSyncExternalStore(
@@ -37,6 +38,7 @@ export function NotificationSettings() {
 
   return (
     <div className="max-w-md space-y-3" data-testid="notification-settings">
+      <PushSettings />
       <Switch
         checked={prefs.desktop && permission === "granted"}
         onChange={(on) => void toggleDesktop(on)}

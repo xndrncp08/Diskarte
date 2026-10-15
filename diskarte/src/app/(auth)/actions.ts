@@ -116,6 +116,7 @@ export async function signOutAction(form: FormData): Promise<void> {
   const scope = text(form, "scope") === "global" ? "global" : "local";
   const device = text(form, "device");
   const supabase = await createClient();
+  await supabase.rpc("remove_push_device", { ...(z.uuid().safeParse(device).success ? { p_device: device } : {}), p_all: scope === "global" }).then(undefined, () => undefined);
   if (z.uuid().safeParse(device).success) await supabase.rpc("forget_device", { p_device_id: device }).then(undefined, () => undefined);
   await supabase.auth.signOut({ scope });
   redirect("/auth");
