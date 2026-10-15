@@ -27,6 +27,16 @@ function useTestSync(initial = "") {
   return { value, setValue, sync: useAccountSync(user, key, value, setValue) };
 }
 describe("cross-device state sync", () => {
+  it("does not create a row or send a write for an untouched empty conversation draft", async () => {
+    const hook = renderHook(() => useTestSync()); await settle(2000);
+    expect(fake.client.rpc).not.toHaveBeenCalled();
+    expect(tables.account_state).toEqual([]);
+    expect(hook.result.current.sync.problem).toBe("");
+    act(() => hook.result.current.setValue("Started typing")); await settle(800);
+    expect(tables.account_state[0]).toMatchObject({ value: "Started typing", revision: 1 });
+    act(() => hook.result.current.setValue("")); await settle(800);
+    expect(tables.account_state[0]).toMatchObject({ value: "", revision: 2 });
+  });
   it("does not treat reordered jsonb object keys as edits or create sync loops", async () => {
     const preference = { user_id: user, key: "prefs:display", value: { b: true, a: { y: 2, x: 1 } }, revision: 1, updated_at: "2026-10-14T00:00:00Z" };
     tables.account_state = [preference];
