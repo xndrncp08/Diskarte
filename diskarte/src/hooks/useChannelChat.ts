@@ -72,7 +72,34 @@ export function useChannelChat(
   const [messages, setMessages] = useState<ChatMessage[]>(initial.messages);
   const [reactions, setReactions] = useState(() => groupReactions(initial.reactions));
   const [hasMore, setHasMore] = useState(initial.hasMore);
-  const recovery = useConversationRecovery(channelId, "channel", messages, setMessages, threadId, setHasMore);
+  const [reactionProblem, setReactionProblem] = useState(false);
+  const reactionEpoch = useRef(new Map<string, number>());
+  const reacting = useRef(new Set<string>());
+  const markReaction = useCallback((id: string) => { reactionEpoch.current.set(id, (reactionEpoch.current.get(id) ?? 0) + 1); }, []);
+  const refreshReactions = useCallback(async (ids: string[], current: () => boolean) => {
+    const versions = new Map(ids.map((id) => [id, reactionEpoch.current.get(id) ?? 0]));
+    const pending = new Set(reacting.current);
+    const fetched: Reaction[] = [];
+    try {
+      for (let offset = 0; offset < ids.length; offset += 100) {
+        if (!current()) return;
+        const { data, error } = await supabase.rpc("get_reactions_snapshot", { p_channel: channelId, p_messages: ids.slice(offset, offset + 100) });
+        if (error || !Array.isArray(data)) throw error;
+        fetched.push(...data as unknown as Reaction[]);
+      }
+      if (!current()) return;
+      const fresh = groupReactions(fetched);
+      setReactions((previous) => {
+        if (!current()) return previous;
+        const next = new Map(previous);
+        for (const id of ids) if (!pending.has(id) && !reacting.current.has(id) && versions.get(id) === (reactionEpoch.current.get(id) ?? 0)) next.set(id, fresh.get(id) ?? []);
+        return next;
+      });
+      setReactionProblem(false);
+    } catch { if (current()) setReactionProblem(true); }
+  }, [supabase, channelId]);
+  const historyRecovery = useConversationRecovery(channelId, "channel", messages, setMessages, threadId, setHasMore, refreshReactions);
+  const recovery = { ...historyRecovery, problem: historyRecovery.problem || reactionProblem };
   const { status: recoveryStatus, noteDelete } = recovery;
   const [loadingOlder, setLoadingOlder] = useState(false);
   const loading = useRef(false);
@@ -120,6 +147,7 @@ export function useChannelChat(
           const id = (old as { id?: string }).id;
           if (!id) return;
           noteDelete(id);
+          markReaction(id);
           setMessages((prev) => prev.filter((m) => m.id !== id));
           setReactions((prev) => {
             if (!prev.has(id)) return prev;
@@ -130,6 +158,7 @@ export function useChannelChat(
         })
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "reactions", filter: `channel_id=eq.${channelId}` }, ({ new: row }) => {
           const r = row as Reaction;
+          markReaction(r.message_id);
           setReactions((prev) => {
             const list = prev.get(r.message_id) ?? [];
             if (list.some((x) => x.user_id === r.user_id && x.emoji === r.emoji)) return prev;
@@ -141,6 +170,7 @@ export function useChannelChat(
         .on("postgres_changes", { event: "DELETE", schema: "public", table: "reactions" }, ({ old }) => {
           const r = old as Partial<Reaction>;
           if (!r.message_id) return;
+          markReaction(r.message_id);
           setReactions((prev) => {
             const list = prev.get(r.message_id!);
             if (!list) return prev;
@@ -154,7 +184,7 @@ export function useChannelChat(
         }),
       recoveryStatus,
     );
-  }, [supabase, channelId, threadId, me.id, me.username, resolveAuthor, recoveryStatus, noteDelete]);
+  }, [supabase, channelId, threadId, me.id, me.username, resolveAuthor, recoveryStatus, noteDelete, markReaction]);
 
   // ---- pagination ----------------------------------------------------------------------
   const loadOlder = useCallback(async () => {
@@ -383,6 +413,8 @@ export function useChannelChat(
 
   const toggleReaction = useCallback(
     async (messageId: string, emoji: string) => {
+      if (reacting.current.has(messageId)) return;
+      reacting.current.add(messageId); markReaction(messageId);
       const mine = (reactions.get(messageId) ?? []).some((r) => r.user_id === me.id && r.emoji === emoji);
       const optimistic = (on: boolean) =>
         setReactions((prev) => {
@@ -402,8 +434,9 @@ export function useChannelChat(
         optimistic(mine);
         toast.error(result.error ?? "Couldn't add the reaction.");
       }
+      reacting.current.delete(messageId); markReaction(messageId);
     },
-    [reactions, me.id, channelId],
+    [reactions, me.id, channelId, markReaction],
   );
 
   const pinned = useMemo(() => messages.filter((m) => m.pinned).sort((a, b) => (b.pinned_at ?? "").localeCompare(a.pinned_at ?? "")), [messages]);

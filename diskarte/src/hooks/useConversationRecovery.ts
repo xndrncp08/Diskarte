@@ -21,9 +21,11 @@ export function reconcileHistory(previous: ChatMessage[], snapshot: ChatMessage[
   return next.sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id));
 }
 
-export function useConversationRecovery(target: string, kind: "channel" | "dm", messages: ChatMessage[], setMessages: Dispatch<SetStateAction<ChatMessage[]>>, threadId: string | null = null, setHasMore?: Dispatch<SetStateAction<boolean>>) {
+export function useConversationRecovery(target: string, kind: "channel" | "dm", messages: ChatMessage[], setMessages: Dispatch<SetStateAction<ChatMessage[]>>, threadId: string | null = null, setHasMore?: Dispatch<SetStateAction<boolean>>, refreshRelated?: (ids: string[], current: () => boolean) => Promise<void>) {
   const supabase = useSupabase();
   const latest = useRef(messages);
+  const related = useRef(refreshRelated);
+  useEffect(() => { related.current = refreshRelated; }, [refreshRelated]);
   const deleted = useRef(new Set<string>());
   const scope = useRef<{ target: string; kind: string; threadId: string | null } | null>(null);
   const running = useRef<typeof scope.current>(null);
@@ -88,6 +90,8 @@ export function useConversationRecovery(target: string, kind: "channel" | "dm", 
         if (!cursor || batch.length < 100 || !last || last.id === cursor.id) break;
         cursor = last;
       }
+      if (!current()) return;
+      await related.current?.([...new Set([...snapshot, ...fetched].map((m) => m.id))], current);
       if (!current()) return;
       setMessages((previous) => current() ? reconcileHistory(previous, snapshot, fetched, deleted.current) : previous);
       setProblem(false); recordDiagnostic("message", "recovered", performance.now() - started);

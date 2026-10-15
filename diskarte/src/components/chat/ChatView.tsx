@@ -67,7 +67,7 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
   const [activeId, setActiveId] = useState<string | null>(null);
   const [pinsOpen, setPinsOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<ChatMessage | null>(null);
-  const { listRef, atBottom, unseen, onScroll, scrollToBottom } = useConversationScroll(`${me.id}:${channel.id}`, chat.messages, me.id, chat.loadOlder, chat.hasMore);
+  const { listRef, atBottom, unseen, onScroll, scrollToBottom, restoringHistory } = useConversationScroll(`${me.id}:${channel.id}`, chat.messages, me.id, chat.loadOlder, chat.hasMore, chat.loadingOlder);
   useEffect(() => {
     if (!markRead || !atBottom || messageTarget) return;
     const mark = () => document.visibilityState === "visible" && markRead(channel.id);
@@ -275,6 +275,7 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
           </button>
         )}
 
+        {restoringHistory && <p role="status" className="px-4 py-2 text-sm text-slate-400">Restoring your reading position…</p>}
         <OfflineBanner queued={chat.queuedCount} />
         {chat.recovery.problem && <div role="status" className="flex items-center justify-between gap-2 px-4 py-2 text-sm text-amber-200"><span>History couldn’t sync after reconnecting.</span><button type="button" onClick={() => void chat.recovery.recover()} className="min-h-11 rounded-lg px-3 hover:bg-white/10">Retry sync</button></div>}
         <Composer
