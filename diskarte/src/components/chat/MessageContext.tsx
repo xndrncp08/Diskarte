@@ -48,7 +48,7 @@ export function MessageContext({ channelId, conversationId }: { channelId?: stri
           if (older.error || newer.error) throw older.error ?? newer.error;
           result = [...(older.data ?? []).reverse(), anchor, ...(newer.data ?? [])];
         } else if (conversationId) {
-          const query = () => supabase.from("direct_messages").select("id,content,author_id,created_at").eq("conversation_id", conversationId);
+          const query = () => supabase.from("direct_messages").select("*").eq("conversation_id", conversationId);
           const { data: anchor, error } = await query().eq("id", target).maybeSingle();
           if (error) throw error;
           if (!anchor) { if (live) setProblem("This message was deleted or you no longer have access."); return; }
