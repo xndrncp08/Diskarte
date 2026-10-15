@@ -12,6 +12,11 @@ function version(key: string): Version {
   return { revision: 0, dirty: false };
 }
 
+// Postgres jsonb reorders object keys; key order must never count as a settings edit.
+function encode(value: Json) {
+  return JSON.stringify(value, (_key, item) => item && typeof item === "object" && !Array.isArray(item) ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : item);
+}
+
 /** A revision conflict never replaces local edits. The caller explicitly chooses a version. */
 export function useAccountSync(userId: string, key: string, value: Json, apply: (value: Json) => void, enabled = true) {
   const supabase = useOptionalSupabase();
@@ -20,14 +25,14 @@ export function useAccountSync(userId: string, key: string, value: Json, apply: 
   const applyRef = useRef(apply);
   const scope = useRef<object | null>(null);
   const meta = useRef<Version>({ revision: 0, dirty: false });
-  const baseline = useRef(JSON.stringify(value));
+  const baseline = useRef(encode(value));
   const writing = useRef<{ encoded: string; revision: number } | null>(null);
   const [ready, setReady] = useState(false);
   const [problem, setProblem] = useState("");
   const [conflict, setConflict] = useState<State | null>(null);
   const [cycle, setCycle] = useState(0);
   const [retry, setRetry] = useState(0);
-  const encoded = JSON.stringify(value);
+  const encoded = encode(value);
   useEffect(() => { latest.current = value; applyRef.current = apply; }, [value, apply]);
   const persist = useCallback(() => {
     try { localStorage.setItem(metaKey, JSON.stringify(meta.current)); } catch { /* memory only */ }
@@ -38,11 +43,11 @@ export function useAccountSync(userId: string, key: string, value: Json, apply: 
     const token = {}; scope.current = token;
     meta.current = version(metaKey); writing.current = null;
     if (key.startsWith("draft:") && meta.current.revision === 0 && latest.current) meta.current.dirty = true;
-    baseline.current = JSON.stringify(latest.current);
+    baseline.current = encode(latest.current);
     let loaded = false;
     const receive = (row: State) => {
       if (scope.current !== token || row.key !== key || row.user_id !== userId || row.revision < meta.current.revision) return;
-      const remote = JSON.stringify(row.value), local = JSON.stringify(latest.current);
+      const remote = encode(row.value), local = encode(latest.current);
       const ownWrite = writing.current && row.revision === writing.current.revision + 1 && remote === writing.current.encoded;
       if (local === remote || ownWrite) {
         meta.current = { revision: row.revision, dirty: local !== remote }; baseline.current = remote;
@@ -98,7 +103,7 @@ export function useAccountSync(userId: string, key: string, value: Json, apply: 
         }
         if (data[0].revision < meta.current.revision) return;
         baseline.current = operation.encoded;
-        meta.current = { revision: data[0].revision, dirty: JSON.stringify(latest.current) !== operation.encoded };
+        meta.current = { revision: data[0].revision, dirty: encode(latest.current) !== operation.encoded };
         persist(); setProblem(""); saved = true;
       } catch { if (scope.current === token) setProblem("Device sync couldn’t save. Your local changes are preserved; retry when connected."); }
       finally { if (scope.current === token) { writing.current = null; if (saved) setCycle((n) => n + 1); } }
@@ -109,7 +114,7 @@ export function useAccountSync(userId: string, key: string, value: Json, apply: 
   const resolve = useCallback((remote: boolean) => {
     if (!conflict) return;
     meta.current = { revision: conflict.revision, dirty: !remote };
-    baseline.current = JSON.stringify(conflict.value);
+    baseline.current = encode(conflict.value);
     if (remote) { latest.current = conflict.value; applyRef.current(conflict.value); }
     persist(); setConflict(null); setProblem(""); setCycle((n) => n + 1);
   }, [conflict, persist]);

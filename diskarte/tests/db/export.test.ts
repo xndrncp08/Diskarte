@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { beforeAll, describe, expect, it } from "vitest";
-import { asAnon, asUser, createDb, failure, one, signUp, type Db } from "./harness";
+import { asAnon, asService, asUser, createDb, failure, one, signUp, type Db } from "./harness";
 
 let db: Db;
 let juan: string;
@@ -30,13 +30,25 @@ describe("data export", () => {
     expect(data.friends).toEqual([expect.objectContaining({ username: "maria", status: "pending", requested_by_me: true })]);
     expect(data.notes).toEqual([expect.objectContaining({ about: "maria", note: "classmate" })]);
     expect(data.direct_messages).toEqual([]);
+    await db.query("select public.save_account_state('prefs:display', '{\"language\":\"fil\"}', 0)");
+    const withSettings = await one<{ data: Record<string, unknown> }>(db, "select public.export_my_data() data");
+    expect(withSettings.data.account_state).toEqual([expect.objectContaining({ key: "prefs:display", value: { language: "fil" } })]);
 
     await asUser(db, maria);
     const other = await one<{ data: Record<string, unknown> }>(db, "select public.export_my_data() as data");
     expect(other.data.messages).toEqual([]);
     expect(other.data.notes).toEqual([]);
+    expect(other.data.account_state).toEqual([]);
 
     await asAnon(db);
     expect(await failure(db, "select public.export_my_data()")).toMatch(/permission denied|NOT_AUTHENTICATED/);
+  });
+  it("requires the second factor before exporting private account data", async () => {
+    await asService(db); await db.query("insert into auth.mfa_factors(user_id,status) values($1,'verified')", [juan]);
+    await asUser(db,juan);
+    await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({sub:juan,aal:"aal1"})]);
+    expect(await failure(db,"select public.export_my_data()")).toMatch(/NOT_AUTHORIZED/);
+    await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({sub:juan,aal:"aal2"})]);
+    expect((await one<{ data:Record<string,unknown> }>(db,"select public.export_my_data() data")).data.account_state).toHaveLength(1);
   });
 });
