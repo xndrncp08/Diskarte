@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { expect, test } from "@playwright/test";
 import { createServer, FULL, FULL_REASON, inviteLink, messageAction, messageItem, newUserPage, sendMessage } from "./helpers";
 
@@ -119,7 +120,7 @@ test.describe("community features", () => {
     await expect(messageItem(b.page, "G! 9pm")).toBeVisible();
 
     // Private DM uploads use the same preview/send flow as channel attachments.
-    await b.page.locator('input[type="file"]').setInputFiles({ name: "dm-guide.png", mimeType: "image/png", buffer: await readFile(new URL("../public/icons/icon-192.png", import.meta.url)) });
+    await b.page.locator('input[type="file"]').setInputFiles({ name: "dm-guide.png", mimeType: "image/png", buffer: await readFile(path.resolve(__dirname, "../public/icons/icon-192.png")) });
     await expect(b.page.getByRole("button", { name: "Send message" })).toBeEnabled();
     await b.page.getByRole("button", { name: "Send message" }).click();
     await expect(a.page.getByTestId("attachments").getByRole("img", { name: "dm-guide.png", exact: true })).toBeVisible();
