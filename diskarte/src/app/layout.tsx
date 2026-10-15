@@ -33,7 +33,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export const viewport: Viewport = {
   themeColor: "#0F172A",
-  colorScheme: "dark",
+  colorScheme: "dark light",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -43,17 +43,23 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   // Reading request headers opts every route into dynamic rendering, which the per-request CSP
   // nonce set in proxy.ts requires (Next.js applies the nonce to its own scripts automatically).
-  await headers();
-  const theme = (await cookies()).get(THEME_COOKIE)?.value;
+  const nonce = (await headers()).get("x-nonce");
+  const jar = await cookies();
+  const theme = jar.get(THEME_COOKIE)?.value;
+  const savedMode = jar.get("diskarte-mode")?.value;
+  const mode = savedMode === "light" || savedMode === "system" ? savedMode : "dark";
+  const language = jar.get("diskarte-language")?.value === "fil" ? "fil" : "en";
   const env = tryGetPublicEnv();
 
   return (
     <html
-      lang="en"
+      lang={language}
+      data-color-mode={mode}
       data-theme={isTheme(theme) ? theme : undefined}
       className={`${inter.variable} ${pressStart.variable} ${silkscreen.variable} ${jetbrains.variable} h-full`}
       suppressHydrationWarning
     >
+      <head>{mode === "system" && <script nonce={nonce ?? undefined} dangerouslySetInnerHTML={{ __html: "document.documentElement.dataset.colorMode=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'" }} />}</head>
       <body className="min-h-full bg-abyss text-slate-100 antialiased">
         <RuntimeConfigProvider
           value={

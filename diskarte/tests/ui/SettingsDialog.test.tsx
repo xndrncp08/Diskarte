@@ -100,7 +100,7 @@ describe("Settings dialog", () => {
     const accountTab = within(dialog).getByRole("tab", { name: "Account & Sessions" });
     expect(accountTab).toHaveAttribute("aria-selected", "true");
     expect(accountTab).toHaveFocus();
-    for (const name of ["Privacy & Safety", "Appearance", "Accessibility", "Voice & Video", "Chat", "Notifications", "Advanced", "Report a problem"]) {
+    for (const name of ["Privacy & Safety", "Appearance", "Accessibility", "Voice & Video", "Chat", "Notifications", "Advanced", "Language & Region", "Report a problem"]) {
       await user.keyboard("{ArrowRight}");
       expect(within(dialog).getByRole("tab", { name })).toHaveAttribute("aria-selected", "true");
     }

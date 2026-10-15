@@ -16,6 +16,8 @@ import { ThemePicker } from "@/components/profile/ThemePicker";
 import { PwaSettings } from "@/components/profile/PwaSettings";
 import { ConnectionDiagnostics } from "@/components/profile/ConnectionDiagnostics";
 import { AccountSyncStatus } from "@/components/profile/AccountPreferencesSync";
+import { LanguageRegionSettings } from "./LanguageRegionSettings";
+import { useLocale } from "@/lib/locale";
 import { cn } from "@/lib/utils";
 import type { SettingsTab } from "./SettingsDialog";
 
@@ -29,12 +31,14 @@ const TABS: { id: SettingsTab; label: string }[] = [
   { id: "chat", label: "Chat" },
   { id: "notifications", label: "Notifications" },
   { id: "advanced", label: "Advanced" },
+  { id: "language", label: "Language & Region" },
   { id: "report", label: "Report a problem" },
 ];
 
 /** The Settings window's body; loaded on first open so the profile builder and account forms stay out of the initial bundle. */
 export function SettingsPanels({ account, tab, onTab }: { account: AccountInfo; tab: SettingsTab; onTab: (tab: SettingsTab) => void }) {
   const { me } = useMe();
+  const { t: translate } = useLocale();
   const id = useId();
   const tabs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -71,7 +75,7 @@ export function SettingsPanels({ account, tab, onTab }: { account: AccountInfo; 
                 tab === t.id ? "bg-white/10 text-white" : "text-slate-400 hover:bg-white/5 hover:text-slate-200",
               )}
             >
-              {t.label}
+              {translate(t.label)}
             </button>
           ))}
         </div>
@@ -80,16 +84,16 @@ export function SettingsPanels({ account, tab, onTab }: { account: AccountInfo; 
         </div>
       </div>
       <div role="tabpanel" id={`${id}-${tab}-panel`} aria-labelledby={`${id}-${tab}-tab`} className="scrollbar-thin min-w-0 flex-1 px-4 py-6 sm:px-8 md:overflow-y-auto md:py-8">
-        {["appearance", "accessibility", "chat"].includes(tab) && <AccountSyncStatus kind="display" />}
+        {["appearance", "accessibility", "chat", "language"].includes(tab) && <AccountSyncStatus kind="display" />}
         {tab === "notifications" && <AccountSyncStatus kind="notifications" />}
         {tab === "profile" ? (
           <>
-            <h2 className="mb-6 text-2xl font-extrabold text-white">My Profile</h2>
+            <h2 className="mb-6 text-2xl font-extrabold text-white">{translate("My Profile")}</h2>
             <ProfileBuilder profile={me} mode="settings" />
           </>
         ) : tab === "appearance" ? (
           <>
-            <h2 className="mb-6 text-2xl font-extrabold text-white">Appearance</h2>
+            <h2 className="mb-6 text-2xl font-extrabold text-white">{translate("Appearance")}</h2>
             <section className="space-y-3">
               <h3 className="text-sm font-semibold text-white">Theme</h3>
               <ThemePicker className="max-w-md" />
@@ -97,22 +101,22 @@ export function SettingsPanels({ account, tab, onTab }: { account: AccountInfo; 
           </>
         ) : tab === "chat" ? (
           <>
-            <h2 className="mb-6 text-2xl font-extrabold text-white">Chat</h2>
+            <h2 className="mb-6 text-2xl font-extrabold text-white">{translate("Chat")}</h2>
             <ChatSettings />
           </>
         ) : tab === "accessibility" ? (
           <>
-            <h2 className="mb-6 text-2xl font-extrabold text-white">Accessibility</h2>
+            <h2 className="mb-6 text-2xl font-extrabold text-white">{translate("Accessibility")}</h2>
             <AccessibilitySettings />
           </>
         ) : tab === "privacy" ? (
           <>
-            <h2 className="mb-6 text-2xl font-extrabold text-white">Privacy &amp; Safety</h2>
+            <h2 className="mb-6 text-2xl font-extrabold text-white">{translate("Privacy & Safety")}</h2>
             <PrivacySettings />
           </>
         ) : tab === "notifications" ? (
           <>
-            <h2 className="mb-6 text-2xl font-extrabold text-white">Notifications</h2>
+            <h2 className="mb-6 text-2xl font-extrabold text-white">{translate("Notifications")}</h2>
             <section className="mb-8 space-y-3">
               <h3 className="text-sm font-semibold text-white">Alerts</h3>
               <NotificationSettings />
@@ -124,7 +128,7 @@ export function SettingsPanels({ account, tab, onTab }: { account: AccountInfo; 
           </>
         ) : tab === "advanced" ? (
           <>
-            <h2 className="mb-6 text-2xl font-extrabold text-white">Advanced</h2>
+            <h2 className="mb-6 text-2xl font-extrabold text-white">{translate("Advanced")}</h2>
             <section className="space-y-3">
               <h3 className="text-sm font-semibold text-white">Data saver</h3>
               <LowDataToggle className="max-w-md" />
@@ -134,18 +138,18 @@ export function SettingsPanels({ account, tab, onTab }: { account: AccountInfo; 
           </>
         ) : tab === "voice" ? (
           <>
-            <h2 className="mb-6 text-2xl font-extrabold text-white">Voice &amp; Video</h2>
+            <h2 className="mb-6 text-2xl font-extrabold text-white">{translate("Voice & Video")}</h2>
             <VoiceSettings />
           </>
-        ) : tab === "report" ? (
+        ) : tab === "language" ? <><h2 className="mb-6 text-2xl font-extrabold text-white">{translate("Language & Region")}</h2><LanguageRegionSettings /></> : tab === "report" ? (
           <>
-            <h2 className="mb-2 text-2xl font-extrabold text-white">Report a problem</h2>
+            <h2 className="mb-2 text-2xl font-extrabold text-white">{translate("Report a problem")}</h2>
             <p className="mb-6 text-sm text-slate-400">Something broken, slow or confusing? Tell us and we&apos;ll fix it.</p>
             <ReportProblemForm />
           </>
         ) : (
           <>
-            <h2 className="mb-10 text-2xl font-extrabold text-white">Account &amp; Sessions</h2>
+            <h2 className="mb-10 text-2xl font-extrabold text-white">{translate("Account & Sessions")}</h2>
             <AccountSettings account={account} username={me.username} createdAt={me.created_at} />
           </>
         )}

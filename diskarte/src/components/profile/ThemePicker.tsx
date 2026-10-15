@@ -4,11 +4,16 @@ import { Check } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { getTheme, setTheme, subscribeTheme, THEMES } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+import { setDisplayPrefs, useDisplayPrefs } from "@/lib/display-prefs";
+import { useLocale } from "@/lib/locale";
 
 /** Theme swatches (saved per browser). */
 export function ThemePicker({ className }: { className?: string }) {
   const current = useSyncExternalStore(subscribeTheme, getTheme, () => "solar");
+  const { colorMode } = useDisplayPrefs(), { t } = useLocale();
   return (
+    <div className="space-y-4">
+      <fieldset><legend className="mb-2 text-sm font-semibold">{t("Color mode")}</legend><div role="radiogroup" aria-label={t("Color mode")} className="flex gap-2">{(["dark", "light", "system"] as const).map((mode) => <button key={mode} type="button" role="radio" aria-checked={mode === colorMode} onClick={() => setDisplayPrefs({ colorMode: mode })} className={cn("min-h-11 rounded-lg border px-4 text-sm", mode === colorMode ? "border-sun bg-sun/10" : "border-white/15")}>{t({ dark: "Dark", light: "Light", system: "System" }[mode])}</button>)}</div></fieldset>
     <div role="radiogroup" aria-label="Theme" className={cn("grid grid-cols-3 gap-2 sm:grid-cols-6", className)}>
       {THEMES.map((t) => {
         const selected = t.id === current;
@@ -31,6 +36,7 @@ export function ThemePicker({ className }: { className?: string }) {
           </button>
         );
       })}
+    </div>
     </div>
   );
 }
