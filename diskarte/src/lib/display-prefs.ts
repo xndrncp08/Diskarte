@@ -83,6 +83,11 @@ export function setDisplayPrefs(patch: Partial<DisplayPrefs>) {
   listeners.forEach((l) => l());
 }
 
+export function replaceDisplayPrefs(value: unknown) {
+  cached = null;
+  setDisplayPrefs(parseDisplayPrefs(JSON.stringify(value)));
+}
+
 function subscribe(listener: () => void) {
   listeners.add(listener);
   return () => void listeners.delete(listener);

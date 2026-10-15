@@ -5,6 +5,7 @@ import { useEffect, type ReactNode } from "react";
 import { MediaViewerProvider } from "@/components/chat/MediaViewer";
 import type { AccountInfo } from "@/components/profile/AccountSettings";
 import { SettingsDialogProvider } from "@/components/profile/SettingsDialog";
+import { AccountPreferencesSync } from "@/components/profile/AccountPreferencesSync";
 import { MeProvider } from "@/components/providers/MeProvider";
 import { ClientDiagnostics } from "@/components/providers/ClientDiagnostics";
 import { PresenceProvider } from "@/components/providers/PresenceProvider";
@@ -45,6 +46,7 @@ export function SessionProviders({
   }, [display]);
   return (
     <MeProvider profile={profile} verified={verified}>
+      <AccountPreferencesSync key={profile.id} userId={profile.id}>
       {/* Honour the OS "reduce motion" setting for every framer-motion animation in the app. */}
       <MotionConfig reducedMotion={display.reducedMotion === "on" ? "always" : "user"}>
         <PresenceProvider>
@@ -66,6 +68,7 @@ export function SessionProviders({
           </SocialProvider>
         </PresenceProvider>
       </MotionConfig>
+      </AccountPreferencesSync>
     </MeProvider>
   );
 }

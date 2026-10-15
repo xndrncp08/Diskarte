@@ -15,6 +15,7 @@ import { SoundSettings } from "@/components/profile/SoundSettings";
 import { ThemePicker } from "@/components/profile/ThemePicker";
 import { PwaSettings } from "@/components/profile/PwaSettings";
 import { ConnectionDiagnostics } from "@/components/profile/ConnectionDiagnostics";
+import { AccountSyncStatus } from "@/components/profile/AccountPreferencesSync";
 import { cn } from "@/lib/utils";
 import type { SettingsTab } from "./SettingsDialog";
 
@@ -79,6 +80,8 @@ export function SettingsPanels({ account, tab, onTab }: { account: AccountInfo; 
         </div>
       </div>
       <div role="tabpanel" id={`${id}-${tab}-panel`} aria-labelledby={`${id}-${tab}-tab`} className="scrollbar-thin min-w-0 flex-1 px-4 py-6 sm:px-8 md:overflow-y-auto md:py-8">
+        {["appearance", "accessibility", "chat"].includes(tab) && <AccountSyncStatus kind="display" />}
+        {tab === "notifications" && <AccountSyncStatus kind="notifications" />}
         {tab === "profile" ? (
           <>
             <h2 className="mb-6 text-2xl font-extrabold text-white">My Profile</h2>

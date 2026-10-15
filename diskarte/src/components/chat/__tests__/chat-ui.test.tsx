@@ -5,7 +5,7 @@ import { createFakeSupabase } from "../../../../tests/fixtures/fake-supabase";
 import { MEMBER_ID, OWNER_ID, ServerFixture, makeMember } from "../../../../tests/fixtures/server";
 
 const fake = createFakeSupabase();
-vi.mock("@/components/providers/RuntimeConfig", () => ({ useSupabase: () => fake.client }));
+vi.mock("@/components/providers/RuntimeConfig", () => ({ useSupabase: () => fake.client, useOptionalSupabase: () => fake.client }));
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }) }));
 
 const { MessageItem } = await import("@/components/chat/MessageItem");
