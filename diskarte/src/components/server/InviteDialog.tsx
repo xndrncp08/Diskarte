@@ -41,7 +41,7 @@ export function InviteDialog({ open, onClose }: { open: boolean; onClose: () => 
     try {
       const dm = await openDmAction({ userId: id });
       const sent = dm.ok && dm.data
-        ? await sendDirectMessageAction({ id: crypto.randomUUID(), conversationId: dm.data.conversationId, content: `Join me in **${server.name}** on Diskarte: ${url}` })
+        ? await sendDirectMessageAction({ id: crypto.randomUUID(), conversationId: dm.data.conversationId, content: `Join me in **${server.name}** on Diskarte: ${url}`, inviteServerId: server.id })
         : dm;
       if (!sent.ok) {
         toast.error(sent.error ?? `Couldn't invite ${name}.`);

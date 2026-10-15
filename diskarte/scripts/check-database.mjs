@@ -11,6 +11,7 @@ const checks = [
   { name: "Workspace resources and drawings", path: "workspace_assets?select=kind,revision&limit=0" },
   { name: "Event capacity", path: "server_events?select=capacity,rsvp_count&limit=0" },
   { name: "Event summaries", path: "rpc/list_server_events", body: { p_server: "00000000-0000-0000-0000-000000000000" } },
+  { name: "Web Push subscriptions and delivery", path: "rpc/push_ready", body: {} },
 ];
 
 export function databaseCheckState(status, code) {

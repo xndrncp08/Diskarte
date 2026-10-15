@@ -135,6 +135,7 @@ const sendSchema = z.object({
   attachments: z.array(attachmentSchema).max(MAX_ATTACHMENTS).default([]),
   replyToId: z.uuid().nullish(),
   sticker: z.string().refine(isStickerId, "Unknown sticker").nullish(),
+  inviteServerId: z.uuid().optional(),
 });
 
 export async function sendDirectMessageAction(input: z.input<typeof sendSchema>): Promise<ActionResult<{ message: DirectMessage }>> {
@@ -142,16 +143,22 @@ export async function sendDirectMessageAction(input: z.input<typeof sendSchema>)
   if (limited) return RATE_LIMITED;
   const parsed = sendSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid message" };
-  const { id, conversationId: conversation, content, replyToId, sticker, attachments } = parsed.data;
+  const { id, conversationId: conversation, content, replyToId, sticker, attachments, inviteServerId } = parsed.data;
   if (!content && !sticker && !attachments.length) return { ok: false, error: "The message is empty." };
   if (attachments.some((a) => !a.path.startsWith(`dm/${conversation}/${user.id}/`))) return { ok: false, error: "Upload these files to this conversation first." };
 
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const values = { id, conversation_id: conversation, author_id: user.id, content, reply_to_id: replyToId ?? null, sticker: sticker ?? null, ...(attachments.length ? { attachments } : {}), ...(inviteServerId ? { invite_server_id: inviteServerId } : {}) };
+  let { data, error } = await supabase
     .from("direct_messages")
-    .insert({ id, conversation_id: conversation, author_id: user.id, content, reply_to_id: replyToId ?? null, sticker: sticker ?? null, ...(attachments.length ? { attachments } : {}) })
+    .insert(values)
     .select("*")
     .single();
+  // Existing invitation DMs remain usable while an older database awaits the additive push migration.
+  if (inviteServerId && ["42703", "PGRST204"].includes(error?.code ?? "") && error?.message.includes("invite_server_id")) {
+    delete values.invite_server_id;
+    ({ data, error } = await supabase.from("direct_messages").insert(values).select("*").single());
+  }
   if (data) return { ok: true, data: { message: data } };
   if (error?.code === "23505") {
     const { data: existing } = await supabase.from("direct_messages").select("*").eq("id", id).eq("conversation_id", conversation).eq("author_id", user.id).maybeSingle();

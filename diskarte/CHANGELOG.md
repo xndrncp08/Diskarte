@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-15 — live voice activity and Web Push
+
+- Added authorized LiveKit hover previews and mobile long-press sheets, with shared Realtime updates and signed webhook invalidation.
+- Added a private, transactional Web Push outbox, per-device session-bound subscriptions, leased dispatch, retries, event reminders, and invalid endpoint cleanup.
+- Added notification installation guidance, device management, synchronized delivery preferences, safe deep links, and private lock-screen defaults using the existing service worker.
+- Added queue/RLS, transport encryption, permission, worker-only browser, and interaction regressions; restored dialog focus as soon as dismissal begins.
+- Push remains disabled until production secrets and the reviewed database setup are configured. See `docs/web-push.md`.
+
 ## 2026-10-14 — remaining-platform follow-up
 
 - Added revisioned private draft/preference sync, private DM media, history anchors and reconnect reaction reconciliation.

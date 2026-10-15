@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useIsPresent } from "framer-motion";
 import { X } from "lucide-react";
 import { useEffect, useEffectEvent, useId, useRef, useSyncExternalStore, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
@@ -64,9 +64,11 @@ function Dialog({ onClose, title, id, icon, className, bodyClassName, actions, c
   const titleId = useId();
   const frame = useRef<HTMLDivElement>(null);
   const phone = useIsPhone();
+  const present = useIsPresent();
   const requestClose = useEffectEvent(() => onClose());
 
   useEffect(() => {
+    if (!present) return;
     const token = pushOverlay();
     const previouslyFocused = document.activeElement as HTMLElement | null;
     // Everything else on the page sits behind the backdrop: out of reach of Tab, clicks and screen
@@ -118,7 +120,7 @@ function Dialog({ onClose, title, id, icon, className, bodyClassName, actions, c
       for (const el of behind) el.removeAttribute("inert");
       if (previouslyFocused?.isConnected) previouslyFocused.focus?.();
     };
-  }, []);
+  }, [present]);
 
   return (
     <motion.div
@@ -132,6 +134,8 @@ function Dialog({ onClose, title, id, icon, className, bodyClassName, actions, c
         if (e.target === e.currentTarget) onClose();
       }}
       data-window-layer=""
+      inert={present ? undefined : true}
+      aria-hidden={present ? undefined : true}
     >
       <motion.div
         ref={frame}

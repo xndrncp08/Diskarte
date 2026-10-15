@@ -7,6 +7,7 @@ import { useCall } from "@/components/voice/CallProvider";
 import { deviceFingerprint, deviceLabel, getDeviceId } from "@/lib/device";
 import { clearOutbox } from "@/lib/outbox";
 import { clearDrafts } from "@/lib/drafts";
+import { clearLocalPush } from "@/lib/push-client";
 import { subscribeDbChanges } from "@/lib/realtime";
 import type { PresenceStatus } from "@/lib/supabase/database.types";
 
@@ -65,6 +66,7 @@ export function SessionGuard() {
       ended.current = true;
       clearOutbox();
       clearDrafts();
+      await clearLocalPush().catch(() => undefined);
       await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
       // A full page load on purpose: it drops every piece of signed-in client state (the call included).
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination

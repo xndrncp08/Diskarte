@@ -21,3 +21,34 @@ test("PWA caches static files and gives an offline fallback without private page
   expect(keys.filter((path) => path.startsWith("/tambayan") || path.startsWith("/api/"))).toEqual([]);
   await context.setOffline(false);
 });
+
+test("service worker receives a push with no Diskarte page open and persists duplicate suppression", async ({ page, context }) => {
+  await context.grantPermissions(["notifications"]);
+  await page.goto("/");
+  const scope = new URL("/",page.url()).href;
+  const cdp = await context.newCDPSession(page);
+  let registrationId = "", versionId = "";
+  cdp.on("ServiceWorker.workerRegistrationUpdated", ({ registrations }) => { for (const registration of registrations) if (registration.scopeURL === scope) registrationId = registration.registrationId; });
+  cdp.on("ServiceWorker.workerVersionUpdated", ({ versions }) => { for (const version of versions) if (version.scriptURL === new URL("sw.js",scope).href) versionId = version.versionId; });
+  await cdp.send("ServiceWorker.enable");
+  await page.evaluate(async () => { await navigator.serviceWorker.ready; });
+  await expect.poll(() => registrationId).not.toBe("");
+  const userId = "00000000-0000-4000-8000-000000000001";
+  await page.evaluate(async (userId) => {
+    const registration = await navigator.serviceWorker.ready;
+    await new Promise<void>((resolve, reject) => { const channel = new MessageChannel(); channel.port1.onmessage = (e) => { channel.port1.close(); if(e.data.ok) resolve(); else reject(new Error("Push binding failed")); }; registration.active!.postMessage({ type: "PUSH_BIND", userId }, [channel.port2]); });
+  }, userId);
+  const origin = new URL(page.url()).origin;
+  const data = JSON.stringify({ version:1,id:"00000000-0000-4000-8000-000000000002",userId,title:"Diskarte push test",body:"Worker-only delivery",href:"/tambayan/messages",tag:"push-e2e",timestamp:Date.now(),badge:1 });
+  // CDP injects a standards PushEvent for deterministic browser coverage; this is not live vendor delivery.
+  await page.goto("about:blank");
+  await cdp.send("ServiceWorker.deliverPushMessage", { origin, registrationId, data });
+  await page.goto(origin);
+  await expect.poll(() => page.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications({tag:"push-e2e"})).map((n) => n.body))).toEqual(["Worker-only delivery"]);
+  await expect.poll(() => versionId).not.toBe("");
+  await page.goto("about:blank");
+  await cdp.send("ServiceWorker.stopWorker", { versionId });
+  await cdp.send("ServiceWorker.deliverPushMessage", { origin, registrationId, data });
+  await page.goto(origin);
+  await expect.poll(() => page.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications({tag:"push-e2e"})).length)).toBe(1);
+});

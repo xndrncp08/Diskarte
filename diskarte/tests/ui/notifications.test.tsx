@@ -2,6 +2,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { desktopNotify, notificationsQuiet, parseNotifyPrefs, readNotifyPrefs, resetNotifyPrefsCache, serverNotify, setNotifyPrefs, setServerNotify } from "@/lib/notify-prefs";
+import { MeProvider } from "@/components/providers/MeProvider";
+import { makeProfile, OWNER_ID } from "../fixtures/server";
 
 const { NotificationSettings } = await import("@/components/profile/NotificationSettings");
 
@@ -62,7 +64,8 @@ describe("Notifications settings", () => {
   it("asks the browser before turning desktop notifications on, and explains a refusal", async () => {
     const user = userEvent.setup();
     FakeNotification.permission = "denied";
-    render(<NotificationSettings />);
+    vi.spyOn(globalThis,"fetch").mockResolvedValueOnce(Response.json({configured:false,publicKey:null,devices:[]}));
+    render(<MeProvider profile={makeProfile(OWNER_ID,"Me")}><NotificationSettings /></MeProvider>);
     await user.click(screen.getByRole("switch", { name: /Enable Desktop Notifications/ }));
     expect(await screen.findByRole("status")).toHaveTextContent(/blocked/);
     expect(readNotifyPrefs().desktop).toBe(false);

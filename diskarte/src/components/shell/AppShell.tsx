@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { useIsCanvas, useLayout, WorkspaceProvider } from "@/components/workspace/WorkspaceProvider";
 import { UnreadsProvider } from "@/components/providers/UnreadsProvider";
 import { DmNotifier } from "./DmNotifier";
+import { PushBadge } from "@/components/notifications/PushBadge";
 import { ServerRail } from "./ServerRail";
 import { ShellUIProvider, useShellUI } from "./ShellUI";
 
@@ -63,6 +64,7 @@ function Frame({ servers, children }: { servers: Server[]; children: ReactNode }
   }, [navOpen, desktop, setNavOpen]);
   return (
     <div ref={frame} className="diskarte-backdrop app-viewport relative flex h-dvh overflow-hidden" data-testid="shell" {...swipe}>
+      <PushBadge />
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-lg focus:bg-sun focus:px-4 focus:py-2 focus:font-semibold focus:text-abyss"

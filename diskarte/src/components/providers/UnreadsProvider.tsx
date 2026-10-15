@@ -100,6 +100,7 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
     const timer = setInterval(() => document.visibilityState === "visible" && void refresh(), UNREADS_POLL_MS);
     const onFocus = () => void refresh();
     window.addEventListener("focus", onFocus);
+    window.addEventListener("diskarte:push-activity", onFocus);
     const off = subscribeDbChanges(supabase, `mentions:${me.id}`, (channel) =>
       channel.on("postgres_changes", { event: "INSERT", schema: "public", table: "message_mentions", filter: `user_id=eq.${me.id}` }, ({ new: row }) => {
         void refresh();
@@ -109,6 +110,7 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
     return () => {
       clearInterval(timer);
       window.removeEventListener("focus", onFocus);
+      window.removeEventListener("diskarte:push-activity", onFocus);
       off();
     };
   }, [supabase, me.id, refresh]);
