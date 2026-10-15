@@ -24,6 +24,7 @@ import { EmojiSettings } from "@/components/server/settings/EmojiSettings";
 import { RolesSettings } from "./settings/RolesSettings";
 import { SoundboardSettings } from "./settings/SoundboardSettings";
 import { SupportSettings } from "./settings/SupportSettings";
+import { ExportSettings } from "./settings/ExportSettings";
 
 export type SettingsTab = "overview" | "roles" | "automod" | "audit" | "bans" | "invites" | "emoji" | "soundboard" | "support";
 
@@ -232,6 +233,7 @@ function ServerSettingsForm({ onClose }: { onClose: () => void }) {
         </Button>
       </form>
 
+      {isOwner && <ExportSettings />}
       {isOwner && (
         <div className="mt-8 rounded-xl border border-red-500/30 bg-red-500/5 p-4">
           <p className="font-silk text-[11px] uppercase tracking-wider text-red-300">Danger zone</p>
