@@ -143,6 +143,7 @@ export function DrawerPanel({ children }: { children: ReactNode }) {
   const { navOpen } = useShellUI();
   return (
     <div
+      data-mobile-navigation=""
       className={cn(
         "fixed inset-y-0 left-[72px] z-40 transition-transform duration-200 ease-out md:static md:z-auto md:translate-x-0",
         navOpen ? "translate-x-0" : "-translate-x-[calc(100%+72px)]",

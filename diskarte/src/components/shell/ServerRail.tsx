@@ -225,7 +225,7 @@ function RailContents({ servers }: { servers: RailEntry[] }) {
 
   return (
     <div
-      className="pt-safe flex h-full w-[72px] shrink-0 flex-col items-center gap-2 bg-abyss pb-3 md:border-r md:border-white/[0.06] md:pt-3"
+      className="flex h-full w-[72px] shrink-0 flex-col items-center gap-2 bg-abyss pb-3 pt-3 md:border-r md:border-white/[0.06]"
       data-testid="micro-dock"
     >
       <nav aria-label="Servers" className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 overflow-y-auto scrollbar-none">

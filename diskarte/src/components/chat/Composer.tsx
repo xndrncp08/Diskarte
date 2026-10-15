@@ -332,7 +332,7 @@ export function Composer({
         )}
         <form
           // Narrow composers (phones, slim panels) give the textarea its own row above the buttons.
-          className="flex flex-wrap items-end gap-1 px-2 py-1.5 @sm:flex-nowrap"
+          className="flex flex-wrap items-end gap-1 px-2 py-1.5 @xl:flex-nowrap"
           onSubmit={(e) => {
             e.preventDefault();
             void submit();
@@ -361,7 +361,7 @@ export function Composer({
               <VoiceRecorder disabled={cooldown > 0} onRecorded={(file, seconds) => void sendVoice(file, seconds)} />
             </>
           }
-          <span aria-hidden className="flex-1 @sm:hidden" />
+          <span aria-hidden className="flex-1 @xl:hidden" />
           <label htmlFor={`composer-${channelId}`} className="sr-only">
             Message #{channelName}
           </label>
@@ -380,7 +380,7 @@ export function Composer({
             enterKeyHint="send"
             maxLength={MESSAGE_MAX + 100}
             placeholder={placeholder ?? `Message #${channelName}`}
-            className="order-first max-h-60 min-h-6 basis-full resize-none bg-transparent @sm:order-none @sm:flex-1 @sm:basis-auto px-1 py-1.5 text-[15px] text-slate-100 outline-none placeholder:text-slate-500"
+            className="order-first max-h-60 min-h-6 min-w-0 basis-full resize-none bg-transparent @xl:order-none @xl:flex-1 @xl:basis-auto px-1 py-1.5 text-[15px] text-slate-100 outline-none placeholder:text-slate-500"
             data-testid="composer"
           />
           <EmojiPicker onPick={(value) => insert(value.startsWith(":") ? `${value} ` : value)} label="Insert icon" triggerClassName="pointer-coarse:p-3.5" />
