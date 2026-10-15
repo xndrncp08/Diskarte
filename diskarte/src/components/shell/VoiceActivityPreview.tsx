@@ -57,7 +57,7 @@ export function VoicePreviewTrigger({ server, children }: { server: Server; chil
   return <span ref={anchor} className="inline-flex" onPointerEnter={(event) => {
     if (event.pointerType !== "mouse" || !matchMedia("(hover: hover) and (pointer: fine)").matches) return;
     cancel(); control.hold(); const element = anchor.current; timer.current = setTimeout(() => { if (element) control.show(server, element); }, 280);
-  }} onPointerLeave={() => { cancel(); control.delay(); }} onFocus={() => { control.hold(); }} onBlur={(event) => { if (!event.relatedTarget?.closest?.('[data-voice-preview], [data-floating="voice-profile"]')) control.delay(); }} onKeyDown={(event) => {
+  }} onClick={() => { cancel(); control.close(); }} onPointerLeave={() => { cancel(); control.delay(); }} onFocus={() => { control.hold(); }} onBlur={(event) => { if (!event.relatedTarget?.closest?.('[data-voice-preview], [data-floating="voice-profile"]')) control.delay(); }} onKeyDown={(event) => {
     if (event.key === "ArrowRight" && anchor.current) { event.preventDefault(); cancel(); control.show(server, anchor.current, true); }
     if (event.key === "Escape") { cancel(); control.close(); }
   }}>

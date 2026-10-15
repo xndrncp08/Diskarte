@@ -30,3 +30,7 @@ it("bounds avatar output while preserving counts for hundreds of connected membe
 it("does not discover verification-gated channels for an unverified viewer",async()=>{
  tables.channels=[{...visible,requires_verification:true}];expect((await getVoicePreview(fake.client as never,SERVER_ID,false)).channels).toEqual([]);expect(rooms.listRooms).not.toHaveBeenCalled();
 });
+it("reads live participants even when a just-created room's summary count still reports zero",async()=>{
+ rooms.listRooms.mockResolvedValue([{name:`voice:${visible.id}`,numParticipants:0}]);
+ expect((await getVoicePreview(fake.client as never,SERVER_ID)).channels[0].count).toBe(1);
+});
