@@ -14,7 +14,7 @@ import { AudioMixerProvider } from "@/components/voice/AudioMixer";
 import { CallProvider } from "@/components/voice/CallProvider";
 import { IncomingCallsProvider } from "@/components/voice/IncomingCalls";
 import { SessionGuard } from "@/components/session/SessionGuard";
-import { useDisplayPrefs } from "@/lib/display-prefs";
+import { readDisplayPrefs, useDisplayPrefs } from "@/lib/display-prefs";
 import type { Tables } from "@/lib/supabase/database.types";
 
 /**
@@ -44,6 +44,16 @@ export function SessionProviders({
     root.toggleAttribute("data-reduce-transparency", display.reducedTransparency);
     root.toggleAttribute("data-high-contrast", display.highContrast);
   }, [display]);
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: light)");
+    const apply = () => {
+      const prefs = readDisplayPrefs();
+      document.documentElement.dataset.colorMode = prefs.colorMode === "system" ? media.matches ? "light" : "dark" : prefs.colorMode;
+      document.documentElement.lang = prefs.language;
+    };
+    apply(); media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, [display.colorMode, display.language]);
   return (
     <MeProvider profile={profile} verified={verified}>
       <AccountPreferencesSync key={profile.id} userId={profile.id}>

@@ -20,6 +20,9 @@ export interface DisplayPrefs {
   underlineLinks: boolean;
   reducedTransparency: boolean;
   highContrast: boolean;
+  colorMode: "dark" | "light" | "system";
+  language: "en" | "fil";
+  timeZone: string;
 }
 
 export const FONT_SIZES = [12, 14, 15, 16, 18, 20] as const;
@@ -35,11 +38,19 @@ export const DEFAULT_DISPLAY_PREFS: DisplayPrefs = {
   underlineLinks: false,
   reducedTransparency: false,
   highContrast: false,
+  colorMode: "dark",
+  language: "en",
+  timeZone: "system",
 };
 
 const KEY = "diskarte:display-prefs";
 let cached: DisplayPrefs | null = null;
 const listeners = new Set<() => void>();
+export function validTimeZone(value: unknown): value is string {
+  if (value === "system") return true;
+  if (typeof value !== "string" || value.length > 64) return false;
+  try { new Intl.DateTimeFormat("en", { timeZone: value }); return true; } catch { return false; }
+}
 
 export function parseDisplayPrefs(raw: string | null): DisplayPrefs {
   try {
@@ -57,6 +68,9 @@ export function parseDisplayPrefs(raw: string | null): DisplayPrefs {
       underlineLinks: v.underlineLinks === true,
       reducedTransparency: v.reducedTransparency === true,
       highContrast: v.highContrast === true,
+      colorMode: v.colorMode === "light" || v.colorMode === "system" ? v.colorMode : "dark",
+      language: v.language === "fil" ? "fil" : "en",
+      timeZone: validTimeZone(v.timeZone) ? v.timeZone : "system",
     };
   } catch {
     return DEFAULT_DISPLAY_PREFS;
@@ -81,6 +95,11 @@ export function setDisplayPrefs(patch: Partial<DisplayPrefs>) {
     // Private mode: this session only.
   }
   listeners.forEach((l) => l());
+  if (typeof document !== "undefined") {
+    const secure = location.protocol === "https:" ? "; secure" : "";
+    document.cookie = `diskarte-mode=${cached.colorMode}; path=/; max-age=31536000; samesite=lax${secure}`;
+    document.cookie = `diskarte-language=${cached.language}; path=/; max-age=31536000; samesite=lax${secure}`;
+  }
 }
 
 export function replaceDisplayPrefs(value: unknown) {

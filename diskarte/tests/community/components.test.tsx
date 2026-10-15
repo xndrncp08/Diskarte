@@ -215,11 +215,11 @@ describe("composer & message rendering", () => {
     expect(screen.queryByTestId("composer")).toBeNull();
   });
 
-  it("sends stickers from the picker; DMs have no attach button", async () => {
+  it("sends stickers from the picker alongside DM attachment controls", async () => {
     const user = userEvent.setup();
     const onSticker = vi.fn();
     render(<Composer {...base} serverId={undefined} onSticker={onSticker} />, { wrapper: wrap() });
-    expect(screen.queryByRole("button", { name: "Attach files" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Attach files" })).toBeEnabled();
     await user.click(screen.getByRole("button", { name: "Send a sticker" }));
     const picker = await screen.findByRole("dialog", { name: "Stickers" });
     await user.click(within(picker).getByRole("tab", { name: /Tambayan Classics/ }));

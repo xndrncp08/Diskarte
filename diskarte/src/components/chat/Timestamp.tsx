@@ -7,11 +7,11 @@ import { formatDayDivider, formatTime, formatTimestamp, SERVER_TIME_ZONE } from 
 /** Hydration-safe <time>: deterministic PH-time text on the server, viewer's local time after mount. */
 export function Timestamp({ iso, variant = "full", className }: { iso: string; variant?: "full" | "time" | "day"; className?: string }) {
   const isClient = useIsClient();
-  const tz = isClient ? undefined : SERVER_TIME_ZONE;
-  const { hour24 } = useDisplayPrefs();
-  const text = variant === "time" ? formatTime(iso, tz, hour24) : variant === "day" ? formatDayDivider(iso, tz) : formatTimestamp(iso, new Date(), tz, hour24);
+  const { hour24, language, timeZone } = useDisplayPrefs();
+  const tz = isClient ? timeZone === "system" ? undefined : timeZone : SERVER_TIME_ZONE;
+  const text = variant === "time" ? formatTime(iso, tz, hour24, language) : variant === "day" ? formatDayDivider(iso, tz, language) : formatTimestamp(iso, new Date(), tz, hour24, language);
   return (
-    <time dateTime={iso} className={className} title={isClient ? new Date(iso).toLocaleString("en-PH") : undefined}>
+    <time dateTime={iso} className={className} title={isClient ? new Date(iso).toLocaleString(language === "fil" ? "fil-PH" : "en-PH", { timeZone: tz }) : undefined}>
       {text}
     </time>
   );
