@@ -12,8 +12,9 @@ const rpc = vi.fn(async (_fn: string, args: { p_category?: string | null }) => (
   error: null,
 }));
 const joinPublicServerAction = vi.fn(async (input: unknown) => { void input; return { ok: true, data: { serverId: "s1" } }; });
+const client = { rpc };
 vi.mock("next/navigation", () => ({ useRouter: () => router, usePathname: () => "/tambayan/messages" }));
-vi.mock("@/components/providers/RuntimeConfig", () => ({ useSupabase: () => ({ rpc }) }));
+vi.mock("@/components/providers/RuntimeConfig", () => ({ useSupabase: () => client }));
 vi.mock("@/actions/servers", () => ({ joinPublicServerAction: (i: unknown) => joinPublicServerAction(i as never) }));
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }) }));
 vi.mock("@/components/social/HomeSidebar", () => ({
@@ -31,6 +32,22 @@ const { ExploreView } = await import("@/components/shell/ExploreView");
 const { MessagesView } = await import("@/components/social/MessagesView");
 
 describe("explore", () => {
+  it("loads additional communities without duplicating existing cards", async () => {
+    const listing = (id: string) => ({ id, name: `Community ${id}`, description: "", icon_url: null, category: "gaming", member_count: 5, active_members: 0, is_member: false });
+    rpc.mockResolvedValueOnce({ data: Array.from({ length: 48 }, (_, i) => listing(`s${i}`)), error: null }).mockResolvedValueOnce({ data: [listing("s47"), listing("s48")], error: null });
+    const user = userEvent.setup(); render(<ExploreView servers={[]} />);
+    await user.click(await screen.findByRole("button", { name: "Load more communities" }));
+    expect(await screen.findByRole("button", { name: "Join Community s48" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Join Community s47" })).toHaveLength(1);
+    expect(rpc).toHaveBeenLastCalledWith("discover_servers", expect.objectContaining({ p_offset: 48 }));
+  });
+  it("offers a working retry after a network rejection", async () => {
+    rpc.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const user = userEvent.setup(); render(<ExploreView servers={[]} />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Explore couldn’t load");
+    await user.click(screen.getByRole("button", { name: "Retry Explore" }));
+    expect(await screen.findByText("Valorant PH")).toBeInTheDocument();
+  });
   it("lists public servers, filters by category, and joins without an invite", async () => {
     const user = userEvent.setup();
     render(<ExploreView servers={[]} />);

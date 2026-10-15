@@ -65,14 +65,17 @@ const RATE_LIMITED: ActionResult<never> = { ok: false, error: "Slow down a littl
 // Servers
 // ---------------------------------------------------------------------------------------
 
-export async function createServerAction(input: { name: string; description?: string }): Promise<ActionResult<{ serverId: string }>> {
+export async function createServerAction(input: { name: string; description?: string; template?: string }): Promise<ActionResult<{ serverId: string }>> {
   const { limited } = await authed();
   if (limited) return RATE_LIMITED;
   const parsed = serverSchema.safeParse({ name: input.name, description: input.description ?? "" });
   if (!parsed.success) return { ok: false, fieldErrors: fieldErrors(parsed.error) };
+  const template = z.enum(["gaming", "study", "creator", "friends", "team"]).safeParse(input.template ?? "gaming");
+  if (!template.success) return { ok: false, error: "Choose an available community template." };
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("create_server", { p_name: parsed.data.name, p_description: parsed.data.description });
+  const args = { p_name: parsed.data.name, p_description: parsed.data.description };
+  const { data, error } = template.data === "gaming" ? await supabase.rpc("create_server", args) : await supabase.rpc("create_server_from_template", { ...args, p_template: template.data });
   if (error || !data) return { ok: false, error: dbError(error?.message, "Couldn't create the server. Try again.") };
   revalidatePath("/tambayan", "layout");
   return { ok: true, data: { serverId: data } };

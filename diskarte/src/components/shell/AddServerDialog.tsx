@@ -28,7 +28,7 @@ export function AddServerDialog({ open, onClose, initialTab = "create" }: { open
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     startTransition(async () => {
-      const result = await createServerAction({ name: String(form.get("name") ?? ""), description: String(form.get("description") ?? "") });
+      const result = await createServerAction({ name: String(form.get("name") ?? ""), description: String(form.get("description") ?? ""), template: String(form.get("template") ?? "gaming") });
       if (!result.ok || !result.data) {
         setErrors(result.fieldErrors ?? {});
         if (result.error) toast.error(result.error);
@@ -124,7 +124,8 @@ export function AddServerDialog({ open, onClose, initialTab = "create" }: { open
               placeholder="Home of the ranked grinders"
               error={errors.description}
             />
-            <p className="text-xs text-slate-500">Comes with #general, #chika, #lfg-valorant and two voice channels.</p>
+            <label className="block text-sm font-semibold text-white">Community template<select name="template" className="mt-1 min-h-11 w-full rounded-lg border border-white/10 bg-midnight px-3 text-base"><option value="gaming">Gaming crew</option><option value="study">Study group</option><option value="creator">Creator community</option><option value="friends">Friend group</option><option value="team">Organization / team</option></select></label>
+            <p className="text-xs text-slate-400">Every template includes general chat and voice. Study, creator and team templates add resource and discussion channels.</p>
             <Button type="submit" className="w-full" loading={pending}>
               Create server
             </Button>
