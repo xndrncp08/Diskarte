@@ -11,6 +11,7 @@ let shared: string; // server with other members: passes to `mod`
 let solo: string; // server where `leaving` is alone: deleted
 let general: string;
 let soloGeneral: string;
+let dmPath: string;
 
 const FILE = "11111111-2222-4333-8444-555555555555";
 
@@ -43,6 +44,10 @@ beforeAll(async () => {
   general = await textChannel(shared);
   soloGeneral = await textChannel(solo);
 
+  // Newly synced data and authored events must not prevent deletion or survive privately.
+  await asUser(db, leaving);
+  await db.query("select public.save_account_state('prefs:display', '{\"language\":\"fil\"}', 0)");
+  await db.query("insert into public.server_events(server_id,name,starts_at) values($1,'Keep the community event',now()+interval '1 day')",[shared]);
   // Messages: one text-only, one with an attachment.
   await asUser(db, leaving);
   await db.query("insert into public.messages (channel_id, author_id, content) values ($1, $2, 'Paalam, mga tropa!')", [general, leaving]);
@@ -65,6 +70,11 @@ beforeAll(async () => {
   await db.query("select public.send_friend_request('dayo')");
   await asUser(db, friend);
   await db.query("select public.respond_friend_request($1, true)", [leaving]);
+  await asUser(db,leaving);
+  const dm=(await one<{id:string}>(db,"select public.open_dm($1) id",[friend])).id;
+  dmPath=`dm/${dm}/${leaving}/${FILE}.png`;
+  await db.query("insert into storage.objects(bucket_id,name,metadata) values('attachments',$1,$2)",[dmPath,{mimetype:"image/png",size:1200}]);
+  await db.query("insert into public.direct_messages(conversation_id,attachments) values($1,$2)",[dm,JSON.stringify([{path:dmPath,name:"photo.png",type:"image/png",size:1200}])]);
 }, 60_000);
 
 describe("account deletion", () => {
@@ -73,6 +83,7 @@ describe("account deletion", () => {
     const files = await rows<{ bucket: string; path: string }>(db, "select bucket, path from public.account_deletion_files() order by bucket, path");
     expect(files).toEqual(
       [
+        { bucket: "attachments", path: dmPath },
         { bucket: "attachments", path: `${shared}/${general}/${leaving}/${FILE}.png` },
         { bucket: "attachments", path: `${solo}/${soloGeneral}/${leaving}/${FILE}.mp4` },
         { bucket: "avatars", path: `${leaving}/avatar-${FILE}.png` },
@@ -91,6 +102,14 @@ describe("account deletion", () => {
     expect(await failure(db, "select public.delete_my_account('paalam')")).toMatch(/permission denied/);
     await asService(db);
     expect(await rows(db, "select 1 from auth.users where id = $1", [leaving])).toHaveLength(1);
+  });
+
+  it("requires a verified second-factor session before deletion",async()=>{
+    const secured=await signUp(db,"secured@test.ph",{username:"secured"});
+    await asService(db); await db.query("insert into auth.mfa_factors(user_id,status) values($1,'verified')",[secured]);
+    await asUser(db,secured); await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({sub:secured,aal:"aal1"})]);
+    expect(await failure(db,"select public.delete_my_account('secured')")).toMatch(/NOT_AUTHORIZED/);
+    await asService(db); expect(await rows(db,"select id from auth.users where id=$1",[secured])).toHaveLength(1);
   });
 
   it("hands shared servers to the next most senior member, deletes solo servers and purges the account", async () => {
@@ -112,6 +131,9 @@ describe("account deletion", () => {
     const left = await rows<{ content: string; author_id: string | null }>(db, "select content, author_id from public.messages where channel_id = $1", [general]);
     expect(left).toEqual([{ content: "Paalam, mga tropa!", author_id: null }]);
 
+    expect(await rows(db,"select id from public.direct_messages where jsonb_array_length(attachments)>0")).toEqual([]);
+    expect(await rows(db,"select * from public.account_state where user_id=$1",[leaving])).toEqual([]);
+    expect(await one(db,"select created_by from public.server_events where server_id=$1",[shared])).toEqual({created_by:null});
     // Other members are untouched.
     await asUser(db, member);
     expect(await rows(db, "select 1 from public.members where server_id = $1", [shared])).toHaveLength(2);
