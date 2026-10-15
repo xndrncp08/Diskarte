@@ -35,3 +35,19 @@ it("synchronizes legacy channel mutes and honors unmute updates from another dev
  toggleChannelMute("server","channel");expect(serverMutes(readChannelMutes(),"server").muted.has("channel")).toBe(false);
  setNotifyPrefs({push:DEFAULT_PUSH_PREFS,channels:{channel:{serverId:"server",muted:true}}});expect(serverMutes(readChannelMutes(),"server").muted.has("channel")).toBe(true);
 });
+it("cancels a delayed registration on logout instead of rebinding the old account",async()=>{
+ let finish!:(response:Response)=>void;
+ vi.mocked(fetch).mockImplementationOnce(()=>new Promise<Response>((resolve)=>{finish=resolve;}));
+ const enabling=enablePush(me,btoa("a".repeat(65)).replace(/=/g,"")).catch((error:Error)=>error.message);
+ await vi.waitFor(()=>expect(fetch).toHaveBeenCalledOnce());
+ await clearLocalPush();finish(Response.json({ok:true}));
+ expect(await enabling).toMatch(/cancelled by sign-out/);
+ expect(post.mock.calls.some(([data])=>data.userId===me)).toBe(false);expect(localStorage.getItem("diskarte:push-owner")).toBeNull();
+});
+it("preserves an existing subscription when a reconnect is rejected or temporarily unavailable",async()=>{
+ subscription={options:{},unsubscribe:unsub,toJSON:()=>({endpoint:"https://fcm.googleapis.com/fcm/send/existing",keys:{p256dh:"key",auth:"auth"}})};
+ localStorage.setItem("diskarte:push-owner",me);localStorage.setItem("diskarte:push-active","true");
+ vi.mocked(fetch).mockResolvedValueOnce(Response.json({error:"Wait one minute before trying again."},{status:429}));
+ await expect(enablePush(me,btoa("a".repeat(65)).replace(/=/g,""))).rejects.toThrow(/Wait/);
+ expect(unsub).not.toHaveBeenCalled();expect(post).not.toHaveBeenCalled();expect(fetch).toHaveBeenCalledOnce();expect(localStorage.getItem("diskarte:push-active")).toBe("true");
+});
