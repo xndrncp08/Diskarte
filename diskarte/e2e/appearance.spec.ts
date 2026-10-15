@@ -12,3 +12,23 @@ for (const mode of ["light", "system"] as const) {
     await expect(page.getByLabel("Email")).toBeVisible();
   });
 }
+test("light high contrast keeps dark focus rings and honors the OS transparency preference", async ({ page, context, baseURL }) => {
+  await context.addCookies([{ name: "diskarte-mode", value: "light", url: baseURL! }]);
+  await page.emulateMedia({ colorScheme: "light", contrast: "more" }); await page.goto("/login");
+  const glass = page.locator(".backdrop-blur-2xl").first();
+  await expect(glass).toBeVisible();
+  expect(await glass.evaluate((element) => getComputedStyle(element).backdropFilter)).toBe("none");
+  await page.locator("html").evaluate((element) => element.setAttribute("data-high-contrast", ""));
+  await page.getByLabel("Email").focus();
+  await page.keyboard.press("Tab");
+  const password = page.getByLabel("Password", { exact: true });
+  await expect(password).toBeFocused();
+  expect(await password.evaluate((element) => getComputedStyle(element).outlineColor)).toBe("rgb(20, 33, 56)");
+  await page.locator("html").evaluate((element) => element.removeAttribute("data-high-contrast"));
+  await page.emulateMedia({ contrast: "no-preference" });
+  const blur = await page.evaluate(() => {
+    const surface = document.createElement("div"); surface.className = "glass"; document.body.appendChild(surface);
+    const value = getComputedStyle(surface).backdropFilter; surface.remove(); return value;
+  });
+  expect(blur).toContain("blur(12px)");
+});
