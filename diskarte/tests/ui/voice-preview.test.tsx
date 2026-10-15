@@ -43,6 +43,12 @@ it("keyboard opening never navigates or joins and Escape restores the trigger",a
  fireEvent.keyDown(document,{key:"Escape"});await waitFor(()=>expect(screen.queryByRole("dialog")).toBeNull());expect(link).toHaveFocus();
  expect(request.mock.calls.every((args)=>!String(args[0]).includes("/token"))).toBe(true);
 });
+it("cancels a pending hover when clicking the server so navigation is never covered by a late preview",async()=>{
+ render(<View/>);const link=screen.getByRole("link",{name:server.name});
+ fireEvent.pointerEnter(link,{pointerType:"mouse"});fireEvent.click(link);
+ await new Promise((resolve)=>setTimeout(resolve,350));
+ expect(screen.queryByRole("dialog")).toBeNull();expect(request).not.toHaveBeenCalled();
+});
 it("switches quickly, reuses presence and reconciles authoritative joins and leaves",async()=>{
  render(<View/>);await userEvent.setup().click(screen.getByRole("button",{name:`Preview ${server.name}`}));
  expect(await screen.findByLabelText("13 connected participants")).toBeInTheDocument();

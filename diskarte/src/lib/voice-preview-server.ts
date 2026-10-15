@@ -20,7 +20,9 @@ export async function getVoicePreview(db: ServerSupabase, serverId: string, veri
   const visible = (channels ?? []).slice(0, 200).filter((channel) => verified || !channel.requires_verification);
   if (!visible.length) return { channels: [], limited: false };
   const rooms = await bounded(client.listRooms(visible.map((channel) => voiceRoomName(channel.id))));
-  const active = visible.filter((channel) => rooms.some((room) => room.name === voiceRoomName(channel.id) && room.numParticipants > 0));
+  // Room summary counts can lag a join. Ask existing rooms for their authoritative participants.
+  const active = visible.filter((channel) => rooms.some((room) => room.name === voiceRoomName(channel.id)))
+    .sort((a,b) => Number(!!rooms.find((room) => room.name === voiceRoomName(b.id))?.numParticipants) - Number(!!rooms.find((room) => room.name === voiceRoomName(a.id))?.numParticipants));
   const found: VoicePreview["channels"] = [];
   // Bound server fan-out and avatar work while retaining full participant counts per shown room.
   for (let start = 0; start < Math.min(active.length, 30); start += 4) {
