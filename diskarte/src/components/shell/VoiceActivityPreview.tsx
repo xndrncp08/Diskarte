@@ -37,7 +37,7 @@ export function VoiceActivityPreviewProvider({ children }: { children: ReactNode
   useEffect(() => () => hold(), [hold]);
   useEffect(() => {
     if (!target) return;
-    const key = (event: KeyboardEvent) => { if (event.key === "Escape" && !document.querySelector('[data-floating="voice-profile"]:not([inert])')) { event.stopPropagation(); close(); if (target.sheet) requestAnimationFrame(() => focusAnchor(target.anchor)); else focusAnchor(target.anchor); } };
+    const key = (event: KeyboardEvent) => { if (event.key === "Escape" && !document.querySelector('[data-floating="voice-profile"]:not([aria-hidden="true"])')) { event.stopPropagation(); close(); if (target.sheet) requestAnimationFrame(() => focusAnchor(target.anchor)); else focusAnchor(target.anchor); } };
     const down = (event: PointerEvent) => { if (!(event.target as Element).closest(`[data-voice-preview], [data-floating="voice-profile"]`) && !target.anchor.contains(event.target as Node)) close(); };
     const lost = () => { if (document.visibilityState === "hidden") close(); };
     document.addEventListener("keydown", key); document.addEventListener("pointerdown", down); document.addEventListener("visibilitychange", lost);
@@ -45,7 +45,7 @@ export function VoiceActivityPreviewProvider({ children }: { children: ReactNode
   }, [target, close]);
   return <Context.Provider value={{ show, close, delay, hold, id, serverId: target?.server.id }}>
     {children}
-    {target?.sheet ? <Modal open title={`Voice activity in ${target.server.name}`} onClose={() => { close(); requestAnimationFrame(() => focusAnchor(target.anchor)); }} className="absolute inset-x-0 bottom-0 max-w-none rounded-b-none pb-[max(1.5rem,env(safe-area-inset-bottom))]"><div id={id} data-voice-preview><PreviewContent key={target.server.id} server={target.server} onOpen={close} /></div></Modal> : <FloatingPortal><AnimatePresence>{target && <DesktopPreview key={target.server.id} target={target} id={id} close={close} hold={hold} delay={delay} />}</AnimatePresence></FloatingPortal>}
+    {target?.sheet ? <Modal open title={`Voice activity in ${target.server.name}`} onClose={() => { close(); requestAnimationFrame(() => focusAnchor(target.anchor)); }} className="absolute inset-x-0 bottom-0 max-h-[calc(100dvh-env(safe-area-inset-top)-1rem)] max-w-none overflow-y-auto overscroll-contain rounded-b-none pb-[max(1.5rem,env(safe-area-inset-bottom))]"><div id={id} data-voice-preview><PreviewContent key={target.server.id} server={target.server} onOpen={close} /></div></Modal> : <FloatingPortal><AnimatePresence>{target && <DesktopPreview key={target.server.id} target={target} id={id} close={close} hold={hold} delay={delay} />}</AnimatePresence></FloatingPortal>}
   </Context.Provider>;
 }
 
@@ -96,7 +96,7 @@ function PreviewContent({ server, onOpen }: { server: Server; onOpen(): void }) 
         })}{channel.count > channel.participants.length && <span className="flex size-9 items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-slate-300" aria-label={`${channel.count - channel.participants.length} more participants`}>+{channel.count - channel.participants.length}</span>}</div>
         {!!channel.streamers.length && <p className="flex items-start gap-1.5 text-xs text-signal-green"><MonitorUp className="size-3.5 shrink-0" aria-hidden /><span className="break-words">Streaming: {channel.streamers.map((stream) => stream.name).join(", ")}</span></p>}
       </li>)}</ul>
-      {data.limited && <p className="text-xs text-slate-400">Showing the first 30 active channels. Open the server for more.</p>}
+      {data.limited && <p className="text-xs text-slate-400">Preview limit reached. Open the server for all channels.</p>}
     </>}
     <Link href={`/tambayan/${server.id}`} onClick={onOpen} className="inline-flex min-h-11 items-center text-sm font-semibold text-sun">Open Tambayan</Link>
   </div>;

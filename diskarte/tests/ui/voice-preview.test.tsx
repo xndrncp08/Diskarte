@@ -30,7 +30,7 @@ it("opens on hover, retains pointer travel, renders real snapshot counts and pro
  await userEvent.setup().click(screen.getByRole("button",{name:"View Maria's profile"}));
  expect(await screen.findByTestId("profile-card")).toHaveTextContent("@maria");
  fireEvent.keyDown(document,{key:"Escape"});
- await waitFor(()=>expect(screen.queryByTestId("profile-card")).toBeNull());
+ expect(screen.queryByRole("dialog",{name:"Maria's profile"})).toBeNull();
  expect(screen.getByRole("dialog",{name:`Voice activity in ${server.name}`})).toBeInTheDocument();
  fireEvent.keyDown(document,{key:"Escape"});
  await waitFor(()=>expect(screen.queryByRole("dialog",{name:`Voice activity in ${server.name}`})).toBeNull());
