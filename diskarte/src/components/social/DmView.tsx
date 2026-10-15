@@ -62,7 +62,7 @@ export function DmView({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [leaving, startLeave] = useTransition();
-  const { listRef, atBottom, unseen, onScroll, scrollToBottom } = useConversationScroll(`${me.id}:${conversation.id}`, chat.messages, me.id, chat.loadOlder, chat.hasMore);
+  const { listRef, atBottom, unseen, onScroll, scrollToBottom, restoringHistory } = useConversationScroll(`${me.id}:${conversation.id}`, chat.messages, me.id, chat.loadOlder, chat.hasMore, chat.loadingOlder);
   const [activeId, setActiveId] = useState<string | null>(null);
   const inCall = call.target?.kind === "dm" && call.target.channelId === conversation.id;
 
@@ -200,6 +200,7 @@ export function DmView({
           />
           {!atBottom && <button type="button" onClick={scrollToBottom} className="absolute bottom-40 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-sun px-4 py-2 text-xs font-bold text-abyss"><ArrowDown className="size-4" aria-hidden />{unseen ? `${unseen} new messages` : "Jump to present"}</button>}
 
+          {restoringHistory && <p role="status" className="px-4 py-2 text-sm text-slate-400">Restoring your reading position…</p>}
           <OfflineBanner queued={chat.queuedCount} />
           {chat.recovery.problem && <div role="status" className="flex items-center justify-between gap-2 px-4 py-2 text-sm text-amber-200"><span>History couldn’t sync after reconnecting.</span><button type="button" onClick={() => void chat.recovery.recover()} className="min-h-11 px-3">Retry sync</button></div>}
           <Composer

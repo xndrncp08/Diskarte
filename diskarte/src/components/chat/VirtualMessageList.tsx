@@ -8,6 +8,8 @@ export interface VirtualMessageListHandle {
   scrollToBottom: (behavior?: ScrollBehavior) => void;
   /** Scrolls a (possibly unrendered) message into view; returns false if it isn't loaded. */
   scrollToKey: (key: string) => boolean;
+  readAnchor: () => { key: string; offset: number } | null;
+  scrollToAnchor: (key: string, offset: number) => boolean;
 }
 
 const FALLBACK_RECT = { width: 800, height: 900 };
@@ -90,6 +92,21 @@ export const VirtualMessageList = forwardRef<VirtualMessageListHandle, Props>(fu
         const index = keys.indexOf(key);
         if (index < 0) return false;
         virtualizer.scrollToIndex(index, { align: "center" });
+        return true;
+      },
+      readAnchor() {
+        const el = scroller.current;
+        if (!el) return null;
+        const item = virtualizer.getVirtualItems().find((item) => item.end > el.scrollTop);
+        return item ? { key: keys[item.index], offset: el.scrollTop - item.start } : null;
+      },
+      scrollToAnchor(key: string, offset: number) {
+        cancelAnimationFrame(bottomFrame.current);
+        const index = keys.indexOf(key);
+        if (index < 0 || !scroller.current) return false;
+        const destination = virtualizer.getOffsetForIndex(index, "start");
+        if (!destination) return false;
+        virtualizer.scrollToOffset(destination[0] + offset);
         return true;
       },
     }),

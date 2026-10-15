@@ -35,6 +35,16 @@ const sees = async (user: string) => {
 };
 
 describe("private channels", () => {
+  it("keeps reaction recovery snapshots inside channel permissions", async () => {
+    await asUser(db, owner);
+    const message = (await one<{ id: string }>(db, "select id from public.messages where channel_id=$1 limit 1", [vip])).id;
+    await db.query("insert into public.reactions(message_id,user_id,emoji) values ($1,$2,'👍')", [message, owner]);
+    expect((await one<{ data: unknown[] }>(db, "select public.get_reactions_snapshot($1,$2) data", [vip, [message]])).data).toHaveLength(1);
+    await asUser(db, juan);
+    expect((await one(db, "select public.get_reactions_snapshot($1,$2) data", [vip, [message]])).data).toEqual([]);
+    await asUser(db, owner);
+    expect((await one(db, "select public.get_reactions_snapshot($1,$2) data", [vip, Array(101).fill(message)])).data).toEqual([]);
+  });
   it("are hidden, with their messages, from members who weren't let in", async () => {
     expect(await sees(owner)).toBe(true);
     expect(await sees(juan)).toBe(false);

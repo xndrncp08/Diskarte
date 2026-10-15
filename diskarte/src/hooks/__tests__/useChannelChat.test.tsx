@@ -68,6 +68,31 @@ beforeEach(() => {
 });
 
 describe("useChannelChat realtime", () => {
+  it("reconciles reactions missed offline, including removals", async () => {
+    tables.messages = [msg("m1", MOD_ID, "hello", "2026-09-26T01:00:00Z")];
+    const reaction = { message_id: "m1", user_id: MEMBER_ID, emoji: "👍", channel_id: CHANNEL, server_id: "s", created_at: "2026-09-26T01:01:00Z" };
+    fake.client.rpc.mockResolvedValue({ data: [reaction], error: null } as never);
+    const hook = await setup();
+    await act(async () => { await hook.result.current.recovery.recover(); });
+    expect(hook.result.current.reactions.get("m1")).toEqual([reaction]);
+    fake.client.rpc.mockResolvedValue({ data: [], error: null } as never);
+    await act(async () => { await hook.result.current.recovery.recover(); });
+    expect(hook.result.current.reactions.get("m1")).toEqual([]);
+    expect(hook.result.current.recovery.problem).toBe(false);
+  });
+
+  it("preserves a live reaction that arrives while its recovery snapshot is loading", async () => {
+    tables.messages = [msg("m1", MOD_ID, "hello", "2026-09-26T01:00:00Z")];
+    let release!: (value: never) => void;
+    fake.client.rpc.mockImplementationOnce(() => new Promise((resolve) => { release = resolve; }));
+    const hook = await setup();
+    let request!: Promise<void>;
+    await act(async () => { request = hook.result.current.recovery.recover(); });
+    const reaction = { message_id: "m1", user_id: MEMBER_ID, emoji: "👍", channel_id: CHANNEL, server_id: "s", created_at: "2026-09-26T01:01:00Z" };
+    act(() => fake.emitDb("reactions", "INSERT", reaction));
+    await act(async () => { release({ data: [], error: null } as never); await request; });
+    expect(hook.result.current.reactions.get("m1")).toEqual([reaction]);
+  });
   // Production runs Realtime with "Allow public access" off: a public channel is refused outright,
   // and a join sent before the socket has my JWT is evaluated as anon, so RLS hides every message.
   it("joins db:chat as a private channel, only after the session token reaches the socket", async () => {
