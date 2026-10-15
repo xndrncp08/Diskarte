@@ -27,8 +27,9 @@ test("service worker receives a push with no Diskarte page open and persists dup
   await page.goto("/");
   const scope = new URL("/",page.url()).href;
   const cdp = await context.newCDPSession(page);
-  let registrationId = "";
+  let registrationId = "", versionId = "";
   cdp.on("ServiceWorker.workerRegistrationUpdated", ({ registrations }) => { for (const registration of registrations) if (registration.scopeURL === scope) registrationId = registration.registrationId; });
+  cdp.on("ServiceWorker.workerVersionUpdated", ({ versions }) => { for (const version of versions) if (version.scriptURL === new URL("sw.js",scope).href) versionId = version.versionId; });
   await cdp.send("ServiceWorker.enable");
   await page.evaluate(async () => { await navigator.serviceWorker.ready; });
   await expect.poll(() => registrationId).not.toBe("");
@@ -44,6 +45,10 @@ test("service worker receives a push with no Diskarte page open and persists dup
   await cdp.send("ServiceWorker.deliverPushMessage", { origin, registrationId, data });
   await page.goto(origin);
   await expect.poll(() => page.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications({tag:"push-e2e"})).map((n) => n.body))).toEqual(["Worker-only delivery"]);
+  await expect.poll(() => versionId).not.toBe("");
+  await page.goto("about:blank");
+  await cdp.send("ServiceWorker.stopWorker", { versionId });
   await cdp.send("ServiceWorker.deliverPushMessage", { origin, registrationId, data });
+  await page.goto(origin);
   await expect.poll(() => page.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications({tag:"push-e2e"})).length)).toBe(1);
 });

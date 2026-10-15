@@ -254,7 +254,7 @@ begin
  if p_result not in ('sent','skipped','failed','retry','expired') or p_code is null or length(p_code)>40 then raise exception 'PUSH_INVALID_RESULT'; end if;
  update private_push.deliveries set status=case when p_result='retry' and attempts<8 then 'pending' when p_result='retry' or p_result='expired' then 'failed' else p_result end,
  next_attempt_at=now()+make_interval(secs=>least(greatest(coalesce(p_delay,60),1),3600)),lease=null,lease_until=null,last_status=p_status,last_code=p_code
- where id=p_id and lease=p_lease and status='sending' returning * into changed;
+ where id=p_id and lease=p_lease and status='sending' and lease_until>now() returning * into changed;
  if not found then return; end if;
  insert into private_push.attempts(delivery_id,status,code) values(p_id,p_status,p_code);
  if p_result='sent' then update private_push.subscriptions set last_delivered_at=now() where id=changed.subscription_id; end if;
