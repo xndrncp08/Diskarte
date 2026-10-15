@@ -1,4 +1,6 @@
 import { authorizedPushJob, dispatchPush, pushConfig } from "@/lib/push-server";
+// A push batch awaits network delivery; short serverless defaults can interrupt acknowledgement.
+export const maxDuration = 60;
 export async function POST(request: Request) {
   const secret = process.env.PUSH_DISPATCH_SECRET;
   if (!secret || secret.length < 32) return new Response(null, { status: 503 });

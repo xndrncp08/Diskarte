@@ -8,7 +8,7 @@ While open, the preview shares the existing ref-counted `server:<id>` presence c
 
 ## Server-side disconnect updates
 
-Configure LiveKit's signed webhook destination as `https://YOUR_SITE/api/livekit/webhook` using the same `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` configured on Diskarte. Set the server-only `SUPABASE_SERVICE_ROLE_KEY` on Render. The route verifies the LiveKit JWT and body digest before accessing the service client. Join, leave, track and room-finished events broadcast an empty invalidation to the existing private server topic. No participant names, channel IDs or credentials are broadcast by this endpoint.
+Configure LiveKit's signed webhook destination as `https://YOUR_SITE/api/livekit/webhook` using the same `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` configured on Diskarte. Set the server-only `SUPABASE_SERVICE_ROLE_KEY` on your host (Vercel or Render). On `diskarte-ten.vercel.app`, use `https://diskarte-ten.vercel.app/api/livekit/webhook`. The route verifies the LiveKit JWT and body digest before accessing the service client. Join, leave, track and room-finished events broadcast an empty invalidation to the existing private server topic. No participant names, channel IDs or credentials are broadcast by this endpoint.
 
 Without webhook configuration, normal app presence changes and foreground/reconnect refreshes still update previews; unexpected server-side disconnects may remain visible until the next refresh. A reconnecting preview offers an explicit refresh control. LiveKit retries failed webhook delivery when the endpoint returns 503.
 
