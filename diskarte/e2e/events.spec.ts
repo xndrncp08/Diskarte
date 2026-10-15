@@ -16,6 +16,7 @@ test.describe("community events", () => {
       await owner.page.getByTestId("events-button").click();
       await owner.page.getByRole("button", { name: "Create Event" }).click();
       await owner.page.getByLabel("Event topic").fill("Study together");
+      await owner.page.getByLabel("Attendance limit (optional)").fill("1");
       await owner.page.getByRole("button", { name: "Create Event" }).click();
       const ownerList = owner.page.getByTestId("events-list");
       await expect(ownerList).toContainText("Study together");
@@ -23,9 +24,9 @@ test.describe("community events", () => {
       const memberList = member.page.getByTestId("events-list");
       await expect(memberList).toContainText("Study together");
       await expect(member.page.getByRole("button", { name: "Edit Study together" })).toHaveCount(0);
-      await memberList.getByRole("button", { name: "Interested · 0" }).click();
-      await expect(memberList.getByRole("button", { name: "Interested · 1" })).toHaveAttribute("aria-pressed", "true");
-      await expect(ownerList).toContainText("Interested · 1");
+      await memberList.getByRole("button", { name: "Interested · 0 / 1" }).click();
+      await expect(memberList.getByRole("button", { name: "Interested · 1 / 1" })).toHaveAttribute("aria-pressed", "true");
+      await expect(ownerList.getByRole("button", { name: "Full · 1 / 1" })).toBeDisabled();
 
       await owner.page.getByRole("button", { name: "Edit Study together" }).click();
       await owner.page.setViewportSize({ width: 375, height: 812 });
@@ -33,7 +34,7 @@ test.describe("community events", () => {
       await owner.page.getByLabel("Description").fill("Bring notes, pencils and questions.");
       await owner.page.getByRole("button", { name: "Save event" }).click();
       await expect(memberList).toContainText("Study; sama-sama");
-      await expect(memberList).toContainText("Interested · 1");
+      await expect(memberList).toContainText("Interested · 1 / 1");
 
       const downloadReady = owner.page.waitForEvent("download");
       await owner.page.getByRole("button", { name: "Add Study; sama-sama to calendar" }).click();
