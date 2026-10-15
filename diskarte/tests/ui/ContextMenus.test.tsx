@@ -535,4 +535,21 @@ describe("Right-click channels and servers", () => {
     expect(item("Copy invite link")).toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: "Leave server" })).toBeNull();
   });
+
+  it("opens a mobile voice sheet from a real server-icon long press without navigating", async () => {
+    const media = vi.spyOn(window, "matchMedia").mockImplementation((query) => ({ matches: query.includes("hover: none"), media: query, addEventListener() {}, removeEventListener() {} }) as unknown as MediaQueryList);
+    const request = vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ channels: [], limited: false }));
+    try {
+      render(<Shell><ServerRail servers={[server]} /></Shell>);
+      const icon = screen.getByRole("link", { name: "Barkada HQ" });
+      fireEvent.pointerDown(icon, { pointerType: "touch", clientX: 20, clientY: 20 });
+      const preview = await screen.findByRole("menuitem", { name: "Voice activity" });
+      fireEvent.pointerUp(icon, { pointerType: "touch" });
+      fireEvent.click(preview);
+      const sheet = await screen.findByRole("dialog", { name: "Voice activity in Barkada HQ" });
+      expect(sheet).toHaveClass("bottom-0");
+      expect(await within(sheet).findByText(/No active voice channels/)).toBeInTheDocument();
+      expect(request.mock.calls.some(([input]) => String(input).includes("/token"))).toBe(false);
+    } finally { media.mockRestore(); request.mockRestore(); }
+  });
 });

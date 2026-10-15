@@ -14,7 +14,7 @@ const AUTH_POST_PATHS = ["/", "/login", "/signup", "/forgot-password", "/reset-p
 const AUTH_CALLBACK_PATHS = ["/auth/callback", "/auth/confirm"];
 const FIRST_LOGIN_PATH = "/reset-password";
 /** API routes reachable without a session. */
-const PUBLIC_API = ["/api/health"];
+const PUBLIC_API = ["/api/health", "/api/livekit/webhook"];
 
 /** Extra CORS origins (comma-separated ALLOWED_ORIGINS). */
 function extraOrigins() {
@@ -59,7 +59,7 @@ export async function proxy(request: NextRequest) {
     if (request.method === "OPTIONS") {
       return headers ? new NextResponse(null, { status: 204, headers }) : NextResponse.json({ error: "Origin not allowed" }, { status: 403 });
     }
-    if (!isSafeMethod(request.method) && (headers === null || !isSameOriginRequest(request.headers, request.url, [...allowed]))) {
+    if (pathname !== "/api/livekit/webhook" && !isSafeMethod(request.method) && (headers === null || !isSameOriginRequest(request.headers, request.url, [...allowed]))) {
       return NextResponse.json({ error: "Cross-site request blocked" }, { status: 403 });
     }
     cors = headers ?? {};

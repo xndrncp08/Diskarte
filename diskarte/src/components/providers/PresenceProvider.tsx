@@ -26,6 +26,8 @@ interface Entry {
   speakingUntil: Map<string, number>;
   speaking: ReadonlySet<string>;
   speakingTimer: ReturnType<typeof setTimeout> | null;
+  activity: { revision: number; connected: boolean };
+  updateSpeaking: ((userId: string, speaking: boolean) => void) | null;
 }
 
 /** A "speaking" claim lapses unless refreshed — covers a missed stop event or a dropped tab. */
@@ -37,11 +39,13 @@ interface PresenceContextValue {
   subscribe: (serverId: string, listener: () => void) => () => void;
   snapshot: (serverId: string) => Map<string, PresencePayload>;
   speakingSnapshot: (serverId: string) => ReadonlySet<string>;
+  activitySnapshot: (serverId: string) => { revision: number; connected: boolean };
   setVoice: (voice: VoicePresence | null) => void;
   /** Ephemeral voice activity for everyone watching the server (Realtime Broadcast, never stored). */
   broadcastSpeaking: (serverId: string, speaking: boolean) => void;
 }
 
+const NO_ACTIVITY = { revision: 0, connected: false };
 const EMPTY = new Map<string, PresencePayload>();
 const PresenceContext = createContext<PresenceContextValue | null>(null);
 
@@ -98,6 +102,8 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
           speakingUntil: new Map(),
           speaking: NOBODY,
           speakingTimer: null,
+          activity: NO_ACTIVITY,
+          updateSpeaking: null,
         };
         // Rebuild the speaking set (dropping lapsed claims) and wake up for the next expiry.
         const settleSpeaking = () => {
@@ -112,6 +118,11 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
           if (created.speakingTimer) clearTimeout(created.speakingTimer);
           created.speakingTimer = created.speakingUntil.size ? setTimeout(settleSpeaking, Math.max(0, Math.min(...created.speakingUntil.values()) - now) + 20) : null;
         };
+        created.updateSpeaking = (id, speaking) => {
+          if (speaking) created.speakingUntil.set(id, Date.now() + SPEAKING_TTL_MS);
+          else created.speakingUntil.delete(id);
+          settleSpeaking();
+        };
         entry = created;
         entries.current.set(serverId, created);
         authReady.current ??= supabase.realtime.setAuth();
@@ -123,18 +134,27 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
             created.channel = channel;
             channel
               .on("presence", { event: "sync" }, () => {
+                created.activity = { revision: created.activity.revision + 1, connected: created.subscribed };
                 created.state = flattenPresence(channel.presenceState<PresencePayload>() as unknown as PresenceState);
                 created.listeners.forEach((l) => l());
+              })
+              .on("broadcast", { event: "voice_changed" }, () => {
+                created.activity = { ...created.activity, revision: created.activity.revision + 1 };
+                created.listeners.forEach((listener) => listener());
               })
               .on("broadcast", { event: "speaking" }, ({ payload }) => {
                 const event = payload as { user_id?: unknown; speaking?: unknown } | null;
                 if (typeof event?.user_id !== "string" || event.user_id === me.id) return;
-                if (event.speaking === true) created.speakingUntil.set(event.user_id, Date.now() + SPEAKING_TTL_MS);
-                else created.speakingUntil.delete(event.user_id);
-                settleSpeaking();
+                created.updateSpeaking?.(event.user_id, event.speaking === true);
               })
               .subscribe((status) => {
                 created.subscribed = status === "SUBSCRIBED";
+                created.activity = { revision: created.activity.revision + 1, connected: created.subscribed };
+                if (!created.subscribed) {
+                  created.state = EMPTY; created.speakingUntil.clear(); created.speaking = NOBODY;
+                  if (created.speakingTimer) clearTimeout(created.speakingTimer);
+                }
+                created.listeners.forEach((listener) => listener());
                 if (created.subscribed) void channel.track(payloadFor(serverId));
               });
           });
@@ -160,12 +180,14 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const snapshot = useCallback((serverId: string) => entries.current.get(serverId)?.state ?? EMPTY, []);
+  const activitySnapshot = useCallback((serverId: string) => entries.current.get(serverId)?.activity ?? NO_ACTIVITY, []);
   const speakingSnapshot = useCallback((serverId: string) => entries.current.get(serverId)?.speaking ?? NOBODY, []);
 
   const broadcastSpeaking = useCallback(
     (serverId: string, speaking: boolean) => {
       const entry = entries.current.get(serverId);
       if (!entry?.channel || !entry.subscribed) return;
+      entry.updateSpeaking?.(me.id, speaking);
       void entry.channel.send({ type: "broadcast", event: "speaking", payload: { user_id: me.id, speaking } });
     },
     [me.id],
@@ -198,8 +220,8 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
   }, [supabase]);
 
   const value = useMemo(
-    () => ({ acquire, subscribe, snapshot, speakingSnapshot, setVoice, broadcastSpeaking }),
-    [acquire, subscribe, snapshot, speakingSnapshot, setVoice, broadcastSpeaking],
+    () => ({ acquire, subscribe, snapshot, speakingSnapshot, activitySnapshot, setVoice, broadcastSpeaking }),
+    [acquire, subscribe, snapshot, speakingSnapshot, activitySnapshot, setVoice, broadcastSpeaking],
   );
   return <PresenceContext.Provider value={value}>{children}</PresenceContext.Provider>;
 }
@@ -244,4 +266,11 @@ export function useServerSpeaking(serverId: string | null | undefined): Readonly
 
 export function useBroadcastSpeaking() {
   return usePresenceContext().broadcastSpeaking;
+}
+
+/** Snapshot invalidations share the same ref-counted channel as presence and speaking. */
+export function useServerVoiceActivity(serverId: string) {
+  const ctx = usePresenceContext();
+  useEffect(() => ctx.acquire(serverId), [ctx, serverId]);
+  return useSyncExternalStore(useCallback((listener) => ctx.subscribe(serverId, listener), [ctx, serverId]), () => ctx.activitySnapshot(serverId), () => NO_ACTIVITY);
 }

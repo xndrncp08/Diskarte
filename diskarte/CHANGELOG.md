@@ -28,3 +28,8 @@ See [the follow-up delivery report](RELEASE-2026-10-14-remaining.md) for exact r
 - Expanded database, security, UI, concurrency, recovery, PWA and performance regression tests.
 
 See [delivery scope and limitations](RELEASE-2026-10-14.md) and [migration/recovery operations](OPERATIONS.md). GitHub CI passed the full authenticated browser suite and Docker checks. The full platform master prompt is not complete; production migrations, live deployment, hardware testing and the explicitly listed product work remain pending.
+# Live voice previews
+
+- Added authorized LiveKit participant previews to Tambayan icons, with desktop hover/keyboard navigation and mobile long-press sheets.
+- Reused shared Realtime presence for speaking indicators and snapshot invalidations; added a signed LiveKit webhook for disconnect and track updates.
+- Added authorization, webhook integrity, participant scaling, mobile and interaction regression coverage. See `docs/voice-preview.md` for deployment configuration.
