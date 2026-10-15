@@ -4,6 +4,7 @@
 
 - Added authorized LiveKit hover previews and mobile long-press sheets, with shared Realtime updates and signed webhook invalidation.
 - Added a private, transactional Web Push outbox, per-device session-bound subscriptions, leased dispatch, retries, event reminders, and invalid endpoint cleanup.
+- Prevented delayed push registration/reconciliation from restoring an account binding after logout; failed reconnects preserve existing subscriptions.
 - Added notification installation guidance, device management, synchronized delivery preferences, safe deep links, and private lock-screen defaults using the existing service worker.
 - Added queue/RLS, transport encryption, permission, worker-only browser, and interaction regressions; restored dialog focus as soon as dismissal begins.
 - Updated Next.js to 16.4.1, Sharp to 0.35.5 and source-map-js to 1.2.2; the production dependency audit reports zero vulnerabilities. ESLint’s unpatched development dependency advisories remain documented.
