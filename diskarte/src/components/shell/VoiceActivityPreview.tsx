@@ -21,6 +21,7 @@ import { ServerIcon } from "./ServerIcon";
 type Target = { server: Server; anchor: HTMLElement; sheet: boolean; keyboard: boolean };
 type Controller = { show(server: Server, anchor: HTMLElement, keyboard?: boolean): void; close(): void; delay(): void; hold(): void; id: string; serverId?: string };
 const Context = createContext<Controller | null>(null);
+function focusAnchor(anchor: HTMLElement) { (anchor.matches("a,button") ? anchor : anchor.querySelector<HTMLElement>("a,button"))?.focus(); }
 export function useVoiceActivityPreview() { return useContext(Context)!; }
 export function VoiceActivityPreviewProvider({ children }: { children: ReactNode }) {
   const [target, setTarget] = useState<Target | null>(null);
@@ -36,7 +37,7 @@ export function VoiceActivityPreviewProvider({ children }: { children: ReactNode
   useEffect(() => () => hold(), [hold]);
   useEffect(() => {
     if (!target) return;
-    const key = (event: KeyboardEvent) => { if (event.key === "Escape" && !document.querySelector('[data-floating="voice-profile"]:not([inert])')) { event.stopPropagation(); close(); (target.anchor.matches("a,button") ? target.anchor : target.anchor.querySelector<HTMLElement>("a,button"))?.focus(); } };
+    const key = (event: KeyboardEvent) => { if (event.key === "Escape" && !document.querySelector('[data-floating="voice-profile"]:not([inert])')) { event.stopPropagation(); close(); if (target.sheet) requestAnimationFrame(() => focusAnchor(target.anchor)); else focusAnchor(target.anchor); } };
     const down = (event: PointerEvent) => { if (!(event.target as Element).closest(`[data-voice-preview], [data-floating="voice-profile"]`) && !target.anchor.contains(event.target as Node)) close(); };
     const lost = () => { if (document.visibilityState === "hidden") close(); };
     document.addEventListener("keydown", key); document.addEventListener("pointerdown", down); document.addEventListener("visibilitychange", lost);
@@ -44,7 +45,7 @@ export function VoiceActivityPreviewProvider({ children }: { children: ReactNode
   }, [target, close]);
   return <Context.Provider value={{ show, close, delay, hold, id, serverId: target?.server.id }}>
     {children}
-    {target?.sheet ? <Modal open title={`Voice activity in ${target.server.name}`} onClose={close} className="absolute inset-x-0 bottom-0 max-w-none rounded-b-none pb-[max(1.5rem,env(safe-area-inset-bottom))]"><div id={id} data-voice-preview><PreviewContent key={target.server.id} server={target.server} onOpen={close} /></div></Modal> : <FloatingPortal><AnimatePresence>{target && <DesktopPreview key={target.server.id} target={target} id={id} close={close} hold={hold} delay={delay} />}</AnimatePresence></FloatingPortal>}
+    {target?.sheet ? <Modal open title={`Voice activity in ${target.server.name}`} onClose={() => { close(); requestAnimationFrame(() => focusAnchor(target.anchor)); }} className="absolute inset-x-0 bottom-0 max-w-none rounded-b-none pb-[max(1.5rem,env(safe-area-inset-bottom))]"><div id={id} data-voice-preview><PreviewContent key={target.server.id} server={target.server} onOpen={close} /></div></Modal> : <FloatingPortal><AnimatePresence>{target && <DesktopPreview key={target.server.id} target={target} id={id} close={close} hold={hold} delay={delay} />}</AnimatePresence></FloatingPortal>}
   </Context.Provider>;
 }
 
@@ -73,7 +74,7 @@ function DesktopPreview({ target, id, close, hold, delay }: { target: Target; id
     return () => cancelAnimationFrame(frame);
   }, [target]);
   return <InertWhenExiting ref={panel} id={id} role="dialog" aria-label={`Voice activity in ${target.server.name}`} data-voice-preview data-floating="voice-preview" style={style} initial={{ opacity: 0, scale: .98, x: -4 }} animate={{ opacity: 1, scale: 1, x: 0 }} exit={{ opacity: 0, scale: .98 }} transition={{ duration: .13 }} className="glass-strong z-50 w-80 overflow-y-auto rounded-2xl p-4 shadow-2xl shadow-black/35" onPointerEnter={hold} onPointerLeave={delay} onFocus={hold} onBlur={(event) => { if (!event.relatedTarget?.closest?.('[data-voice-preview], [data-floating="voice-profile"]')) delay(); }}>
-    <button type="button" onClick={close} aria-label="Close voice preview" className="float-right flex size-9 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10"><X className="size-4" /></button>
+    <button type="button" onClick={() => { close(); focusAnchor(target.anchor); }} aria-label="Close voice preview" className="float-right flex size-9 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10"><X className="size-4" /></button>
     <PreviewContent server={target.server} onOpen={close} />
   </InertWhenExiting>;
 }

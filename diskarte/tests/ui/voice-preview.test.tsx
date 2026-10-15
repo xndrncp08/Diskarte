@@ -42,6 +42,9 @@ it("keyboard opening never navigates or joins and Escape restores the trigger",a
  expect(await screen.findByLabelText("13 connected participants")).toBeInTheDocument();
  fireEvent.keyDown(document,{key:"Escape"});await waitFor(()=>expect(screen.queryByRole("dialog")).toBeNull());expect(link).toHaveFocus();
  expect(request.mock.calls.every((args)=>!String(args[0]).includes("/token"))).toBe(true);
+ fireEvent.keyDown(link,{key:"ArrowRight"});
+ await userEvent.setup().click(await screen.findByRole("button",{name:"Close voice preview"}));
+ await waitFor(()=>expect(screen.queryByRole("dialog")).toBeNull());expect(link).toHaveFocus();
 });
 it("cancels a pending hover when clicking the server so navigation is never covered by a late preview",async()=>{
  render(<View/>);const link=screen.getByRole("link",{name:server.name});
