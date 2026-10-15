@@ -1,0 +1,44 @@
+import { act, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, expect, it, vi } from "vitest";
+import { createFakeSupabase } from "../fixtures/fake-supabase";
+const channelId="20000000-0000-4000-8000-000000000001";
+const initial={channel_id:channelId,kind:"resources",content:{items:[]},revision:1,updated_by:null,updated_at:"2026-10-14T00:00:00Z"};
+const tables={channels:[{id:channelId}],workspace_assets:[initial]};
+const fake=createFakeSupabase(tables);
+vi.mock("@/components/providers/RuntimeConfig",()=>({useSupabase:()=>fake.client}));
+const {WorkspaceAsset}=await import("@/components/workspace/WorkspaceAsset");
+beforeEach(()=>{tables.channels=[{id:channelId}];tables.workspace_assets=[structuredClone(initial)];fake.client.rpc.mockReset();});
+it("preserves resources on conflict and saves only after an explicit version choice",async()=>{
+  const user=userEvent.setup();
+  render(<WorkspaceAsset channelId={channelId} kind="resources" editable onClose={()=>{}}/>);
+  await user.type(await screen.findByLabelText("Resource title"),"Math notes");
+  await user.type(screen.getByLabelText("HTTPS link"),"https://example.com/math");
+  await user.click(screen.getByRole("button",{name:"Add resource"}));
+  tables.workspace_assets=[{...initial,revision:2}];
+  fake.client.rpc.mockResolvedValueOnce({data:null,error:{code:"40001"}} as never);
+  await user.click(screen.getByRole("button",{name:"Save resources"}));
+  expect(await screen.findByText("Another version is available. Your local changes are preserved.")).toBeInTheDocument();
+  expect(screen.getByRole("link",{name:"Math notes"})).toHaveAttribute("href","https://example.com/math");
+  expect(screen.getByRole("button",{name:"Save resources"})).toBeDisabled();
+  await user.click(screen.getByRole("button",{name:"Keep my version for the next save"}));
+  await waitFor(()=>expect(screen.getByRole("button",{name:"Save resources"})).toBeEnabled());
+  fake.client.rpc.mockResolvedValueOnce({data:[{...initial,revision:3}],error:null} as never);
+  await user.click(screen.getByRole("button",{name:"Save resources"}));
+  await waitFor(()=>expect(fake.client.rpc).toHaveBeenLastCalledWith("save_workspace_asset",expect.objectContaining({p_revision:2,p_content:expect.objectContaining({items:expect.arrayContaining([expect.objectContaining({title:"Math notes"})])})})));
+});
+it("removes cached content when channel access disappears",async()=>{
+  render(<WorkspaceAsset channelId={channelId} kind="resources" editable={false} onClose={()=>{}}/>);
+  expect(await screen.findByText(/No resources yet/)).toBeInTheDocument();
+  expect(screen.queryByRole("button",{name:"Save resources"})).toBeNull();
+  tables.channels=[];
+  act(()=>window.dispatchEvent(new Event("online")));
+  expect(await screen.findByRole("alert")).toHaveTextContent("no longer available");
+  expect(screen.queryByRole("list",{name:"Shared resources"})).toBeNull();
+});
+it("renders bounded vector strokes without executable SVG content",async()=>{
+  tables.workspace_assets=[{...initial,kind:"whiteboard",content:{strokes:[{id:crypto.randomUUID(),color:"#142138",width:4,points:[[1,1],[100,100]]}]}} as never];
+  render(<WorkspaceAsset channelId={channelId} kind="whiteboard" editable={false} onClose={()=>{}}/>);
+  expect(await screen.findByRole("img",{name:/Shared drawing, 1 strokes/})).toBeInTheDocument();
+  expect(screen.queryByRole("button",{name:"Undo stroke"})).toBeNull();
+});

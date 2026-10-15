@@ -15,6 +15,7 @@ import { MessageMarkdown } from "@/components/chat/MessageMarkdown";
 import { subscribeDbChanges } from "@/lib/realtime";
 import { hasRole } from "@/lib/servers";
 import { boardSchema, focusSchema, noteSchema, workspaceLoadIssue, type BoardCard, type WorkspaceDocument } from "@/lib/workspace-documents";
+import { WorkspaceAsset } from "./WorkspaceAsset";
 
 const field = "min-h-11 w-full rounded-lg border border-white/15 bg-midnight px-3 text-base outline-none focus:border-sun";
 const icons = { note: BookOpen, board: Columns3, focus: Timer };
@@ -33,6 +34,7 @@ export function SharedWorkspaceView() {
   const [problemKind, setProblemKind] = useState<ReturnType<typeof workspaceLoadIssue>["kind"]>("connection");
   const [selected, setSelected] = useState<WorkspaceDocument | null>(null);
   const [creating, setCreating] = useState<WorkspaceDocument["kind"] | null>(null);
+  const [asset, setAsset] = useState<"resources" | "whiteboard" | null>(null);
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
   const generation = useRef(0);
@@ -41,27 +43,31 @@ export function SharedWorkspaceView() {
     if (!channelId) return;
     const token = ++generation.current;
     try {
-      const [docs, permission] = await Promise.all([
+      const [docs, permission, channel] = await Promise.all([
         supabase.from("workspace_documents").select("*").eq("channel_id", channelId).order("updated_at", { ascending: false }).limit(50),
         supabase.rpc("can_edit_workspace", { p_channel: channelId }),
+        supabase.from("channels").select("id").eq("id", channelId).maybeSingle(),
       ]);
       if (generation.current !== token) return;
-      if (docs.error || permission.error) throw docs.error ?? permission.error;
+      if (docs.error || permission.error || channel.error) throw docs.error ?? permission.error ?? channel.error;
+      if (!channel.data) throw { code: "42501" };
       setDocuments(docs.data ?? []); setEditable(permission.data === true); setProblem("");
     } catch (error) {
       if (generation.current !== token) return;
       const issue = workspaceLoadIssue(error);
       setProblem(issue.message); setProblemKind(issue.kind); setEditable(false);
-      if (issue.kind !== "connection") { setDocuments(null); setSelected(null); }
+      if (issue.kind !== "connection") { setDocuments(null); setSelected(null); setAsset(null); }
     }
-  }, [channelId, supabase, setSelected]);
+  }, [channelId, supabase, setSelected, setAsset]);
   useEffect(() => {
     if (!channelId) return;
     void Promise.resolve().then(load);
-    const resume = () => { if (document.visibilityState === "visible") void load(); };
+    const resume = () => { if (document.visibilityState === "visible" && navigator.onLine) void load(); };
+    // Filtered realtime deletes carry only the primary key; refresh visible workspaces too.
+    const timer = setInterval(resume, 30_000);
     window.addEventListener("online", resume); document.addEventListener("visibilitychange", resume);
     const off = subscribeDbChanges(supabase, `chat:${channelId}:workspace`, (c) => c.on("postgres_changes", { event: "*", schema: "public", table: "workspace_documents", filter: `channel_id=eq.${channelId}` }, () => void load()), (status) => { if (status === "SUBSCRIBED") void load(); });
-    return () => { invalidate(); off(); window.removeEventListener("online", resume); document.removeEventListener("visibilitychange", resume); };
+    return () => { invalidate(); off(); clearInterval(timer); window.removeEventListener("online", resume); document.removeEventListener("visibilitychange", resume); };
   }, [channelId, load, supabase, invalidate]);
   const create = async () => {
     if (!creating || busy) return;
@@ -78,7 +84,8 @@ export function SharedWorkspaceView() {
     <div className="min-h-0 flex-1 overflow-y-auto p-4">
       <div className="mx-auto max-w-5xl space-y-4">
         <p className="text-sm text-slate-400">Plan, study and keep resources together in {server.name}. Each item follows its channel’s permissions.</p>
-        <label className="block max-w-sm text-sm">Channel<select value={channelId} onChange={(e) => { setChannelId(e.target.value); setDocuments(null); setEditable(false); }} className={`${field} mt-1`}>{options.map((c) => <option value={c.id} key={c.id}>#{c.name}</option>)}</select></label>
+        <label className="block max-w-sm text-sm">Channel<select value={channelId} onChange={(e) => { setChannelId(e.target.value); setDocuments(null); setEditable(false); setAsset(null); setSelected(null); }} className={`${field} mt-1`}>{options.map((c) => <option value={c.id} key={c.id}>#{c.name}</option>)}</select></label>
+        {channelId && documents !== null && !problem && <div className="flex flex-wrap gap-2"><Button variant="secondary" onClick={() => setAsset("resources")}>Shared resources</Button><Button variant="secondary" onClick={() => setAsset("whiteboard")}>Whiteboard</Button></div>}
         {editable && <div className="flex flex-wrap gap-2">{(["note", "board", "focus"] as const).map((kind) => <Button key={kind} variant="secondary" onClick={() => { setCreating(kind); setTitle(names[kind]); }}><Plus className="size-4" aria-hidden />{names[kind]}</Button>)}</div>}
         {problem && <div role="status" className="space-y-3 rounded-xl border border-amber-300/25 p-4 text-amber-200">
           <p>{problem}</p>
@@ -91,6 +98,7 @@ export function SharedWorkspaceView() {
     </div>
     <Modal open={creating !== null} onClose={() => setCreating(null)} title={creating ? `Create ${names[creating].toLowerCase()}` : "Create item"}><form onSubmit={(e) => { e.preventDefault(); void create(); }} className="space-y-4"><label className="block text-sm">Name<input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={100} className={`${field} mt-1`} /></label><Button type="submit" loading={busy}>Create</Button></form></Modal>
     {selected && <WorkspaceEditor key={selected.id} initial={selected} latest={documents?.find((doc) => doc.id === selected.id) ?? selected} editable={editable} onClose={() => setSelected(null)} onSaved={() => void load()} />}
+    {asset && <WorkspaceAsset key={`${channelId}:${asset}`} channelId={channelId} kind={asset} editable={editable} onClose={() => setAsset(null)} />}
   </section>;
 }
 
