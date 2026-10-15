@@ -33,6 +33,8 @@ export function Modal({ open, onClose, title, description, children, className, 
     const token = pushOverlay();
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const frame = requestAnimationFrame(() => {
+      // A fast tap/type may have focused a field before the opening frame runs.
+      if (panel.current?.contains(document.activeElement)) return;
       const first = panel.current?.querySelector<HTMLElement>("[data-autofocus]") ?? panel.current?.querySelector<HTMLElement>(FOCUSABLE);
       first?.focus();
     });
