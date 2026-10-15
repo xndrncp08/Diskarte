@@ -27,6 +27,21 @@ function useTestSync(initial = "") {
   return { value, setValue, sync: useAccountSync(user, key, value, setValue) };
 }
 describe("cross-device state sync", () => {
+  it("does not treat reordered jsonb object keys as edits or create sync loops", async () => {
+    const preference = { user_id: user, key: "prefs:display", value: { b: true, a: { y: 2, x: 1 } }, revision: 1, updated_at: "2026-10-14T00:00:00Z" };
+    tables.account_state = [preference];
+    const hook = renderHook(() => {
+      const [value, setValue] = useState<Json>({ a: { x: 1, y: 2 }, b: true });
+      return useAccountSync(user, "prefs:display", value, setValue);
+    });
+    await settle(2000);
+    expect(fake.client.rpc).not.toHaveBeenCalled();
+    expect(hook.result.current.conflict).toBeNull();
+    act(() => fake.emitDb("account_state", "UPDATE", { ...preference, revision: 2, value: { a: { y: 2, x: 1 }, b: true } }));
+    await settle(2000);
+    expect(fake.client.rpc).not.toHaveBeenCalled();
+    expect(hook.result.current.conflict).toBeNull();
+  });
   it("restores an account draft and synchronizes clearing it after sending", async () => {
     tables.account_state = [row("From my phone")];
     const hook = renderHook(() => useTestSync()); await settle();
