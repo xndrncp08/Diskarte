@@ -21,6 +21,7 @@ import { useContextMenu } from "@/components/ui/ContextMenu";
 import { AddServerDialog } from "./AddServerDialog";
 import { ServerContextMenu } from "./ServerContextMenu";
 import { ServerIcon } from "./ServerIcon";
+import { VoiceActivityPreviewProvider, VoicePreviewTrigger, useVoiceActivityPreview } from "./VoiceActivityPreview";
 
 function Pill({ active, unread = false }: { active: boolean; unread?: boolean }) {
   return (
@@ -66,6 +67,7 @@ type RailEntry = Server & { entryChannelId?: string | null };
 /** A server node on the rail; right-click for its menu (copy invite, leave…). */
 function RailServer({ server, active, official = false }: { server: RailEntry; active: boolean; official?: boolean }) {
   const menu = useContextMenu();
+  const preview = useVoiceActivityPreview();
   // Straight to the channel you last had open (else the first one): no redirect hop, and the link can
   // prefetch the server's whole shell ahead of the click.
   const last = useSyncExternalStore(subscribeLastChannels, readLastChannels, () => "{}");
@@ -76,7 +78,7 @@ function RailServer({ server, active, official = false }: { server: RailEntry; a
   return (
     <>
       {official ? (
-        <Tooltip label={`${server.name} · Official`}>
+        <VoicePreviewTrigger server={server}>{(previewProps) => (
           <Link
             href={href}
             aria-label={`${label} (official)`}
@@ -84,6 +86,7 @@ function RailServer({ server, active, official = false }: { server: RailEntry; a
             className="group relative flex"
             data-testid="pinned-server"
             {...menu.triggerProps}
+            {...previewProps}
           >
             <Pill active={active} unread={badge.unread} />
             <span className="rounded-[50%] ring-2 ring-sun ring-offset-2 ring-offset-[#0b1020] transition-[border-radius] group-hover:rounded-2xl">
@@ -92,19 +95,19 @@ function RailServer({ server, active, official = false }: { server: RailEntry; a
             <BadgeCheck className="absolute -bottom-1 -right-1 size-5 rounded-full bg-abyss fill-sun text-abyss" aria-hidden />
             <MentionBadge count={badge.mentions} top />
           </Link>
-        </Tooltip>
+        )}</VoicePreviewTrigger>
       ) : (
-        <Tooltip label={server.name}>
-          <Link href={href} aria-label={label} aria-current={active ? "page" : undefined} draggable={false} className="group relative flex" {...menu.triggerProps}>
+        <VoicePreviewTrigger server={server}>{(previewProps) => (
+          <Link href={href} aria-label={label} aria-current={active ? "page" : undefined} draggable={false} className="group relative flex" {...menu.triggerProps} {...previewProps}>
             <Pill active={active} unread={badge.unread} />
             <span className={cn("flex", badge.muted && !active && "opacity-40")}>
               <ServerIcon server={server} active={active} />
             </span>
             <MentionBadge count={badge.mentions} />
           </Link>
-        </Tooltip>
+        )}</VoicePreviewTrigger>
       )}
-      <ServerContextMenu menu={menu} server={server} />
+      <ServerContextMenu menu={menu} server={server} onPreview={() => { if (menu.target) preview.show(server, menu.target, true); }} />
     </>
   );
 }
@@ -201,7 +204,7 @@ function ControlCenterButton() {
 /**
  * The server rail: the mascot (Home), the server switcher and the notification hub. A glass column on tablets and up; the left part of the drawer on phones.
  */
-export function ServerRail({ servers }: { servers: RailEntry[] }) {
+function RailContents({ servers }: { servers: RailEntry[] }) {
   const params = useParams<{ serverId?: string }>();
   const activeId = params.serverId;
   const pathname = usePathname();
@@ -294,3 +297,5 @@ export function ServerRail({ servers }: { servers: RailEntry[] }) {
     </div>
   );
 }
+
+export function ServerRail({ servers }: { servers: RailEntry[] }) { return <VoiceActivityPreviewProvider><RailContents servers={servers} /></VoiceActivityPreviewProvider>; }

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Link2, LogOut } from "lucide-react";
+import { ArrowRight, Volume2, Link2, LogOut } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { leaveServerAction } from "@/actions/servers";
@@ -13,7 +13,7 @@ import { inviteUrl, type Server } from "@/lib/servers";
 const icon = "size-4";
 
 /** Right-click on a server (the rail, Home's server list): open it, copy its invite, leave it. */
-function ServerMenuItems({ server }: { server: Server }) {
+function ServerMenuItems({ server, onPreview }: { server: Server; onPreview?: () => void }) {
   const { me } = useMe();
   const router = useRouter();
   const active = useParams<{ serverId?: string }>().serverId === server.id;
@@ -22,6 +22,7 @@ function ServerMenuItems({ server }: { server: Server }) {
   return (
     <ContextMenuItems
       items={[
+        { label: "Voice activity", icon: <Volume2 className={icon} aria-hidden />, onSelect: () => onPreview?.(), hidden: !onPreview },
         { label: "Open server", icon: <ArrowRight className={icon} aria-hidden />, onSelect: () => router.push(`/tambayan/${server.id}`), hidden: active },
         {
           label: "Copy invite link",
@@ -58,10 +59,10 @@ function ServerMenuItems({ server }: { server: Server }) {
   );
 }
 
-export function ServerContextMenu({ menu, server }: { menu: ContextMenuState; server: Server }) {
+export function ServerContextMenu({ menu, server, onPreview }: { menu: ContextMenuState; server: Server; onPreview?: () => void }) {
   return (
     <ContextMenu menu={menu} label={`${server.name} options`}>
-      <ServerMenuItems server={server} />
+      <ServerMenuItems server={server} onPreview={onPreview} />
     </ContextMenu>
   );
 }

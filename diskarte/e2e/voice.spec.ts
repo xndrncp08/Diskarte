@@ -31,6 +31,16 @@ test.describe("WebRTC voice rooms", () => {
     await expect(page.getByTestId("participant-tile")).toHaveCount(2, { timeout: 30_000 });
     await expect(page.getByRole("list", { name: "In voice" })).toContainText(friend.user.displayName);
 
+    // A rail preview reads authorized LiveKit participants without changing the call.
+    const rail = page.getByRole("navigation", { name: "Servers" });
+    const serverLink = rail.getByRole("link", { name: /^Voice / });
+    await serverLink.focus(); await serverLink.press("ArrowRight");
+    const preview = page.getByRole("dialog", { name: /^Voice activity in Voice / });
+    await expect(preview.getByLabel("2 connected participants")).toBeVisible();
+    await expect(preview.getByRole("button", { name: `View ${friend.user.displayName}'s profile` })).toBeVisible();
+    await page.keyboard.press("Escape"); await expect(preview).toHaveCount(0);
+    await expect(dock).toContainText("Voice Connected");
+
     // Mute via the stage controls.
     await page.getByTestId("voice-stage").getByRole("button", { name: "Mute" }).click();
     await expect(page.getByTestId("voice-stage").getByRole("button", { name: "Unmute" })).toHaveAttribute("aria-pressed", "true");
