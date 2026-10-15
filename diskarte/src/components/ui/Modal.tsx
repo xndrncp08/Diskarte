@@ -73,7 +73,7 @@ export function Modal({ open, onClose, title, description, children, className, 
     <AnimatePresence>
       {open && (
         <InertWhenExiting
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="overlay-viewport fixed inset-0 z-50 flex items-center justify-center p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

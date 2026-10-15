@@ -89,6 +89,11 @@ function expectNoReactErrors() {
 
 // =============================================================================================
 describe("placement maths (flip + clamp)", () => {
+  it("keeps portals inside a keyboard-shrunken and panned visual viewport", () => {
+    const r = computeFloatingPosition({ anchor: { top: 430, left: 300, width: 32, height: 32 }, floating: { width: 200, height: 100 }, viewport: { width: 375, height: 300, top: 200, left: 15 }, side: "bottom" });
+    expect(r.side).toBe("top"); expect(r.top).toBeGreaterThanOrEqual(208); expect(r.top + 100).toBeLessThanOrEqual(492);
+    expect(r.left).toBeGreaterThanOrEqual(23); expect(r.left + 200).toBeLessThanOrEqual(382);
+  });
   const viewport = VIEWPORT;
   const floating = { width: 288, height: 320 };
 

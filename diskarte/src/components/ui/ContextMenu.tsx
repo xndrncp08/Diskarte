@@ -3,7 +3,7 @@
 import { AnimatePresence } from "framer-motion";
 import { createContext, useCallback, useContext, useEffect, useEffectEvent, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { FloatingPortal } from "./floating";
+import { FloatingPortal, visibleViewport } from "./floating";
 import { InertWhenExiting } from "./InertWhenExiting";
 import { MenuItems, useMenuDismiss, useMenuKeyboard, type MenuItem } from "./Menu";
 
@@ -24,15 +24,16 @@ export function computeContextMenuPosition({
 }: {
   point: Point;
   floating: { width: number; height: number };
-  viewport: { width: number; height: number };
+  viewport: { width: number; height: number; top?: number; left?: number };
   padding?: number;
 }): { top: number; left: number } {
   let left = point.x;
   let top = point.y;
-  if (left + floating.width > viewport.width - padding) left = point.x - floating.width;
-  if (top + floating.height > viewport.height - padding) top = point.y - floating.height;
-  const clamp = (value: number, max: number) => Math.round(Math.min(Math.max(value, padding), Math.max(padding, max)));
-  return { top: clamp(top, viewport.height - floating.height - padding), left: clamp(left, viewport.width - floating.width - padding) };
+  const viewLeft = viewport.left ?? 0, viewTop = viewport.top ?? 0;
+  if (left + floating.width > viewLeft + viewport.width - padding) left = point.x - floating.width;
+  if (top + floating.height > viewTop + viewport.height - padding) top = point.y - floating.height;
+  const clamp = (value: number, min: number, max: number) => Math.round(Math.min(Math.max(value, min), Math.max(min, max)));
+  return { top: clamp(top, viewTop + padding, viewTop + viewport.height - floating.height - padding), left: clamp(left, viewLeft + padding, viewLeft + viewport.width - floating.width - padding) };
 }
 
 export const LONG_PRESS_MS = 500;
@@ -204,7 +205,7 @@ export function ContextMenu({ menu, label, children }: { menu: ContextMenuState;
     const { top, left } = computeContextMenuPosition({
       point,
       floating: { width: el.offsetWidth, height: el.offsetHeight },
-      viewport: { width: window.innerWidth, height: window.innerHeight },
+      viewport: visibleViewport(),
     });
     el.style.top = `${top}px`;
     el.style.left = `${left}px`;
@@ -219,10 +220,14 @@ export function ContextMenu({ menu, label, children }: { menu: ContextMenuState;
     window.addEventListener("scroll", onScrollOrResize, true);
     window.addEventListener("resize", onScrollOrResize);
     window.addEventListener("blur", onScrollOrResize);
+    window.visualViewport?.addEventListener("resize", onScrollOrResize);
+    window.visualViewport?.addEventListener("scroll", onScrollOrResize);
     return () => {
       window.removeEventListener("scroll", onScrollOrResize, true);
       window.removeEventListener("resize", onScrollOrResize);
       window.removeEventListener("blur", onScrollOrResize);
+      window.visualViewport?.removeEventListener("resize", onScrollOrResize);
+      window.visualViewport?.removeEventListener("scroll", onScrollOrResize);
     };
   }, [open]);
 

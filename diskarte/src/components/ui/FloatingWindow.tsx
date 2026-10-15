@@ -122,7 +122,7 @@ function Dialog({ onClose, title, id, icon, className, bodyClassName, actions, c
 
   return (
     <motion.div
-      className={cn("fixed inset-0 z-[45] flex items-center justify-center", !phone && "bg-black/60 p-4")}
+      className={cn("overlay-viewport fixed inset-0 z-[45] flex items-center justify-center", !phone && "bg-black/60 p-4")}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, pointerEvents: "none" }}

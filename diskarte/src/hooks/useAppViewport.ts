@@ -12,6 +12,8 @@ export function useAppViewport(ref: RefObject<HTMLElement | null>) {
       const height = viewport?.height ?? window.innerHeight;
       el.style.setProperty("--app-height", `${height}px`);
       el.style.setProperty("--app-top", `${viewport?.offsetTop ?? 0}px`);
+      document.documentElement.style.setProperty("--app-height", `${height}px`);
+      document.documentElement.style.setProperty("--app-top", `${viewport?.offsetTop ?? 0}px`);
       el.dataset.keyboard = String(window.innerHeight - height > 120);
     };
     update();
@@ -22,6 +24,8 @@ export function useAppViewport(ref: RefObject<HTMLElement | null>) {
       viewport?.removeEventListener("resize", update);
       viewport?.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
+      document.documentElement.style.removeProperty("--app-height");
+      document.documentElement.style.removeProperty("--app-top");
     };
   }, [ref]);
 }
