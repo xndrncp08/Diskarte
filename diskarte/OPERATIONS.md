@@ -59,3 +59,13 @@ npm run test:e2e --prefix diskarte
 ```
 
 The full authenticated suite additionally requires the local Supabase/LiveKit stack and `E2E_FULL=1`. Use throwaway accounts and infrastructure. The baseline smoke/a11y/mobile/PWA browser checks can run without a local backend; they do not establish authenticated app or media-call correctness.
+
+## Remaining-platform migration follow-up
+
+The connected project was checked read-only: the original shared-workspace migration is present. The eight migrations from `20261014020000_account_state.sql` through `20261014090000_account_cleanup.sql` are still pending there. Apply all earlier prerequisites too; do not apply files selectively out of order. Review [the follow-up release](RELEASE-2026-10-14-remaining.md) before promotion.
+
+After authenticating/linking the CLI, inspect `npx supabase db push --dry-run`; apply only to the intended project after staging tests and backup verification. Alternatively run reviewed files in the project SQL Editor in filename order, maintaining migration history consistently. Then run `npm run db:check --prefix diskarte` (nine read-only probes), the RLS suite and authenticated browser smoke tests. The checker deliberately does not invoke mutation RPCs and cannot prove every database policy or live delivery path.
+
+These changes add account state, DM media metadata, workspace assets, event capacity/counts and RPCs. They also replace search/export/cleanup functions and add stricter DM media validation. Index creation, event count backfill and DDL can lock busy tables: measure on a restored copy and schedule appropriately. Save backups before changes, including attachment/avatar/soundboard bytes separately from database metadata. No production restore drill has been performed here.
+
+To roll the app back, retain the new database structures and existing user data. Older chat clients ignore the additive DM column; original note/board/focus clients never receive the separate asset kinds. Existing tested event inserts omit capacity and use its unlimited default. Do not drop columns/tables or reset migration history as a UI rollback. The new stricter media and authorization rules remain active after an app rollback; validate any required forward repair on staging.

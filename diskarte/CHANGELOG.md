@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-14 — remaining-platform follow-up
+
+- Added revisioned private draft/preference sync, private DM media, history anchors and reconnect reaction reconciliation.
+- Added community templates/settings export, discovery pagination, shared resources and saved collaborative whiteboards.
+- Added atomic event capacity, canonical RSVP summaries and finite weekly scheduling.
+- Added light/system appearance, core Filipino navigation/settings translations and time-zone preferences.
+- Improved keyboard viewport overlays and focus behavior; secured account export/deletion for newly persisted data.
+- Removed the AI report action/workflow while retaining manual reports and history.
+- Expanded migration readiness checks and multi-user browser regression coverage.
+
+See [the follow-up delivery report](RELEASE-2026-10-14-remaining.md) for exact results, migrations and unfinished scope.
+
 ## 2026-10-14
 
 - Distinguished missing workspace migrations from connection, session and permission failures; added a read-only database readiness command and CI gate.
