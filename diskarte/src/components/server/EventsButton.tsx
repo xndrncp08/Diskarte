@@ -11,7 +11,7 @@ import { useServer } from "@/components/providers/ServerProvider";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { confirmAction } from "@/components/ui/ConfirmHost";
-import { activeEvents, downloadEventCalendar, eventStatus, toLocalInput, type ServerEvent } from "@/lib/events";
+import { activeEvents, downloadEventCalendar, eventStatus, toLocalInput, weeklyEventDates, type ServerEvent } from "@/lib/events";
 import { subscribeDbChanges } from "@/lib/realtime";
 import { hasRole } from "@/lib/servers";
 import { cn } from "@/lib/utils";
@@ -45,6 +45,12 @@ export function EventsButton() {
   const load = useCallback(async () => {
     const token = ++generation.current;
     try {
+      const summary = await supabase.rpc("list_server_events", { p_server: server.id });
+      if (token !== generation.current) return;
+      if (!summary.error && summary.data) {
+        setEvents(summary.data); setRsvps(summary.data.filter((event) => event.interested).map((event) => ({ event_id: event.id, user_id: me.id }))); setProblem(""); return;
+      }
+      if (summary.error && !["PGRST202", "42883"].includes(summary.error.code)) throw summary.error;
       const [e, r] = await Promise.all([
         supabase.from("server_events").select("*").eq("server_id", server.id).order("starts_at"),
         supabase.from("event_rsvps").select("event_id, user_id").eq("server_id", server.id),
@@ -55,7 +61,7 @@ export function EventsButton() {
     } catch {
       if (token === generation.current) { setEvents([]); setRsvps([]); setProblem("Couldn’t load events. Check your connection and channel access, then retry."); }
     } finally { if (token === generation.current) setLoading(false); }
-  }, [supabase, server.id]);
+  }, [supabase, server.id, me.id]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch; realtime keeps it current
@@ -92,7 +98,11 @@ export function EventsButton() {
         : await supabase.from("event_rsvps").insert({ event_id: event.id, server_id: server.id });
       if (error && !(error.code === "23505" && !interested)) throw error;
       await load();
-    } catch { toast.error("Couldn’t update your interest. Try again."); }
+    } catch (error) {
+      const full = error && typeof error === "object" && "message" in error && String(error.message).includes("EVENT_FULL");
+      toast.error(full ? "This event just filled up. Try another date." : "Couldn’t update your interest. Try again.");
+      if (full) await load();
+    }
     finally { pendingIds.current.delete(event.id); setPending([...pendingIds.current]); }
   }
 
@@ -138,7 +148,8 @@ export function EventsButton() {
             <ul className="scrollbar-thin max-h-[60vh] space-y-2 overflow-y-auto" data-testid="events-list">
               {active.map((e) => {
                 const status = eventStatus(e, now);
-                const count = rsvps.filter((r) => r.event_id === e.id).length;
+                const count = e.rsvp_count ?? rsvps.filter((r) => r.event_id === e.id).length;
+                const full = e.capacity != null && count >= e.capacity;
                 const interested = rsvps.some((r) => r.event_id === e.id && r.user_id === me.id);
                 const channel = e.channel_id ? channels.find((c) => c.id === e.channel_id) : null;
                 return (
@@ -153,8 +164,8 @@ export function EventsButton() {
                       {channel?.name ?? e.location ?? "Somewhere"}
                     </p>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <Button size="sm" loading={pending.includes(e.id)} variant={interested ? "primary" : "secondary"} onClick={() => void toggleInterest(e, interested)} aria-pressed={interested}>
-                        {interested ? <Check className="size-4" aria-hidden /> : <Star className="size-4" aria-hidden />} Interested · {count}
+                      <Button size="sm" loading={pending.includes(e.id)} disabled={full && !interested} variant={interested ? "primary" : "secondary"} onClick={() => void toggleInterest(e, interested)} aria-pressed={interested}>
+                        {interested ? <Check className="size-4" aria-hidden /> : <Star className="size-4" aria-hidden />} {full && !interested ? "Full" : "Interested"} · {count}{e.capacity != null ? ` / ${e.capacity}` : ""}
                       </Button>
                       <Button size="sm" variant="ghost" aria-label={`Add ${e.name} to calendar`} onClick={() => { try { downloadEventCalendar(e, channel?.name); } catch { toast.error("Couldn’t export the event."); } }}><Download className="size-4" aria-hidden />Calendar</Button>
                       {status === "live" && channel && (
@@ -191,6 +202,9 @@ function EventForm({ initial, onDone }: { initial: ServerEvent | null; onDone: (
   const [location, setLocation] = useState(initial?.location ?? "");
   const [starts, setStarts] = useState(() => toLocalInput(new Date(initial?.starts_at ?? Date.now() + 60 * 60 * 1000)));
   const [ends, setEnds] = useState(() => initial?.ends_at ? toLocalInput(new Date(initial.ends_at)) : "");
+  const [capacity, setCapacity] = useState(initial?.capacity?.toString() ?? "");
+  const [repeat, setRepeat] = useState(1);
+  const batchIds = useRef<string[]>([]);
   const [busy, setBusy] = useState(false);
   const saving = useRef(false);
   const [problem, setProblem] = useState("");
@@ -203,8 +217,11 @@ function EventForm({ initial, onDone }: { initial: ServerEvent | null; onDone: (
     if (!name.trim()) return void setProblem("Enter an event topic.");
     if (Number.isNaN(startsAt.getTime()) || (!initial && startsAt.getTime() < Date.now() - 60_000)) return void setProblem("Pick a valid start time in the future.");
     if (endsAt && (Number.isNaN(endsAt.getTime()) || endsAt <= startsAt)) return void setProblem("The end has to be after the start.");
+    const capacityValue = capacity ? Number(capacity) : null;
+    if (capacityValue !== null && (!Number.isInteger(capacityValue) || capacityValue < 1 || capacityValue > 10000)) return void setProblem("Attendance limits must be between 1 and 10,000.");
     saving.current = true; setBusy(true); setProblem("");
     const values = {
+      ...(capacityValue !== null || initial?.capacity != null ? { capacity: capacityValue } : {}),
       name: name.trim(),
       description: description.trim(),
       channel_id: where === "elsewhere" ? null : where,
@@ -217,12 +234,19 @@ function EventForm({ initial, onDone }: { initial: ServerEvent | null; onDone: (
         let update = supabase.from("server_events").update(values).eq("id", initial.id);
         // Compare the editable fields so a stale form cannot overwrite another moderator’s changes.
         for (const key of ["name", "description", "channel_id", "location", "starts_at", "ends_at"] as const) update = initial[key] === null ? update.is(key, null) : update.eq(key, initial[key]!);
+        if (initial.capacity !== undefined) update = initial.capacity === null ? update.is("capacity", null) : update.eq("capacity", initial.capacity);
         const { data, error } = await update.select("id").maybeSingle();
         if (error) throw error;
         if (!data) { setProblem("This event changed or you no longer have access. Your edits are preserved; go back and reopen the event to review it."); return; }
       } else {
-        const { error } = await supabase.from("server_events").insert({ ...values, server_id: server.id, created_by: me.id });
-        if (error) throw error;
+        const dates = weeklyEventDates(startsAt, endsAt, repeat);
+        while (batchIds.current.length < repeat) batchIds.current.push(crypto.randomUUID());
+        const batch = dates.map((date, index) => ({ ...values, ...date, id: batchIds.current[index], server_id: server.id, created_by: me.id }));
+        const { error } = await supabase.from("server_events").insert(batch);
+        if (error?.code === "23505") {
+          const existing = await supabase.from("server_events").select("*").in("id", batch.map((row) => row.id));
+          if (existing.error || existing.data?.length !== batch.length || !batch.every((row) => existing.data.some((event) => event.id === row.id && Object.entries(row).every(([key, value]) => event[key as keyof ServerEvent] === value)))) throw error;
+        } else if (error) throw error;
       }
       toast.success(`${initial ? "Updated" : "Scheduled"} ${name.trim()}.`); onDone();
     } catch { setProblem("Couldn’t save the event. Your edits are preserved. Check your connection and moderator permissions, then retry."); }
@@ -266,6 +290,11 @@ function EventForm({ initial, onDone }: { initial: ServerEvent | null; onDone: (
         Description
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} maxLength={1000} rows={3} className={cn(field, "h-auto py-2")} />
       </label>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-sm font-semibold text-white">Attendance limit (optional)<input type="number" min={1} max={10000} step={1} value={capacity} onChange={(e) => setCapacity(e.target.value)} placeholder="Unlimited" className={field} /></label>
+        {!initial && <label className="block text-sm font-semibold text-white">Repeat<select value={repeat} onChange={(e) => setRepeat(Number(e.target.value))} className={field}><option value={1}>One event</option>{[4, 8, 12].map((count) => <option key={count} value={count}>Weekly · {count} occurrences</option>)}</select></label>}
+      </div>
+      {!initial && repeat > 1 && <p className="text-xs text-slate-400">Creates {repeat} separate weekly events in your device’s time zone. Edit or cancel individual occurrences afterward.</p>}
       {problem && <p role="alert" className="text-sm text-amber-200">{problem}</p>}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" onClick={onDone}>

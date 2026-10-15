@@ -297,8 +297,8 @@ export interface Database {
       privacy_settings: TableDef<{ user_id: string; friend_requests_from: string; updated_at: string }, { user_id?: string; friend_requests_from: string; updated_at?: string }>;
       server_invites: TableDef<{ code: string; server_id: string; created_by: string | null; max_uses: number | null; uses: number; expires_at: string | null; created_at: string }, never>;
       server_events: TableDef<
-        { id: string; server_id: string; channel_id: string | null; location: string | null; name: string; description: string; starts_at: string; ends_at: string | null; created_by: string | null; created_at: string },
-        { id?: string; server_id: string; channel_id?: string | null; location?: string | null; name: string; description?: string; starts_at: string; ends_at?: string | null; created_by?: string | null }
+        { id: string; server_id: string; channel_id: string | null; location: string | null; name: string; description: string; starts_at: string; ends_at: string | null; created_by: string | null; created_at: string; capacity?: number | null; rsvp_count?: number },
+        { id?: string; server_id: string; channel_id?: string | null; location?: string | null; name: string; description?: string; starts_at: string; ends_at?: string | null; created_by?: string | null; capacity?: number | null }
       >;
       event_rsvps: TableDef<{ event_id: string; server_id: string; user_id: string; created_at: string }, { event_id: string; server_id: string; user_id?: string }>;
       server_emojis: TableDef<{ id: string; server_id: string; name: string; path: string; created_by: string | null; created_at: string }, { id?: string; server_id: string; name: string; path: string; created_by?: string | null }>;
@@ -533,6 +533,7 @@ export interface Database {
       save_workspace_document: { Args: { p_channel: string; p_kind: string; p_title: string; p_content: Json; p_id?: string | null; p_revision?: number; p_timer?: string | null }; Returns: Database["public"]["Tables"]["workspace_documents"]["Row"][] };
       delete_workspace_document: { Args: { p_id: string; p_revision: number }; Returns: undefined };
       can_edit_workspace: { Args: { p_channel: string }; Returns: boolean };
+      list_server_events: { Args: { p_server: string }; Returns: (Database["public"]["Tables"]["server_events"]["Row"] & { interested: boolean })[] };
       save_workspace_asset: { Args: { p_channel: string; p_kind: string; p_content: Json; p_revision: number }; Returns: Database["public"]["Tables"]["workspace_assets"]["Row"][] };
       create_server_from_template: { Args: { p_name: string; p_description?: string; p_template?: string }; Returns: string };
       export_server_settings: { Args: { p_server: string }; Returns: Json };

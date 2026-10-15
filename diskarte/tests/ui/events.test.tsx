@@ -38,6 +38,35 @@ function mockWrites(result: { data: { id: string } | null; error: null | { code:
 }
 
 describe("events", () => {
+  it("uses canonical counts and disables full events without blocking RSVP withdrawals", async () => {
+    fake.client.rpc.mockResolvedValue({ data: [
+      { ...tables.server_events[0] as object, rsvp_count: 1001, capacity: 1001, interested: false },
+      { ...tables.server_events[1] as object, rsvp_count: 4, capacity: 4, interested: true },
+    ], error: null } as never);
+    render(<ServerFixture members={members} meId={MEMBER_ID} myRole="member"><EventsButton /></ServerFixture>);
+    await userEvent.setup().click(screen.getByTestId("events-button"));
+    expect(await screen.findByRole("button", { name: "Full · 1001 / 1001" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Interested · 4 / 4" })).toBeEnabled();
+    expect(fake.client.from).not.toHaveBeenCalled();
+  });
+  it("creates all weekly occurrences in one idempotent batch", async () => {
+    const insert = vi.fn(async (_values: unknown) => { void _values; return { error: null }; });
+    const read = fake.client.from.getMockImplementation()!;
+    fake.client.from.mockImplementation((table) => ({ ...read(table), insert }) as never);
+    const user = userEvent.setup();
+    render(<ServerFixture members={members}><EventsButton /></ServerFixture>);
+    await user.click(screen.getByTestId("events-button"));
+    await user.click(await screen.findByRole("button", { name: /Create Event/ }));
+    await user.type(screen.getByLabelText("Event topic"), "Weekly study");
+    await user.type(screen.getByLabelText("Attendance limit (optional)"), "8");
+    await user.selectOptions(screen.getByLabelText("Repeat"), "4");
+    await user.click(screen.getByRole("button", { name: "Create Event" }));
+    await waitFor(() => expect(insert).toHaveBeenCalledOnce());
+    const batch = vi.mocked(insert).mock.calls[0] as unknown as [Record<string, unknown>[]];
+    expect(batch[0]).toHaveLength(4);
+    expect(new Set(batch[0].map((event) => event.id)).size).toBe(4);
+    expect(batch[0].every((event) => event.capacity === 8 && event.name === "Weekly study")).toBe(true);
+  });
   it("shows LIVE, lists what's not over with interest counts, and lets members join a live voice event", async () => {
     const user = userEvent.setup();
     render(
@@ -75,6 +104,8 @@ describe("events", () => {
     render(<ServerFixture members={members}><EventsButton /></ServerFixture>);
     const button = screen.getByTestId("events-button");
     await waitFor(() => expect(button).toHaveTextContent("LIVE"));
+    await waitFor(() => expect(fake.joined(`db:server:${SERVER_ID}:events`)).toBeDefined());
+    await act(async () => { await Promise.resolve(); });
     vi.useFakeTimers();
     try {
       fireEvent.click(button);

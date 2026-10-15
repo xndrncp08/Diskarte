@@ -51,3 +51,14 @@ export function downloadEventCalendar(event: ServerEvent, location?: string) {
   document.body.appendChild(link); link.click(); link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+/** Finite weekly occurrences preserve device-local wall time through daylight-saving changes. */
+export function weeklyEventDates(starts: Date, ends: Date | null, count: number) {
+  if (![1, 4, 8, 12].includes(count) || !Number.isFinite(starts.getTime()) || ends && (!Number.isFinite(ends.getTime()) || ends <= starts)) throw new Error("Invalid event dates");
+  return Array.from({ length: count }, (_, week) => {
+    const start = new Date(starts); start.setDate(start.getDate() + week * 7);
+    const end = ends ? new Date(ends) : null; if (end) end.setDate(end.getDate() + week * 7);
+    if (end && end <= start) throw new Error("A recurring event ends before its start across a time change");
+    return { starts_at: start.toISOString(), ends_at: end?.toISOString() ?? null };
+  });
+}
