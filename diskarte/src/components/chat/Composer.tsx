@@ -17,6 +17,7 @@ import { EmojiPicker } from "./EmojiPicker";
 import { GifPicker } from "./GifPicker";
 import { StickerPicker } from "./StickerPicker";
 import { useDraft } from "@/lib/drafts";
+import { SyncNotice } from "@/components/profile/AccountPreferencesSync";
 
 /** Seconds left until `until` (a Date.now() timestamp), ticking while it's in the future. */
 function useCountdown(until: number | null | undefined) {
@@ -84,7 +85,7 @@ export function Composer({
 }) {
   const supabase = useSupabase();
   const { me } = useMe();
-  const [draft, setDraft] = useDraft(me.id, `${channelId}:${draftScope}`);
+  const [draft, setDraft, draftSync] = useDraft(me.id, `${channelId}:${draftScope}`);
   const sending = useRef(false);
   const [uploads, setUploads] = useState<PendingUpload[]>([]);
   const liveUploads = useRef<PendingUpload[]>([]);
@@ -274,6 +275,7 @@ export function Composer({
       onDragLeave={() => setDragging(false)}
       onDrop={onDrop}
     >
+      <SyncNotice sync={draftSync} />
       {dragging && (
         <div className="pointer-events-none absolute inset-x-4 -top-24 bottom-6 z-20 flex items-center justify-center rounded-xl border-2 border-dashed border-sun bg-abyss/80 font-pixel text-[10px] text-sun">
           DROP FILES HERE

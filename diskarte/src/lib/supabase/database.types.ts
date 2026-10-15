@@ -28,6 +28,7 @@ export interface Database {
   };
   public: {
     Tables: {
+      account_state: TableDef<{ user_id: string; key: string; value: Json; revision: number; updated_at: string }, never>;
       profiles: {
         Row: {
           id: string;
@@ -528,6 +529,7 @@ export interface Database {
       save_workspace_document: { Args: { p_channel: string; p_kind: string; p_title: string; p_content: Json; p_id?: string | null; p_revision?: number; p_timer?: string | null }; Returns: Database["public"]["Tables"]["workspace_documents"]["Row"][] };
       delete_workspace_document: { Args: { p_id: string; p_revision: number }; Returns: undefined };
       can_edit_workspace: { Args: { p_channel: string }; Returns: boolean };
+      save_account_state: { Args: { p_key: string; p_value: Json; p_revision: number }; Returns: Database["public"]["Tables"]["account_state"]["Row"][] };
       admin_site_traffic: { Args: Record<string, never>; Returns: Json };
     };
     Enums: {

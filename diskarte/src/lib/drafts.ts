@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { useAccountSync } from "@/hooks/useAccountSync";
 
 const PREFIX = "diskarte:draft:";
 const memory = new Map<string, string>();
@@ -31,10 +32,12 @@ export function useDraft(userId: string, conversation: string) {
     window.addEventListener("pagehide", save);
     return () => { window.removeEventListener("pagehide", save); save(); };
   }, [key]);
-  return [value, set] as const;
+  const apply = useCallback((next: import("./supabase/database.types").Json) => { if (typeof next === "string") set(next); }, [set]);
+  const sync = useAccountSync(userId, `draft:${conversation}`, value, apply, /^[0-9a-f-]{36}:(main|[0-9a-f-]{36})$/.test(conversation));
+  return [value, set, sync] as const;
 }
 export function clearDrafts() {
   timers.forEach(clearTimeout); timers.clear(); memory.clear();
-  try { for (const key of Object.keys(localStorage)) if (key.startsWith(PREFIX)) localStorage.removeItem(key); } catch { /* storage unavailable */ }
+  try { for (const key of Object.keys(localStorage)) if (key.startsWith(PREFIX) || key.startsWith("diskarte:sync:") && key.includes(":draft:")) localStorage.removeItem(key); } catch { /* storage unavailable */ }
   listeners.forEach((listener) => listener());
 }

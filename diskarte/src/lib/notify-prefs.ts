@@ -56,6 +56,8 @@ function save(next: NotifyPrefs) {
   listeners.forEach((l) => l());
 }
 
+export function replaceNotifyPrefs(value: unknown) { save(parseNotifyPrefs(JSON.stringify(value))); }
+
 export function setNotifyPrefs(patch: Partial<Omit<NotifyPrefs, "servers">>) {
   save({ ...readNotifyPrefs(), ...patch });
 }
