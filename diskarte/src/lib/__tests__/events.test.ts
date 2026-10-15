@@ -1,9 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { activeEvents, eventCalendar, eventStatus, type ServerEvent } from "@/lib/events";
+import { activeEvents, eventCalendar, eventStatus, weeklyEventDates, type ServerEvent } from "@/lib/events";
 
 const now = Date.parse("2026-10-13T12:00:00Z");
 
 describe("events", () => {
+  it("creates bounded weekly occurrences and rejects invalid series", () => {
+    const starts = new Date(2026, 9, 25, 18, 30), ends = new Date(2026, 9, 25, 19, 30);
+    const dates = weeklyEventDates(starts, ends, 4);
+    expect(dates).toHaveLength(4);
+    expect(dates[0]).toEqual({ starts_at: starts.toISOString(), ends_at: ends.toISOString() });
+    dates.forEach((date, index) => { const start = new Date(date.starts_at); expect(start.getHours()).toBe(18); expect(start.getDay()).toBe(starts.getDay()); expect(start.getDate()).toBe(new Date(2026, 9, 25 + index * 7).getDate()); });
+    expect(weeklyEventDates(starts, null, 1)[0].ends_at).toBeNull();
+    expect(() => weeklyEventDates(starts, ends, 1000)).toThrow();
+    expect(() => weeklyEventDates(starts, new Date(starts.getTime() - 1), 4)).toThrow();
+  });
   it("knows upcoming, live and ended (open-ended ones last 4 hours)", () => {
     expect(eventStatus({ starts_at: "2026-10-13T13:00:00Z", ends_at: null }, now)).toBe("upcoming");
     expect(eventStatus({ starts_at: "2026-10-13T11:00:00Z", ends_at: "2026-10-13T12:30:00Z" }, now)).toBe("live");
