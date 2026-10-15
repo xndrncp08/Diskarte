@@ -277,7 +277,7 @@ const ACTION_LABEL: Record<string, string> = {
   "broadcast.dispatch": "Broadcast",
   "broadcast.retract": "Took down banner",
   "waitlist.archived": "Archived waitlist application",
-  "report.sent": "Sent a report to the fix agent",
+  "report.sent": "Escalated a report",
   "report.resolved": "Resolved a report",
   "report.dismissed": "Dismissed a report",
   "report.open": "Reopened a report",

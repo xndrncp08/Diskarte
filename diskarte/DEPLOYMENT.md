@@ -81,16 +81,12 @@ The Control Center (`/admin`) is part of this app; there is nothing extra to dep
 - **Sign-up:** the Render service ships with `SIGNUP_MODE=invite`, which pauses public sign-up. Remove it (and turn **Auth → Providers → Allow new users to sign up** back on in Supabase) to open registrations.
 - **Temporary passwords:** accounts carrying `must_change_password` (e.g. created by the old portal) are still sent to `/reset-password?first=1` until they choose their own password.
 
-## 5. Problem reports and the fix agent
+## 5. Problem reports
 
 Signed-in users report problems from **Settings → Report a problem**; super admins triage them in the Control Center's **Reports** tab.
 
 - **Database:** apply `…_problem_reports.sql` after the earlier files. Until then the Reports tab says so and the rest of the Control Center works.
-- **Fix agent (optional):** **Fix with agent** on a report opens a public GitHub issue labelled `autofix` (the admin edits the text first, so strip names and emails). `.github/workflows/fix-agent.yml` then investigates, fixes, runs lint, typecheck and tests, and opens a pull request for review. It never merges or deploys.
-  1. Repo **Settings → Secrets → Actions**: add `ANTHROPIC_API_KEY`.
-  2. Repo **Settings → Actions → General**: enable **Allow GitHub Actions to create and approve pull requests**.
-  3. Create a fine-grained GitHub token for a maintainer with **Issues: read and write** on this repo only, and set it as `GITHUB_FIX_AGENT_TOKEN` in the app's environment (`GITHUB_REPO` defaults to `xndrncp08/Diskarte`).
-  4. Pull requests opened with the workflow's token don't trigger other workflows; review them and push or merge as usual.
+Reports are triaged manually. AI-backed report processing is disabled; existing issue links remain available.
 
 ## Environment variables
 
@@ -107,8 +103,6 @@ Signed-in users report problems from **Settings → Report a problem**; super ad
 | `RATE_LIMIT_AUTH_PER_MINUTE` | — | proxy | per-IP auth attempts per minute (default **5**) |
 | `RATE_LIMIT_API_PER_MINUTE` | — | proxy | per-IP `/api/*` requests per minute (default 120) |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | — | proxy | share rate-limit counters across instances (free Upstash tier) |
-| `GITHUB_FIX_AGENT_TOKEN` | — | server only | fine-grained token (Issues: write) that lets super admins send reports to the fix agent |
-| `GITHUB_REPO` | — | server only | `owner/name` for fix-agent issues (default `xndrncp08/Diskarte`) |
 | `SIGNUP_MODE` | — | server | `invite` pauses public sign-up |
 | `PORT` / `HOSTNAME` | — | container | set by the Dockerfile (Render injects `PORT`) |
 

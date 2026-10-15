@@ -19,7 +19,6 @@ const adminActions = vi.hoisted(() => ({
   banUserAction: vi.fn(async () => ({ ok: true })),
   unbanUserAction: vi.fn(async () => ({ ok: true })),
   setReportStatusAction: vi.fn(async () => ({ ok: true })),
-  sendToFixAgentAction: vi.fn(async () => ({ ok: true, data: { issueUrl: "https://github.com/xndrncp08/Diskarte/issues/7" } })),
 }));
 vi.mock("@/actions/admin", () => adminActions);
 
@@ -284,7 +283,7 @@ describe("Super Admin Control Center", () => {
     expect(screen.queryByTestId("roster-row")).toBeNull();
   });
 
-  it("triages problem reports and hands one to the fix agent after an editable, public-issue warning", async () => {
+  it("triages reports manually with no AI entry points and preserves resolved history", async () => {
     const user = userEvent.setup();
     renderCenter();
     const tab = await screen.findByRole("tab", { name: /Reports/ });
@@ -295,17 +294,10 @@ describe("Super Admin Control Center", () => {
     expect(rows[0]).toHaveTextContent("Messages in #general never load on my phone.");
     expect(rows[0]).toHaveTextContent("Juan");
 
-    await user.click(within(rows[0]).getByRole("button", { name: "Fix with agent" }));
-    expect(within(rows[0]).getByText(/public GitHub issue/)).toBeInTheDocument();
-    const title = within(rows[0]).getByLabelText("Issue title");
-    expect(title).toHaveValue("Something's broken: Messages in #general never load on my phone.");
-    expect((within(rows[0]).getByLabelText("Issue description") as HTMLTextAreaElement).value).toContain("- Page: /tambayan");
-    await user.clear(title);
-    await user.type(title, "Chat history never loads on Android");
-    await user.click(within(rows[0]).getByRole("button", { name: "Send to fix agent" }));
-    await waitFor(() =>
-      expect(adminActions.sendToFixAgentAction).toHaveBeenCalledWith(expect.objectContaining({ reportId: "30000000-0000-4000-8000-000000000001", title: "Chat history never loads on Android" })),
-    );
+    expect(screen.queryByRole("button", { name: /agent/i })).toBeNull();
+    expect(screen.queryByLabelText("Issue description")).toBeNull();
+    await user.click(within(rows[0]).getByRole("button", { name: "Resolve" }));
+    await waitFor(() => expect(adminActions.setReportStatusAction).toHaveBeenCalledWith({ reportId: "30000000-0000-4000-8000-000000000001", status: "resolved" }));
 
     await user.selectOptions(screen.getByLabelText("Filter reports"), "resolved");
     const resolved = screen.getAllByTestId("report-row");
