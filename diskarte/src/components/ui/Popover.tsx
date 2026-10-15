@@ -57,7 +57,9 @@ export function Popover({
     };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
-    const frame = requestAnimationFrame(() => panel.current?.querySelector<HTMLElement>("[data-autofocus], button, input")?.focus());
+    const frame = requestAnimationFrame(() => {
+      if (!panel.current?.contains(document.activeElement)) panel.current?.querySelector<HTMLElement>("[data-autofocus], button, input")?.focus();
+    });
     return () => {
       cancelAnimationFrame(frame);
       document.removeEventListener("mousedown", onDown);
