@@ -5,15 +5,25 @@ import { createFakeSupabase } from "../fixtures/fake-supabase";
 import { OWNER_ID, SERVER_ID, ServerFixture, channels, makeMember } from "../fixtures/server";
 
 const note = { id: "70000000-0000-4000-8000-000000000050", server_id: SERVER_ID, channel_id: channels[0].id, title: "Study notes", kind: "note", content: { text: "Original" }, revision: 1, created_by: OWNER_ID, updated_by: OWNER_ID, created_at: "2026-10-14T00:00:00Z", updated_at: "2026-10-14T00:00:00Z" };
-const fake = createFakeSupabase({ workspace_documents: [note] });
+const tables = { workspace_documents: [note], channels: [...channels] };
+const fake = createFakeSupabase(tables);
 const members = [makeMember(OWNER_ID, "Kapitan", "admin")];
 const save = vi.fn(async () => ({ ok: false, error: "Someone updated this item. Your changes are preserved; review the latest version before saving.", code: "CONFLICT" }));
 vi.mock("@/components/providers/RuntimeConfig", () => ({ useSupabase: () => fake.client, useOptionalSupabase: () => fake.client }));
 vi.mock("@/actions/workspace", () => ({ saveWorkspaceAction: (...args: unknown[]) => { void args; return save(); }, deleteWorkspaceAction: vi.fn() }));
 const { SharedWorkspaceView } = await import("@/components/workspace/SharedWorkspaceView");
 
-beforeEach(() => { vi.mocked(fake.client.rpc).mockResolvedValue({ data: true, error: null } as never); save.mockClear(); });
+beforeEach(() => { tables.channels = [...channels]; vi.mocked(fake.client.rpc).mockResolvedValue({ data: true, error: null } as never); save.mockClear(); });
 describe("shared workspace editing", () => {
+  it("clears cached content after channel access is revoked", async () => {
+    render(<ServerFixture members={members}><SharedWorkspaceView /></ServerFixture>);
+    await userEvent.setup().click(await screen.findByRole("button", { name: /Study notes/ }));
+    tables.channels = [];
+    window.dispatchEvent(new Event("online"));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getByRole("status")).toHaveTextContent("don’t have access");
+    expect(screen.queryByRole("button", { name: /Study notes/ })).toBeNull();
+  });
   it("identifies unapplied migrations instead of reporting a misleading permission error", async () => {
     vi.mocked(fake.client.rpc).mockResolvedValue({ data: null, error: { code: "PGRST202" } } as never);
     render(<ServerFixture members={members}><SharedWorkspaceView /></ServerFixture>);

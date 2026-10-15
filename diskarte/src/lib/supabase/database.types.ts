@@ -28,6 +28,7 @@ export interface Database {
   };
   public: {
     Tables: {
+      workspace_assets: TableDef<{ channel_id: string; kind: "resources" | "whiteboard"; content: Json; revision: number; updated_by: string | null; updated_at: string }, never>;
       account_state: TableDef<{ user_id: string; key: string; value: Json; revision: number; updated_at: string }, never>;
       profiles: {
         Row: {
@@ -532,6 +533,7 @@ export interface Database {
       save_workspace_document: { Args: { p_channel: string; p_kind: string; p_title: string; p_content: Json; p_id?: string | null; p_revision?: number; p_timer?: string | null }; Returns: Database["public"]["Tables"]["workspace_documents"]["Row"][] };
       delete_workspace_document: { Args: { p_id: string; p_revision: number }; Returns: undefined };
       can_edit_workspace: { Args: { p_channel: string }; Returns: boolean };
+      save_workspace_asset: { Args: { p_channel: string; p_kind: string; p_content: Json; p_revision: number }; Returns: Database["public"]["Tables"]["workspace_assets"]["Row"][] };
       create_server_from_template: { Args: { p_name: string; p_description?: string; p_template?: string }; Returns: string };
       export_server_settings: { Args: { p_server: string }; Returns: Json };
       get_reactions_snapshot: { Args: { p_channel: string; p_messages: string[] }; Returns: Json };
