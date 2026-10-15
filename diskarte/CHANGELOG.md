@@ -6,6 +6,7 @@
 - Added a private, transactional Web Push outbox, per-device session-bound subscriptions, leased dispatch, retries, event reminders, and invalid endpoint cleanup.
 - Added notification installation guidance, device management, synchronized delivery preferences, safe deep links, and private lock-screen defaults using the existing service worker.
 - Added queue/RLS, transport encryption, permission, worker-only browser, and interaction regressions; restored dialog focus as soon as dismissal begins.
+- Updated Next.js to 16.4.1, Sharp to 0.35.5 and source-map-js to 1.2.2; the production dependency audit reports zero vulnerabilities. ESLint’s unpatched development dependency advisories remain documented.
 - Push remains disabled until production secrets and the reviewed database setup are configured. See `docs/web-push.md`.
 
 ## 2026-10-14 — remaining-platform follow-up
@@ -36,8 +37,3 @@ See [the follow-up delivery report](RELEASE-2026-10-14-remaining.md) for exact r
 - Expanded database, security, UI, concurrency, recovery, PWA and performance regression tests.
 
 See [delivery scope and limitations](RELEASE-2026-10-14.md) and [migration/recovery operations](OPERATIONS.md). GitHub CI passed the full authenticated browser suite and Docker checks. The full platform master prompt is not complete; production migrations, live deployment, hardware testing and the explicitly listed product work remain pending.
-# Live voice previews
-
-- Added authorized LiveKit participant previews to Tambayan icons, with desktop hover/keyboard navigation and mobile long-press sheets.
-- Reused shared Realtime presence for speaking indicators and snapshot invalidations; added a signed LiveKit webhook for disconnect and track updates.
-- Added authorization, webhook integrity, participant scaling, mobile and interaction regression coverage. See `docs/voice-preview.md` for deployment configuration.
