@@ -67,7 +67,9 @@ export function useAccountSync(userId: string, key: string, value: Json, apply: 
         if (data) receive(data);
         else if (!loaded) {
           // Import an existing local draft/preferences only when no account copy exists.
-          meta.current.dirty = true; persist();
+          // Untouched empty drafts need no row; an existing dirty clear still needs its tombstone.
+          meta.current.dirty ||= !key.startsWith("draft:") || latest.current !== "";
+          persist();
         }
         loaded = true; setReady(true); setCycle((n) => n + 1);
       } catch (error) {
