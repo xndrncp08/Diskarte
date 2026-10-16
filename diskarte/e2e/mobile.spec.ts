@@ -156,8 +156,8 @@ test.describe("mobile — app shell", () => {
     await expect(page.getByRole("dialog", { name: "User settings" })).toBeVisible();
   });
 
-  test("fills the screen to the bottom edge even when the viewport is under-reported (installed iPhone app)", async ({ page }) => {
-    // iOS 26 standalone apps can report a visual viewport shorter than the screen; simulate it.
+  test("spans to the bottom edge and lifts content above a browser bar covering it", async ({ page }) => {
+    // A browser bottom bar (iOS Safari's toolbar) covering the last 60 px: the visible viewport is shorter.
     await page.addInitScript(() => {
       const real = Object.getOwnPropertyDescriptor(VisualViewport.prototype, "height")!;
       Object.defineProperty(VisualViewport.prototype, "height", { configurable: true, get() { return (real.get!.call(this) as number) - 60; } });
@@ -166,12 +166,19 @@ test.describe("mobile — app shell", () => {
     await page.goto("/tambayan");
     const h = page.viewportSize()!.height;
     const bottom = async (locator: Locator) => { const box = (await locator.boundingBox())!; return box.y + box.height; };
+    // The background reaches the bottom of the screen…
     await expect.poll(() => bottom(page.getByTestId("shell"))).toBeGreaterThanOrEqual(h - 1);
-    expect(await bottom(page.getByRole("navigation", { name: "Main destinations" }))).toBeGreaterThanOrEqual(h - 1);
+    // …and the tabs sit just above the bar instead of under it.
+    await expect.poll(() => bottom(page.getByRole("navigation", { name: "Main destinations" }))).toBeLessThanOrEqual(h - 59);
+    expect(await bottom(page.getByRole("navigation", { name: "Main destinations" }))).toBeGreaterThanOrEqual(h - 62);
+    // The drawer's columns run to the bottom too, with their content above the bar.
     await page.getByRole("button", { name: "Open navigation" }).click();
     const rail = page.locator('[data-mobile-navigation] nav[aria-label="Servers"]').locator("..");
     await expect.poll(() => bottom(rail)).toBeGreaterThanOrEqual(h - 1);
-    await expect.poll(() => bottom(page.getByTestId("user-panel").first())).toBeGreaterThanOrEqual(h - 1);
+    const panel = page.getByTestId("user-panel").first();
+    await expect.poll(() => bottom(panel)).toBeGreaterThanOrEqual(h - 1);
+    expect(await bottom(panel.getByRole("button", { name: /Set status/ }))).toBeLessThanOrEqual(h - 60);
+    expect(await bottom(page.getByRole("button", { name: /^Notifications/ }).first())).toBeLessThanOrEqual(h - 60);
   });
 
   test("call controls in the dock are touch-sized", async ({ page }) => {
