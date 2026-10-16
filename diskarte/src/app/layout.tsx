@@ -31,14 +31,28 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export const viewport: Viewport = {
-  themeColor: "#0F172A",
-  colorScheme: "dark light",
-  width: "device-width",
-  initialScale: 1,
-  viewportFit: "cover",
-  interactiveWidget: "resizes-content",
-};
+// The browser chrome / installed-app status bar matches the saved colour mode from the first paint.
+const THEME_COLOR = { dark: "#0F172A", light: "#f8fafc" } as const;
+
+export async function generateViewport(): Promise<Viewport> {
+  const mode = (await cookies()).get("diskarte-mode")?.value;
+  return {
+    themeColor:
+      mode === "light"
+        ? THEME_COLOR.light
+        : mode === "system"
+          ? [
+              { media: "(prefers-color-scheme: light)", color: THEME_COLOR.light },
+              { media: "(prefers-color-scheme: dark)", color: THEME_COLOR.dark },
+            ]
+          : THEME_COLOR.dark,
+    colorScheme: mode === "light" ? "light" : mode === "system" ? "dark light" : "dark",
+    width: "device-width",
+    initialScale: 1,
+    viewportFit: "cover",
+    interactiveWidget: "resizes-content",
+  };
+}
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   // Reading request headers opts every route into dynamic rendering, which the per-request CSP
