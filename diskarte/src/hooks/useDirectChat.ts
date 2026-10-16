@@ -9,6 +9,7 @@ import { parseAttachments, olderThan, PAGE_SIZE, type Attachment, type MessageAu
 import { dequeue, enqueue, isNetworkError, outboxFor, type OutboxEntry } from "@/lib/outbox";
 import { useOutboxRetry } from "./useOutboxRetry";
 import { subscribeDbChanges } from "@/lib/realtime";
+import { createOnce } from "@/lib/once";
 import { playSfx } from "@/lib/sfx";
 import type { ChatMessage, SendExtras, SendResult } from "./useChannelChat";
 import { dmToChat } from "@/lib/direct-message";
@@ -39,12 +40,13 @@ export function useDirectChat(conversationId: string, initial: { messages: Direc
   }, [onIncoming]);
 
   useEffect(() => {
+    const firstTime = createOnce();
     return subscribeDbChanges(supabase, `dm:${conversationId}`, (channel) =>
       channel
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "direct_messages", filter: `conversation_id=eq.${conversationId}` }, ({ new: row }) => {
           const dm = row as DirectMessage;
           setMessages((prev) => (prev.some((m) => m.id === dm.id) ? prev.map((m) => (m.id === dm.id ? { ...dmToChat(dm, m.author) } : m)) : [...prev, dmToChat(dm, authorOf(dm.author_id))].sort(byTime)));
-          if (dm.author_id !== me.id) {
+          if (dm.author_id !== me.id && firstTime(dm.id)) {
             playSfx("message");
             incoming.current?.();
           }

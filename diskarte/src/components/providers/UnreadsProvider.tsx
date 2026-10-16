@@ -1,5 +1,6 @@
 "use client";
 
+import { createOnce } from "@/lib/once";
 import { closeNotifications, flushReads, notificationTag, pendingReads, queueRead } from "@/lib/read-receipts";
 import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from "react";
@@ -48,6 +49,9 @@ export function isUnread(c: ChannelUnread | undefined) {
  * it every 30 s and on focus, and right away when someone mentions me (my own message_mentions rows).
  * The open server feeds channel activity in live; reading a channel marks it on the server (debounced).
  */
+// One ping and alert per mentioned message, however many times the row event arrives.
+const mentionOnce = createOnce();
+
 export function UnreadsProvider({ children }: { children: ReactNode }) {
   const supabase = useOptionalSupabase();
   const { me } = useMe();
@@ -69,7 +73,7 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
   // Someone @mentioned me: ping, and a desktop notification (Settings → Notifications), unless the
   // server is muted or set to Nothing, or I'm already looking at that channel.
   const onMention = useEffectEvent(async (row: { message_id?: string; channel_id?: string; server_id?: string }) => {
-    if (!supabase || !row.message_id || !row.channel_id || !row.server_id) return;
+    if (!supabase || !row.message_id || !row.channel_id || !row.server_id || !mentionOnce(row.message_id)) return;
     const level = serverNotify(readNotifyPrefs(), row.server_id);
     if (level.muted || level.level === "nothing") return;
     if (serverMutes(readChannelMutes(), row.server_id).muted.has(row.channel_id)) return;
