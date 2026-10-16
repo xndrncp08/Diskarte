@@ -147,21 +147,30 @@ body {
 html { -webkit-text-size-adjust: 100%; }
 button, [role="button"], [role="tab"] { -webkit-user-select: none; user-select: none; }
 .app-viewport { overscroll-behavior: none; }
-.overlay-viewport { top: var(--app-top, 0); bottom: auto; height: var(--app-height, 100dvh); }
+/* Pinned to every edge: installed iPhone apps can report a viewport shorter than the screen
+   (iOS 26 standalone), which left an empty strip at the bottom. The measured visible area is only
+   used while the on-screen keyboard is up, to keep inputs above it. */
+.overlay-viewport { top: 0; bottom: 0; }
+html[data-keyboard="true"] .overlay-viewport { top: var(--app-top, 0); bottom: auto; height: var(--app-height, 100dvh); }
 .overlay-viewport > [role="dialog"] { max-height: calc(var(--app-height, 100dvh) - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow-y: auto; }
 @media (max-width: 767px) {
   .overlay-viewport[data-window-layer] > [data-window] { position: absolute; inset: 0; height: 100%; max-height: 100%; }
   .overlay-viewport [data-window-body] { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
   [data-floating="context-menu"] { max-height: calc(var(--app-height, 100dvh) - 1rem); }
-  .app-viewport { position: fixed; inset-inline: 0; top: var(--app-top, 0); height: var(--app-height, 100dvh); padding-top: env(safe-area-inset-top); padding-inline: env(safe-area-inset-left) env(safe-area-inset-right); }
+  .app-viewport { position: fixed; inset: 0; height: auto; padding-top: env(safe-area-inset-top); padding-inline: env(safe-area-inset-left) env(safe-area-inset-right); }
+  .app-viewport[data-keyboard="true"] { bottom: auto; top: var(--app-top, 0); height: var(--app-height, 100dvh); }
   .app-viewport[data-keyboard="true"] .mobile-tabs { display: none; }
-  /* Fixed drawers bypass the shell's padding, so each column needs its own safe area. */
+  /* Fixed drawers bypass the shell's padding: clear the status bar here; the columns run to the
+     bottom edge and pad their own content for the home indicator (rail, user panel). */
   .app-viewport [data-mobile-navigation] {
+    top: 0;
+    bottom: 0;
+    padding-top: env(safe-area-inset-top);
+  }
+  .app-viewport[data-keyboard="true"] [data-mobile-navigation] {
     top: var(--app-top, 0);
     bottom: auto;
     height: var(--app-height, 100dvh);
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
   }
   .app-viewport [data-panel="nav"] { max-width: calc(100vw - 72px); }
   .app-viewport [data-testid="message-list"] { min-height: 0; }

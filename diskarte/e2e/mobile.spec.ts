@@ -156,6 +156,24 @@ test.describe("mobile — app shell", () => {
     await expect(page.getByRole("dialog", { name: "User settings" })).toBeVisible();
   });
 
+  test("fills the screen to the bottom edge even when the viewport is under-reported (installed iPhone app)", async ({ page }) => {
+    // iOS 26 standalone apps can report a visual viewport shorter than the screen; simulate it.
+    await page.addInitScript(() => {
+      const real = Object.getOwnPropertyDescriptor(VisualViewport.prototype, "height")!;
+      Object.defineProperty(VisualViewport.prototype, "height", { configurable: true, get() { return (real.get!.call(this) as number) - 60; } });
+    });
+    await signUpAndOnboard(page, makeUser("Edge"));
+    await page.goto("/tambayan");
+    const h = page.viewportSize()!.height;
+    const bottom = async (locator: Locator) => { const box = (await locator.boundingBox())!; return box.y + box.height; };
+    await expect.poll(() => bottom(page.getByTestId("shell"))).toBeGreaterThanOrEqual(h - 1);
+    expect(await bottom(page.getByRole("navigation", { name: "Main destinations" }))).toBeGreaterThanOrEqual(h - 1);
+    await page.getByRole("button", { name: "Open navigation" }).click();
+    const rail = page.locator('[data-mobile-navigation] nav[aria-label="Servers"]').locator("..");
+    await expect.poll(() => bottom(rail)).toBeGreaterThanOrEqual(h - 1);
+    await expect.poll(() => bottom(page.getByTestId("user-panel").first())).toBeGreaterThanOrEqual(h - 1);
+  });
+
   test("call controls in the dock are touch-sized", async ({ page }) => {
     await signUpAndOnboard(page, makeUser("Caller"));
     await createServer(page, `Caller ${Date.now().toString(36)}`);

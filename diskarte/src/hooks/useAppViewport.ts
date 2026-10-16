@@ -14,7 +14,10 @@ export function useAppViewport(ref: RefObject<HTMLElement | null>) {
       el.style.setProperty("--app-top", `${viewport?.offsetTop ?? 0}px`);
       document.documentElement.style.setProperty("--app-height", `${height}px`);
       document.documentElement.style.setProperty("--app-top", `${viewport?.offsetTop ?? 0}px`);
-      el.dataset.keyboard = String(window.innerHeight - height > 120);
+      const keyboard = String(window.innerHeight - height > 120);
+      el.dataset.keyboard = keyboard;
+      // Dialog layers live outside the shell; they size to the visible area only with the keyboard up.
+      document.documentElement.dataset.keyboard = keyboard;
     };
     update();
     viewport?.addEventListener("resize", update);
@@ -26,6 +29,7 @@ export function useAppViewport(ref: RefObject<HTMLElement | null>) {
       window.removeEventListener("resize", update);
       document.documentElement.style.removeProperty("--app-height");
       document.documentElement.style.removeProperty("--app-top");
+      delete document.documentElement.dataset.keyboard;
     };
   }, [ref]);
 }

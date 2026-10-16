@@ -80,6 +80,7 @@ describe("app viewport", () => {
     expect(el.style.getPropertyValue("--app-height")).toBe("450px");
     expect(document.documentElement.style.getPropertyValue("--app-height")).toBe("450px");
     expect(el.dataset.keyboard).toBe("true");
+    expect(document.documentElement.dataset.keyboard).toBe("true");
     hook.unmount();
     expect(document.documentElement.style.getPropertyValue("--app-height")).toBe("");
     vi.unstubAllGlobals();
