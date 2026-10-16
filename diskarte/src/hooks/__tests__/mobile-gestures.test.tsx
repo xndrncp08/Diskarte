@@ -1,7 +1,7 @@
 import { fireEvent, render, renderHook, screen } from "@testing-library/react";
 import { useRef } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { useAppViewport } from "../useAppViewport";
+import { standaloneFill, useAppViewport } from "../useAppViewport";
 import { useSwipeReply } from "../useSwipeReply";
 
 function Swipeable({ onReply, disabled = false }: { onReply: () => void; disabled?: boolean }) {
@@ -84,5 +84,19 @@ describe("app viewport", () => {
     hook.unmount();
     expect(document.documentElement.style.getPropertyValue("--app-height")).toBe("");
     vi.unstubAllGlobals();
+  });
+});
+
+describe("installed iPhone app fill", () => {
+  const phone = { width: 430, height: 932 };
+  it("uses the real screen height when the app's viewport comes up short", () => {
+    expect(standaloneFill({ standalone: true }, { innerWidth: 430, innerHeight: 873 }, phone, true)).toBe(932);
+    expect(standaloneFill({ standalone: true }, { innerWidth: 932, innerHeight: 400 }, phone, false)).toBe(430);
+  });
+  it("leaves browsers, Android, full viewports and iPad split view alone", () => {
+    expect(standaloneFill({}, { innerWidth: 430, innerHeight: 873 }, phone, true)).toBeNull();
+    expect(standaloneFill({ standalone: true }, { innerWidth: 430, innerHeight: 932 }, phone, true)).toBeNull();
+    expect(standaloneFill({ standalone: true }, { innerWidth: 320, innerHeight: 873 }, { width: 1024, height: 1366 }, true)).toBeNull();
+    expect(standaloneFill({ standalone: true }, { innerWidth: 430, innerHeight: 500 }, phone, true)).toBeNull();
   });
 });
