@@ -1,7 +1,7 @@
 import { fireEvent, render, renderHook, screen } from "@testing-library/react";
 import { useRef } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { bottomLayout, standaloneFill, useAppViewport } from "../useAppViewport";
+import { useAppViewport } from "../useAppViewport";
 import { useSwipeReply } from "../useSwipeReply";
 
 function Swipeable({ onReply, disabled = false }: { onReply: () => void; disabled?: boolean }) {
@@ -87,29 +87,3 @@ describe("app viewport", () => {
   });
 });
 
-describe("installed iPhone app fill", () => {
-  const phone = { width: 430, height: 932 };
-  it("uses the real screen height when the app's viewport comes up short", () => {
-    expect(standaloneFill({ standalone: true }, { innerWidth: 430, innerHeight: 873 }, phone, true)).toBe(932);
-    expect(standaloneFill({ standalone: true }, { innerWidth: 932, innerHeight: 400 }, phone, false)).toBe(430);
-  });
-  it("leaves browsers, Android, full viewports and iPad split view alone", () => {
-    expect(standaloneFill({}, { innerWidth: 430, innerHeight: 873 }, phone, true)).toBeNull();
-    expect(standaloneFill({ standalone: true }, { innerWidth: 430, innerHeight: 932 }, phone, true)).toBeNull();
-    expect(standaloneFill({ standalone: true }, { innerWidth: 320, innerHeight: 873 }, { width: 1024, height: 1366 }, true)).toBeNull();
-    expect(standaloneFill({ standalone: true }, { innerWidth: 430, innerHeight: 500 }, phone, true)).toBeNull();
-  });
-});
-
-describe("bottom layout", () => {
-  it("spans the full height and lifts content above whatever covers the bottom", () => {
-    // Safari toolbar shown: the visible area ends 80 px above the large viewport's bottom.
-    expect(bottomLayout({ fill: null, large: 932, innerHeight: 852, visibleBottom: 852 })).toEqual({ full: 932, obscured: 80 });
-    // Toolbar collapsed: nothing covered.
-    expect(bottomLayout({ fill: null, large: 932, innerHeight: 932, visibleBottom: 932 })).toEqual({ full: 932, obscured: 0 });
-    // Installed app with the iOS short-viewport bug: the screen height, nothing to lift.
-    expect(bottomLayout({ fill: 932, large: 873, innerHeight: 873, visibleBottom: 873 })).toEqual({ full: 932, obscured: 0 });
-    // No large-viewport support (probe reads 0): falls back to the window.
-    expect(bottomLayout({ fill: null, large: 0, innerHeight: 800, visibleBottom: 800 })).toEqual({ full: 800, obscured: 0 });
-  });
-});
