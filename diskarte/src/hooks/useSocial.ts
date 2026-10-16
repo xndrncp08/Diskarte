@@ -1,5 +1,6 @@
 "use client";
 
+import { closeNotifications, flushReads, notificationTag, pendingReads, queueRead } from "@/lib/read-receipts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
@@ -62,7 +63,13 @@ export function useConversations() {
   const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
   // What this tab has read, so a reload that races the read receipt (or a device clock behind the
   // server's) can never turn a conversation you've seen back to unread.
-  const readMarks = useRef(new Map<string, string>());
+  const readMarks = useRef<Map<string, string>>(
+    new Map(
+      Object.entries(typeof window === "undefined" ? {} : pendingReads())
+        .filter(([key]) => key.startsWith("dm:"))
+        .map(([key, at]) => [key.slice("dm:".length), at]),
+    ),
+  );
 
   const load = useCallback(async () => {
     const { data: mine } = await supabase.from("dm_participants").select("conversation_id, last_read_at").eq("user_id", me.id);
@@ -121,7 +128,9 @@ export function useConversations() {
             return { ...c, lastReadAt: latest(c.lastReadAt, mark) };
           }) ?? prev,
       );
-      void supabase.rpc("mark_dm_read", { p_conversation_id: conversationId });
+      queueRead("dm", conversationId, new Date().toISOString());
+      closeNotifications(notificationTag("dm", conversationId));
+      void flushReads(supabase);
     },
     [supabase],
   );

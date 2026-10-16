@@ -2,6 +2,8 @@
  * Notification settings (Discord's), per browser: desktop alerts on or off, DM alerts, and per server
  * a level (@mentions only, or nothing) and a mute, which also hides the server's unread pill.
  */
+import { trackShownNotification } from "@/lib/read-receipts";
+
 export type NotifyLevel = "mentions" | "nothing";
 export const PUSH_KINDS = ["dm", "mention", "reply", "friend", "invitation", "call", "event", "moderation", "security"] as const;
 export type PushKind = typeof PUSH_KINDS[number];
@@ -119,6 +121,8 @@ export function desktopNotify(opts: { title: string; body: string; tag: string; 
   let n: Notification;
   try { n = new Notification(opts.title, { body: opts.body.slice(0, 180), tag: opts.tag, icon: "/icons/icon-192.png" }); }
   catch { return; }
+  // Reading the conversation closes it (see read-receipts.closeNotifications).
+  trackShownNotification(opts.tag, n);
   n.onclick = () => {
     window.focus();
     opts.open(opts.href);

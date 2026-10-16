@@ -96,12 +96,20 @@ self.addEventListener("push", (event) => {
       return;
     }
     if (state.seen.includes(payload.id) || (state.latest[payload.tag] || 0) > payload.timestamp) return;
+    const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    // Already reading that conversation in a visible, focused window: the page shows it; no alert.
+    const target = new URL(pushPath(payload.href), self.location.origin).pathname;
+    const looking = clients.some((client) => client.visibilityState === "visible" && client.focused && new URL(client.url).pathname === target);
+    if (looking) {
+      await pushStore((old) => old.userId !== payload.userId ? old : { ...old, seen: [...old.seen.slice(-99), payload.id] });
+      clients.forEach((client) => client.postMessage({ type: "PUSH_ACTIVITY" }));
+      return;
+    }
     const options = { body: payload.body.slice(0,180), icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", tag: payload.tag.slice(0,100), timestamp: payload.timestamp, silent: payload.silent === true, renotify: false,
       data: { id: payload.id, userId: payload.userId, href: pushPath(payload.href) }, actions: [{ action: "open", title: "Open Diskarte" }, { action: "dismiss", title: "Dismiss" }] };
     await self.registration.showNotification(payload.title.slice(0,100), options);
     await pushStore((old) => old.userId !== payload.userId ? old : { ...old, seen: [...old.seen.slice(-99),payload.id], latest: { ...Object.fromEntries(Object.entries(old.latest).slice(-99)),[payload.tag]:payload.timestamp } });
     if (typeof payload.badge === "number") await pushBadge(payload.badge);
-    const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     clients.forEach((client) => client.postMessage({ type: "PUSH_ACTIVITY" }));
   });
   event.waitUntil(pushSerial);
