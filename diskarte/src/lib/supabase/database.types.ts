@@ -523,6 +523,8 @@ export interface Database {
         Returns: { id: string; name: string; description: string; icon_url: string | null; category: string; member_count: number; active_members: number; is_member: boolean }[];
       };
       join_public_server: { Args: { p_server: string }; Returns: string };
+      mark_channel_read_until: { Args: { p_channel: string; p_at: string }; Returns: undefined };
+      mark_dm_read_until: { Args: { p_conversation_id: string; p_at: string }; Returns: undefined };
       vote_poll: { Args: { p_message: string; p_options: number[] }; Returns: undefined };
       search_messages: {
         Args: { p_server: string; p_query: string; p_channel?: string | null; p_author?: string | null; p_before?: string | null; p_limit?: number };

@@ -30,3 +30,9 @@ it("opens safe same-origin notification targets and supports dismiss actions",as
  w.client.navigate.mockClear();await w.emit("notificationclick",{notification:{close,data:{href:"https://evil.test"}},action:"dismiss"});expect(w.client.navigate).not.toHaveBeenCalled();
  await w.emit("notificationclick",{notification:{close,data:{userId:randomUUID(),href:"/tambayan/private"}},action:"open"});expect(w.client.navigate).toHaveBeenCalledWith("https://diskarte.test/tambayan");
 });
+it("doesn't alert for the conversation already open and focused, but still does once you look away",async()=>{
+ const w=worker();Object.assign(w.client,{url:"https://diskarte.test/tambayan/dm/one",visibilityState:"visible",focused:true});
+ await w.emit("push",{data:{json:payload}});expect(w.show).not.toHaveBeenCalled();expect(w.client.postMessage).toHaveBeenCalledWith({type:"PUSH_ACTIVITY"});
+ Object.assign(w.client,{focused:false});await w.emit("push",{data:{json:payload}});expect(w.show).toHaveBeenCalledOnce();
+ Object.assign(w.client,{url:"https://diskarte.test/tambayan/dm/other",focused:true});await w.emit("push",{data:{json:payload}});expect(w.show).toHaveBeenCalledTimes(2);
+});

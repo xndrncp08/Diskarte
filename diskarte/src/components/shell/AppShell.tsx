@@ -17,7 +17,7 @@ import type { PlatformRole } from "@/lib/admin";
 import { cn } from "@/lib/utils";
 import { useIsCanvas, useLayout, WorkspaceProvider } from "@/components/workspace/WorkspaceProvider";
 import { UnreadsProvider } from "@/components/providers/UnreadsProvider";
-import { DmNotifier } from "./DmNotifier";
+import { AppBadge, DmNotifier } from "./DmNotifier";
 import { PushBadge } from "@/components/notifications/PushBadge";
 import { ServerRail } from "./ServerRail";
 import { ShellUIProvider, useShellUI } from "./ShellUI";
@@ -129,6 +129,7 @@ export function AppShell({ servers, platformRole = "member", children }: { serve
           <ShellUIBridge>
             <MembershipWatcher userId={me.id} />
             <DmNotifier />
+            <AppBadge />
             <Frame servers={servers}>{children}</Frame>
             <ConfirmHost />
           </ShellUIBridge>

@@ -1,5 +1,6 @@
 "use client";
 
+import { closeNotifications, flushReads, notificationTag, pendingReads, queueRead } from "@/lib/read-receipts";
 import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMe } from "@/components/providers/MeProvider";
@@ -52,7 +53,14 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
   const { me } = useMe();
   const [channels, setChannels] = useState<ReadonlyMap<string, ChannelUnread>>(() => new Map());
   // Read marks made in this tab: a refresh racing the server write never brings an unread back.
-  const marks = useRef(new Map<string, string>());
+  // Seeded with receipts a previous session queued but the server hadn't confirmed yet.
+  const marks = useRef<Map<string, string>>(
+    new Map(
+      Object.entries(typeof window === "undefined" ? {} : pendingReads())
+        .filter(([key]) => key.startsWith("channel:"))
+        .map(([key, at]) => [key.slice("channel:".length), at]),
+    ),
+  );
   const pending = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   // "Mark Unread" read points, kept until the server agrees (a refresh in between can't undo it).
   const rewinds = useRef(new Map<string, string>());
@@ -74,7 +82,7 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
     ]);
     if (!message) return;
     const { data: author } = message.author_id ? await supabase.from("profiles").select("display_name").eq("id", message.author_id).maybeSingle() : { data: null };
-    desktopNotify({ title: `${author?.display_name ?? "Someone"} in #${channel?.name ?? "a channel"}`, body: message.content, tag: row.message_id, href, open: (to) => router.push(to) });
+    desktopNotify({ title: `${author?.display_name ?? "Someone"} in #${channel?.name ?? "a channel"}`, body: message.content, tag: notificationTag("channel", row.channel_id), href, open: (to) => router.push(to) });
   });
 
   const refresh = useCallback(async () => {
@@ -88,7 +96,10 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
           const rewind = rewinds.current.get(r.channel_id);
           if (rewind && Date.parse(r.read_at) <= Date.parse(rewind) + 1000) rewinds.current.delete(r.channel_id);
           const readAt = rewinds.current.get(r.channel_id) ?? later(r.read_at, marks.current.get(r.channel_id)) ?? r.read_at;
-          return [r.channel_id, { serverId: r.server_id, lastMessageAt: r.last_message_at, readAt, mentions: r.mentions }];
+          // The server counts mentions after ITS cursor; if this device has read past the newest
+          // message (receipt still on its way), those mentions are already seen.
+          const seen = !rewinds.current.has(r.channel_id) && !!r.last_message_at && Date.parse(readAt) >= Date.parse(r.last_message_at);
+          return [r.channel_id, { serverId: r.server_id, lastMessageAt: r.last_message_at, readAt, mentions: seen ? 0 : r.mentions }];
         }),
       ),
     );
@@ -97,6 +108,17 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!supabase) return;
     void refresh();
+    // Receipts left over from a closed tab or a suspended app go out first.
+    void flushReads(supabase);
+    const flushNow = () => {
+      for (const timer of pending.current.values()) clearTimeout(timer);
+      pending.current.clear();
+      void flushReads(supabase);
+    };
+    const onHide = () => document.visibilityState === "hidden" && flushNow();
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", flushNow);
+    window.addEventListener("online", flushNow);
     const timer = setInterval(() => document.visibilityState === "visible" && void refresh(), UNREADS_POLL_MS);
     const onFocus = () => void refresh();
     window.addEventListener("focus", onFocus);
@@ -109,6 +131,9 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
     );
     return () => {
       clearInterval(timer);
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", flushNow);
+      window.removeEventListener("online", flushNow);
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("diskarte:push-activity", onFocus);
       off();
@@ -118,20 +143,24 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
   const markRead = useCallback(
     (channelId: string) => {
       rewinds.current.delete(channelId);
+      const at = new Date().toISOString();
       setChannels((prev) => {
         const c = prev.get(channelId);
-        const at = later(new Date().toISOString(), c?.lastMessageAt) as string;
-        marks.current.set(channelId, later(at, marks.current.get(channelId)) as string);
+        const upTo = later(at, c?.lastMessageAt) as string;
+        marks.current.set(channelId, later(upTo, marks.current.get(channelId)) as string);
         if (!c || (!isUnread(c) && c.mentions === 0)) return prev;
-        return new Map(prev).set(channelId, { ...c, readAt: at, mentions: 0 });
+        return new Map(prev).set(channelId, { ...c, readAt: upTo, mentions: 0 });
       });
+      // The receipt says "read up to now" (the server caps it at its own clock).
+      queueRead("channel", channelId, at);
+      closeNotifications(notificationTag("channel", channelId));
       if (!supabase) return;
       clearTimeout(pending.current.get(channelId));
       pending.current.set(
         channelId,
         setTimeout(() => {
           pending.current.delete(channelId);
-          void supabase.rpc("mark_channel_read", { p_channel: channelId });
+          void flushReads(supabase);
         }, MARK_DEBOUNCE_MS),
       );
     },

@@ -30,6 +30,7 @@ const wrapper = ({ children }: { children: ReactNode }) => (
 );
 
 beforeEach(() => {
+  localStorage.removeItem("diskarte:pending-reads");
   vi.mocked(fake.client.rpc).mockImplementation((async (fn: string) => (fn === "my_unreads" ? { data: rows(), error: null } : { data: null, error: null })) as never);
 });
 
@@ -76,5 +77,26 @@ describe("unreads", () => {
     expect(result.current.chika.unread).toBe(false);
     act(() => result.current.ctx.markAllRead());
     expect(fake.client.rpc).toHaveBeenLastCalledWith("mark_all_read", {});
+  });
+
+  it("keeps a read channel's mention badge cleared when a refresh races the receipt", async () => {
+    const { result } = renderHook(() => ({ ctx: useOptionalUnreads()!, chika: useChannelUnread(CHIKA) }), { wrapper });
+    await waitFor(() => expect(result.current.chika).toEqual({ unread: true, mentions: 2 }));
+    act(() => result.current.ctx.markRead(CHIKA));
+    // The server hasn't saved the receipt yet and still reports the old cursor and 2 mentions.
+    await act(async () => result.current.ctx.refresh());
+    expect(result.current.chika).toEqual({ unread: false, mentions: 0 });
+    // The receipt is queued durably, closes the channel's alerts, and goes out as "read up to now".
+    expect(JSON.parse(localStorage.getItem("diskarte:pending-reads")!)).toHaveProperty(`channel:${CHIKA}`);
+    await waitFor(() => expect(fake.client.rpc).toHaveBeenCalledWith("mark_channel_read_until", expect.objectContaining({ p_channel: CHIKA })), { timeout: 3000 });
+    await waitFor(() => expect(localStorage.getItem("diskarte:pending-reads")).toBeNull());
+  });
+
+  it("treats receipts left by a closed tab as read and resends them on start", async () => {
+    localStorage.setItem("diskarte:pending-reads", JSON.stringify({ [`channel:${CHIKA}`]: new Date(Date.now() + 60_000).toISOString() }));
+    const { result } = renderHook(() => useChannelUnread(CHIKA), { wrapper });
+    await waitFor(() => expect(fake.client.rpc).toHaveBeenCalledWith("my_unreads"));
+    await waitFor(() => expect(result.current).toEqual({ unread: false, mentions: 0 }));
+    await waitFor(() => expect(fake.client.rpc).toHaveBeenCalledWith("mark_channel_read_until", expect.objectContaining({ p_channel: CHIKA })));
   });
 });
