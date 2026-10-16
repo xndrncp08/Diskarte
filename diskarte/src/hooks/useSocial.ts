@@ -109,11 +109,20 @@ export function useConversations() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch; realtime keeps it current
     void load();
-    return subscribeDbChanges(supabase, `dms:${me.id}`, (channel) =>
+    // Realtime can miss events while an installed app is suspended or offline: catch up on resume.
+    const resume = () => document.visibilityState === "visible" && reload();
+    document.addEventListener("visibilitychange", resume);
+    window.addEventListener("online", reload);
+    const off = subscribeDbChanges(supabase, `dms:${me.id}`, (channel) =>
       channel
         .on("postgres_changes", { event: "*", schema: "public", table: "dm_conversations" }, reload)
         .on("postgres_changes", { event: "*", schema: "public", table: "dm_participants" }, reload),
     );
+    return () => {
+      document.removeEventListener("visibilitychange", resume);
+      window.removeEventListener("online", reload);
+      off();
+    };
   }, [supabase, me.id, load, reload]);
 
   /** Clear the unread dot now (read up to at least the newest message you saw); the RPC saves it. */

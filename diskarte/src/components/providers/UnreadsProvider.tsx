@@ -119,7 +119,9 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
       pending.current.clear();
       void flushReads(supabase);
     };
-    const onHide = () => document.visibilityState === "hidden" && flushNow();
+    // Hidden: send receipts before the OS suspends us. Visible again (an installed app resuming
+    // doesn't always fire focus, and realtime may have missed events while suspended): catch up.
+    const onHide = () => (document.visibilityState === "hidden" ? flushNow() : void refresh());
     document.addEventListener("visibilitychange", onHide);
     window.addEventListener("pagehide", flushNow);
     window.addEventListener("online", flushNow);
