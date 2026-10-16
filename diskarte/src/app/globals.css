@@ -166,6 +166,9 @@ html[data-keyboard="true"] .overlay-viewport { top: var(--app-top, 0); bottom: a
   /* Drawers take the shell's height, not the screen's; they clear the status bar and their columns
      pad their own bottoms for the home indicator (rail, user panel). */
   .app-viewport [data-mobile-navigation] { position: absolute; top: 0; bottom: 0; height: auto; padding-top: env(safe-area-inset-top); }
+  /* The workspace row is positioned for desktop floating panels; on phones the drawers must measure
+     from the whole shell, not the row above the tab bar. */
+  .app-viewport [data-workspace] { position: static; }
   .app-viewport [data-panel="nav"] { max-width: calc(100vw - 72px); }
   .app-viewport [data-testid="message-list"] { min-height: 0; }
 }
