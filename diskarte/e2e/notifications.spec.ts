@@ -29,7 +29,7 @@ test.describe("read state sticks", () => {
     const bell = ben.page.getByRole("button", { name: /^Notifications/ });
     await expect(bell).toHaveAccessibleName(/new/, { timeout: 15_000 });
     await bell.click();
-    await ben.page.getByTestId("notification-hub").getByRole("link", { name: new RegExp(ana.user.displayName) }).click();
+    await ben.page.locator('[data-floating="notification-hub"]').getByRole("link", { name: new RegExp(ana.user.displayName) }).click();
     await expect(messageItem(ben.page, "Gising ka pa?")).toBeVisible();
 
     // …reads it, and the receipt is confirmed by the server (nothing left queued).
@@ -38,7 +38,7 @@ test.describe("read state sticks", () => {
     await ben.page.reload();
     await expect(bell).toHaveAccessibleName("Notifications");
     await bell.click();
-    await expect(ben.page.getByTestId("notification-hub")).toContainText("You're all caught up.");
+    await expect(ben.page.locator('[data-floating="notification-hub"]')).toContainText("You're all caught up.");
     await ben.page.keyboard.press("Escape");
 
     // A genuinely new message still notifies.
