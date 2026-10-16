@@ -49,7 +49,13 @@ export function SessionProviders({
     const media = window.matchMedia("(prefers-color-scheme: light)");
     const apply = () => {
       const prefs = readDisplayPrefs();
-      document.documentElement.dataset.colorMode = prefs.colorMode === "system" ? media.matches ? "light" : "dark" : prefs.colorMode;
+      const mode = prefs.colorMode === "system" ? (media.matches ? "light" : "dark") : prefs.colorMode;
+      document.documentElement.dataset.colorMode = mode;
+      // The status bar / browser chrome follows a mode change without a reload (layout sets the first one).
+      document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => {
+        meta.removeAttribute("media");
+        meta.content = mode === "light" ? "#f8fafc" : "#0F172A";
+      });
       document.documentElement.lang = prefs.language;
     };
     apply(); media.addEventListener("change", apply);

@@ -10,6 +10,7 @@ import { AUTHOR_COLUMNS, MESSAGE_SELECT, parseAttachments, olderThan, PAGE_SIZE,
 import { dequeue, enqueue, isNetworkError, outboxFor, type OutboxEntry } from "@/lib/outbox";
 import { useOutboxRetry } from "./useOutboxRetry";
 import { subscribeDbChanges } from "@/lib/realtime";
+import { createOnce } from "@/lib/once";
 import { playSfx } from "@/lib/sfx";
 import { useConversationRecovery } from "./useConversationRecovery";
 import { recordDiagnostic } from "@/lib/diagnostics";
@@ -126,6 +127,7 @@ export function useChannelChat(
   useEffect(() => {
     const inScope = (m: Message) => m.channel_id === channelId && (m.thread_id ?? null) === threadId;
     const filter = threadId ? `thread_id=eq.${threadId}` : `channel_id=eq.${channelId}`;
+    const firstTime = createOnce();
     return subscribeDbChanges(supabase, `chat:${channelId}${threadId ? `:${threadId}` : ""}`, (channel) =>
       channel
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter }, async ({ new: row }) => {
@@ -137,7 +139,7 @@ export function useChannelChat(
             if (existing) return prev.map((m) => (m.id === message.id ? { ...message, author: m.author ?? author } : m));
             return [...prev, { ...message, author }].sort(byTime);
           });
-          if (message.author_id !== me.id) playSfx(mentionsUser(message.content, me.username) ? "mention" : "message");
+          if (message.author_id !== me.id && firstTime(message.id)) playSfx(mentionsUser(message.content, me.username) ? "mention" : "message");
         })
         .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages", filter }, ({ new: row }) => {
           const message = row as Message;

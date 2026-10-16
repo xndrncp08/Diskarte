@@ -118,6 +118,16 @@ describe("useChannelChat realtime", () => {
     expect(sfx).toHaveBeenCalledWith("mention");
   });
 
+  it("pings once when the same message event arrives twice (reconnect replay)", async () => {
+    const { result } = await setup();
+    sfx.mockClear();
+    const dup = { ...msg("dup", MEMBER_ID, "isang beses lang", "2026-09-26T01:01:10Z"), author: undefined };
+    act(() => fake.emitDb("messages", "INSERT", dup));
+    act(() => fake.emitDb("messages", "INSERT", dup));
+    await waitFor(() => expect(result.current.messages.filter((m) => m.id === "dup")).toHaveLength(1));
+    expect(sfx.mock.calls.filter(([name]) => name === "message")).toHaveLength(1);
+  });
+
   it("ignores inserts for other channels", async () => {
     const { result } = await setup();
     act(() => fake.emitDb("messages", "INSERT", { ...msg("x", MEMBER_ID, "elsewhere", "2026-09-26T01:02:00Z"), channel_id: "other" }));

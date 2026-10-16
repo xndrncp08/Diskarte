@@ -130,6 +130,32 @@ test.describe("mobile — app shell", () => {
     await expectTouchTarget(message.getByRole("button", { name: "Reply" }));
   });
 
+  test("bottom tabs reach every destination at phone widths without overflow", async ({ page }) => {
+    await signUpAndOnboard(page, makeUser("Tabs"));
+    await page.goto("/tambayan");
+    const tabs = page.getByRole("navigation", { name: "Main destinations" });
+    await expect(tabs).toBeVisible();
+    for (const width of [320, 375, 390, 430]) {
+      await page.setViewportSize({ width, height: 800 });
+      for (const [name, path, heading] of [
+        ["Messages", "/tambayan/messages", "Messages"],
+        ["Explore", "/tambayan/explore", "Explore"],
+        ["Home", "/tambayan", null],
+      ] as const) {
+        await tabs.getByRole("link", { name: new RegExp(name) }).click();
+        await expect(page).toHaveURL(new RegExp(`${path}$`));
+        if (heading) await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
+        await expect(tabs.getByRole("link", { name: new RegExp(name) })).toHaveAttribute("aria-current", "page");
+        await expectFitsViewport(page);
+      }
+      for (const link of await tabs.getByRole("link").all()) await expectTouchTarget(link);
+      await expectTouchTarget(tabs.getByRole("button", { name: /Profile/ }));
+    }
+    // Profile opens settings in place.
+    await tabs.getByRole("button", { name: /Profile/ }).click();
+    await expect(page.getByRole("dialog", { name: "User settings" })).toBeVisible();
+  });
+
   test("call controls in the dock are touch-sized", async ({ page }) => {
     await signUpAndOnboard(page, makeUser("Caller"));
     await createServer(page, `Caller ${Date.now().toString(36)}`);
