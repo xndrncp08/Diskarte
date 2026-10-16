@@ -32,31 +32,14 @@ export function sparklePath(cx: number, cy: number, r: number) {
   return `M${cx} ${cy - r} Q${cx + k} ${cy - k} ${cx + r} ${cy} Q${cx + k} ${cy + k} ${cx} ${cy + r} Q${cx - k} ${cy + k} ${cx - r} ${cy} Q${cx - k} ${cy - k} ${cx} ${cy - r}Z`;
 }
 
-/** Philippine-sun style ray: a tapered blade from innerR to outerR along `angle` (deg). */
-function rayPath(cx: number, cy: number, angle: number, innerR: number, outerR: number, innerW: number, outerW: number) {
-  const a = (angle * Math.PI) / 180;
-  const ux = Math.cos(a);
-  const uy = Math.sin(a);
-  const px = -uy;
-  const py = ux;
-  const pts = [
-    [cx + ux * innerR + px * innerW, cy + uy * innerR + py * innerW],
-    [cx + ux * outerR + px * outerW, cy + uy * outerR + py * outerW],
-    [cx + ux * (outerR + outerW * 0.9), cy + uy * (outerR + outerW * 0.9)],
-    [cx + ux * outerR - px * outerW, cy + uy * outerR - py * outerW],
-    [cx + ux * innerR - px * innerW, cy + uy * innerR - py * innerW],
-  ];
-  return `M${pts.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join("L")}Z`;
-}
-
 const SUN = { cx: 344, cy: 176, r: 64 };
-const MAIN_RAYS = [-165, -120, -75, -30, 15, 60].map((angle) =>
-  rayPath(SUN.cx, SUN.cy, angle, SUN.r + 6, SUN.r + 88, 12, 20),
-);
-const MINOR_RAYS = [-142, -97, -52, -7, 38].flatMap((angle) => [
-  rayPath(SUN.cx, SUN.cy, angle - 6, SUN.r + 12, SUN.r + 60, 3, 5),
-  rayPath(SUN.cx, SUN.cy, angle + 6, SUN.r + 12, SUN.r + 60, 3, 5),
-]);
+const SUN_RAY_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
+// Each Philippine sun ray has a pointed centre blade and two shorter flanking blades.
+const SUN_RAY_BLADES = [
+  "M-5 -58 L-14 -130 L0 -146 L14 -130 L5 -58 Z",
+  "M-9 -58 L-24 -124 L-17 -129 L-6 -58 Z",
+  "M9 -58 L24 -124 L17 -129 L6 -58 Z",
+];
 
 /** Salakot cone: apex, left brim tip, right brim tip. */
 const HAT = {
@@ -102,14 +85,15 @@ function Mascot({ ids, bubble, eyes, outline }: { ids: (n: string) => string; bu
   return (
     <g>
       {/* Sun */}
-      <g>
-        {MINOR_RAYS.map((d, i) => (
-          <path key={`m${i}`} d={d} fill={GOLD_DEEP} opacity={0.85} />
+      <g data-brand="philippine-sun" transform={`translate(${SUN.cx} ${SUN.cy})`} fill="#FFC800">
+        {SUN_RAY_ANGLES.map((angle) => (
+          <g key={angle} transform={`rotate(${angle})`}>
+            {SUN_RAY_BLADES.map((d, i) => (
+              <path key={i} d={d} />
+            ))}
+          </g>
         ))}
-        {MAIN_RAYS.map((d, i) => (
-          <path key={`r${i}`} d={d} fill={`url(#${ids("ray")})`} />
-        ))}
-        <circle cx={SUN.cx} cy={SUN.cy} r={SUN.r} fill={`url(#${ids("sun")})`} />
+        <circle r={SUN.r} />
       </g>
 
       {/* Chat bubble */}
@@ -153,15 +137,6 @@ function rectProps(r: { x: number; y: number; w: number; h: number; rx: number }
 function Defs({ ids }: { ids: (n: string) => string }) {
   return (
     <defs>
-      <radialGradient id={ids("sun")} cx="45%" cy="40%" r="65%">
-        <stop offset="0%" stopColor="#FFE27A" />
-        <stop offset="60%" stopColor={GOLD} />
-        <stop offset="100%" stopColor={GOLD_DEEP} />
-      </radialGradient>
-      <linearGradient id={ids("ray")} x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#FFD54A" />
-        <stop offset="100%" stopColor={GOLD} />
-      </linearGradient>
       <linearGradient id={ids("straw")} x1="0.3" y1="0" x2="0.6" y2="1">
         <stop offset="0%" stopColor="#FFE08A" />
         <stop offset="55%" stopColor="#F5C451" />
