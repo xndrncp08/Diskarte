@@ -16,10 +16,27 @@ export function standaloneFill(nav: { standalone?: boolean }, win: { innerWidth:
   return Math.abs(win.innerWidth - width) <= 2 && short > 1 && short <= 120 ? height : null;
 }
 
+/**
+ * The shell always spans to the bottom of the screen (`full`); `obscured` is how much of that the
+ * browser's own bottom bar (iOS Safari's toolbar) currently covers, so content can sit above it
+ * while the background runs underneath. Shrinks to 0 as the bar collapses. The installed iPhone
+ * app has no bar: its short viewport is the iOS bug `fill` corrects, not something covering it.
+ */
+export function bottomLayout(opts: { fill: number | null; large: number; innerHeight: number; visibleBottom: number }) {
+  const full = opts.fill ?? Math.max(opts.large, opts.innerHeight);
+  const obscured = opts.fill ? 0 : Math.min(200, Math.max(0, Math.round(full - opts.visibleBottom)));
+  return { full, obscured };
+}
+
 /** VisualViewport covers Safari's keyboard, where dvh alone still includes the covered area. */
 export function useAppViewport(ref: RefObject<HTMLElement | null>) {
   useEffect(() => {
     const viewport = window.visualViewport;
+    // Measures the large viewport (browser bars retracted) in px.
+    const probe = document.createElement("div");
+    probe.setAttribute("aria-hidden", "true");
+    probe.style.cssText = "position:fixed;top:0;left:0;width:0;height:100lvh;visibility:hidden;pointer-events:none";
+    document.body.appendChild(probe);
     const update = () => {
       const el = ref.current;
       if (!el || (viewport && viewport.scale !== 1)) return; // Keep pinch zoom available.
@@ -33,8 +50,10 @@ export function useAppViewport(ref: RefObject<HTMLElement | null>) {
       // Dialog layers live outside the shell; they size to the visible area only with the keyboard up.
       document.documentElement.dataset.keyboard = keyboard;
       const fill = keyboard === "false" ? standaloneFill(navigator as { standalone?: boolean }, window, window.screen, window.matchMedia?.("(orientation: portrait)").matches ?? true) : null;
-      if (fill) document.documentElement.style.setProperty("--app-fill", `${fill}px`);
-      else document.documentElement.style.removeProperty("--app-fill");
+      const { full, obscured } = bottomLayout({ fill, large: probe.offsetHeight, innerHeight: window.innerHeight, visibleBottom: (viewport?.offsetTop ?? 0) + height });
+      const root = document.documentElement.style;
+      root.setProperty("--app-full", `${full}px`);
+      root.setProperty("--app-obscured", keyboard === "true" ? "0px" : `${obscured}px`);
     };
     update();
     viewport?.addEventListener("resize", update);
@@ -47,7 +66,9 @@ export function useAppViewport(ref: RefObject<HTMLElement | null>) {
       document.documentElement.style.removeProperty("--app-height");
       document.documentElement.style.removeProperty("--app-top");
       delete document.documentElement.dataset.keyboard;
-      document.documentElement.style.removeProperty("--app-fill");
+      document.documentElement.style.removeProperty("--app-full");
+      document.documentElement.style.removeProperty("--app-obscured");
+      probe.remove();
     };
   }, [ref]);
 }
