@@ -150,14 +150,15 @@ button, [role="button"], [role="tab"] { -webkit-user-select: none; user-select: 
 /* Pinned to every edge: installed iPhone apps can report a viewport shorter than the screen
    (iOS 26 standalone), which left an empty strip at the bottom. The measured visible area is only
    used while the on-screen keyboard is up, to keep inputs above it. */
-.overlay-viewport { top: 0; bottom: 0; }
+.overlay-viewport { top: 0; bottom: 0; height: var(--app-fill, auto); }
 html[data-keyboard="true"] .overlay-viewport { top: var(--app-top, 0); bottom: auto; height: var(--app-height, 100dvh); }
 .overlay-viewport > [role="dialog"] { max-height: calc(var(--app-height, 100dvh) - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow-y: auto; }
 @media (max-width: 767px) {
   .overlay-viewport[data-window-layer] > [data-window] { position: absolute; inset: 0; height: 100%; max-height: 100%; }
   .overlay-viewport [data-window-body] { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
   [data-floating="context-menu"] { max-height: calc(var(--app-height, 100dvh) - 1rem); }
-  .app-viewport { position: fixed; inset: 0; height: auto; padding-top: env(safe-area-inset-top); padding-inline: env(safe-area-inset-left) env(safe-area-inset-right); }
+  /* --app-fill: the real screen height when an installed iPhone app's viewport comes up short. */
+  .app-viewport { position: fixed; inset: 0; height: var(--app-fill, auto); padding-top: env(safe-area-inset-top); padding-inline: env(safe-area-inset-left) env(safe-area-inset-right); }
   .app-viewport[data-keyboard="true"] { bottom: auto; top: var(--app-top, 0); height: var(--app-height, 100dvh); }
   .app-viewport[data-keyboard="true"] .mobile-tabs { display: none; }
   /* Fixed drawers bypass the shell's padding: clear the status bar here; the columns run to the
@@ -165,6 +166,7 @@ html[data-keyboard="true"] .overlay-viewport { top: var(--app-top, 0); bottom: a
   .app-viewport [data-mobile-navigation] {
     top: 0;
     bottom: 0;
+    height: var(--app-fill, auto);
     padding-top: env(safe-area-inset-top);
   }
   .app-viewport[data-keyboard="true"] [data-mobile-navigation] {
@@ -174,6 +176,10 @@ html[data-keyboard="true"] .overlay-viewport { top: var(--app-top, 0); bottom: a
   }
   .app-viewport [data-panel="nav"] { max-width: calc(100vw - 72px); }
   .app-viewport [data-testid="message-list"] { min-height: 0; }
+}
+/* Installed app: anything iOS shows behind the shell matches the bottom tab bar, never a dark strip. */
+@media (display-mode: standalone) and (max-width: 767px) {
+  html, body { background-color: var(--color-midnight); }
 }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   .glass, .glass-strong, .float-card, html[data-color-mode] :is(.glass, .glass-strong, .float-card, [class*="backdrop-blur"]) { background: var(--color-midnight); -webkit-backdrop-filter: none; backdrop-filter: none; border-color: #64748b; }
