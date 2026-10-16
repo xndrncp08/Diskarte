@@ -147,40 +147,27 @@ body {
 html { -webkit-text-size-adjust: 100%; }
 button, [role="button"], [role="tab"] { -webkit-user-select: none; user-select: none; }
 .app-viewport { overscroll-behavior: none; }
-/* Pinned to every edge: installed iPhone apps can report a viewport shorter than the screen
-   (iOS 26 standalone), which left an empty strip at the bottom. The measured visible area is only
-   used while the on-screen keyboard is up, to keep inputs above it. */
-/* --app-full: screen height (bars retracted); --app-obscured: what the browser's bottom bar covers now. */
-.overlay-viewport { top: 0; bottom: auto; height: calc(var(--app-full, 100dvh) - var(--app-obscured, 0px)); }
+/* Mobile layout, kept plain: the shell is 100dvh tall (the browser itself grows and shrinks that as
+   its toolbars come and go), the drawers live inside the shell, and the page behind everything is
+   the same colour as the bottom of the app (tab bar, rail), so whatever the browser shows near the
+   bottom edge blends in instead of reading as a gap. Measured sizes are used only while the
+   on-screen keyboard is up, to keep the composer above it. */
+.overlay-viewport { top: 0; bottom: 0; }
 html[data-keyboard="true"] .overlay-viewport { top: var(--app-top, 0); bottom: auto; height: var(--app-height, 100dvh); }
 .overlay-viewport > [role="dialog"] { max-height: calc(var(--app-height, 100dvh) - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow-y: auto; }
 @media (max-width: 767px) {
+  html, body { background-color: var(--color-abyss); }
   .overlay-viewport[data-window-layer] > [data-window] { position: absolute; inset: 0; height: 100%; max-height: 100%; }
   .overlay-viewport [data-window-body] { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
   [data-floating="context-menu"] { max-height: calc(var(--app-height, 100dvh) - 1rem); }
-  /* Always to the bottom of the screen; content is lifted above the browser's bar, not the background. */
-  .app-viewport { position: fixed; inset-inline: 0; top: 0; bottom: auto; height: var(--app-full, 100dvh); padding-top: env(safe-area-inset-top); padding-bottom: var(--app-obscured, 0px); padding-inline: env(safe-area-inset-left) env(safe-area-inset-right); }
-  .app-viewport[data-keyboard="true"] { top: var(--app-top, 0); height: var(--app-height, 100dvh); padding-bottom: 0; }
+  .app-viewport { padding-top: env(safe-area-inset-top); padding-inline: env(safe-area-inset-left) env(safe-area-inset-right); }
+  .app-viewport[data-keyboard="true"] { position: fixed; inset-inline: 0; top: var(--app-top, 0); height: var(--app-height, 100dvh); }
   .app-viewport[data-keyboard="true"] .mobile-tabs { display: none; }
-  /* Fixed drawers bypass the shell's padding: clear the status bar here; the columns run to the
-     bottom edge and pad their own content for the home indicator (rail, user panel). */
-  .app-viewport [data-mobile-navigation] {
-    top: 0;
-    bottom: auto;
-    height: var(--app-full, 100dvh);
-    padding-top: env(safe-area-inset-top);
-  }
-  .app-viewport[data-keyboard="true"] [data-mobile-navigation] {
-    top: var(--app-top, 0);
-    bottom: auto;
-    height: var(--app-height, 100dvh);
-  }
+  /* Drawers take the shell's height, not the screen's; they clear the status bar and their columns
+     pad their own bottoms for the home indicator (rail, user panel). */
+  .app-viewport [data-mobile-navigation] { position: absolute; top: 0; bottom: 0; height: auto; padding-top: env(safe-area-inset-top); }
   .app-viewport [data-panel="nav"] { max-width: calc(100vw - 72px); }
   .app-viewport [data-testid="message-list"] { min-height: 0; }
-}
-/* Installed app: anything iOS shows behind the shell matches the bottom tab bar, never a dark strip. */
-@media (display-mode: standalone) and (max-width: 767px) {
-  html, body { background-color: var(--color-midnight); }
 }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   .glass, .glass-strong, .float-card, html[data-color-mode] :is(.glass, .glass-strong, .float-card, [class*="backdrop-blur"]) { background: var(--color-midnight); -webkit-backdrop-filter: none; backdrop-filter: none; border-color: #64748b; }

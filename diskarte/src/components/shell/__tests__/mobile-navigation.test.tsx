@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-let pathname = "/tambayan/dm/abc";
+let pathname = "/tambayan/messages";
 const openSettings = vi.fn();
 const call = { target: null as null | { kind: "channel"; serverId: string; serverName: string; channelId: string; channelName: string }, status: "idle", muted: false, toggleMute: vi.fn(), leave: vi.fn() };
 vi.mock("next/navigation", () => ({ usePathname: () => pathname }));
@@ -27,8 +27,17 @@ describe("mobile bottom navigation", () => {
     expect(screen.queryByTestId("mobile-call-strip")).toBeNull();
   });
 
-  it("keeps the call one tap away while browsing", async () => {
-    pathname = "/tambayan";
+  it("gives conversations the whole screen: no tabs inside a DM or channel", () => {
+    pathname = "/tambayan/dm/abc";
+    const { container } = render(<MobileNavigation />);
+    expect(container).toBeEmptyDOMElement();
+    pathname = "/tambayan/s1/general";
+    render(<MobileNavigation />);
+    expect(screen.queryByRole("navigation", { name: "Main destinations" })).toBeNull();
+  });
+
+  it("keeps the call one tap away while browsing, even inside a conversation", async () => {
+    pathname = "/tambayan/s1/general";
     call.target = { kind: "channel", serverId: "s1", serverName: "Barkada", channelId: "v1", channelName: "Tambayan 1" };
     call.status = "connected";
     const user = userEvent.setup();

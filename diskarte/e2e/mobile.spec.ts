@@ -156,29 +156,33 @@ test.describe("mobile — app shell", () => {
     await expect(page.getByRole("dialog", { name: "User settings" })).toBeVisible();
   });
 
-  test("spans to the bottom edge and lifts content above a browser bar covering it", async ({ page }) => {
-    // A browser bottom bar (iOS Safari's toolbar) covering the last 60 px: the visible viewport is shorter.
-    await page.addInitScript(() => {
-      const real = Object.getOwnPropertyDescriptor(VisualViewport.prototype, "height")!;
-      Object.defineProperty(VisualViewport.prototype, "height", { configurable: true, get() { return (real.get!.call(this) as number) - 60; } });
-    });
+  test("runs to the bottom edge as one surface; conversations get the whole screen", async ({ page }) => {
     await signUpAndOnboard(page, makeUser("Edge"));
     await page.goto("/tambayan");
     const h = page.viewportSize()!.height;
     const bottom = async (locator: Locator) => { const box = (await locator.boundingBox())!; return box.y + box.height; };
-    // The background reaches the bottom of the screen…
-    await expect.poll(() => bottom(page.getByTestId("shell"))).toBeGreaterThanOrEqual(h - 1);
-    // …and the tabs sit just above the bar instead of under it.
-    await expect.poll(() => bottom(page.getByRole("navigation", { name: "Main destinations" }))).toBeLessThanOrEqual(h - 59);
-    expect(await bottom(page.getByRole("navigation", { name: "Main destinations" }))).toBeGreaterThanOrEqual(h - 62);
-    // The drawer's columns run to the bottom too, with their content above the bar.
+    const tabs = page.getByRole("navigation", { name: "Main destinations" });
+    // Shell and tab bar reach the bottom of the screen…
+    expect(await bottom(page.getByTestId("shell"))).toBeGreaterThanOrEqual(h - 1);
+    expect(await bottom(tabs)).toBeGreaterThanOrEqual(h - 1);
+    // …and the page behind the app is the tab bar's colour, so anything the browser shows there blends in.
+    const colours = await page.evaluate(() => ({
+      page: getComputedStyle(document.body).backgroundColor,
+      html: getComputedStyle(document.documentElement).backgroundColor,
+      bar: getComputedStyle(document.querySelector(".mobile-navigation")!).backgroundColor,
+    }));
+    expect(colours.page).toBe(colours.bar);
+    expect(colours.html).toBe(colours.bar);
+    // The open drawer's columns run to the bottom too.
     await page.getByRole("button", { name: "Open navigation" }).click();
     const rail = page.locator('[data-mobile-navigation] nav[aria-label="Servers"]').locator("..");
     await expect.poll(() => bottom(rail)).toBeGreaterThanOrEqual(h - 1);
-    const panel = page.getByTestId("user-panel").first();
-    await expect.poll(() => bottom(panel)).toBeGreaterThanOrEqual(h - 1);
-    expect(await bottom(panel.getByRole("button", { name: /Set status/ }))).toBeLessThanOrEqual(h - 60);
-    expect(await bottom(page.getByRole("button", { name: /^Notifications/ }).first())).toBeLessThanOrEqual(h - 60);
+    await expect.poll(() => bottom(page.getByTestId("user-panel").first())).toBeGreaterThanOrEqual(h - 1);
+    await page.keyboard.press("Escape");
+    // Inside a conversation: no tab bar, the composer sits at the bottom.
+    await createServer(page, `Edge ${Date.now().toString(36)}`);
+    await expect(tabs).toHaveCount(0);
+    expect(await bottom(page.getByTestId("composer"))).toBeGreaterThan(h - 140);
   });
 
   test("call controls in the dock are touch-sized", async ({ page }) => {
