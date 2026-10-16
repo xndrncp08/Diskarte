@@ -18,7 +18,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const deleted = params.deleted === "1";
 
   return (
-    <div className="space-y-6">
+    <div className="auth-content space-y-6">
       <div>
         <h1 className="text-2xl font-extrabold text-white">Welcome back!</h1>
         <p className="mt-1 text-sm text-slate-400">Sign in to get back to your servers and friends.</p>

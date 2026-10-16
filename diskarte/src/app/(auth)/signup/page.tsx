@@ -17,7 +17,7 @@ export default async function SignupPage({ searchParams }: PageProps<"/signup">)
 
   if (policy.inviteOnly) {
     return (
-      <div className="space-y-5" data-testid="invite-only">
+      <div className="auth-content space-y-5" data-testid="invite-only">
         <p className="font-pixel text-[9px] text-sun">INVITE ONLY</p>
         <h1 className="text-2xl font-extrabold text-white">Sign-ups are paused for now</h1>
         <p className="text-sm text-slate-400">Diskarte isn&apos;t taking new registrations on this server right now. Check back soon, or ask the team for an invite.</p>
@@ -32,7 +32,7 @@ export default async function SignupPage({ searchParams }: PageProps<"/signup">)
   }
 
   return (
-    <div className="space-y-6">
+    <div className="auth-content space-y-6">
       <div>
         <h1 className="text-2xl font-extrabold text-white">Create your account</h1>
         <p className="mt-1 text-sm text-slate-400">Free, open-source, and made for your barkada.</p>

@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/app/(auth)/actions", () => ({
   signInAction: vi.fn(async () => ({})),
@@ -11,7 +11,34 @@ const { LoginForm } = await import("@/components/auth/LoginForm");
 const { SignupForm } = await import("@/components/auth/SignupForm");
 const { OAuthButtons } = await import("@/components/auth/OAuthButtons");
 
+afterEach(() => { localStorage.clear(); vi.restoreAllMocks(); });
+
 describe("LoginForm", () => {
+  it("remembers only an opted-in email and removes it when unchecked", async () => {
+    render(<LoginForm next="/tambayan" />);
+    const email = screen.getByLabelText("Email");
+    fireEvent.change(email, { target: { value: "Juan@example.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "Private!12345" } });
+    fireEvent.click(screen.getByLabelText("Remember my email on this device"));
+    fireEvent.submit(email.closest("form")!);
+    await waitFor(() => expect(localStorage.getItem("diskarte-remembered-email")).toBe("juan@example.com"));
+    expect(Object.values(localStorage).join(" ")).not.toContain("Private!12345");
+    fireEvent.click(screen.getByLabelText("Remember my email on this device"));
+    expect(localStorage.getItem("diskarte-remembered-email")).toBeNull();
+  });
+
+  it("keeps an invite email ahead of a remembered address", () => {
+    localStorage.setItem("diskarte-remembered-email", "old@example.com");
+    render(<LoginForm next="/tambayan" initialEmail="invite@example.com" />);
+    expect(screen.getByLabelText("Email")).toHaveValue("invite@example.com");
+  });
+
+  it("still renders when browser storage is blocked", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("Storage blocked"); });
+    render(<LoginForm next="/tambayan" />);
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
+  });
+
   it("renders credentials fields and carries the next path", () => {
     render(<LoginForm next="/tambayan/abc" />);
     expect(screen.getByLabelText("Email")).toHaveAttribute("type", "email");

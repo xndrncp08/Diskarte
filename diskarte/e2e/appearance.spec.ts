@@ -9,17 +9,17 @@ for (const mode of ["light", "system"] as const) {
     const results = await new AxeBuilder({ page }).withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze();
     expect(results.violations).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await expect(page.getByLabel("Email")).toBeVisible();
+    await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
   });
 }
 test("light high contrast keeps dark focus rings and honors the OS transparency preference", async ({ page, context, baseURL }) => {
   await context.addCookies([{ name: "diskarte-mode", value: "light", url: baseURL! }]);
   await page.emulateMedia({ colorScheme: "light", contrast: "more" }); await page.goto("/login");
-  const glass = page.locator(".backdrop-blur-2xl").first();
+  const glass = page.locator(".auth-panel").first();
   await expect(glass).toBeVisible();
   expect(await glass.evaluate((element) => getComputedStyle(element).backdropFilter)).toBe("none");
   await page.locator("html").evaluate((element) => element.setAttribute("data-high-contrast", ""));
-  await page.getByLabel("Email").focus();
+  await page.getByLabel("Email", { exact: true }).focus();
   await page.keyboard.press("Tab");
   const password = page.getByLabel("Password", { exact: true });
   await expect(password).toBeFocused();

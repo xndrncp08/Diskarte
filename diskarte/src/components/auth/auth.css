@@ -1,0 +1,47 @@
+.auth-layout {
+  position: relative;
+  isolation: isolate;
+  min-height: 100svh;
+  padding: max(1rem, env(safe-area-inset-top)) max(1.25rem, env(safe-area-inset-right)) max(1.5rem, env(safe-area-inset-bottom)) max(1.25rem, env(safe-area-inset-left));
+}
+.auth-header { position: relative; z-index: 2; max-width: 72rem; margin: auto; padding-block: 2px; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.auth-grid { position: relative; z-index: 1; max-width: 64rem; margin: auto; padding: clamp(2rem, 7vh, 5rem) 0; }
+.auth-story { display: none; }
+.auth-form-column { width: 100%; max-width: 26rem; margin: auto; min-width: 0; }
+.auth-panel { position: relative; padding: 1.5rem 0; }
+.auth-panel::before { content: ""; display: block; width: 2rem; height: 3px; margin-bottom: 1.75rem; background: var(--color-sun); }
+.auth-surface h1, .auth-surface h2 { letter-spacing: -0.035em; }
+.auth-surface form { scroll-margin-block: 2rem; }
+.auth-surface label { font-family: var(--font-sans); font-size: 0.8125rem; font-weight: 500; letter-spacing: 0; text-transform: none; }
+.auth-remember { padding-inline: 14px; margin-inline: -14px; }
+.auth-surface input:not([type="hidden"]):not([type="checkbox"]) { min-height: 3rem; font-size: 1rem; border-radius: 0.75rem; background-color: color-mix(in srgb, var(--color-abyss) 65%, transparent); border-color: color-mix(in srgb, var(--color-slate-400) 70%, transparent); scroll-margin-block: 5rem; }
+.auth-surface input::placeholder { color: var(--color-slate-400); }
+.auth-surface button[type="submit"] { min-height: 3rem; border-radius: 0.75rem; box-shadow: none; transform: none; }
+.auth-surface button[type="submit"]:active { opacity: 0.85; }
+.auth-surface button[aria-controls] { min-width: 3rem; }
+.auth-surface a { text-underline-offset: 4px; }
+.auth-surface :is(a, button) { touch-action: manipulation; }
+.auth-surface form > p > a, .auth-surface [role="status"] a { min-height: 2.75rem; display: inline-flex; align-items: center; }
+.auth-surface [role="alert"] { scroll-margin-block: 3rem; }
+.auth-surface input:-webkit-autofill { -webkit-text-fill-color: var(--color-slate-100); caret-color: var(--color-slate-100); box-shadow: 0 0 0 1000px var(--color-abyss) inset; }
+.auth-reassurance { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 1.5rem; font-size: 0.75rem; line-height: 1.6; color: var(--color-slate-400); text-align: center; }
+.auth-eyebrow { font-family: var(--font-mono); font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.16em; color: var(--color-slate-300); }
+.auth-content { animation: auth-enter 250ms var(--ease-out-quint) both; }
+@keyframes auth-enter { from { opacity: 0; transform: translateY(6px); } }
+@media (min-width: 1024px) {
+  .auth-grid { display: grid; grid-template-columns: 1fr 26rem; align-items: center; gap: 6rem; min-height: calc(100svh - 7rem); }
+  .auth-story { display: block; padding: 1rem 0; }
+  .auth-story h2 { margin-top: 1.25rem; font-size: clamp(3rem, 4.6vw, 4rem); font-weight: 650; line-height: 1.06; letter-spacing: -0.055em; }
+  .auth-story-mark { width: 8rem; height: 8rem; margin: 0 0 2rem -0.75rem; }
+  .auth-story-features { display: flex; gap: 1.5rem; margin-top: 2rem; font-size: 0.8125rem; color: var(--color-slate-300); }
+  .auth-story-features span { display: inline-flex; gap: 0.5rem; align-items: center; }
+  .auth-story-features svg { width: 1rem; height: 1rem; color: var(--color-sun); }
+  .auth-panel { padding: 2rem; border: 1px solid color-mix(in srgb, var(--color-slate-400) 22%, transparent); border-radius: 1.5rem; background: color-mix(in srgb, var(--color-midnight) 72%, transparent); box-shadow: 0 20px 70px rgb(0 0 0 / 0.16); backdrop-filter: blur(20px); }
+}
+html[data-color-mode="light"] .auth-surface input:not([type="hidden"]):not([type="checkbox"]) { background: #fff; }
+html[data-color-mode="light"] .public-wordmark [data-brand="lettering"] { fill: #0b1020; }
+html[data-color-mode="light"] .auth-surface :is(.text-red-200, .text-red-300) { color: #b91c1c; }
+html[data-color-mode="light"] .auth-surface .text-emerald-200 { color: #047857; }
+html[data-color-mode="light"] .auth-surface .text-signal-green { color: #047857; }
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) { .auth-panel { background: var(--color-midnight); backdrop-filter: none; border-color: var(--color-slate-400); } }
+@media (prefers-reduced-motion: reduce) { .auth-content { animation: none; } }

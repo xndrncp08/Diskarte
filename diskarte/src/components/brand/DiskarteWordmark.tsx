@@ -68,7 +68,7 @@ export function DiskarteWordmark({
       )}
       <g transform={`translate(${textX} ${TEXT_Y - 30})`}>
         <path d={SWOOSH} fill={`url(#${ids("swoosh")})`} />
-        <path d={WORDMARK_TEXT_PATH} fill={ink} />
+        <path data-brand="lettering" d={WORDMARK_TEXT_PATH} fill={ink} />
         <circle cx={WORDMARK_I_DOT.cx} cy={WORDMARK_I_DOT.cy} r={WORDMARK_I_DOT.r} fill="#FFB800" />
         <path d={sparklePath(WORDMARK_TEXT_BOX.width - 6, 18, 14)} fill="#FFB800" />
       </g>

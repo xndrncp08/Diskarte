@@ -6,9 +6,11 @@ import { useActionState } from "react";
 import { requestPasswordResetAction, type AuthFormState } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/Button";
 import { InputField } from "@/components/ui/Field";
+import { useFormErrorFocus } from "./useFormErrorFocus";
 
 export function ForgotPasswordForm() {
   const [state, action, pending] = useActionState<AuthFormState, FormData>(requestPasswordResetAction, {});
+  const formRef = useFormErrorFocus(state);
   if (state.notice) {
     return (
       <div className="space-y-4 text-center" role="status">
@@ -21,10 +23,10 @@ export function ForgotPasswordForm() {
     );
   }
   return (
-    <form action={action} className="space-y-4" noValidate>
-      <InputField label="Email" name="email" type="email" autoComplete="email" required defaultValue={state.values?.email} error={state.fieldErrors?.email} />
+    <form ref={formRef} action={action} aria-busy={pending} className="space-y-4" noValidate>
+      <InputField label="Email" name="email" type="email" autoComplete="email" autoCapitalize="none" spellCheck={false} inputMode="email" required defaultValue={state.values?.email} error={state.fieldErrors?.email} />
       {state.error && (
-        <p role="alert" className="text-sm text-red-300">
+        <p role="alert" tabIndex={-1} data-form-error className="text-sm text-red-300">
           {state.error}
         </p>
       )}

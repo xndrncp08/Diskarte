@@ -17,19 +17,23 @@ export function MfaChallenge({ next }: { next: string }) {
     event.preventDefault();
     setError(null);
     setBusy(true);
-    const { data: factors } = await supabase.auth.mfa.listFactors();
-    const factor = factors?.totp.find((f) => f.status === "verified");
-    if (!factor) {
+    try {
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const factor = factors?.totp.find((f) => f.status === "verified");
+      if (!factor) {
+        return setError("No authenticator is set up on this account.");
+      }
+      const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({ factorId: factor.id, code: code.trim() });
+      if (verifyError) {
+        return setError("That code didn't work. Check your authenticator app and try again.");
+      }
+      router.replace(next);
+      router.refresh();
+    } catch {
+      setError("We couldn't verify that code. Check your connection and try again.");
+    } finally {
       setBusy(false);
-      return setError("No authenticator is set up on this account.");
     }
-    const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({ factorId: factor.id, code: code.trim() });
-    if (verifyError) {
-      setBusy(false);
-      return setError("That code didn't work. Check your authenticator app and try again.");
-    }
-    router.replace(next);
-    router.refresh();
   }
 
   async function signOut() {
@@ -46,6 +50,11 @@ export function MfaChallenge({ next }: { next: string }) {
           onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
           inputMode="numeric"
           autoComplete="one-time-code"
+          autoCapitalize="none"
+          enterKeyHint="done"
+          maxLength={6}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? "mfa-code-error" : undefined}
           pattern="\d{6}"
           required
           autoFocus
@@ -54,14 +63,14 @@ export function MfaChallenge({ next }: { next: string }) {
         />
       </label>
       {error && (
-        <p className="text-sm text-red-300" role="alert">
+        <p id="mfa-code-error" className="text-sm text-red-300" role="alert">
           {error}
         </p>
       )}
       <Button type="submit" className="w-full" loading={busy} disabled={code.length !== 6}>
         Verify
       </Button>
-      <button type="button" onClick={() => void signOut()} className="block w-full text-center text-xs text-slate-400 hover:text-white hover:underline">
+      <button type="button" onClick={() => void signOut()} className="block min-h-11 w-full text-center text-sm text-slate-400 hover:text-white hover:underline">
         Use a different account
       </button>
     </form>
