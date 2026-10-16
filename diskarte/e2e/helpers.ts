@@ -30,7 +30,7 @@ export async function signUpAndOnboard(page: Page, user: TestUser, opts: { avata
   await page.goto("/signup");
   await page.getByLabel("Display name").fill(user.displayName);
   await page.getByLabel("Username").fill(user.username);
-  await page.getByLabel("Email").fill(user.email);
+  await page.getByLabel("Email", { exact: true }).fill(user.email);
   await page.getByLabel("Password", { exact: true }).fill(user.password);
   await page.getByLabel("Confirm password").fill(user.password);
   await page.getByRole("button", { name: "Sign up" }).click();
@@ -46,7 +46,7 @@ export async function signUpAndOnboard(page: Page, user: TestUser, opts: { avata
 
 export async function logIn(page: Page, user: TestUser) {
   await page.goto("/login");
-  await page.getByLabel("Email").fill(user.email);
+  await page.getByLabel("Email", { exact: true }).fill(user.email);
   await page.getByLabel("Password", { exact: true }).fill(user.password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/tambayan/);

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { DiskarteWordmark } from "@/components/brand/DiskarteWordmark";
+import { AuthFrame } from "@/components/auth/AuthFrame";
 import { ChangePasswordForm } from "@/components/profile/ChangePasswordForm";
 import { requireProfile } from "@/lib/auth";
 
@@ -13,11 +13,8 @@ export default async function ResetPasswordPage({ searchParams }: PageProps<"/re
   const { user } = await requireProfile("/reset-password");
   const first = (await searchParams).first === "1" || user.user_metadata?.must_change_password === true;
   return (
-    <main className="diskarte-backdrop relative flex min-h-dvh flex-col items-center justify-center px-4 py-10">
-      <div className="relative z-10 mb-6">
-        <DiskarteWordmark height={48} />
-      </div>
-      <div className="glass-strong relative z-10 w-full max-w-md space-y-5 rounded-2xl p-6 sm:p-8">
+    <AuthFrame>
+      <div className="auth-content space-y-5">
         <div>
           {first ? (
             <>
@@ -37,6 +34,6 @@ export default async function ResetPasswordPage({ searchParams }: PageProps<"/re
         {/* First login: straight to onboarding (a Server Action redirect renders its target directly). */}
         <ChangePasswordForm redirectTo={first ? "/onboarding" : "/tambayan"} />
       </div>
-    </main>
+    </AuthFrame>
   );
 }

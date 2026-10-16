@@ -19,7 +19,7 @@ test.describe("accessibility audit — public pages", () => {
 
   test("keyboard: skip-free tab order reaches the primary action with a visible focus ring", async ({ page }) => {
     await page.goto("/login");
-    await page.getByLabel("Email").focus();
+    await page.getByLabel("Email", { exact: true }).focus();
     await page.keyboard.press("Tab");
     await expect(page.getByLabel("Password", { exact: true })).toBeFocused();
     const outline = await page.getByLabel("Password", { exact: true }).evaluate((el) => getComputedStyle(el).boxShadow + getComputedStyle(el).outlineStyle);

@@ -8,9 +8,11 @@ import { Button } from "@/components/ui/Button";
 import { InputField } from "@/components/ui/Field";
 import { PASSWORD_MISMATCH } from "@/lib/profile";
 import { PasswordChecklist } from "./PasswordChecklist";
+import { useFormErrorFocus } from "./useFormErrorFocus";
 
 export function SignupForm() {
   const [state, action, pending] = useActionState<AuthFormState, FormData>(signUpAction, {});
+  const formRef = useFormErrorFocus(state);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const mismatch = confirm.length > 0 && confirm !== password;
@@ -28,7 +30,7 @@ export function SignupForm() {
   }
 
   return (
-    <form action={action} className="space-y-4" noValidate>
+    <form ref={formRef} action={action} aria-busy={pending} className="space-y-4" noValidate>
       <InputField
         label="Display name"
         name="displayName"
@@ -43,6 +45,8 @@ export function SignupForm() {
         label="Username"
         name="username"
         autoComplete="username"
+        autoCapitalize="none"
+        spellCheck={false}
         required
         maxLength={32}
         defaultValue={state.values?.username}
@@ -55,6 +59,9 @@ export function SignupForm() {
         name="email"
         type="email"
         autoComplete="email"
+        autoCapitalize="none"
+        spellCheck={false}
+        inputMode="email"
         required
         defaultValue={state.values?.email}
         error={state.fieldErrors?.email}
@@ -88,7 +95,7 @@ export function SignupForm() {
         placeholder="••••••••••"
       />
       {state.error && (
-        <p role="alert" className="rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+        <p role="alert" tabIndex={-1} data-form-error className="rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
           {state.error}
         </p>
       )}

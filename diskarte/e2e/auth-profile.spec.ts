@@ -47,7 +47,7 @@ test.describe("registration and profile customisation", () => {
     await p2.goto("/signup");
     await p2.getByLabel("Display name").fill("Impostor");
     await p2.getByLabel("Username").fill(first.username);
-    await p2.getByLabel("Email").fill(makeUser("x").email);
+    await p2.getByLabel("Email", { exact: true }).fill(makeUser("x").email);
     await p2.getByLabel("Password", { exact: true }).fill("Diskarte!12345");
     await p2.getByLabel("Confirm password").fill("Diskarte!12345");
     await p2.getByRole("button", { name: "Sign up" }).click();
@@ -72,7 +72,7 @@ test.describe("registration and profile customisation", () => {
     await expect(page.getByRole("status")).toContainText("Your account and its data were deleted");
 
     // The credentials no longer work.
-    await page.getByLabel("Email").fill(user.email);
+    await page.getByLabel("Email", { exact: true }).fill(user.email);
     await page.getByLabel("Password", { exact: true }).fill(user.password);
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page.getByRole("alert").filter({ hasText: "Incorrect email or password" })).toBeVisible();

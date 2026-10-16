@@ -12,7 +12,8 @@ async function expectTouchTarget(locator: Locator) {
     const cy = r.top + r.height / 2;
     const hits = (x: number, y: number) => {
       const hit = document.elementFromPoint(x, y);
-      return !!hit && (el === hit || el.contains(hit));
+      return !!hit && (el === hit || el.contains(hit) ||
+        (el instanceof HTMLInputElement && Array.from(el.labels ?? []).some((label) => label.contains(hit))));
     };
     return hits(cx - 21.5, cy) && hits(cx + 21.5, cy) && hits(cx, cy - 21.5) && hits(cx, cy + 21.5);
   });

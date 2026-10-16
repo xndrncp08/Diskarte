@@ -41,8 +41,9 @@ describe("branding & vector logo", () => {
     expect(container.querySelector("clipPath[id$='-cone']")).not.toBeNull();
     expect(container.querySelector("clipPath[id$='-bubble']")).not.toBeNull();
     expect(container.querySelector("circle[fill='#0F172A']")).not.toBeNull();
-    const sunStops = Array.from(container.querySelectorAll("radialGradient[id$='-sun'] stop")).map((s) => s.getAttribute("stop-color"));
-    expect(sunStops).toContain("#FFB800");
+    const sun = container.querySelector('[data-brand="philippine-sun"]');
+    expect(sun).toHaveAttribute("fill", "#FFC800");
+    expect(sun?.querySelectorAll("path")).toHaveLength(24); // Eight triple-bladed Philippine sun rays.
     expect(container.querySelectorAll("g[stroke='#B7791F'] path").length).toBeGreaterThanOrEqual(7); // woven ribs + rings
   });
 

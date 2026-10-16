@@ -27,6 +27,17 @@ beforeEach(() => {
 });
 
 describe("two-factor sign-in", () => {
+  it("recovers from a network failure without leaving verification busy", async () => {
+    mfa.listFactors.mockRejectedValueOnce(new Error("Offline"));
+    const user = userEvent.setup();
+    render(<MfaChallenge next="/tambayan" />);
+    await user.type(screen.getByLabelText("Authentication code"), "123456");
+    await user.click(screen.getByRole("button", { name: "Verify" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Check your connection");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Verify" })).toBeEnabled());
+    expect(router.replace).not.toHaveBeenCalled();
+  });
+
   it("verifies the code against the verified factor, then continues", async () => {
     mfa.factors = [{ id: "f1", status: "verified" }];
     const user = userEvent.setup();

@@ -49,7 +49,7 @@ export default async function LandingPage() {
         header={
           <header className="relative mx-auto flex max-w-6xl items-center justify-between px-5 py-5">
             <Link href="/" aria-label="Diskarte home" className="inline-flex items-center rounded-lg pointer-coarse:min-h-11">
-              <DiskarteWordmark height={40} className="h-8 w-auto min-[375px]:h-10" />
+              <DiskarteWordmark height={40} className="public-wordmark h-8 w-auto min-[375px]:h-10" />
             </Link>
             <nav aria-label="Account" className="flex items-center gap-2">
               {signedIn ? (
@@ -82,7 +82,7 @@ export default async function LandingPage() {
           Chat, voice, video and screen share for gamers, students and whole communities — open-source, free, and made in the Philippines.
         </p>
         <a
-          href="https://github.com/xndrncp08/Diskorte"
+          href="https://github.com/xndrncp08/Diskarte"
           className="mt-5 inline-flex h-11 items-center gap-2 rounded-xl px-1 text-sm font-semibold text-slate-300 transition-colors hover:text-white"
           rel="noopener noreferrer"
           target="_blank"

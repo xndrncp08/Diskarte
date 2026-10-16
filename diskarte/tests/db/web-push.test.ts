@@ -80,7 +80,8 @@ it("generates RSVP reminders once, excludes withdrawn interest, and limits test 
 it("delivers group DMs to each subscribed participant and stops when that participant leaves",async()=>{
  await session(eve);await register(cDevice);await asService(db);
  const group=(await one<{id:string}>(db,"insert into public.dm_conversations(kind,name,owner_id) values('group','Study crew',$1) returning id",[alice])).id;
- for(const user of [alice,bob,eve])await db.query("insert into public.dm_participants(conversation_id,user_id) values($1,$2)",[group,user]);
+ // Membership must precede the unread message even on clocks with millisecond precision.
+ for(const user of [alice,bob,eve])await db.query("insert into public.dm_participants(conversation_id,user_id,last_read_at) values($1,$2,now()-interval '1 day')",[group,user]);
  await asUser(db,alice);await db.query("insert into public.direct_messages(conversation_id,author_id,content) values($1,$2,'Group update')",[group,alice]);
  const jobs=await claim();expect(jobs).toHaveLength(2);const payloads=await Promise.all(jobs.map(prepare));expect(new Set(payloads.map((p)=>p?.userId))).toEqual(new Set([bob,eve]));
  await db.query("delete from public.dm_participants where conversation_id=$1 and user_id=$2",[group,eve]);

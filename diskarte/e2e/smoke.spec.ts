@@ -13,7 +13,7 @@ test.describe("smoke (no backend required)", () => {
     // Header "Log in" jumps to the card; the fields take typing and pasting.
     await page.getByRole("link", { name: "Log in" }).click();
     await expect(page).toHaveURL(/#sign-in$/);
-    const email = page.getByLabel("Email");
+    const email = page.getByLabel("Email", { exact: true });
     await email.fill("juan@example.com");
     await expect(email).toHaveValue("juan@example.com");
     await page.getByLabel("Password", { exact: true }).fill("Correct-Horse-9");
@@ -55,7 +55,7 @@ test.describe("smoke (no backend required)", () => {
     await page.goto("/signup");
     await page.getByLabel("Display name").fill("Juan");
     await page.getByLabel("Username").fill("x");
-    await page.getByLabel("Email").fill("not-an-email");
+    await page.getByLabel("Email", { exact: true }).fill("not-an-email");
     await page.getByLabel("Password", { exact: true }).fill("short");
     await page.getByRole("button", { name: "Sign up" }).click();
     await expect(page.getByText("3–32 characters: letters, numbers, underscores or periods only.")).toBeVisible();
