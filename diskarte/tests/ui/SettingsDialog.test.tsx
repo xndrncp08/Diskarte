@@ -74,7 +74,7 @@ describe("Settings dialog", () => {
     expect(await within(dialog).findByRole("tab", { name: "My Profile" })).toHaveAttribute("aria-selected", "true");
     expect(within(dialog).getByTestId("profile-builder")).toBeInTheDocument();
 
-    await user.click(within(dialog).getByRole("tab", { name: "Account & Sessions" }));
+    await user.click(within(dialog).getByRole("tab", { name: "My Account" }));
     expect(within(dialog).getByRole("tabpanel")).toHaveTextContent(ACCOUNT.email);
     expect(within(dialog).getByLabelText("New password")).toBeInTheDocument();
     expect(screen.getByTestId("call-status")).toHaveTextContent("connected");
@@ -97,10 +97,10 @@ describe("Settings dialog", () => {
     // Focus moves into the lazily loaded content once it arrives.
     await waitFor(() => expect(profileTab).toHaveFocus());
     await user.keyboard("{ArrowRight}");
-    const accountTab = within(dialog).getByRole("tab", { name: "Account & Sessions" });
+    const accountTab = within(dialog).getByRole("tab", { name: "My Account" });
     expect(accountTab).toHaveAttribute("aria-selected", "true");
     expect(accountTab).toHaveFocus();
-    for (const name of ["Privacy & Safety", "Appearance", "Accessibility", "Voice & Video", "Chat", "Notifications", "Advanced", "Language & Region", "Report a problem"]) {
+    for (const name of ["Devices & Sessions", "Privacy & Safety", "Appearance", "Accessibility", "Voice & Video", "Chat", "Notifications", "Advanced", "Language & Region", "Storage & Data", "Keybinds", "Report a problem"]) {
       await user.keyboard("{ArrowRight}");
       expect(within(dialog).getByRole("tab", { name })).toHaveAttribute("aria-selected", "true");
     }
@@ -127,7 +127,7 @@ describe("Settings dialog", () => {
     renderShell();
     await user.click(settingsButton());
     const settings = await screen.findByRole("dialog", { name: "User settings" });
-    await user.click(within(settings).getByRole("tab", { name: "Account & Sessions" }));
+    await user.click(within(settings).getByRole("tab", { name: "My Account" }));
     const danger = within(settings).getByTestId("danger-zone");
     expect(within(danger).getByRole("heading", { name: /danger zone/i })).toBeInTheDocument();
     await user.click(within(danger).getByRole("button", { name: "Delete account" }));

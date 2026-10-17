@@ -291,7 +291,7 @@ function RailContents({ servers }: { servers: RailEntry[] }) {
       <section aria-label="Workspace controls" className="flex shrink-0 flex-col items-center gap-1.5 border-t border-white/[0.06] pt-2">
         <WorkspaceControls servers={servers} />
         <ControlCenterButton />
-        <NotificationHub />
+        <NotificationHub servers={servers} />
       </section>
       <AddServerDialog open={adding} onClose={() => setAdding(false)} />
     </div>

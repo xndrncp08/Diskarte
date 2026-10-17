@@ -60,7 +60,7 @@ test.describe("registration and profile customisation", () => {
     await signUpAndOnboard(page, user);
     await page.getByTestId("user-panel").getByRole("link", { name: "User settings" }).click();
     const settings = page.getByRole("dialog", { name: "User settings" });
-    await settings.getByRole("tab", { name: "Account & Sessions" }).click();
+    await settings.getByRole("tab", { name: "My Account" }).click();
     await settings.getByTestId("danger-zone").getByRole("button", { name: "Delete account" }).click();
 
     const confirm = page.getByRole("dialog", { name: "Delete your account?" });

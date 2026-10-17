@@ -150,7 +150,7 @@ function Stage() {
         </div>
       )}
       <div className="flex justify-center">
-        <div className="glass pb-safe flex max-w-full flex-wrap items-start justify-center gap-1.5 rounded-3xl px-2 pt-3 sm:gap-3 sm:px-4">
+        <div className="voice-stage-controls glass pb-safe flex max-w-full flex-wrap items-start justify-center gap-1.5 rounded-3xl px-2 pt-3 sm:gap-3 sm:px-4">
           <VoiceControls />
           <div className="flex gap-1.5 sm:gap-3" role="toolbar" aria-label="Call extras">
             <SoundboardPanel />

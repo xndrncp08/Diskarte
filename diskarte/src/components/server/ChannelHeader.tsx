@@ -12,11 +12,11 @@ export function ChannelHeader({ channel, actions }: { channel: Channel; actions?
   const { setNavOpen, membersOpen, setMembersOpen } = useShellUI();
   const Icon = channel.type === "voice" ? Volume2 : channel.type === "forum" ? MessagesSquare : Hash;
   return (
-    <header className="flex h-12 shrink-0 items-center gap-2 border-b border-white/5 bg-black/20 px-3 backdrop-blur-md">
+    <header className="page-header">
       <button type="button" onClick={() => setNavOpen(true)} aria-label="Open navigation" className="touch-target relative rounded-md p-1.5 text-slate-300 hover:bg-white/10 md:hidden">
         <MenuIcon className="size-5" aria-hidden />
       </button>
-      <Icon className="size-5 shrink-0 text-slate-400" aria-hidden />
+      <span className="page-header-icon" aria-hidden><Icon className="size-4" /></span>
       <h1 className="truncate font-bold text-white" data-testid="channel-title">
         {channel.name}
       </h1>

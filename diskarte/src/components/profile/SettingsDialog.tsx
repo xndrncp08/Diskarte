@@ -7,7 +7,7 @@ import type { AccountInfo } from "@/components/profile/AccountSettings";
 import { FloatingWindow } from "@/components/ui/FloatingWindow";
 import { WindowSkeleton } from "@/components/ui/WindowSkeleton";
 
-export type SettingsTab = "profile" | "account" | "privacy" | "appearance" | "accessibility" | "voice" | "chat" | "notifications" | "advanced" | "report" | "language";
+export type SettingsTab = "profile" | "account" | "privacy" | "appearance" | "accessibility" | "voice" | "chat" | "notifications" | "advanced" | "report" | "language" | "devices" | "storage" | "keybinds";
 
 // The window frame is tiny; its body (profile builder, account forms) downloads on first open.
 const SettingsPanels = dynamic(() => import("./SettingsPanels").then((m) => m.SettingsPanels), {
