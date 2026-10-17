@@ -54,8 +54,8 @@ npx playwright test e2e/smoke.spec.ts e2e/public-auth.spec.ts e2e/landing-experi
 - Baseline: 146 test files / 876 tests and production build passed.
 - Updated unit/component/database suite: 147 files / 887 tests passed.
 - Production public suite: 31 browser tests covering landing interactions, authentication validation/navigation, CSP and API protections, reduced motion and Electric Logo lifecycle, offline cache isolation, push deduplication and layout stability.
-- Isolated signed-in browser suite: 12 tests using real application components with fixture data and disabled server actions. Covers home, chat, conversations, discovery, friends, voice lobby, user/community settings and workspaces. These are component-browser tests, not proof of live backend behavior.
-- Requested widths: 320, 375, 390, 430, 768, 1024 and 1440px. Includes focus, overflow, composer visibility under viewport resizing, filters, keyboard navigation, light/dark automated accessibility and mobile editor sizing.
+- Isolated signed-in browser suite: 13 tests using real application components with fixture data and disabled server actions. Covers home, chat, conversations, discovery, friends, voice lobby, user/community settings and workspaces. These are component-browser tests, not proof of live backend behavior.
+- Requested widths: 320, 375, 390, 430, 768, 1024 and 1440px. Includes focus, overflow, composer visibility under viewport resizing, filters, keyboard navigation, light/dark automated accessibility and mobile editor sizing. Floating panels are exercised with keyboard movement/resizing and desktop/mobile transitions while retaining the composer draft.
 - GitHub CI retains the existing Docker and live Supabase/LiveKit E2E jobs and adds the responsive component-browser suite. The linked workflow run is the authority for remote results.
 
 Screenshots and failure traces are written under `test-results/`; they contain labelled fixture/sample data and are not production assets. Public tests can run against the standalone build with `E2E_BASE_URL` and test-only runtime configuration.
@@ -69,11 +69,11 @@ Aggregate emitted chunks from `.next/static/chunks`, measured with the same gzip
 | Metric | Baseline | Updated |
 | --- | ---: | ---: |
 | JavaScript chunks | 86 | 83 |
-| JavaScript bytes | 3,661,719 | 3,685,530 |
-| Gzipped JavaScript bytes | 1,137,173 | 1,143,576 |
-| CSS bytes | 134,000 | 175,570 |
+| JavaScript bytes | 3,661,719 | 3,685,513 |
+| Gzipped JavaScript bytes | 1,137,173 | 1,143,581 |
+| CSS bytes | 134,000 | 175,553 |
 
-Aggregate gzipped JavaScript increases by 6,403 bytes (0.56%). CSS increases by 41,570 uncompressed bytes for the broader visual system. These totals cover all emitted chunks, **not** initial route download size, startup time or field performance. One local Chromium run with reduced motion recorded CLS 0, LCP 116ms and TTFB 28.3ms. Those measurements do not represent production networks or mobile GPU/battery performance.
+Aggregate gzipped JavaScript increases by 6,408 bytes (0.56%). CSS increases by 41,553 uncompressed bytes for the broader visual system. These totals cover all emitted chunks, **not** initial route download size, startup time or field performance. One local Chromium run with reduced motion recorded CLS 0, LCP 116ms and TTFB 28.3ms. Those measurements do not represent production networks or mobile GPU/battery performance.
 
 ## Limits and preserved work
 

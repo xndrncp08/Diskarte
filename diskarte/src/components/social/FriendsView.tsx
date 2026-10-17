@@ -207,8 +207,8 @@ export function FriendsView({ servers }: { servers: Server[] }) {
                   "flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-semibold transition-colors pointer-coarse:py-2",
                   t.id === "add"
                     ? tab === t.id
-                      ? "bg-transparent text-emerald-300"
-                      : "bg-emerald-700 text-white hover:bg-emerald-800"
+                      ? "bg-transparent text-sun"
+                      : "bg-sun text-[#0b1020] hover:bg-sun/90"
                     : tab === t.id
                       ? "bg-white/15 text-white"
                       : "text-slate-400 hover:bg-white/5 hover:text-slate-200",

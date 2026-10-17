@@ -93,7 +93,7 @@ for (const width of [320, 375, 390, 430, 768, 1024, 1440]) {
 }
 
 for (const mode of ["dark", "light"] as const) {
-  test(`${mode} home, chat and workspace pass automated accessibility checks`, async ({
+  test(`${mode} connected surfaces pass automated accessibility checks`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
@@ -101,6 +101,7 @@ for (const mode of ["dark", "light"] as const) {
       "/tambayan",
       `/tambayan/${SERVER_ID}/${channels[0].id}`,
       `/tambayan/${SERVER_ID}/workspace`,
+        "/tambayan/friends", "/tambayan/messages", "/tambayan/explore",
     ]) {
       await page.goto(route);
       await expect(page.locator("#main-content")).toBeVisible();
@@ -203,4 +204,34 @@ test("community administration keeps permission-aware sections and keyboard navi
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
+});
+
+test("floating workspace moves and resizes without losing the composer, then recomposes on mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`/tambayan/${SERVER_ID}/${channels[0].id}`);
+  const composer = page.getByTestId("composer");
+  await composer.fill("Keep this draft while arranging my workspace.");
+  const floating = page.getByRole("button", { name: "Floating workspace", exact: true });
+  await floating.click();
+  await expect(page.locator("[data-floating-panel]")).toHaveCount(2);
+  const nav = page.getByRole("region", { name: "Channels", exact: true });
+  const before = (await nav.boundingBox())!;
+  await page.getByRole("button", { name: "Move Channels", exact: true }).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect.poll(async () => (await nav.boundingBox())!.x).toBeGreaterThan(before.x);
+  await page.getByRole("button", { name: "Resize Channels window", exact: true }).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect.poll(async () => (await nav.boundingBox())!.width).toBe(before.width + 16);
+  await expect(composer).toHaveValue("Keep this draft while arranging my workspace.");
+  await page.screenshot({ path: "test-results/floating-workspace-desktop.png" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator("[data-floating-panel]")).toHaveCount(0);
+  await expect(composer).toBeInViewport();
+  await expect(composer).toHaveValue("Keep this draft while arranging my workspace.");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(page.locator("[data-floating-panel]")).toHaveCount(2);
+  await floating.click();
+  await expect(page.locator("[data-floating-panel]")).toHaveCount(0);
+  await expect(composer).toHaveValue("Keep this draft while arranging my workspace.");
 });

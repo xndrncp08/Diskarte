@@ -41,6 +41,10 @@ test.describe("mobile — public pages", () => {
       await page.goto(path);
       await expectAllTouchTargets(page, page.locator("main"));
       await expectFitsViewport(page);
+      if (path === "/") {
+        await page.locator(".launch-mobile-menu summary").click();
+        await expectAllTouchTargets(page, page.locator(".launch-mobile-menu"));
+      }
     });
   }
 });
@@ -57,7 +61,8 @@ test.describe("responsive — public pages at every supported width", () => {
           els.filter((el) => el.getBoundingClientRect().width > 0 && (el.getBoundingClientRect().right > innerWidth + 1 || el.scrollWidth > el.clientWidth + 1)).map((el) => el.textContent?.trim().slice(0, 40)),
         );
         expect(clipped, `${path} at ${width}px`).toEqual([]);
-        const header = page.locator("header nav a");
+        if (path === "/" && width < 768) await page.locator(".launch-mobile-menu summary").click();
+        const header = page.locator("header nav a:visible");
         for (let i = 0; i < (await header.count()); i++) expect((await header.nth(i).boundingBox())!.height, `${path} header link wraps`).toBeLessThan(60);
       }
     });
