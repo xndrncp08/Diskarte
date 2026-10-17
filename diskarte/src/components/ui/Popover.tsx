@@ -94,7 +94,7 @@ export function Popover({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98 }}
               transition={{ duration: 0.13 }}
-              className={cn("glass-strong z-50 max-w-[calc(100vw-1rem)] rounded-2xl p-3 shadow-2xl shadow-black/60", className)}
+              className={cn("ui-overlay glass-strong z-50 max-w-[calc(100vw-1rem)] rounded-2xl p-3 shadow-2xl shadow-black/60", className)}
             >
               {typeof children === "function" ? children(close) : children}
             </InertWhenExiting>
