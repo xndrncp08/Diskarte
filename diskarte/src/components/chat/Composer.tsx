@@ -269,7 +269,7 @@ export function Composer({
 
   return (
     <div
-      className="relative px-4 pb-safe"
+      className="message-composer relative px-4 pb-safe"
       onDragOver={(e) => {
         if (e.dataTransfer.types.includes("Files")) {
           e.preventDefault();
@@ -285,7 +285,7 @@ export function Composer({
           DROP FILES HERE
         </div>
       )}
-      <div className="glass @container overflow-hidden rounded-xl transition-shadow focus-within:border-sun/50 focus-within:ring-2 focus-within:ring-sun/25">
+      <div className="composer-surface glass @container overflow-hidden rounded-xl transition-shadow focus-within:border-sun/50 focus-within:ring-2 focus-within:ring-sun/25">
         {replyTo && (
           <div className="flex items-center justify-between border-b border-white/5 bg-black/30 px-3 py-1.5 text-xs text-slate-400">
             <span className="truncate">
@@ -398,7 +398,7 @@ export function Composer({
             type="submit"
             disabled={(!draft.trim() && ready.length === 0) || busy || failedUpload || cooldown > 0}
             aria-label="Send message"
-            className="touch-target relative rounded-md p-1.5 text-sun transition-opacity hover:bg-white/10 disabled:opacity-30 pointer-coarse:p-3"
+            className="composer-send touch-target relative rounded-md p-1.5 text-sun transition-opacity hover:bg-white/10 disabled:opacity-30 pointer-coarse:p-3"
           >
             <SendHorizontal className="size-5" aria-hidden />
           </button>

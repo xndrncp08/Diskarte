@@ -44,8 +44,8 @@ export function VoiceChannelView({ channel }: { channel: Channel }) {
       {here && call.status === "connected" ? (
         <VoiceStage />
       ) : (
-        <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6 text-center">
-          <span className="flex size-20 items-center justify-center rounded-full bg-white/10">
+        <div className="voice-lobby flex flex-1 flex-col items-center justify-center gap-6 p-6 text-center">
+          <span className="voice-lobby-mark flex size-20 items-center justify-center">
             <Volume2 className="size-10 text-white" aria-hidden />
           </span>
           <div>

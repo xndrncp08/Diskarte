@@ -1,23 +1,71 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createFakeSupabase } from "../fixtures/fake-supabase";
-import { OWNER_ID, SERVER_ID, ServerFixture, channels, makeMember } from "../fixtures/server";
+import {
+  OWNER_ID,
+  SERVER_ID,
+  ServerFixture,
+  channels,
+  makeMember,
+} from "../fixtures/server";
 
-const note = { id: "70000000-0000-4000-8000-000000000050", server_id: SERVER_ID, channel_id: channels[0].id, title: "Study notes", kind: "note", content: { text: "Original" }, revision: 1, created_by: OWNER_ID, updated_by: OWNER_ID, created_at: "2026-10-14T00:00:00Z", updated_at: "2026-10-14T00:00:00Z" };
+const note = {
+  id: "70000000-0000-4000-8000-000000000050",
+  server_id: SERVER_ID,
+  channel_id: channels[0].id,
+  title: "Study notes",
+  kind: "note",
+  content: { text: "Original" },
+  revision: 1,
+  created_by: OWNER_ID,
+  updated_by: OWNER_ID,
+  created_at: "2026-10-14T00:00:00Z",
+  updated_at: "2026-10-14T00:00:00Z",
+};
 const tables = { workspace_documents: [note], channels: [...channels] };
 const fake = createFakeSupabase(tables);
 const members = [makeMember(OWNER_ID, "Kapitan", "admin")];
-const save = vi.fn(async () => ({ ok: false, error: "Someone updated this item. Your changes are preserved; review the latest version before saving.", code: "CONFLICT" }));
-vi.mock("@/components/providers/RuntimeConfig", () => ({ useSupabase: () => fake.client, useOptionalSupabase: () => fake.client }));
-vi.mock("@/actions/workspace", () => ({ saveWorkspaceAction: (...args: unknown[]) => { void args; return save(); }, deleteWorkspaceAction: vi.fn() }));
-const { SharedWorkspaceView } = await import("@/components/workspace/SharedWorkspaceView");
+const save = vi.fn(async () => ({
+  ok: false,
+  error:
+    "Someone updated this item. Your changes are preserved; review the latest version before saving.",
+  code: "CONFLICT",
+}));
+vi.mock("@/components/providers/RuntimeConfig", () => ({
+  useSupabase: () => fake.client,
+  useOptionalSupabase: () => fake.client,
+}));
+vi.mock("@/actions/workspace", () => ({
+  saveWorkspaceAction: (...args: unknown[]) => {
+    void args;
+    return save();
+  },
+  deleteWorkspaceAction: vi.fn(),
+}));
+const { ConfirmHost } = await import("@/components/ui/ConfirmHost");
+const { SharedWorkspaceView } = await import(
+  "@/components/workspace/SharedWorkspaceView"
+);
 
-beforeEach(() => { tables.channels = [...channels]; vi.mocked(fake.client.rpc).mockResolvedValue({ data: true, error: null } as never); save.mockClear(); });
+beforeEach(() => {
+  tables.channels = [...channels];
+  vi.mocked(fake.client.rpc).mockResolvedValue({
+    data: true,
+    error: null,
+  } as never);
+  save.mockClear();
+});
 describe("shared workspace editing", () => {
   it("clears cached content after channel access is revoked", async () => {
-    render(<ServerFixture members={members}><SharedWorkspaceView /></ServerFixture>);
-    await userEvent.setup().click(await screen.findByRole("button", { name: /Study notes/ }));
+    render(
+      <ServerFixture members={members}>
+        <SharedWorkspaceView />
+      </ServerFixture>,
+    );
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("button", { name: /Study notes/ }));
     tables.channels = [];
     window.dispatchEvent(new Event("online"));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
@@ -25,35 +73,130 @@ describe("shared workspace editing", () => {
     expect(screen.queryByRole("button", { name: /Study notes/ })).toBeNull();
   });
   it("identifies unapplied migrations instead of reporting a misleading permission error", async () => {
-    vi.mocked(fake.client.rpc).mockResolvedValue({ data: null, error: { code: "PGRST202" } } as never);
-    render(<ServerFixture members={members}><SharedWorkspaceView /></ServerFixture>);
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("database migration hasn’t been applied"));
+    vi.mocked(fake.client.rpc).mockResolvedValue({
+      data: null,
+      error: { code: "PGRST202" },
+    } as never);
+    render(
+      <ServerFixture members={members}>
+        <SharedWorkspaceView />
+      </ServerFixture>,
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "database migration hasn’t been applied",
+      ),
+    );
     expect(screen.getByText("Server setup instructions")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Shared note" })).toBeNull();
-    vi.mocked(fake.client.rpc).mockResolvedValue({ data: true, error: null } as never);
-    await userEvent.setup().click(screen.getByRole("button", { name: "Check setup again" }));
-    expect(await screen.findByRole("button", { name: /Study notes/ })).toBeInTheDocument();
-    expect(screen.queryByText(/database migration hasn’t been applied/)).toBeNull();
+    vi.mocked(fake.client.rpc).mockResolvedValue({
+      data: true,
+      error: null,
+    } as never);
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Check setup again" }));
+    expect(
+      await screen.findByRole("button", { name: /Study notes/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/database migration hasn’t been applied/),
+    ).toBeNull();
   });
   it("preserves local notes after a concurrent-save conflict", async () => {
     const user = userEvent.setup();
-    render(<ServerFixture members={members}><SharedWorkspaceView /></ServerFixture>);
-    await user.click(await screen.findByRole("button", { name: /Study notes/ }));
+    render(
+      <ServerFixture members={members}>
+        <SharedWorkspaceView />
+      </ServerFixture>,
+    );
+    await user.click(
+      await screen.findByRole("button", { name: /Study notes/ }),
+    );
     const text = screen.getByLabelText("Note (Markdown supported)");
-    await user.clear(text); await user.type(text, "My local edits");
+    await user.clear(text);
+    await user.type(text, "My local edits");
     await user.click(screen.getByRole("button", { name: "Save note" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Someone updated");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Someone updated",
+    );
     expect(text).toHaveValue("My local edits");
     expect(save).toHaveBeenCalledOnce();
   });
   it("presents a read-only view when channel editing is denied", async () => {
-    vi.mocked(fake.client.rpc).mockResolvedValue({ data: false, error: null } as never);
+    vi.mocked(fake.client.rpc).mockResolvedValue({
+      data: false,
+      error: null,
+    } as never);
     const user = userEvent.setup();
-    render(<ServerFixture members={members}><SharedWorkspaceView /></ServerFixture>);
-    await waitFor(() => expect(screen.getByRole("button", { name: /Study notes/ })).toBeInTheDocument());
+    render(
+      <ServerFixture members={members}>
+        <SharedWorkspaceView />
+      </ServerFixture>,
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /Study notes/ }),
+      ).toBeInTheDocument(),
+    );
     expect(screen.queryByRole("button", { name: "Shared note" })).toBeNull();
     await user.click(screen.getByRole("button", { name: /Study notes/ }));
     expect(screen.queryByRole("button", { name: "Save note" })).toBeNull();
     expect(screen.getByText("Original")).toBeInTheDocument();
   });
+});
+
+it("filters shared items without clearing the channel or changing editing permissions", async () => {
+  const user = userEvent.setup();
+  render(
+    <ServerFixture members={members}>
+      <SharedWorkspaceView />
+    </ServerFixture>,
+  );
+  await screen.findByRole("button", { name: /Study notes/ });
+  await user.selectOptions(screen.getByLabelText("Show"), "board");
+  expect(screen.queryByRole("button", { name: /Study notes/ })).toBeNull();
+  expect(screen.getByRole("status")).toHaveTextContent("No items of this type");
+  expect(screen.getByLabelText("Channel")).toHaveValue(channels[0].id);
+  expect(screen.getByRole("button", { name: "Shared note" })).toBeEnabled();
+  await user.selectOptions(screen.getByLabelText("Show"), "note");
+  await user.click(screen.getByRole("button", { name: /Study notes/ }));
+  expect(screen.getByLabelText("Note (Markdown supported)")).toHaveValue(
+    "Original",
+  );
+});
+
+it("keeps unsaved note edits when closing is cancelled", async () => {
+  const user = userEvent.setup();
+  render(
+    <ServerFixture members={members}>
+      <SharedWorkspaceView />
+      <ConfirmHost />
+    </ServerFixture>,
+  );
+  await user.click(await screen.findByRole("button", { name: /Study notes/ }));
+  const editor = screen.getByRole("dialog", { name: "Study notes" });
+  await user.type(
+    within(editor).getByLabelText("Note (Markdown supported)"),
+    " — still working",
+  );
+  await user.click(within(editor).getByRole("button", { name: "Close" }));
+  const confirmation = screen.getByRole("dialog", {
+    name: "Discard unsaved changes?",
+  });
+  await user.click(
+    within(confirmation).getByRole("button", { name: "Cancel" }),
+  );
+  expect(
+    within(editor).getByLabelText("Note (Markdown supported)"),
+  ).toHaveValue("Original — still working");
+  await user.click(within(editor).getByRole("button", { name: "Close" }));
+  await user.click(
+    within(
+      screen.getByRole("dialog", { name: "Discard unsaved changes?" }),
+    ).getByRole("button", { name: "Discard" }),
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog", { name: "Study notes" })).toBeNull(),
+  );
 });

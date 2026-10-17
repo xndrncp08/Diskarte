@@ -25,9 +25,9 @@ export function MobileNavigation() {
   const item = "relative flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[11px] font-semibold text-slate-400 aria-[current=page]:text-sun active:bg-white/10";
   return (
     // Same colour as the page behind the app, so the bottom of the screen reads as one surface.
-    <div className="mobile-navigation shrink-0 border-t border-white/10 bg-abyss md:hidden">
+    <div className="mobile-navigation shrink-0 border-t border-white/10 md:hidden">
       {inCall && call.target && (
-        <div className="flex items-center gap-1 border-b border-white/10 px-3" data-testid="mobile-call-strip">
+        <div className="call-strip flex items-center gap-1 border-b border-white/10 px-3" data-testid="mobile-call-strip">
           <Link href={callHref(call.target)} className="min-w-0 flex-1 py-2 text-sm">
             <span className="block truncate font-semibold text-signal-green">{call.status === "connected" ? call.target.channelName : `${call.status === "reconnecting" ? "Reconnecting" : "Connecting"}…`}</span>
             <span className="text-xs text-slate-400">{t("Return to call")}</span>

@@ -23,7 +23,7 @@ export interface ProfileCardData {
 /** Discord-style profile popout: banner, overlapping avatar, name, custom status and bio. */
 export function ProfileCard({ profile, className, footer, role }: { profile: ProfileCardData; className?: string; footer?: ReactNode; role?: string | null }) {
   return (
-    <div className={cn("glass-strong w-72 overflow-hidden rounded-2xl", className)} data-testid="profile-card">
+    <div className={cn("profile-card glass-strong w-72 overflow-hidden rounded-2xl", className)} data-testid="profile-card">
       <div className="relative h-24 w-full overflow-hidden" style={profile.banner_url ? undefined : { background: resolveBannerCss(profile.banner_preset) }} data-testid="profile-banner">
         {profile.banner_url && <SmartImage src={profile.banner_url} alt="" fill sizes="288px" className="object-cover" />}
       </div>
@@ -31,7 +31,7 @@ export function ProfileCard({ profile, className, footer, role }: { profile: Pro
         <div className="-mt-10 mb-2 inline-block rounded-full border-4 border-abyss">
           <UserAvatar profile={profile} size={72} status={statusTone(profile.status, profile.custom_status)} />
         </div>
-        <div className="rounded-xl bg-black/40 p-3">
+        <div data-profile-details className="rounded-xl bg-black/40 p-3">
           <p className="text-lg font-bold leading-tight text-white">{profile.display_name}</p>
           <p className="text-sm text-slate-400">@{profile.username}</p>
           {role && <p className="mt-1 inline-block rounded bg-sun/15 px-1.5 py-0.5 font-silk text-[10px] uppercase text-sun">{role}</p>}

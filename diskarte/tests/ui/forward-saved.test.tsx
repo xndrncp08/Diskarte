@@ -63,7 +63,7 @@ describe("mark unread", () => {
     expect(result.current.c.unread).toBe(false);
     act(() => result.current.ctx.markUnread(channels[0].id, at));
     expect(result.current.c.unread).toBe(true);
-    expect(fake.client.rpc).toHaveBeenCalledWith("mark_channel_unread", { p_channel: channels[0].id, p_from: at });
+    await waitFor(() => expect(fake.client.rpc).toHaveBeenCalledWith("mark_channel_unread", { p_channel: channels[0].id, p_from: at }));
     await act(async () => result.current.ctx.refresh());
     expect(result.current.c.unread).toBe(true);
   });

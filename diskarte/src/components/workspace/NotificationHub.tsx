@@ -1,44 +1,67 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, CheckCheck, MessageCircle, UserPlus } from "lucide-react";
-import { useState } from "react";
+import {
+  AtSign,
+  Bell,
+  CheckCheck,
+  Hash,
+  MessageCircle,
+  UserPlus,
+} from "lucide-react";
+import { useId, useState, type KeyboardEvent } from "react";
 import { useOptionalSocial } from "@/components/providers/SocialProvider";
-import { isUnread as isChannelUnread, useOptionalUnreads } from "@/components/providers/UnreadsProvider";
+import {
+  isUnread as isChannelUnread,
+  useOptionalUnreads,
+} from "@/components/providers/UnreadsProvider";
 import { SavedMessages } from "./SavedMessages";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { Popover } from "@/components/ui/Popover";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { conversationTitle, isUnread } from "@/lib/social";
+import type { Server } from "@/lib/servers";
 import { cn } from "@/lib/utils";
 
-/**
- * The rail's notification hub: an inbox (incoming friend requests and unread conversations, each a
- * link straight to where you can act on it) and your saved messages.
- */
-export function NotificationHub() {
-  const social = useOptionalSocial();
-  const attention = social?.attention ?? 0;
-  const requests = (social?.friends ?? []).filter((f) => f.status === "incoming");
-  const unreadAll = (social?.conversations ?? []).filter(isUnread);
-  const unread = unreadAll.slice(0, 8);
-  const unreads = useOptionalUnreads();
-  const unreadChannels = [...(unreads?.channels.values() ?? [])].some((c) => isChannelUnread(c) || c.mentions > 0);
+const TABS = ["inbox", "mentions", "saved"] as const;
 
-  // Everything: every channel's unread pill and mention badge, and every DM.
+export function NotificationHub({ servers = [] }: { servers?: Server[] }) {
+  const social = useOptionalSocial();
+  const requests = (social?.friends ?? []).filter(
+    (friend) => friend.status === "incoming",
+  );
+  const unreadAll = (social?.conversations ?? []).filter(isUnread);
+  const unreads = useOptionalUnreads();
+  const channels = [...(unreads?.channels.entries() ?? [])].filter(
+    ([, channel]) => isChannelUnread(channel) || channel.mentions > 0,
+  );
+  const attention = (social?.attention ?? 0) + channels.length;
+  const [tab, setTab] = useState<(typeof TABS)[number]>("inbox");
+  const id = useId();
+  const visibleChannels = channels
+    .filter(([, channel]) => tab !== "mentions" || channel.mentions > 0)
+    .slice(0, 8);
   function markAllRead() {
     unreads?.markAllRead();
-    for (const c of unreadAll) social?.markRead(c.id);
+    for (const conversation of unreadAll) social?.markRead(conversation.id);
   }
-  const [tab, setTab] = useState<"inbox" | "saved">("inbox");
-
+  function move(event: KeyboardEvent) {
+    const delta =
+      event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+    if (!delta) return;
+    event.preventDefault();
+    const next = TABS[(TABS.indexOf(tab) + delta + TABS.length) % TABS.length];
+    setTab(next);
+    document.getElementById(`${id}-${next}`)?.focus();
+  }
   return (
     <Popover
       label="Notifications"
       side="right"
       align="end"
       testId="notification-hub"
-      className="w-80"
+      className="w-[23rem]"
       trigger={({ toggle, ref, open, ...aria }) => (
         <Tooltip label="Notifications" side="right">
           <button
@@ -46,7 +69,9 @@ export function NotificationHub() {
             type="button"
             onClick={toggle}
             {...aria}
-            aria-label={attention ? `Notifications (${attention} new)` : "Notifications"}
+            aria-label={
+              attention ? `Notifications (${attention} new)` : "Notifications"
+            }
             className={cn(
               "relative flex size-11 items-center justify-center rounded-2xl text-slate-300 transition-colors hover:bg-white/10 hover:text-white",
               open && "bg-white/10 text-white",
@@ -54,8 +79,11 @@ export function NotificationHub() {
           >
             <Bell className="size-5" aria-hidden />
             {attention > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex min-w-5 items-center justify-center rounded-full border-2 border-abyss bg-red-600 px-1 font-silk text-[10px] font-bold tabular-nums text-white" aria-hidden>
-                {attention > 9 ? "9+" : attention}
+              <span
+                className="absolute -right-0.5 -top-0.5 flex min-w-5 items-center justify-center rounded-full border-2 border-abyss bg-red-600 px-1 text-[10px] font-bold text-white"
+                aria-hidden
+              >
+                {attention > 99 ? "99+" : attention}
               </span>
             )}
           </button>
@@ -63,60 +91,180 @@ export function NotificationHub() {
       )}
     >
       {(close) => (
-        <div className="p-2">
-          <div role="tablist" aria-label="Notifications" className="mb-2 flex gap-1 px-1 pt-1">
-            {(["inbox", "saved"] as const).map((t) => (
+        <div className="activity-inbox">
+          <div className="activity-heading">
+            <div>
+              <p className="section-kicker">YOUR COMMUNITY, CAUGHT UP</p>
+              <h2>Activity inbox</h2>
+            </div>
+            <Bell className="size-5 text-sun" aria-hidden />
+          </div>
+          <div
+            role="tablist"
+            aria-label="Notifications"
+            onKeyDown={move}
+            className="activity-tabs"
+          >
+            {TABS.map((value) => (
               <button
-                key={t}
+                key={value}
+                id={`${id}-${value}`}
                 type="button"
                 role="tab"
-                aria-selected={tab === t}
-                onClick={() => setTab(t)}
-                className="rounded-md px-2.5 py-1 font-silk text-[10px] uppercase tracking-widest text-slate-400 hover:text-white aria-selected:bg-white/10 aria-selected:text-white"
+                aria-selected={tab === value}
+                aria-controls={`${id}-panel`}
+                tabIndex={tab === value ? 0 : -1}
+                onClick={() => setTab(value)}
               >
-                {t === "inbox" ? "Inbox" : "Saved"}
+                {value === "inbox"
+                  ? "Inbox"
+                  : value === "mentions"
+                    ? "Mentions"
+                    : "Saved"}
               </button>
             ))}
           </div>
-          {tab === "inbox" && (unreadAll.length > 0 || unreadChannels) && (
-            <button type="button" onClick={markAllRead} className="mb-1 flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold text-sun hover:bg-white/5">
-              <CheckCheck className="size-3.5" aria-hidden /> Mark all as read
+          {tab !== "saved" && (unreadAll.length > 0 || channels.length > 0) && (
+            <button
+              type="button"
+              onClick={markAllRead}
+              className="activity-read-all"
+            >
+              <CheckCheck className="size-4" aria-hidden /> Mark all as read
             </button>
           )}
-          {tab === "saved" ? (
-            <SavedMessages onOpen={close} />
-          ) : requests.length === 0 && unread.length === 0 ? (
-            <p className="px-2 pb-3 text-sm text-slate-400">You&apos;re all caught up.</p>
-          ) : (
-            <ul className="space-y-0.5">
-              {requests.map((r) => {
-                const profile = social?.profiles.get(r.userId);
-                return (
-                  <li key={`req:${r.userId}`}>
-                    <Link href="/tambayan/friends" onClick={close} className="flex items-center gap-3 rounded-xl px-2 py-2 text-sm text-slate-200 hover:bg-white/10">
-                      {profile ? <UserAvatar profile={profile} size={32} /> : <UserPlus className="size-5 text-sun" aria-hidden />}
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-semibold text-white">{profile?.display_name ?? "Someone"}</span>
-                        <span className="block text-xs text-slate-400">sent you a friend request</span>
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-              {unread.map((c) => (
-                <li key={`dm:${c.id}`}>
-                  <Link href={`/tambayan/dm/${c.id}`} onClick={close} className="flex items-center gap-3 rounded-xl px-2 py-2 text-sm text-slate-200 hover:bg-white/10">
-                    {c.others[0] ? <UserAvatar profile={c.others[0]} size={32} /> : <MessageCircle className="size-5 text-neon" aria-hidden />}
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold text-white">{conversationTitle(c)}</span>
-                      <span className="block text-xs text-slate-400">New messages</span>
-                    </span>
-                    <span className="size-2 shrink-0 rounded-full bg-neon" aria-hidden />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
+          <div
+            id={`${id}-panel`}
+            role="tabpanel"
+            aria-labelledby={`${id}-${tab}`}
+            className="activity-scroll scrollbar-thin"
+          >
+            {tab === "saved" ? (
+              <SavedMessages onOpen={close} />
+            ) : (
+              <>
+                {tab === "inbox" && requests.length > 0 && (
+                  <>
+                    <p className="activity-group-label">Friend requests</p>
+                    <ul>
+                      {requests.map((request) => {
+                        const profile = social?.profiles.get(request.userId);
+                        return (
+                          <li key={request.userId}>
+                            <Link
+                              href="/tambayan/friends"
+                              onClick={close}
+                              className="activity-row"
+                            >
+                              {profile ? (
+                                <UserAvatar profile={profile} size={32} />
+                              ) : (
+                                <UserPlus
+                                  className="size-5 text-sun"
+                                  aria-hidden
+                                />
+                              )}
+                              <span>
+                                <strong>
+                                  {profile?.display_name ?? "Someone"}
+                                </strong>
+                                <small>sent you a friend request</small>
+                              </span>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
+                )}
+                {tab === "inbox" && unreadAll.length > 0 && (
+                  <>
+                    <p className="activity-group-label">Conversations</p>
+                    <ul>
+                      {unreadAll.slice(0, 8).map((conversation) => (
+                        <li key={conversation.id}>
+                          <Link
+                            href={`/tambayan/dm/${conversation.id}`}
+                            onClick={close}
+                            className="activity-row"
+                          >
+                            {conversation.others[0] ? (
+                              <UserAvatar
+                                profile={conversation.others[0]}
+                                size={32}
+                              />
+                            ) : (
+                              <MessageCircle
+                                className="size-5 text-neon"
+                                aria-hidden
+                              />
+                            )}
+                            <span>
+                              <strong>{conversationTitle(conversation)}</strong>
+                              <small>New messages</small>
+                            </span>
+                            <span className="activity-unread-dot" aria-hidden />
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {visibleChannels.length > 0 && (
+                  <>
+                    <p className="activity-group-label">
+                      {tab === "mentions"
+                        ? "Mentions"
+                        : "Around your tambayans"}
+                    </p>
+                    <ul>
+                      {visibleChannels.map(([channelId, channel]) => (
+                        <li key={channelId}>
+                          <Link
+                            href={`/tambayan/${channel.serverId}/${channelId}`}
+                            onClick={close}
+                            className="activity-row"
+                          >
+                            {channel.mentions ? (
+                              <AtSign className="size-5 text-sun" aria-hidden />
+                            ) : (
+                              <Hash
+                                className="size-5 text-slate-400"
+                                aria-hidden
+                              />
+                            )}
+                            <span>
+                              <strong>
+                                {servers.find(
+                                  (server) => server.id === channel.serverId,
+                                )?.name ?? "Channel activity"}
+                              </strong>
+                              <small>
+                                {channel.mentions
+                                  ? `${channel.mentions} unread mention${channel.mentions === 1 ? "" : "s"}`
+                                  : "New channel messages"}
+                              </small>
+                            </span>
+                            <span className="activity-unread-dot" aria-hidden />
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {visibleChannels.length === 0 &&
+                  (tab === "mentions" ||
+                    (!requests.length && !unreadAll.length)) && (
+                    <EmptyState
+                      title="You’re all caught up."
+                      icon={<CheckCheck className="size-5" />}
+                    >
+                      A little room for your next conversation.
+                    </EmptyState>
+                  )}
+              </>
+            )}
+          </div>
         </div>
       )}
     </Popover>

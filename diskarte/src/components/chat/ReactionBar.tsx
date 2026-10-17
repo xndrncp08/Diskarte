@@ -40,7 +40,7 @@ export function ReactionBar({ reactions, meId, onToggle, names }: { reactions: R
             title={`${label} — ${who}${r.count > 5 ? "…" : ""}`}
             onClick={() => onToggle(r.emoji)}
             className={cn(
-              "touch-target relative flex h-7 items-center gap-1 rounded-lg border px-2 text-sm transition-[color,background-color,border-color,transform] active:scale-95",
+              "reaction-chip touch-target relative flex h-7 items-center gap-1 rounded-lg border px-2 text-sm transition-[color,background-color,border-color,transform] active:scale-95",
               r.mine ? "border-sun/60 bg-sun/15 text-sun" : "border-white/10 bg-white/5 text-slate-300 hover:border-white/25",
             )}
           >

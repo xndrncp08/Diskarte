@@ -59,7 +59,7 @@ export function ThreadPanel({ channel, root, onClose, locked }: { channel: Chann
       className="glass fixed inset-0 z-40 flex flex-col border-y-0 border-r-0 bg-abyss/95 md:static md:z-auto md:w-[min(26rem,45%)] md:min-w-72 md:shrink-0 md:overflow-hidden md:border-y-0 md:border-r-0 md:border-l md:border-white/10 md:bg-black/20 md:backdrop-blur-none"
       data-testid="thread-panel"
     >
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-white/5 px-3">
+      <header className="page-header">
         <MessagesSquare className="size-5 text-sky-300" aria-hidden />
         <h2 className="min-w-0 flex-1 truncate font-bold text-white">
           Thread <span className="font-normal text-slate-400">· {previewText(root.content, 40) || "Sticker"}</span>

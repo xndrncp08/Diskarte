@@ -1,16 +1,32 @@
 "use client";
 
-import { closeNotifications, flushReads, notificationTag, pendingReads, queueRead } from "@/lib/read-receipts";
+import {
+  closeNotifications,
+  flushReads,
+  notificationTag,
+  pendingReads,
+  queueRead,
+} from "@/lib/read-receipts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { subscribeDbChanges } from "@/lib/realtime";
-import { classifyFriendships, SOCIAL_PROFILE_COLUMNS, sortConversations, type ConversationSummary, type FriendEntry, type SocialProfile } from "@/lib/social";
+import {
+  classifyFriendships,
+  SOCIAL_PROFILE_COLUMNS,
+  sortConversations,
+  type ConversationSummary,
+  type FriendEntry,
+  type SocialProfile,
+} from "@/lib/social";
 
 /** Re-runs `load` at most once per `ms` while realtime events stream in. */
 function useDebounced(load: () => Promise<void>, ms = 300) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
+  useEffect(
+    () => () => void (timer.current && clearTimeout(timer.current)),
+    [],
+  );
   return useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => void load(), ms);
@@ -23,15 +39,29 @@ export function useFriends() {
   const { me } = useMe();
   const [friends, setFriends] = useState<FriendEntry[] | null>(null);
   const [blocked, setBlocked] = useState<string[]>([]);
-  const [profiles, setProfiles] = useState<Map<string, SocialProfile>>(() => new Map());
+  const [profiles, setProfiles] = useState<Map<string, SocialProfile>>(
+    () => new Map(),
+  );
 
   const load = useCallback(async () => {
-    const [{ data: rows }, { data: blocks }] = await Promise.all([supabase.from("friendships").select("*"), supabase.from("user_blocks").select("blocked_id")]);
+    const [{ data: rows }, { data: blocks }] = await Promise.all([
+      supabase.from("friendships").select("*"),
+      supabase.from("user_blocks").select("blocked_id"),
+    ]);
     const entries = classifyFriendships(rows ?? [], me.id);
     const blockedIds = (blocks ?? []).map((b) => b.blocked_id);
-    const ids = Array.from(new Set([...entries.map((e) => e.userId), ...blockedIds]));
-    const { data: people } = ids.length ? await supabase.from("profiles").select(SOCIAL_PROFILE_COLUMNS).in("id", ids) : { data: [] };
-    setProfiles(new Map(((people ?? []) as SocialProfile[]).map((p) => [p.id, p])));
+    const ids = Array.from(
+      new Set([...entries.map((e) => e.userId), ...blockedIds]),
+    );
+    const { data: people } = ids.length
+      ? await supabase
+          .from("profiles")
+          .select(SOCIAL_PROFILE_COLUMNS)
+          .in("id", ids)
+      : { data: [] };
+    setProfiles(
+      new Map(((people ?? []) as SocialProfile[]).map((p) => [p.id, p])),
+    );
     setFriends(entries);
     setBlocked(blockedIds);
   }, [supabase, me.id]);
@@ -43,8 +73,11 @@ export function useFriends() {
     void load();
     // RLS limits these events to friendships I'm part of.
     return subscribeDbChanges(supabase, `friends:${me.id}`, (channel) =>
-      channel
-        .on("postgres_changes", { event: "*", schema: "public", table: "friendships" }, reload),
+      channel.on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "friendships" },
+        reload,
+      ),
     );
   }, [supabase, me.id, load, reload]);
 
@@ -60,7 +93,10 @@ export function latest(a: string, b: string | undefined): string {
 export function useConversations() {
   const supabase = useSupabase();
   const { me } = useMe();
-  const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
+  const [conversations, setConversations] = useState<
+    ConversationSummary[] | null
+  >(null);
+  const generation = useRef(0);
   // What this tab has read, so a reload that races the read receipt (or a device clock behind the
   // server's) can never turn a conversation you've seen back to unread.
   const readMarks = useRef<Map<string, string>>(
@@ -72,20 +108,47 @@ export function useConversations() {
   );
 
   const load = useCallback(async () => {
-    const { data: mine } = await supabase.from("dm_participants").select("conversation_id, last_read_at").eq("user_id", me.id);
+    const token = ++generation.current;
+    const { data: mine, error } = await supabase
+      .from("dm_participants")
+      .select("conversation_id, last_read_at")
+      .eq("user_id", me.id);
+    if (error || token !== generation.current) return;
     const ids = (mine ?? []).map((p) => p.conversation_id);
     if (ids.length === 0) {
       setConversations([]);
       return;
     }
-    const [{ data: convs }, { data: participants }] = await Promise.all([
+    const [
+      { data: convs, error: conversationError },
+      { data: participants, error: participantError },
+    ] = await Promise.all([
       supabase.from("dm_conversations").select("*").in("id", ids),
-      supabase.from("dm_participants").select("conversation_id, user_id").in("conversation_id", ids),
+      supabase
+        .from("dm_participants")
+        .select("conversation_id, user_id")
+        .in("conversation_id", ids),
     ]);
-    const otherIds = Array.from(new Set((participants ?? []).map((p) => p.user_id).filter((id) => id !== me.id)));
-    const { data: people } = otherIds.length ? await supabase.from("profiles").select(SOCIAL_PROFILE_COLUMNS).in("id", otherIds) : { data: [] };
-    const byId = new Map(((people ?? []) as SocialProfile[]).map((p) => [p.id, p]));
-    const readAt = new Map((mine ?? []).map((p) => [p.conversation_id, p.last_read_at]));
+    if (conversationError || participantError || token !== generation.current)
+      return;
+    const otherIds = Array.from(
+      new Set(
+        (participants ?? []).map((p) => p.user_id).filter((id) => id !== me.id),
+      ),
+    );
+    const { data: people } = otherIds.length
+      ? await supabase
+          .from("profiles")
+          .select(SOCIAL_PROFILE_COLUMNS)
+          .in("id", otherIds)
+      : { data: [] };
+    if (token !== generation.current) return;
+    const byId = new Map(
+      ((people ?? []) as SocialProfile[]).map((p) => [p.id, p]),
+    );
+    const readAt = new Map(
+      (mine ?? []).map((p) => [p.conversation_id, p.last_read_at]),
+    );
     setConversations(
       sortConversations(
         (convs ?? []).map((c) => ({
@@ -94,7 +157,10 @@ export function useConversations() {
           name: c.name,
           ownerId: c.owner_id,
           lastMessageAt: c.last_message_at,
-          lastReadAt: latest(readAt.get(c.id) ?? c.created_at, readMarks.current.get(c.id)),
+          lastReadAt: latest(
+            readAt.get(c.id) ?? c.created_at,
+            readMarks.current.get(c.id),
+          ),
           others: (participants ?? [])
             .filter((p) => p.conversation_id === c.id && p.user_id !== me.id)
             .map((p) => byId.get(p.user_id))
@@ -115,10 +181,20 @@ export function useConversations() {
     window.addEventListener("online", reload);
     const off = subscribeDbChanges(supabase, `dms:${me.id}`, (channel) =>
       channel
-        .on("postgres_changes", { event: "*", schema: "public", table: "dm_conversations" }, reload)
-        .on("postgres_changes", { event: "*", schema: "public", table: "dm_participants" }, reload),
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "dm_conversations" },
+          reload,
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "dm_participants" },
+          reload,
+        ),
     );
     return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- invalidate requests still in flight at cleanup
+      generation.current++;
       document.removeEventListener("visibilitychange", resume);
       window.removeEventListener("online", reload);
       off();
@@ -133,7 +209,10 @@ export function useConversations() {
           prev?.map((c) => {
             if (c.id !== conversationId) return c;
             const mark = latest(new Date().toISOString(), c.lastMessageAt);
-            readMarks.current.set(c.id, latest(mark, readMarks.current.get(c.id)));
+            readMarks.current.set(
+              c.id,
+              latest(mark, readMarks.current.get(c.id)),
+            );
             return { ...c, lastReadAt: latest(c.lastReadAt, mark) };
           }) ?? prev,
       );
@@ -151,7 +230,9 @@ export function useConversations() {
 export function useFriendNicknames() {
   const supabase = useSupabase();
   const { me } = useMe();
-  const [nicknames, setNicknames] = useState<ReadonlyMap<string, string>>(() => new Map());
+  const [nicknames, setNicknames] = useState<ReadonlyMap<string, string>>(
+    () => new Map(),
+  );
 
   useEffect(() => {
     let live = true;
@@ -160,7 +241,8 @@ export function useFriendNicknames() {
       .from("friend_nicknames")
       .select("target_id, nickname")
       .then(({ data }) => {
-        if (live && data) setNicknames(new Map(data.map((r) => [r.target_id, r.nickname])));
+        if (live && data)
+          setNicknames(new Map(data.map((r) => [r.target_id, r.nickname])));
       });
     return () => {
       live = false;
@@ -169,10 +251,19 @@ export function useFriendNicknames() {
 
   const setNickname = useCallback(
     async (targetId: string, raw: string) => {
-      const nickname = raw.replace(/[\u0000-\u001F\u007F]/g, "").trim().slice(0, 32);
+      const nickname = raw
+        .replace(/[\u0000-\u001F\u007F]/g, "")
+        .trim()
+        .slice(0, 32);
       const { error } = nickname
-        ? await supabase.from("friend_nicknames").upsert({ owner_id: me.id, target_id: targetId, nickname })
-        : await supabase.from("friend_nicknames").delete().eq("owner_id", me.id).eq("target_id", targetId);
+        ? await supabase
+            .from("friend_nicknames")
+            .upsert({ owner_id: me.id, target_id: targetId, nickname })
+        : await supabase
+            .from("friend_nicknames")
+            .delete()
+            .eq("owner_id", me.id)
+            .eq("target_id", targetId);
       if (error) return false;
       setNicknames((prev) => {
         const next = new Map(prev);

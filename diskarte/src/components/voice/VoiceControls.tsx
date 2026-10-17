@@ -32,7 +32,7 @@ function ControlButton({
         aria-pressed={active}
         onClick={onClick}
         className={cn(
-          "flex items-center justify-center transition-[color,background-color,transform] duration-150",
+          "voice-control flex items-center justify-center transition-[color,background-color,transform] duration-150",
           "active:scale-95 motion-reduce:active:scale-100",
           // 6 buttons must fit a 360 px phone: 44 px (the touch minimum) below sm, 48 px above.
           size === "lg" ? "size-11 rounded-2xl sm:size-12" : "h-8 w-full rounded-md pointer-coarse:h-11",
@@ -51,7 +51,7 @@ export function VoiceControls({ size = "lg", compact = false }: { size?: "sm" | 
   const icon = size === "lg" ? "size-5" : "size-4";
   return (
     <div
-      className={cn("flex items-center", size === "lg" ? "flex-wrap justify-center gap-1.5 sm:gap-3" : "w-full gap-1")}
+      className={cn("flex items-center", size === "lg" ? "voice-control-bar flex-wrap justify-center gap-1.5 sm:gap-3" : "w-full gap-1")}
       role="toolbar"
       aria-label="Call controls"
     >

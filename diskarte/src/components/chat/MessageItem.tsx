@@ -251,6 +251,7 @@ export const MessageItem = memo(function MessageItem({
       aria-label={`${name}: ${message.content.slice(0, 80)}`}
       data-testid="message"
       data-message-id={message.id}
+      data-grouped={String(grouped)}
       data-active={active || undefined}
       {...menu.triggerProps}
       onPointerDown={(e) => { menu.triggerProps.onPointerDown(e); swipe.onPointerDown(e); }}
@@ -264,7 +265,7 @@ export const MessageItem = memo(function MessageItem({
         onActivate(active ? null : message.id);
       }}
       className={cn(
-        "group relative flex touch-pan-y gap-3 rounded-md px-3 transition-colors",
+        "message-row group relative flex touch-pan-y gap-3 rounded-md px-3 transition-colors",
         grouped ? "py-0.5" : "mt-3 pb-0.5 pt-1",
         mentioned ? "border-l-2 border-sun bg-sun/[0.07] hover:bg-sun/10" : "hover:bg-white/[0.03]",
         (message.pending || message.queued) && "opacity-60",
@@ -301,7 +302,7 @@ export const MessageItem = memo(function MessageItem({
           </button>
         )}
         {!grouped && (
-          <p className="flex min-w-0 items-baseline gap-2">
+          <p data-message-author className="flex min-w-0 items-baseline gap-2">
             <Author message={message} actions={actions} className="truncate font-semibold text-white">
               {name}
             </Author>
@@ -383,7 +384,7 @@ export const MessageItem = memo(function MessageItem({
           role="toolbar"
           aria-label="Message actions"
           className={cn(
-            "glass-strong absolute -top-4 right-3 z-10 flex items-center rounded-lg p-0.5 shadow-lg pointer-coarse:gap-1",
+            "message-toolbar glass-strong absolute -top-4 right-3 z-10 flex items-center rounded-lg p-0.5 shadow-lg pointer-coarse:gap-1",
             // Slides in on hover (mouse), focus (keyboard) or tap (touch: no hover on phones).
             "pointer-events-none translate-y-1 scale-95 opacity-0 transition-[opacity,transform] duration-150 ease-out",
             "group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100",

@@ -13,6 +13,7 @@ for (const mode of ["light", "system"] as const) {
   });
 }
 test("light high contrast keeps dark focus rings and honors the OS transparency preference", async ({ page, context, baseURL }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
   await context.addCookies([{ name: "diskarte-mode", value: "light", url: baseURL! }]);
   await page.emulateMedia({ colorScheme: "light", contrast: "more" }); await page.goto("/login");
   const glass = page.locator(".auth-panel").first();
@@ -26,9 +27,11 @@ test("light high contrast keeps dark focus rings and honors the OS transparency 
   expect(await password.evaluate((element) => getComputedStyle(element).outlineColor)).toBe("rgb(20, 33, 56)");
   await page.locator("html").evaluate((element) => element.removeAttribute("data-high-contrast"));
   await page.emulateMedia({ contrast: "no-preference" });
-  const blur = await page.evaluate(() => {
+  const blur = () => page.evaluate(() => {
     const surface = document.createElement("div"); surface.className = "glass"; document.body.appendChild(surface);
     const value = getComputedStyle(surface).backdropFilter; surface.remove(); return value;
   });
-  expect(blur).toContain("blur(12px)");
+  expect(await blur()).toBe("none");
+  await page.setViewportSize({ width: 1440, height: 900 });
+  expect(await blur()).toContain("blur(12px)");
 });
