@@ -21,8 +21,8 @@ import { LandingHero } from "@/components/landing/LandingHero";
 import { LandingMotion } from "@/components/landing/LandingMotion";
 import {
   ProductPlayground,
-  WorkspaceCloseup,
 } from "@/components/landing/ProductPlayground";
+import { WorkspaceCloseup } from "@/components/landing/WorkspaceCloseup";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { OAuthButtons } from "@/components/auth/OAuthButtons";
 import { ConfigNotice } from "@/components/ConfigNotice";

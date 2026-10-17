@@ -88,3 +88,29 @@ for (const mode of ["dark", "light"] as const) {
     ).toEqual([]);
   });
 }
+
+test("landing reserves its layout while images and fonts load", async ({ page }, info) => {
+  await page.addInitScript(() => {
+    const metrics = { cls: 0, lcp: 0 };
+    Object.assign(window, { landingMetrics: metrics });
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries() as (PerformanceEntry & { hadRecentInput?: boolean; value: number })[]) {
+        if (!entry.hadRecentInput) metrics.cls += entry.value;
+      }
+    }).observe({ type: "layout-shift", buffered: true });
+    new PerformanceObserver((list) => {
+      metrics.lcp = list.getEntries().at(-1)?.startTime ?? 0;
+    }).observe({ type: "largest-contentful-paint", buffered: true });
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/");
+  await page.evaluate(async () => { await document.fonts.ready; await Promise.all([...document.images].map((image) => image.decode().catch(() => undefined))); });
+  await expect.poll(async () => page.evaluate(() => (window as unknown as Window & { landingMetrics: { lcp: number } }).landingMetrics.lcp)).toBeGreaterThan(0);
+  const result = await page.evaluate(() => {
+    const metrics = (window as unknown as Window & { landingMetrics: { cls: number; lcp: number } }).landingMetrics;
+    const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming;
+    return { ...metrics, ttfb: navigation.responseStart - navigation.requestStart, reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches };
+  });
+  await info.attach("landing-performance", { body: JSON.stringify(result), contentType: "application/json" });
+  expect(result.cls).toBeLessThan(0.1);
+});

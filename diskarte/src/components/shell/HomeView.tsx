@@ -113,7 +113,7 @@ export function HomeView({
                   <strong>{friends.length}</strong>
                   <span>
                     {incoming
-                      ? `${incoming} pending requests`
+                      ? `${incoming} pending request${incoming === 1 ? "" : "s"}`
                       : "friends in your circle"}
                   </span>
                 </Link>
