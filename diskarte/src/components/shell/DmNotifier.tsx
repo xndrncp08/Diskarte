@@ -22,10 +22,15 @@ export function DmNotifier() {
   const router = useRouter();
   const seen = useRef<Map<string, string> | null>(null);
 
+  const stillUnread = useEffectEvent((id: string, at: string) => {
+    const conversation = social?.conversations?.find((item) => item.id === id);
+    return !!conversation && isUnread(conversation) && Date.parse(at) > Date.parse(conversation.lastReadAt);
+  });
+
   const announce = useEffectEvent(async (conversationId: string, title: string) => {
     if (!supabase || !readNotifyPrefs().dms) return;
-    const { data } = await supabase.from("direct_messages").select("id, content, author_id").eq("conversation_id", conversationId).order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (!data || data.author_id === me.id) return;
+    const { data } = await supabase.from("direct_messages").select("id, content, author_id, created_at").eq("conversation_id", conversationId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (!data || data.author_id === me.id || !stillUnread(conversationId, data.created_at)) return;
     desktopNotify({ title, body: data.content || "Sent an attachment", tag: notificationTag("dm", conversationId), href: `/tambayan/dm/${conversationId}`, open: (to) => router.push(to) });
   });
 
