@@ -24,7 +24,7 @@ import { useDirectChat } from "@/hooks/useDirectChat";
 import type { ChatMessage } from "@/hooks/useChannelChat";
 import { isGroupedWithPrevious, sameDay } from "@/lib/chat-format";
 import type { Server } from "@/lib/servers";
-import { conversationTitle, withNickname, type SocialProfile } from "@/lib/social";
+import { conversationTitle, readReceipt, withNickname, type SocialProfile } from "@/lib/social";
 import type { Tables } from "@/lib/supabase/database.types";
 import { WorkspacePanel } from "@/components/workspace/WorkspacePanel";
 import { ConversationAvatar, HomeSidebar } from "./HomeSidebar";
@@ -75,6 +75,9 @@ export function DmView({
 
 
   const byId = new Map(chat.messages.map((m) => [m.id, m]));
+  // "Sent" / "Seen" under my latest delivered message, from the other participants' read positions.
+  const lastMine = [...chat.messages].reverse().find((m) => !m.pending && !m.queued && !m.failed);
+  const receipt = lastMine?.author_id === me.id ? readReceipt(lastMine.created_at, others, chat.reads, conversation.kind) : null;
   const names = new Map(participants.map((p) => [p.id, withNickname(p, nicknames).display_name]));
   const ringer = useRinger();
   const prewarm = usePrewarm();
@@ -194,6 +197,11 @@ export function DmView({
                     onActivate={setActiveId}
                     actions={actions}
                   />
+                  {receipt && m.id === lastMine?.id && (
+                    <p className="px-4 pb-1 text-right text-[11px] text-slate-400" data-testid="read-receipt">
+                      {receipt}
+                    </p>
+                  )}
                 </div>
               );
             }}
