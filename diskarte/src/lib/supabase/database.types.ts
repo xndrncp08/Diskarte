@@ -201,6 +201,9 @@ export interface Database {
           has_poll?: boolean;
           /** A forum post's title (top-level messages in forum channels only). */
           title?: string | null;
+          /** Posted by an incoming webhook (no author): its id and the name it posted under. Absent before the webhooks migration. */
+          webhook_id?: string | null;
+          webhook_name?: string | null;
           /** @everyone/@here from a moderator. */
           mentions_everyone?: boolean;
           created_at: string;
@@ -316,6 +319,10 @@ export interface Database {
       scheduled_messages: TableDef<
         { id: string; author_id: string; channel_id: string; content: string; send_at: string; created_at: string; failed_reason: string | null },
         { id?: string; author_id?: string; channel_id: string; content: string; send_at: string }
+      >;
+      channel_webhooks: TableDef<
+        { id: string; server_id: string; channel_id: string; name: string; created_by: string | null; created_at: string; last_used_at: string | null },
+        never
       >;
       member_xp: TableDef<{ server_id: string; user_id: string; xp: number; last_award_at: string | null }, never>;
       friend_favourites: TableDef<{ owner_id: string; target_id: string; created_at: string }, { owner_id?: string; target_id: string }>;
@@ -471,6 +478,8 @@ export interface Database {
       add_to_group_dm: { Args: { p_conversation_id: string; p_user_id: string }; Returns: undefined };
       rename_group_dm: { Args: { p_conversation_id: string; p_name: string }; Returns: undefined };
       leave_dm: { Args: { p_conversation_id: string }; Returns: undefined };
+      save_channel_webhook: { Args: { p_channel: string; p_name: string; p_id?: string | null }; Returns: Json };
+      post_webhook_message: { Args: { p_id: string; p_token: string; p_content: string; p_name?: string | null }; Returns: string };
       reset_server_xp: { Args: { p_server: string }; Returns: undefined };
       publish_scheduled_messages: { Args: Record<string, never>; Returns: number };
       profile_connections: { Args: { p_user: string }; Returns: Json };

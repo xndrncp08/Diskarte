@@ -230,6 +230,18 @@ describe("composer & message rendering", () => {
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Stickers" })).toBeNull());
   });
 
+  it("shows a webhook's name and tag instead of a person", () => {
+    const actions = { onReply: vi.fn(), onEdit: vi.fn(), onDelete: vi.fn(), onRetry: vi.fn(), onDiscard: vi.fn(), onJump: vi.fn(), nameOf: () => "x" };
+    render(
+      <MessageItem message={msg("w1", { author_id: null, author: null, webhook_id: null, webhook_name: "GitHub", content: "Build passed" })} grouped={false} replyTo={undefined} reactions={[]} meId={OWNER_ID} canModerate mentioned={false} editing={false} setEditing={() => undefined} actions={actions} />,
+      { wrapper: wrap() },
+    );
+    const article = screen.getByTestId("message");
+    expect(article).toHaveAccessibleName("GitHub: Build passed");
+    expect(within(article).getByText("Webhook")).toBeInTheDocument();
+    expect(article).not.toHaveTextContent("Deleted user");
+  });
+
   it("renders stickers, thread chips and queued state on messages", async () => {
     const onOpenThread = vi.fn();
     const onDiscard = vi.fn();
@@ -309,7 +321,7 @@ describe("Bantay-Bayan settings", () => {
   it("lets admins configure auto-mod", async () => {
     const user = userEvent.setup();
     render(<ServerSettingsDialog open onClose={() => undefined} initialTab="automod" />, { wrapper: wrap() });
-    expect(screen.getAllByRole("tab")).toHaveLength(9);
+    expect(screen.getAllByRole("tab")).toHaveLength(10);
     await user.click(screen.getByRole("switch", { name: "Explicit content" }));
     await user.type(screen.getByLabelText("Custom blocked words"), "scam{Enter}benta account");
     await user.click(screen.getByRole("button", { name: "Save" }));

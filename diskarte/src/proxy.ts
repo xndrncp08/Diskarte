@@ -15,6 +15,10 @@ const AUTH_CALLBACK_PATHS = ["/auth/callback", "/auth/confirm"];
 const FIRST_LOGIN_PATH = "/reset-password";
 /** API routes reachable without a session. */
 const PUBLIC_API = ["/api/health", "/api/livekit/webhook", "/api/push/dispatch"];
+/** Called by other servers (their own secret authenticates them), so no same-origin check. */
+const EXTERNAL_API = ["/api/livekit/webhook", "/api/push/dispatch"];
+/** Incoming channel webhooks: /api/webhooks/<id>/<token>, public but still rate-limited per IP. */
+const isChannelWebhook = (pathname: string) => /^\/api\/webhooks\/[^/]+\/[^/]+$/.test(pathname);
 
 /** Extra CORS origins (comma-separated ALLOWED_ORIGINS). */
 function extraOrigins() {
@@ -59,7 +63,7 @@ export async function proxy(request: NextRequest) {
     if (request.method === "OPTIONS") {
       return headers ? new NextResponse(null, { status: 204, headers }) : NextResponse.json({ error: "Origin not allowed" }, { status: 403 });
     }
-    if (!["/api/livekit/webhook", "/api/push/dispatch"].includes(pathname) && !isSafeMethod(request.method) && (headers === null || !isSameOriginRequest(request.headers, request.url, [...allowed]))) {
+    if (!EXTERNAL_API.includes(pathname) && !isChannelWebhook(pathname) && !isSafeMethod(request.method) && (headers === null || !isSameOriginRequest(request.headers, request.url, [...allowed]))) {
       return NextResponse.json({ error: "Cross-site request blocked" }, { status: 403 });
     }
     cors = headers ?? {};
@@ -94,7 +98,7 @@ export async function proxy(request: NextRequest) {
   };
 
   // Liveness must answer even when upstreams are down or unconfigured.
-  if (!env || PUBLIC_API.includes(pathname)) return makeResponse();
+  if (!env || PUBLIC_API.includes(pathname) || isChannelWebhook(pathname)) return makeResponse();
 
   // --- session refresh + route guards ------------------------------------------------------
   const adminPath = matches(pathname, ADMIN_PATHS);

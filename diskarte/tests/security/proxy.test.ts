@@ -107,6 +107,18 @@ describe("CORS and CSRF on /api", () => {
     expect((await proxy(req("/api/livekit/token", { method: "POST", headers: { origin: SITE } }))).status).toBe(200);
   });
 
+  it("lets other servers post to channel webhooks without a session, still rate-limited per IP", async () => {
+    const path = "/api/webhooks/11111111-2222-4333-8444-555555555555/" + "a".repeat(48);
+    // No Origin and no session: an external caller.
+    expect((await proxy(req(path, { method: "POST" }))).status).toBe(200);
+    // Only that exact shape is exempt.
+    expect((await proxy(req("/api/webhooks/x", { method: "POST" }))).status).toBe(403);
+    const ip = `198.51.100.${ipCounter + 100}`;
+    let res: NextResponse | Response = new Response();
+    for (let i = 0; i < 121; i++) res = await proxy(req(path, { method: "POST", ip }));
+    expect(res.status).toBe(429);
+  });
+
   it("keeps the health check public and uncached", async () => {
     const res = await proxy(req("/api/health"));
     expect(res.status).toBe(200);

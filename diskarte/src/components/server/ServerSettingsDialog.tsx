@@ -15,6 +15,7 @@ import {
   Trash2,
   Users,
   Volume2,
+  Webhook,
 } from "lucide-react";
 import {
   useId,
@@ -46,6 +47,7 @@ import { EmojiSettings } from "@/components/server/settings/EmojiSettings";
 import { RolesSettings } from "./settings/RolesSettings";
 import { SoundboardSettings } from "./settings/SoundboardSettings";
 import { SupportSettings } from "./settings/SupportSettings";
+import { WebhooksPanel } from "./settings/WebhooksPanel";
 import { ExportSettings } from "./settings/ExportSettings";
 
 export type SettingsTab =
@@ -57,6 +59,7 @@ export type SettingsTab =
   | "invites"
   | "emoji"
   | "soundboard"
+  | "webhooks"
   | "support";
 
 const TABS: { id: SettingsTab; label: string; adminOnly: boolean }[] = [
@@ -68,6 +71,7 @@ const TABS: { id: SettingsTab; label: string; adminOnly: boolean }[] = [
   { id: "invites", label: "Invites", adminOnly: false },
   { id: "emoji", label: "Emoji", adminOnly: true },
   { id: "soundboard", label: "Soundboard", adminOnly: true },
+  { id: "webhooks", label: "Webhooks", adminOnly: true },
   { id: "support", label: "Support", adminOnly: true },
 ];
 
@@ -131,6 +135,7 @@ function SettingsTabs({
     invites: Link,
     emoji: Smile,
     soundboard: Volume2,
+    webhooks: Webhook,
     support: HeartHandshake,
   };
   const panels: Record<SettingsTab, ReactNode> = {
@@ -142,6 +147,7 @@ function SettingsTabs({
     invites: <InvitesPanel />,
     emoji: <EmojiSettings />,
     soundboard: <SoundboardSettings />,
+    webhooks: <WebhooksPanel />,
     support: <SupportSettings />,
   };
 
