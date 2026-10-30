@@ -83,6 +83,9 @@ export interface Database {
           category?: string;
           /** Community levels (XP) on. Absent before the community-levels migration. */
           levels_enabled?: boolean;
+          /** Greeting posted when someone joins. Absent before the welcome-messages migration. */
+          welcome_channel_id?: string | null;
+          welcome_message?: string | null;
           is_system: boolean;
           invite_code: string;
           automod_enabled: boolean;
@@ -103,6 +106,8 @@ export interface Database {
           is_public?: boolean;
           category?: string;
           levels_enabled?: boolean;
+          welcome_channel_id?: string | null;
+          welcome_message?: string | null;
           is_system?: boolean;
           invite_code?: string;
           automod_enabled?: boolean;
