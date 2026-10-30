@@ -15,7 +15,7 @@ const { ServerSettingsDialog } = await import("@/components/server/ServerSetting
 const text = channels.find((c) => c.type === "text")!;
 
 describe("server automation settings", () => {
-  it("saves a welcome message and community levels from Overview", async () => {
+  it("saves rules, a welcome message and community levels from Overview", async () => {
     const user = userEvent.setup();
     render(
       <ServerFixture members={[makeMember(OWNER_ID, "Kapitan", "admin")]}>
@@ -26,11 +26,12 @@ describe("server automation settings", () => {
     const message = screen.getByLabelText("Message");
     await user.clear(message);
     await user.type(message, "Hi {{user}!");
+    await user.type(screen.getByLabelText("Rules"), "Be kind.");
     await user.click(screen.getByRole("switch", { name: /Community levels/ }));
     await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(serverActions.updateServerAction).toHaveBeenCalledWith(
-        expect.objectContaining({ serverId: SERVER_ID, levelsEnabled: true, welcome: { channelId: text.id, message: "Hi {user}!" } }),
+        expect.objectContaining({ serverId: SERVER_ID, levelsEnabled: true, rules: "Be kind.", welcome: { channelId: text.id, message: "Hi {user}!" } }),
       ),
     );
   });

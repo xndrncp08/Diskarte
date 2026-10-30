@@ -234,6 +234,7 @@ function ServerSettingsForm({ onClose }: { onClose: () => void }) {
   const [isPublic, setIsPublic] = useState(server.is_public ?? false);
   const [category, setCategory] = useState(server.category ?? "other");
   const [levels, setLevels] = useState(server.levels_enabled ?? false);
+  const [rules, setRules] = useState(server.rules ?? "");
   const [welcomeChannel, setWelcomeChannel] = useState(server.welcome_channel_id ?? "");
   const [welcomeText, setWelcomeText] = useState(server.welcome_message ?? "Mabuhay {user}! Welcome sa {server}.");
   const welcomeChanged = (welcomeChannel || null) !== (server.welcome_channel_id ?? null) || (welcomeChannel && welcomeText.trim() !== (server.welcome_message ?? ""));
@@ -272,6 +273,7 @@ function ServerSettingsForm({ onClose }: { onClose: () => void }) {
         ...(isPublic !== (server.is_public ?? false) ? { isPublic } : {}),
         ...(category !== (server.category ?? "other") ? { category } : {}),
         ...(levels !== (server.levels_enabled ?? false) ? { levelsEnabled: levels } : {}),
+        ...(rules.trim() !== (server.rules ?? "") ? { rules } : {}),
         ...(welcomeChanged ? { welcome: { channelId: welcomeChannel || null, message: welcomeText } } : {}),
       });
       if (!result.ok) {
@@ -384,6 +386,15 @@ function ServerSettingsForm({ onClose }: { onClose: () => void }) {
             )}
           </div>
         )}
+        <TextareaField
+          label="Rules"
+          hint="Members must accept these before they can post (moderators are exempt). Editing them asks everyone to accept again. Leave empty for no rules."
+          value={rules}
+          onChange={(e) => setRules(e.target.value)}
+          maxLength={2000}
+          rows={4}
+          error={errors.rules}
+        />
         <fieldset className="space-y-2 rounded-xl border border-white/10 bg-white/[0.03] p-3">
           <legend className="px-1 text-sm font-semibold text-white">Welcome message</legend>
           <label className="block text-sm text-slate-300">

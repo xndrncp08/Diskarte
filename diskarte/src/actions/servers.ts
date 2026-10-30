@@ -94,7 +94,7 @@ export async function joinServerAction(input: { invite: string }): Promise<Actio
   return { ok: true, data: { serverId: data } };
 }
 
-export async function updateServerAction(input: { serverId: string; name: string; description: string; iconUrl?: string | null; isPublic?: boolean; category?: string; levelsEnabled?: boolean; welcome?: { channelId: string | null; message: string } }): Promise<ActionResult> {
+export async function updateServerAction(input: { serverId: string; name: string; description: string; iconUrl?: string | null; isPublic?: boolean; category?: string; levelsEnabled?: boolean; welcome?: { channelId: string | null; message: string }; rules?: string }): Promise<ActionResult> {
   const { limited } = await authed();
   if (limited) return RATE_LIMITED;
   if (!uuidSchema.safeParse(input.serverId).success) return { ok: false, error: "Invalid server" };
@@ -105,6 +105,7 @@ export async function updateServerAction(input: { serverId: string; name: string
 
   const welcomeText = input.welcome?.message.trim() ?? "";
   if (welcomeText.length > 500) return { ok: false, fieldErrors: { welcome: "Keep it under 500 characters" } };
+  if ((input.rules?.trim().length ?? 0) > 2000) return { ok: false, fieldErrors: { rules: "Keep the rules under 2000 characters" } };
   if (input.welcome?.channelId && !uuidSchema.safeParse(input.welcome.channelId).success) return { ok: false, fieldErrors: { welcome: "Pick a channel" } };
 
   const supabase = await createClient();
@@ -118,6 +119,7 @@ export async function updateServerAction(input: { serverId: string; name: string
       ...(input.isPublic !== undefined ? { is_public: input.isPublic } : {}),
       ...(input.category !== undefined ? { category: input.category } : {}),
       ...(input.levelsEnabled !== undefined ? { levels_enabled: input.levelsEnabled === true } : {}),
+      ...(input.rules !== undefined ? { rules: input.rules.trim() || null } : {}),
       // Both or neither: a greeting needs a channel and text.
       ...(input.welcome ? (input.welcome.channelId && welcomeText ? { welcome_channel_id: input.welcome.channelId, welcome_message: welcomeText } : { welcome_channel_id: null, welcome_message: null }) : {}),
     })
