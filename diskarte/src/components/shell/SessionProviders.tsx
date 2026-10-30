@@ -16,6 +16,7 @@ import { CallProvider } from "@/components/voice/CallProvider";
 import { IncomingCallsProvider } from "@/components/voice/IncomingCalls";
 import { SessionGuard } from "@/components/session/SessionGuard";
 import { StatusExpiry } from "@/components/session/StatusExpiry";
+import { ScheduledPublisher } from "@/components/chat/ScheduledMessages";
 import { readDisplayPrefs, useDisplayPrefs } from "@/lib/display-prefs";
 import type { Tables } from "@/lib/supabase/database.types";
 
@@ -78,6 +79,7 @@ export function SessionProviders({
                       {/* Device heartbeat + live enforcement of bans, revoked sessions and status overrides. */}
                       <SessionGuard />
                       <StatusExpiry />
+                      <ScheduledPublisher />
                       <ClientDiagnostics />
                       <PushSession />
                     </IncomingCallsProvider>

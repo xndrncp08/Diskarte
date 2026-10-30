@@ -310,6 +310,10 @@ export interface Database {
       channel_reads: TableDef<{ user_id: string; channel_id: string; last_read_at: string }, never>;
       message_mentions: TableDef<{ message_id: string; user_id: string; channel_id: string; server_id: string; created_at: string }, never>;
       user_notes: TableDef<{ owner_id: string; target_id: string; note: string; updated_at: string }, { owner_id?: string; target_id: string; note: string; updated_at?: string }>;
+      scheduled_messages: TableDef<
+        { id: string; author_id: string; channel_id: string; content: string; send_at: string; created_at: string; failed_reason: string | null },
+        { id?: string; author_id?: string; channel_id: string; content: string; send_at: string }
+      >;
       friend_favourites: TableDef<{ owner_id: string; target_id: string; created_at: string }, { owner_id?: string; target_id: string }>;
       friend_nicknames: TableDef<{ owner_id: string; target_id: string; nickname: string }, { owner_id?: string; target_id: string; nickname: string }>;
       dm_conversations: TableDef<
@@ -463,6 +467,7 @@ export interface Database {
       add_to_group_dm: { Args: { p_conversation_id: string; p_user_id: string }; Returns: undefined };
       rename_group_dm: { Args: { p_conversation_id: string; p_name: string }; Returns: undefined };
       leave_dm: { Args: { p_conversation_id: string }; Returns: undefined };
+      publish_scheduled_messages: { Args: Record<string, never>; Returns: number };
       profile_connections: { Args: { p_user: string }; Returns: Json };
       clear_expired_custom_statuses: { Args: Record<string, never>; Returns: number };
       mark_dm_read: { Args: { p_conversation_id: string }; Returns: undefined };
