@@ -86,6 +86,9 @@ export interface Database {
           /** Greeting posted when someone joins. Absent before the welcome-messages migration. */
           welcome_channel_id?: string | null;
           welcome_message?: string | null;
+          /** Rules members accept before posting; rules_updated_at moves when they change. Absent before the server-rules migration. */
+          rules?: string | null;
+          rules_updated_at?: string | null;
           is_system: boolean;
           invite_code: string;
           automod_enabled: boolean;
@@ -108,6 +111,7 @@ export interface Database {
           levels_enabled?: boolean;
           welcome_channel_id?: string | null;
           welcome_message?: string | null;
+          rules?: string | null;
           is_system?: boolean;
           invite_code?: string;
           automod_enabled?: boolean;
@@ -334,6 +338,14 @@ export interface Database {
         { id: string; server_id: string; channel_id: string; name: string; created_by: string | null; created_at: string; last_used_at: string | null },
         never
       >;
+      server_announcements: TableDef<
+        {
+          id: string; server_id: string; channel_id: string; content: string; weekday: number | null; at_time: string; time_zone: string;
+          enabled: boolean; next_run_at: string; last_run_at: string | null; last_error: string | null; created_by: string | null; created_at: string;
+        },
+        { server_id: string; channel_id: string; content: string; weekday?: number | null; at_time: string; time_zone: string; enabled?: boolean }
+      >;
+      rules_acceptances: TableDef<{ server_id: string; user_id: string; accepted_at: string }, never>;
       member_xp: TableDef<{ server_id: string; user_id: string; xp: number; last_award_at: string | null }, never>;
       friend_favourites: TableDef<{ owner_id: string; target_id: string; created_at: string }, { owner_id?: string; target_id: string }>;
       friend_nicknames: TableDef<{ owner_id: string; target_id: string; nickname: string }, { owner_id?: string; target_id: string; nickname: string }>;
@@ -490,6 +502,7 @@ export interface Database {
       leave_dm: { Args: { p_conversation_id: string }; Returns: undefined };
       save_channel_webhook: { Args: { p_channel: string; p_name: string; p_id?: string | null }; Returns: Json };
       post_webhook_message: { Args: { p_id: string; p_token: string; p_content: string; p_name?: string | null }; Returns: string };
+      accept_server_rules: { Args: { p_server: string }; Returns: undefined };
       reset_server_xp: { Args: { p_server: string }; Returns: undefined };
       publish_scheduled_messages: { Args: Record<string, never>; Returns: number };
       profile_connections: { Args: { p_user: string }; Returns: Json };

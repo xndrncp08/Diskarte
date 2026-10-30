@@ -202,6 +202,20 @@ describe("composer & message rendering", () => {
     expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled();
   });
 
+  it("suggests slash commands, completes with Tab and applies them on send", async () => {
+    const onSend = vi.fn(async () => "sent" as const);
+    const user = userEvent.setup();
+    render(<Composer {...base} onSend={onSend} />, { wrapper: wrap() });
+    const box = screen.getByTestId("composer");
+    await user.type(box, "/sp");
+    expect(within(screen.getByTestId("slash-commands")).getByRole("button", { name: /\/spoiler/ })).toBeInTheDocument();
+    await user.keyboard("{Tab}");
+    expect(box).toHaveValue("/spoiler ");
+    expect(screen.queryByTestId("slash-commands")).toBeNull();
+    await user.type(box, "ending{Enter}");
+    await waitFor(() => expect(onSend).toHaveBeenCalledWith("||ending||", [], null));
+  });
+
   it("gives the draft back when a send is rejected", async () => {
     const onSend = vi.fn(async () => "rejected" as const);
     render(<Composer {...base} onSend={onSend} />, { wrapper: wrap() });
@@ -321,7 +335,7 @@ describe("Bantay-Bayan settings", () => {
   it("lets admins configure auto-mod", async () => {
     const user = userEvent.setup();
     render(<ServerSettingsDialog open onClose={() => undefined} initialTab="automod" />, { wrapper: wrap() });
-    expect(screen.getAllByRole("tab")).toHaveLength(10);
+    expect(screen.getAllByRole("tab")).toHaveLength(11);
     await user.click(screen.getByRole("switch", { name: "Explicit content" }));
     await user.type(screen.getByLabelText("Custom blocked words"), "scam{Enter}benta account");
     await user.click(screen.getByRole("button", { name: "Save" }));

@@ -19,6 +19,7 @@ function messageError(message: string | undefined) {
   if (message?.includes("INVALID_ATTACHMENT")) return "Something's wrong with an attachment. Upload it again.";
   if (message?.includes("ONLY_AUTHOR_CAN_EDIT")) return "Only you can edit your messages.";
   if (message?.includes("ONLY_MODERATORS_CAN_PIN")) return "Only moderators can pin messages.";
+  if (message?.includes("RULES_NOT_ACCEPTED")) return "Accept this server's rules first.";
   if (message?.includes("TOO_MANY_REACTIONS")) return "This message has too many reactions.";
   if (message?.includes("row-level security")) return "You don't have permission for this.";
   return communityError(message);
