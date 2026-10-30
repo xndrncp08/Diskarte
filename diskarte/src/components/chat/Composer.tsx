@@ -11,6 +11,7 @@ import { formatDuration } from "@/lib/community";
 import { MAX_ATTACHMENTS, MESSAGE_MAX, type Attachment } from "@/lib/messages";
 import { ATTACHMENT_ACCEPT, uploadAttachment } from "@/lib/uploads";
 import { ScheduleButton } from "./ScheduledMessages";
+import { applySlashCommand, slashSuggestions } from "@/lib/slash-commands";
 import { VoiceRecorder } from "./VoiceRecorder";
 import { onMentionRequest } from "@/lib/mention";
 import { cn, formatBytes } from "@/lib/utils";
@@ -169,12 +170,13 @@ export function Composer({
     if (target?.attachment) await supabase.storage.from("attachments").remove([target.attachment.path]).catch(() => undefined);
   }
 
+  const commands = slashSuggestions(draft);
   const busy = uploads.some((u) => u.status === "uploading");
   const failedUpload = uploads.some((u) => u.status === "error");
   const ready = uploads.filter((u) => u.status === "done" && u.attachment).map((u) => u.attachment!);
 
   async function submit() {
-    const content = draft.trim();
+    const content = applySlashCommand(draft.trim());
     if ((!content && ready.length === 0) || busy || failedUpload || cooldown > 0 || sending.current) return;
     if (content.length > MESSAGE_MAX) {
       toast.error(`${MESSAGE_MAX} characters max.`);
@@ -220,7 +222,10 @@ export function Composer({
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+    if (e.key === "Tab" && !e.shiftKey && commands.length) {
+      e.preventDefault();
+      setDraft(`/${commands[0].name} `);
+    } else if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       void submit();
     } else if (e.key === "Escape" && replyTo) {
@@ -299,6 +304,26 @@ export function Composer({
               <X className="size-3.5" aria-hidden />
             </button>
           </div>
+        )}
+        {commands.length > 0 && (
+          <ul className="border-b border-white/5 p-1" aria-label="Commands" data-testid="slash-commands">
+            {commands.map((c) => (
+              <li key={c.name}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDraft(`/${c.name} `);
+                    textarea.current?.focus();
+                  }}
+                  className="flex min-h-9 w-full items-baseline gap-2 rounded-md px-2 text-left text-sm hover:bg-white/10 pointer-coarse:min-h-11"
+                >
+                  <span className="font-semibold text-white">/{c.name}</span>
+                  <span className="truncate text-xs text-slate-400">{c.hint}</span>
+                </button>
+              </li>
+            ))}
+            <li className="px-2 pt-0.5 text-[11px] text-slate-500">Tab to complete</li>
+          </ul>
         )}
         {uploads.length > 0 && (
           <ul className="flex gap-2 overflow-x-auto border-b border-white/5 p-2" aria-label="Attachments to send">
@@ -401,7 +426,7 @@ export function Composer({
           {schedulable && (
             <ScheduleButton
               channelId={channelId}
-              content={draft.trim()}
+              content={applySlashCommand(draft.trim())}
               disabled={!draft.trim() || draft.trim().length > MESSAGE_MAX || uploads.length > 0}
               onScheduled={() => setDraft("")}
             />

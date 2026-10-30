@@ -202,6 +202,20 @@ describe("composer & message rendering", () => {
     expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled();
   });
 
+  it("suggests slash commands, completes with Tab and applies them on send", async () => {
+    const onSend = vi.fn(async () => "sent" as const);
+    const user = userEvent.setup();
+    render(<Composer {...base} onSend={onSend} />, { wrapper: wrap() });
+    const box = screen.getByTestId("composer");
+    await user.type(box, "/sp");
+    expect(within(screen.getByTestId("slash-commands")).getByRole("button", { name: /\/spoiler/ })).toBeInTheDocument();
+    await user.keyboard("{Tab}");
+    expect(box).toHaveValue("/spoiler ");
+    expect(screen.queryByTestId("slash-commands")).toBeNull();
+    await user.type(box, "ending{Enter}");
+    await waitFor(() => expect(onSend).toHaveBeenCalledWith("||ending||", [], null));
+  });
+
   it("gives the draft back when a send is rejected", async () => {
     const onSend = vi.fn(async () => "rejected" as const);
     render(<Composer {...base} onSend={onSend} />, { wrapper: wrap() });

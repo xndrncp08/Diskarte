@@ -3,6 +3,7 @@ import { CLASSIC_REACTIONS, isValidReaction, PINOY_REACTIONS, splitGlyphs } from
 import { glyphLabel, toGlyphCode } from "@/lib/glyphs";
 import { attachmentPrefix, formatDuration, isAudioAttachment, parseAttachments, previewText } from "@/lib/messages";
 import { playSfx, SFX_NAMES, setSfxEnabled, sfxEnabled } from "@/lib/sfx";
+import { applySlashCommand, slashSuggestions } from "@/lib/slash-commands";
 import { safeFileName, sniffMatches, validateAttachment } from "@/lib/uploads";
 
 describe("reactions and glyphs (no emoji, ever)", () => {
@@ -125,5 +126,25 @@ describe("sfx", () => {
     expect(sfxEnabled()).toBe(false);
     setSfxEnabled(true);
     expect(sfxEnabled()).toBe(true);
+  });
+});
+
+describe("slash commands", () => {
+  it("transforms known commands and leaves everything else alone", () => {
+    expect(applySlashCommand("/shrug")).toBe("¯\\\\\\_(ツ)\\_/¯");
+    expect(applySlashCommand("/shrug ewan ko")).toBe("ewan ko ¯\\\\\\_(ツ)\\_/¯");
+    expect(applySlashCommand("/TableFlip ayoko na")).toBe("ayoko na (╯°□°)╯︵ ┻━┻");
+    expect(applySlashCommand("/me kumakain ng_balut")).toBe("_kumakain ng\\_balut_");
+    expect(applySlashCommand("/spoiler si Darth Vader ang tatay")).toBe("||si Darth Vader ang tatay||");
+    expect(applySlashCommand("/me")).toBe("/me");
+    expect(applySlashCommand("/r/philippines")).toBe("/r/philippines");
+    expect(applySlashCommand("/unknown hi")).toBe("/unknown hi");
+    expect(applySlashCommand("hello /shrug")).toBe("hello /shrug");
+  });
+  it("suggests commands only while the command word is being typed", () => {
+    expect(slashSuggestions("/").map((c) => c.name)).toHaveLength(5);
+    expect(slashSuggestions("/sh").map((c) => c.name)).toEqual(["shrug"]);
+    expect(slashSuggestions("/shrug ")).toEqual([]);
+    expect(slashSuggestions("hi")).toEqual([]);
   });
 });
