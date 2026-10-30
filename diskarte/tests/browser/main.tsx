@@ -53,6 +53,8 @@ const social: SocialValue = {
   markRead: () => {},
   nicknames: new Map(),
   setNickname: async () => false,
+  favourites: new Set<string>(),
+  setFavourite: async () => false,
 };
 
 function Fixture() {

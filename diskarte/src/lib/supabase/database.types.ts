@@ -43,6 +43,8 @@ export interface Database {
           status: PresenceStatus;
           custom_status: string | null;
           custom_status_emoji: string | null;
+          /** When the custom status clears itself; null = until cleared. Absent before the profile-connections migration. */
+          custom_status_expires_at?: string | null;
           onboarded: boolean;
           created_at: string;
           updated_at: string;
@@ -59,6 +61,7 @@ export interface Database {
           status?: PresenceStatus;
           custom_status?: string | null;
           custom_status_emoji?: string | null;
+          custom_status_expires_at?: string | null;
           onboarded?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -307,6 +310,7 @@ export interface Database {
       channel_reads: TableDef<{ user_id: string; channel_id: string; last_read_at: string }, never>;
       message_mentions: TableDef<{ message_id: string; user_id: string; channel_id: string; server_id: string; created_at: string }, never>;
       user_notes: TableDef<{ owner_id: string; target_id: string; note: string; updated_at: string }, { owner_id?: string; target_id: string; note: string; updated_at?: string }>;
+      friend_favourites: TableDef<{ owner_id: string; target_id: string; created_at: string }, { owner_id?: string; target_id: string }>;
       friend_nicknames: TableDef<{ owner_id: string; target_id: string; nickname: string }, { owner_id?: string; target_id: string; nickname: string }>;
       dm_conversations: TableDef<
         { id: string; kind: DmKind; name: string | null; owner_id: string | null; direct_key: string | null; created_at: string; last_message_at: string },
@@ -459,6 +463,8 @@ export interface Database {
       add_to_group_dm: { Args: { p_conversation_id: string; p_user_id: string }; Returns: undefined };
       rename_group_dm: { Args: { p_conversation_id: string; p_name: string }; Returns: undefined };
       leave_dm: { Args: { p_conversation_id: string }; Returns: undefined };
+      profile_connections: { Args: { p_user: string }; Returns: Json };
+      clear_expired_custom_statuses: { Args: Record<string, never>; Returns: number };
       mark_dm_read: { Args: { p_conversation_id: string }; Returns: undefined };
       is_super_admin: { Args: Record<string, never>; Returns: boolean };
       my_platform_role: { Args: Record<string, never>; Returns: string };

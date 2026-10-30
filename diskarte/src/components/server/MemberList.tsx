@@ -10,6 +10,7 @@ import { Badges } from "@/components/community/Badges";
 import { useMe } from "@/components/providers/MeProvider";
 import { useServer } from "@/components/providers/ServerProvider";
 import { ProfileCard } from "@/components/profile/ProfileCard";
+import { ProfileConnections } from "@/components/profile/ProfileConnections";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { STATUS_RING } from "@/components/retro/PixelStatus";
 import { Glyph } from "@/components/ui/Glyph";
@@ -182,6 +183,7 @@ function MemberProfileCard({
         footer={
           <>
             <Badges badges={memberBadges} className="mt-3" />
+            {member.user_id !== me.id && <ProfileConnections userId={member.user_id} />}
             <FriendButton userId={member.user_id} username={member.profile.username} className="mt-3" />
             {ring && (
               <Button size="sm" className="mt-3 w-full" onClick={() => void ring.ring(member.nickname ?? member.profile.display_name)}>

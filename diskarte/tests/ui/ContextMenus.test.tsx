@@ -53,6 +53,8 @@ function Social({ friends = [], blocked = [], profiles = new Map(), children }: 
     attention: 0,
     nicknames: new Map(),
     setNickname: setFriendNickname,
+    favourites: new Set<string>(),
+    setFavourite: async () => true,
   };
   return <SocialContext.Provider value={value}>{children}</SocialContext.Provider>;
 }

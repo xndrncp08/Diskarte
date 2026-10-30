@@ -278,3 +278,43 @@ export function useFriendNicknames() {
 
   return { nicknames, setNickname };
 }
+
+/** Friends I starred: listed first on the Friends page. Private to me. */
+export function useFriendFavourites() {
+  const supabase = useSupabase();
+  const { me } = useMe();
+  const [favourites, setFavourites] = useState<ReadonlySet<string>>(() => new Set());
+
+  useEffect(() => {
+    let live = true;
+    // A missing table (migration not applied yet) just means no favourites.
+    void supabase
+      .from("friend_favourites")
+      .select("target_id")
+      .then(({ data }) => {
+        if (live && data) setFavourites(new Set(data.map((r) => r.target_id)));
+      });
+    return () => {
+      live = false;
+    };
+  }, [supabase, me.id]);
+
+  const setFavourite = useCallback(
+    async (targetId: string, on: boolean) => {
+      const { error } = on
+        ? await supabase.from("friend_favourites").upsert({ owner_id: me.id, target_id: targetId })
+        : await supabase.from("friend_favourites").delete().eq("owner_id", me.id).eq("target_id", targetId);
+      if (error) return false;
+      setFavourites((prev) => {
+        const next = new Set(prev);
+        if (on) next.add(targetId);
+        else next.delete(targetId);
+        return next;
+      });
+      return true;
+    },
+    [supabase, me.id],
+  );
+
+  return { favourites, setFavourite };
+}

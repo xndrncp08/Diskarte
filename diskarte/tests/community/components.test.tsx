@@ -48,6 +48,8 @@ const social = {
   attention: 0,
   nicknames: new Map(),
   setNickname: async () => true,
+  favourites: new Set<string>(),
+  setFavourite: async () => true,
 };
 vi.mock("@/components/providers/SocialProvider", () => ({ useSocial: () => social, useOptionalSocial: () => social }));
 vi.mock("@/actions/social", () => ({
@@ -358,6 +360,50 @@ describe("friends", () => {
     expect(row).toHaveTextContent("Maria");
     await user.click(within(row).getByRole("button", { name: "Accept" }));
     await waitFor(() => expect(socialActions.respondFriendRequestAction).toHaveBeenCalledWith({ userId: MOD_ID, accept: true }));
+  });
+});
+
+describe("favourite friends", () => {
+  it("lists favourites first with a star and toggles them from the friend menu", async () => {
+    const user = userEvent.setup();
+    social.friends = [
+      { userId: MOD_ID, status: "accepted", since: "2026-09-27T00:00:00Z" },
+      { userId: MEMBER_ID, status: "accepted", since: "2026-09-27T00:00:00Z" },
+    ];
+    social.profiles = new Map([[MOD_ID, makeProfile(MOD_ID, "Maria")], [MEMBER_ID, makeProfile(MEMBER_ID, "Juan")]]);
+    social.favourites = new Set([MEMBER_ID]);
+    const setFavourite = vi.fn(async () => true);
+    social.setFavourite = setFavourite;
+    const idle = { status: "idle", target: null } as unknown as import("@/components/voice/CallProvider").CallContextValue;
+    render(
+      <CallContext.Provider value={idle}>
+        <FriendsView servers={[]} />
+      </CallContext.Provider>,
+      { wrapper: wrap() },
+    );
+    const rows = screen.getAllByTestId("friend-row");
+    expect(rows[0]).toHaveTextContent("Juan");
+    expect(within(rows[0]).getByLabelText("Favourite")).toBeInTheDocument();
+    expect(within(rows[1]).queryByLabelText("Favourite")).toBeNull();
+    await user.click(within(rows[1]).getByRole("button", { name: "More options" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Add to favourites" }));
+    expect(setFavourite).toHaveBeenCalledWith(MOD_ID, true);
+    social.favourites = new Set();
+  });
+});
+
+describe("profile connections", () => {
+  it("shows mutual friends and shared Tambayans on someone else's profile", async () => {
+    const { ProfileConnections } = await import("@/components/profile/ProfileConnections");
+    vi.mocked(fake.client.rpc).mockResolvedValueOnce({
+      data: { mutual_friends: [{ id: MOD_ID, username: "maria", display_name: "Maria", avatar_url: null, avatar_preset: "salakot" }], shared_servers: [{ id: SERVER_ID, name: "Kanto", icon_url: null }] },
+      error: null,
+    } as never);
+    render(<ProfileConnections userId={MEMBER_ID} />);
+    const section = await screen.findByTestId("profile-connections");
+    expect(fake.client.rpc).toHaveBeenCalledWith("profile_connections", { p_user: MEMBER_ID });
+    expect(within(section).getByRole("region", { name: "Mutual friends" })).toHaveTextContent("Maria");
+    expect(within(section).getByRole("link", { name: "Kanto" })).toHaveAttribute("href", `/tambayan/${SERVER_ID}`);
   });
 });
 
