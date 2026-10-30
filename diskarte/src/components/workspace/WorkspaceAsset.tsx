@@ -68,7 +68,7 @@ export function WorkspaceAsset({ channelId, kind, editable, onClose }: { channel
     if (changes.current === baseline.current) return onClose();
     confirmAction({ title: "Discard unsaved changes?", body: "Your shared changes have not been saved.", confirmLabel: "Discard", onConfirm: onClose });
   };
-  return <Modal open title={kind === "resources" ? "Shared resources" : "Collaborative whiteboard"} onClose={close} className="max-h-[90dvh] max-w-4xl overflow-y-auto">
+  return <Modal open title={kind === "resources" ? "Shared resources" : "Collaborative whiteboard"} onClose={close} className="workspace-editor max-h-[90dvh] max-w-4xl overflow-y-auto">
     <div className="space-y-4">
       {!ready && !problem && <p role="status">Loading shared content…</p>}
       {ready && (kind === "resources" ? <ResourceEditor content={content} change={change} editable={editable && !busy} /> : <Whiteboard content={content} change={change} editable={editable && !busy} />)}

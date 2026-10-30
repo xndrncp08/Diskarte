@@ -63,7 +63,7 @@ test.describe("WebRTC voice rooms", () => {
     await page.getByTestId("user-panel").getByRole("link", { name: "User settings" }).click();
     const settings = page.getByRole("dialog", { name: "User settings" });
     await expect(settings.getByTestId("profile-builder")).toBeVisible();
-    await settings.getByRole("tab", { name: "Account & Sessions" }).click();
+    await settings.getByRole("tab", { name: "My Account" }).click();
     await expect(settings.getByRole("tabpanel")).toContainText(host.email);
     await expect(page).toHaveURL(/\/tambayan\//);
     await page.keyboard.press("Escape");

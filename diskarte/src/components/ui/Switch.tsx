@@ -42,11 +42,11 @@ export function Switch({
         disabled={disabled}
         onClick={() => onChange(!checked)}
         className={cn(
-          "touch-target relative mt-0.5 h-6 w-11 shrink-0 rounded-full border transition-colors disabled:cursor-not-allowed",
+          "ui-switch touch-target relative mt-0.5 h-6 w-11 shrink-0 rounded-full border transition-colors disabled:cursor-not-allowed",
           checked ? "border-sun bg-sun" : "border-white/20 bg-white/10",
         )}
       >
-        <span className={cn("absolute top-0.5 size-[18px] rounded-sm bg-abyss transition-[left] duration-150", checked ? "left-[22px]" : "left-0.5")} aria-hidden />
+        <span className={cn("ui-switch-knob absolute left-0.5 top-0.5 size-[18px] bg-abyss", checked ? "translate-x-5" : "translate-x-0")} aria-hidden />
       </button>
     </div>
   );

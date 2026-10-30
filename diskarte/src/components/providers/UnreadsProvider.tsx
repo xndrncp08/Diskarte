@@ -1,12 +1,34 @@
 "use client";
 
 import { createOnce } from "@/lib/once";
-import { closeNotifications, flushReads, notificationTag, pendingReads, queueRead } from "@/lib/read-receipts";
+import {
+  closeNotifications,
+  confirmRead,
+  forgetRead,
+  flushReads,
+  notificationTag,
+  pendingReads,
+  queueRead,
+} from "@/lib/read-receipts";
 import { useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useMe } from "@/components/providers/MeProvider";
 import { useOptionalSupabase } from "@/components/providers/RuntimeConfig";
-import { desktopNotify, readNotifyPrefs, serverNotify } from "@/lib/notify-prefs";
+import {
+  desktopNotify,
+  readNotifyPrefs,
+  serverNotify,
+} from "@/lib/notify-prefs";
 import { subscribeDbChanges } from "@/lib/realtime";
 import { playSfx } from "@/lib/sfx";
 import { readChannelMutes, serverMutes } from "@/lib/channel-mute";
@@ -38,10 +60,13 @@ interface UnreadsValue {
 
 const UnreadsContext = createContext<UnreadsValue | null>(null);
 
-const later = (a: string | null | undefined, b: string | null | undefined) => (!a ? (b ?? null) : !b ? a : Date.parse(a) >= Date.parse(b) ? a : b);
+const later = (a: string | null | undefined, b: string | null | undefined) =>
+  !a ? (b ?? null) : !b ? a : Date.parse(a) >= Date.parse(b) ? a : b;
 
 export function isUnread(c: ChannelUnread | undefined) {
-  return !!c?.lastMessageAt && Date.parse(c.lastMessageAt) > Date.parse(c.readAt);
+  return (
+    !!c?.lastMessageAt && Date.parse(c.lastMessageAt) > Date.parse(c.readAt)
+  );
 }
 
 /**
@@ -55,7 +80,11 @@ const mentionOnce = createOnce();
 export function UnreadsProvider({ children }: { children: ReactNode }) {
   const supabase = useOptionalSupabase();
   const { me } = useMe();
-  const [channels, setChannels] = useState<ReadonlyMap<string, ChannelUnread>>(() => new Map());
+  const [channels, setChannels] = useState<ReadonlyMap<string, ChannelUnread>>(
+    () => new Map(),
+  );
+  const generation = useRef(0);
+  const bulkRead = useRef<Promise<unknown> | null>(null);
   // Read marks made in this tab: a refresh racing the server write never brings an unread back.
   // Seeded with receipts a previous session queued but the server hadn't confirmed yet.
   const marks = useRef<Map<string, string>>(
@@ -72,38 +101,114 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
 
   // Someone @mentioned me: ping, and a desktop notification (Settings → Notifications), unless the
   // server is muted or set to Nothing, or I'm already looking at that channel.
-  const onMention = useEffectEvent(async (row: { message_id?: string; channel_id?: string; server_id?: string }) => {
-    if (!supabase || !row.message_id || !row.channel_id || !row.server_id || !mentionOnce(row.message_id)) return;
-    const level = serverNotify(readNotifyPrefs(), row.server_id);
-    if (level.muted || level.level === "nothing") return;
-    if (serverMutes(readChannelMutes(), row.server_id).muted.has(row.channel_id)) return;
-    const href = `/tambayan/${row.server_id}/${row.channel_id}`;
-    if (document.hasFocus() && window.location.pathname === href) return;
-    playSfx("mention");
-    const [{ data: message }, { data: channel }] = await Promise.all([
-      supabase.from("messages").select("content, author_id").eq("id", row.message_id).maybeSingle(),
-      supabase.from("channels").select("name").eq("id", row.channel_id).maybeSingle(),
-    ]);
-    if (!message) return;
-    const { data: author } = message.author_id ? await supabase.from("profiles").select("display_name").eq("id", message.author_id).maybeSingle() : { data: null };
-    desktopNotify({ title: `${author?.display_name ?? "Someone"} in #${channel?.name ?? "a channel"}`, body: message.content, tag: notificationTag("channel", row.channel_id), href, open: (to) => router.push(to) });
-  });
+  const onMention = useEffectEvent(
+    async (row: {
+      message_id?: string;
+      channel_id?: string;
+      server_id?: string;
+    }) => {
+      if (
+        !supabase ||
+        !row.message_id ||
+        !row.channel_id ||
+        !row.server_id ||
+        !mentionOnce(row.message_id)
+      )
+        return;
+      const level = serverNotify(readNotifyPrefs(), row.server_id);
+      if (level.muted || level.level === "nothing") return;
+      if (
+        serverMutes(readChannelMutes(), row.server_id).muted.has(row.channel_id)
+      )
+        return;
+      const href = `/tambayan/${row.server_id}/${row.channel_id}`;
+      if (document.hasFocus() && window.location.pathname === href) return;
+      const [{ data: message }, { data: channel }, receipt] = await Promise.all(
+        [
+          supabase
+            .from("messages")
+            .select("content, author_id, created_at")
+            .eq("id", row.message_id)
+            .maybeSingle(),
+          supabase
+            .from("channels")
+            .select("name")
+            .eq("id", row.channel_id)
+            .maybeSingle(),
+          supabase
+            .from("channel_reads")
+            .select("last_read_at")
+            .eq("channel_id", row.channel_id)
+            .eq("user_id", me.id)
+            .maybeSingle(),
+        ],
+      );
+      if (!message || receipt.error) return;
+      const readAt = later(
+        receipt.data?.last_read_at,
+        later(
+          marks.current.get(row.channel_id),
+          channels.get(row.channel_id)?.readAt,
+        ),
+      );
+      // A delayed/replayed INSERT is not a new alert after any device has read its message.
+      if (readAt && Date.parse(message.created_at) <= Date.parse(readAt))
+        return;
+      const { data: author } = message.author_id
+        ? await supabase
+            .from("profiles")
+            .select("display_name")
+            .eq("id", message.author_id)
+            .maybeSingle()
+        : { data: null };
+      const currentReadAt = later(readAt, marks.current.get(row.channel_id));
+      if (
+        currentReadAt &&
+        Date.parse(message.created_at) <= Date.parse(currentReadAt)
+      )
+        return;
+      playSfx("mention");
+      desktopNotify({
+        title: `${author?.display_name ?? "Someone"} in #${channel?.name ?? "a channel"}`,
+        body: message.content,
+        tag: notificationTag("channel", row.channel_id),
+        href,
+        open: (to) => router.push(to),
+      });
+    },
+  );
 
   const refresh = useCallback(async () => {
     if (!supabase) return;
+    const token = ++generation.current;
     const { data, error } = await supabase.rpc("my_unreads");
     // Not migrated yet (or offline): keep what we have; no badges is the safe default.
-    if (error || !data) return;
+    if (error || !data || token !== generation.current) return;
     setChannels(
       new Map(
         data.map((r) => {
           const rewind = rewinds.current.get(r.channel_id);
-          if (rewind && Date.parse(r.read_at) <= Date.parse(rewind) + 1000) rewinds.current.delete(r.channel_id);
-          const readAt = rewinds.current.get(r.channel_id) ?? later(r.read_at, marks.current.get(r.channel_id)) ?? r.read_at;
+          if (rewind && Date.parse(r.read_at) <= Date.parse(rewind) + 1000)
+            rewinds.current.delete(r.channel_id);
+          const readAt =
+            rewinds.current.get(r.channel_id) ??
+            later(r.read_at, marks.current.get(r.channel_id)) ??
+            r.read_at;
           // The server counts mentions after ITS cursor; if this device has read past the newest
           // message (receipt still on its way), those mentions are already seen.
-          const seen = !rewinds.current.has(r.channel_id) && !!r.last_message_at && Date.parse(readAt) >= Date.parse(r.last_message_at);
-          return [r.channel_id, { serverId: r.server_id, lastMessageAt: r.last_message_at, readAt, mentions: seen ? 0 : r.mentions }];
+          const seen =
+            !rewinds.current.has(r.channel_id) &&
+            !!r.last_message_at &&
+            Date.parse(readAt) >= Date.parse(r.last_message_at);
+          return [
+            r.channel_id,
+            {
+              serverId: r.server_id,
+              lastMessageAt: r.last_message_at,
+              readAt,
+              mentions: seen ? 0 : r.mentions,
+            },
+          ];
         }),
       ),
     );
@@ -121,21 +226,42 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
     };
     // Hidden: send receipts before the OS suspends us. Visible again (an installed app resuming
     // doesn't always fire focus, and realtime may have missed events while suspended): catch up.
-    const onHide = () => (document.visibilityState === "hidden" ? flushNow() : void refresh());
+    const onHide = () =>
+      document.visibilityState === "hidden" ? flushNow() : void refresh();
     document.addEventListener("visibilitychange", onHide);
     window.addEventListener("pagehide", flushNow);
     window.addEventListener("online", flushNow);
-    const timer = setInterval(() => document.visibilityState === "visible" && void refresh(), UNREADS_POLL_MS);
+    const timer = setInterval(
+      () => document.visibilityState === "visible" && void refresh(),
+      UNREADS_POLL_MS,
+    );
     const onFocus = () => void refresh();
     window.addEventListener("focus", onFocus);
     window.addEventListener("diskarte:push-activity", onFocus);
     const off = subscribeDbChanges(supabase, `mentions:${me.id}`, (channel) =>
-      channel.on("postgres_changes", { event: "INSERT", schema: "public", table: "message_mentions", filter: `user_id=eq.${me.id}` }, ({ new: row }) => {
-        void refresh();
-        void onMention(row as { message_id?: string; channel_id?: string; server_id?: string });
-      }),
+      channel.on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "message_mentions",
+          filter: `user_id=eq.${me.id}`,
+        },
+        ({ new: row }) => {
+          void refresh();
+          void onMention(
+            row as {
+              message_id?: string;
+              channel_id?: string;
+              server_id?: string;
+            },
+          );
+        },
+      ),
     );
     return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- invalidate requests still in flight at cleanup
+      generation.current++;
       clearInterval(timer);
       document.removeEventListener("visibilitychange", onHide);
       window.removeEventListener("pagehide", flushNow);
@@ -153,9 +279,16 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
       setChannels((prev) => {
         const c = prev.get(channelId);
         const upTo = later(at, c?.lastMessageAt) as string;
-        marks.current.set(channelId, later(upTo, marks.current.get(channelId)) as string);
+        marks.current.set(
+          channelId,
+          later(upTo, marks.current.get(channelId)) as string,
+        );
         if (!c || (!isUnread(c) && c.mentions === 0)) return prev;
-        return new Map(prev).set(channelId, { ...c, readAt: upTo, mentions: 0 });
+        return new Map(prev).set(channelId, {
+          ...c,
+          readAt: upTo,
+          mentions: 0,
+        });
       });
       // The receipt says "read up to now" (the server caps it at its own clock).
       queueRead("channel", channelId, at);
@@ -177,6 +310,7 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
     (channelId: string, fromIso: string) => {
       const readAt = new Date(Date.parse(fromIso) - 1).toISOString();
       marks.current.delete(channelId);
+      forgetRead("channel", channelId);
       clearTimeout(pending.current.get(channelId));
       pending.current.delete(channelId);
       rewinds.current.set(channelId, readAt);
@@ -184,7 +318,15 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
         const c = prev.get(channelId);
         return c ? new Map(prev).set(channelId, { ...c, readAt }) : prev;
       });
-      void supabase?.rpc("mark_channel_unread", { p_channel: channelId, p_from: fromIso });
+      if (supabase)
+        void Promise.all([bulkRead.current, flushReads(supabase)]).then(() => {
+          // An earlier read request must settle before this intentional rewind reaches the server.
+          if (rewinds.current.get(channelId) === readAt)
+            return supabase.rpc("mark_channel_unread", {
+              p_channel: channelId,
+              p_from: fromIso,
+            });
+        });
     },
     [supabase],
   );
@@ -192,6 +334,15 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
   const markAllRead = useCallback(
     (serverId?: string) => {
       const now = new Date().toISOString();
+      const receipts = [...channels].filter(
+        ([, channel]) =>
+          (!serverId || channel.serverId === serverId) &&
+          (isUnread(channel) || channel.mentions > 0),
+      );
+      for (const [id] of receipts) {
+        queueRead("channel", id, now);
+        closeNotifications(notificationTag("channel", id));
+      }
       setChannels((prev) => {
         const next = new Map(prev);
         for (const [id, c] of prev) {
@@ -203,21 +354,59 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
         }
         return next;
       });
-      void supabase?.rpc("mark_all_read", serverId ? { p_server: serverId } : {});
+      if (supabase) {
+        const request = supabase
+          .rpc("mark_all_read", serverId ? { p_server: serverId } : {})
+          .then(
+            ({ error }) => {
+              if (!error)
+                for (const [id] of receipts) confirmRead("channel", id, now);
+            },
+            () => {},
+          );
+        bulkRead.current = Promise.all([bulkRead.current, request]).then(
+          () => undefined,
+        );
+      }
     },
-    [supabase],
+    [supabase, channels],
   );
 
-  const noteActivity = useCallback((channelId: string, serverId: string, at: string) => {
-    setChannels((prev) => {
-      const c = prev.get(channelId);
-      if (c && c.lastMessageAt && Date.parse(c.lastMessageAt) >= Date.parse(at)) return prev;
-      return new Map(prev).set(channelId, { serverId, readAt: c?.readAt ?? at, mentions: c?.mentions ?? 0, lastMessageAt: at });
-    });
-  }, []);
+  const noteActivity = useCallback(
+    (channelId: string, serverId: string, at: string) => {
+      setChannels((prev) => {
+        const c = prev.get(channelId);
+        if (
+          c &&
+          c.lastMessageAt &&
+          Date.parse(c.lastMessageAt) >= Date.parse(at)
+        )
+          return prev;
+        return new Map(prev).set(channelId, {
+          serverId,
+          readAt: c?.readAt ?? at,
+          mentions: c?.mentions ?? 0,
+          lastMessageAt: at,
+        });
+      });
+    },
+    [],
+  );
 
-  const value = useMemo(() => ({ channels, markRead, markUnread, noteActivity, markAllRead, refresh: () => void refresh() }), [channels, markRead, markUnread, noteActivity, markAllRead, refresh]);
-  return <UnreadsContext.Provider value={value}>{children}</UnreadsContext.Provider>;
+  const value = useMemo(
+    () => ({
+      channels,
+      markRead,
+      markUnread,
+      noteActivity,
+      markAllRead,
+      refresh: () => void refresh(),
+    }),
+    [channels, markRead, markUnread, noteActivity, markAllRead, refresh],
+  );
+  return (
+    <UnreadsContext.Provider value={value}>{children}</UnreadsContext.Provider>
+  );
 }
 
 export function useOptionalUnreads() {
@@ -225,14 +414,27 @@ export function useOptionalUnreads() {
 }
 
 /** One channel's state; `liveLastMessageAt` (the open server's own copy) wins when newer. */
-export function useChannelUnread(channelId: string, liveLastMessageAt?: string | null): { unread: boolean; mentions: number } {
+export function useChannelUnread(
+  channelId: string,
+  liveLastMessageAt?: string | null,
+): { unread: boolean; mentions: number } {
   const c = useOptionalUnreads()?.channels.get(channelId);
   if (!c) return { unread: false, mentions: 0 };
-  return { unread: isUnread({ ...c, lastMessageAt: later(c.lastMessageAt, liveLastMessageAt) }), mentions: c.mentions };
+  return {
+    unread: isUnread({
+      ...c,
+      lastMessageAt: later(c.lastMessageAt, liveLastMessageAt),
+    }),
+    mentions: c.mentions,
+  };
 }
 
 /** A server's rail badge: any unread channel (muted ones excluded) and total mentions. */
-export function serverUnread(channels: ReadonlyMap<string, ChannelUnread>, serverId: string, muted: ReadonlySet<string>) {
+export function serverUnread(
+  channels: ReadonlyMap<string, ChannelUnread>,
+  serverId: string,
+  muted: ReadonlySet<string>,
+) {
   let unread = false;
   let mentions = 0;
   for (const [id, c] of channels) {

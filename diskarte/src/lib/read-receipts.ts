@@ -42,6 +42,21 @@ export function queueRead(kind: ReadKind, id: string, at: string) {
   write(queue);
 }
 
+/** A bulk read only acknowledges the exact receipt sent, never a newer local read. */
+export function confirmRead(kind: ReadKind, id: string, at: string) {
+  const queue = read();
+  if (queue[`${kind}:${id}`] !== at) return;
+  delete queue[`${kind}:${id}`];
+  write(queue);
+}
+
+/** Explicit Mark Unread supersedes a read that has not left this device yet. */
+export function forgetRead(kind: ReadKind, id: string) {
+  const queue = read();
+  delete queue[`${kind}:${id}`];
+  write(queue);
+}
+
 export function pendingReads(): Queue {
   return read();
 }
@@ -78,11 +93,7 @@ async function sendAll(supabase: Rpc) {
     }
     if (!ok) continue;
     // Only drop it if nothing newer was queued while this one was in flight.
-    const queue = read();
-    if (queue[key] === at) {
-      delete queue[key];
-      write(queue);
-    }
+    confirmRead(kind, id, at);
   }
 }
 

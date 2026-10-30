@@ -133,6 +133,9 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Build the app
         run: npm run build --prefix diskarte
+      - name: Responsive component experience tests
+        working-directory: diskarte
+        run: npm run test:experience
       - name: Run E2E suite
         working-directory: diskarte
         run: npx playwright test

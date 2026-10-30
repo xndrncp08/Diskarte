@@ -5,7 +5,7 @@ import { forwardRef, useId, useState, type InputHTMLAttributes, type ReactNode, 
 import { cn } from "@/lib/utils";
 
 const control =
-  "w-full rounded-lg bg-black/40 border border-white/10 px-3 text-sm text-slate-100 placeholder:text-slate-500 " +
+  "ui-control w-full rounded-lg bg-black/40 border border-white/10 px-3 text-sm text-slate-100 placeholder:text-slate-500 " +
   "outline-none transition-colors focus:border-sun/70 focus:ring-2 focus:ring-sun/20 disabled:opacity-60 " +
   "aria-[invalid=true]:border-red-400/80";
 
@@ -21,7 +21,7 @@ interface FieldShellProps {
 function FieldShell({ label, hint, error, htmlFor, children, className }: FieldShellProps) {
   return (
     <div className={cn("space-y-1.5", className)}>
-      <label htmlFor={htmlFor} className="block font-silk text-[11px] uppercase tracking-wider text-slate-300">
+      <label htmlFor={htmlFor} className="ui-field-label block font-silk text-[11px] uppercase tracking-wider text-slate-300">
         {label}
       </label>
       {children}

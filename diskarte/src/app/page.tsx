@@ -1,34 +1,68 @@
 import Link from "next/link";
-import { Code2, Gamepad2, Headphones, MessagesSquare, MonitorUp, ShieldCheck, Users, Volume2 } from "lucide-react";
-import { DiskarteLogo } from "@/components/brand/DiskarteLogo";
-import { GithubMark } from "@/components/icons/BrandIcons";
+import {
+  ArrowDown,
+  ArrowRight,
+  ArrowUpRight,
+  CalendarDays,
+  Compass,
+  Gamepad2,
+  Headphones,
+  Layers3,
+  MessageSquare,
+  MonitorUp,
+  Palette,
+  ShieldCheck,
+  Smartphone,
+  Users,
+} from "lucide-react";
 import { DiskarteWordmark } from "@/components/brand/DiskarteWordmark";
-import { PixelStatus } from "@/components/retro/PixelStatus";
-import { SignalBars } from "@/components/retro/SignalBars";
-import { Glyph } from "@/components/ui/Glyph";
+import { GithubMark } from "@/components/icons/BrandIcons";
 import { LandingHero } from "@/components/landing/LandingHero";
+import { LandingMotion } from "@/components/landing/LandingMotion";
+import {
+  ProductPlayground,
+} from "@/components/landing/ProductPlayground";
+import { WorkspaceCloseup } from "@/components/landing/WorkspaceCloseup";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { OAuthButtons } from "@/components/auth/OAuthButtons";
 import { ConfigNotice } from "@/components/ConfigNotice";
 import { tryGetPublicEnv } from "@/lib/env";
 import { enabledOAuthProviders } from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
+import "@/components/auth/auth.css";
+import "@/components/landing/landing.css";
 
-const FEATURES = [
-  { icon: MessagesSquare, title: "Real-time chat", body: "Instant messages with Markdown, code blocks, pins, edits and Pinoy reactions." },
-  { icon: Headphones, title: "Lag-free voice", body: "LiveKit WebRTC rooms with noise suppression, active speaker glow at call HUD." },
-  { icon: MonitorUp, title: "Screen share & video", body: "Share your ranked game or your thesis slides — an adaptive grid for the whole crew." },
-  { icon: Users, title: "Community servers", body: "Invite codes, categorized channels, and Admin / Moderator / Member roles." },
-  { icon: ShieldCheck, title: "Secure by default", body: "Row-Level Security on every table, CSP nonces, CSRF guards and rate limiting." },
-  { icon: Code2, title: "Open-source forever", body: "Self-host on free tiers. It's ours, so it stays up." },
+const CAPABILITIES = [
+  {
+    Icon: MessageSquare,
+    title: "Conversations with context",
+    body: "Channels, threads, reactions, pins and search. Give every conversation its own place.",
+    detail: "MESSAGES / THREADS / MEDIA",
+    className: "feature-conversations",
+  },
+  {
+    Icon: Headphones,
+    title: "Less typing. More tambay.",
+    body: "Voice, video and screen sharing. Drop into a room and bring your whole day with you.",
+    detail: "VOICE / VIDEO / SCREEN SHARE",
+    className: "feature-voice",
+  },
+  {
+    Icon: CalendarDays,
+    title: "Make a plan. Show up.",
+    body: "Community events, RSVPs and calendar downloads. Keep the next hangout in reach.",
+    detail: "EVENTS / COMMUNITY",
+    className: "feature-events",
+  },
+  {
+    Icon: Compass,
+    title: "Find your kind of people.",
+    body: "Browse communities that chose to be listed, or build a private tambayan with an invite.",
+    detail: "DISCOVERY / INVITES / ROLES",
+    className: "feature-discovery",
+  },
 ];
 
-const PREVIEW_CHANNELS = ["general", "chika", "lfg-valorant"];
-
-const PRIMARY_BUTTON =
-  "inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-sun px-6 text-base font-bold text-abyss shadow-[0_4px_0_0_#b45309] transition-transform active:translate-y-[4px] active:shadow-none";
-
-/** Signed-in visitors get "Open Diskarte" instead of a sign-in form (verified JWT claims, no round trip). */
 async function isSignedIn() {
   if (!tryGetPublicEnv()) return false;
   try {
@@ -40,173 +74,387 @@ async function isSignedIn() {
 }
 
 export default async function LandingPage() {
-  const configured = Boolean(tryGetPublicEnv());
   const signedIn = await isSignedIn();
-
+  const start = signedIn ? "/tambayan" : "/signup";
   return (
-    <main className="diskarte-backdrop relative min-h-dvh overflow-hidden">
-      <LandingHero
-        header={
-          <header className="relative mx-auto flex max-w-6xl items-center justify-between px-5 py-5">
-            <Link href="/" aria-label="Diskarte home" className="inline-flex items-center rounded-lg pointer-coarse:min-h-11">
-              <DiskarteWordmark height={40} className="public-wordmark h-8 w-auto min-[375px]:h-10" />
-            </Link>
-            <nav aria-label="Account" className="flex items-center gap-2">
-              {signedIn ? (
-                <Link href="/tambayan" className="whitespace-nowrap rounded-lg bg-sun px-3 py-2 text-sm font-semibold text-abyss shadow-[0_3px_0_0_#b45309] transition-transform active:translate-y-[3px] active:shadow-none min-[375px]:px-4 pointer-coarse:py-3">
-                  Open app
+    <main className="launch-page diskarte-backdrop min-h-dvh">
+      <LandingMotion>
+        <LandingHero
+          header={
+            <header className="launch-header launch-container">
+              <Link
+                href="/"
+                aria-label="Diskarte home"
+                className="launch-wordmark"
+              >
+                <DiskarteWordmark
+                  height={40}
+                  className="public-wordmark h-9 w-auto"
+                />
+              </Link>
+              <nav
+                aria-label="Features and story"
+                className="launch-desktop-nav"
+              >
+                <a href="#features">Features</a>
+                <a href="#workspace">Workspace</a>
+                <a href="#story">Our story</a>
+              </nav>
+              <nav aria-label="Account" className="launch-account-nav">
+                <a href="#sign-in">Log in</a>
+                <Link href={start} className="launch-small-cta">
+                  {signedIn ? "Open app" : "Sign up"}
+                  <ArrowUpRight className="size-4" aria-hidden />
                 </Link>
-              ) : (
-                <>
-                  <a href="#sign-in" className="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/10 min-[375px]:px-4 pointer-coarse:py-3">
-                    Log in
-                  </a>
-                  <Link
-                    href="/signup"
-                    className="whitespace-nowrap rounded-lg bg-sun px-3 py-2 text-sm font-semibold text-abyss shadow-[0_3px_0_0_#b45309] transition-transform active:translate-y-[3px] active:shadow-none min-[375px]:px-4 pointer-coarse:py-3"
-                  >
-                    Sign up
-                  </Link>
-                </>
-              )}
-            </nav>
-          </header>
-        }
-        card={signedIn ? <SignedInCard /> : configured ? <SignInCard /> : <ConfigNotice />}
-      >
-        <h1 className="text-balance text-3xl font-extrabold leading-[1.08] tracking-tight text-white sm:text-4xl lg:text-[2.75rem]">
-          Tara, <span className="min-[375px]:whitespace-nowrap">Tambay Tayo.</span>
-          <span className="mt-1 block text-sun">Ang Bagong Istambayan ng Bayan.</span>
-        </h1>
-        <p className="mt-5 max-w-xl text-pretty text-base text-slate-300 sm:text-lg">
-          Chat, voice, video and screen share for gamers, students and whole communities — open-source, free, and made in the Philippines.
-        </p>
-        <a
-          href="https://github.com/xndrncp08/Diskarte"
-          className="mt-5 inline-flex h-11 items-center gap-2 rounded-xl px-1 text-sm font-semibold text-slate-300 transition-colors hover:text-white"
-          rel="noopener noreferrer"
-          target="_blank"
+              </nav>
+              <details className="launch-mobile-menu">
+                <summary aria-label="Explore this page">
+                  <Layers3 className="size-5" aria-hidden />
+                </summary>
+                <nav aria-label="Explore this page">
+                  <a href="#features">Features</a>
+                  <a href="#workspace">Workspace</a>
+                  <a href="#story">Our story</a>
+                </nav>
+              </details>
+            </header>
+          }
+          card={<ProductPlayground />}
         >
-          <GithubMark className="size-4" /> Source code on GitHub
-        </a>
-      </LandingHero>
-
-      <div className="relative">
-        <section aria-labelledby="preview-heading" className="relative z-10 mx-auto max-w-5xl px-5 pb-24 pt-8">
-          <h2 id="preview-heading" className="mb-3 text-center font-pixel text-sm leading-relaxed text-sun sm:text-base">
-            PLAYER ONE HAS ENTERED
-          </h2>
-          <p className="mx-auto mb-10 max-w-xl text-pretty text-center text-slate-300">
-            Servers, channels, voice rooms and your whole barkada — on one glass dashboard that runs on prepaid data.
+          <h1>
+            Tara, <span>Tambay Tayo.</span>{" "}
+            <span className="hero-subheadline">
+              Ang Bagong <br />
+              Istambayan ng Bayan.
+            </span>
+          </h1>
+          <p className="hero-support">
+            Big ideas. Late-night kwento. One more game.
+            <br className="hidden sm:block" /> Your conversations, calls and
+            shared projects belong together.
           </p>
-          <AppPreview />
+          <div className="launch-cta-row">
+            <Link href={start} className="launch-primary">
+              {signedIn ? "Open Diskarte" : "Get started"}
+              <ArrowUpRight className="size-4" aria-hidden />
+            </Link>
+            <a href="#features" className="launch-secondary">
+              Explore features
+              <ArrowDown className="size-4" aria-hidden />
+            </a>
+          </div>
+          <div className="hero-capability-tags">
+            <span>
+              <MessageSquare /> Chat
+            </span>
+            <span>
+              <Headphones /> Voice & video
+            </span>
+            <span>
+              <Layers3 /> Shared spaces
+            </span>
+          </div>
+          <p className="hero-brand-note">
+            A Filipino-inspired, open-source space for connection.
+            <br />
+            Free to use. Yours to make something of.
+          </p>
+        </LandingHero>
+        <section
+          className="launch-ribbon"
+          aria-label="A place for every kind of community"
+        >
+          <div className="launch-container">
+            <span>MAKE ROOM FOR</span>
+            <span>YOUR BARKADA</span>
+            <span>THE GUILD</span>
+            <span>THE GROUP PROJECT</span>
+            <span>THE NEXT BIG IDEA</span>
+          </div>
         </section>
-
-        <div className="relative z-10 mx-auto max-w-6xl px-5 pb-24">
-          <section aria-labelledby="features-heading">
-            <h2 id="features-heading" className="mb-8 font-pixel text-sm leading-relaxed text-sun sm:text-base">
-              LEVEL SELECT
+        <section
+          id="features"
+          className="launch-container launch-section"
+          aria-labelledby="features-heading"
+          data-reveal
+        >
+          <div className="launch-section-heading">
+            <div>
+              <p className="section-kicker">01 / A LITTLE MORE CONNECTED</p>
+              <h2 id="features-heading">
+                Everything happens
+                <br />
+                <span>in your tambayan.</span>
+              </h2>
+            </div>
+            <p>
+              Stay for the conversation.
+              <br />
+              Make room for everything around it.
+            </p>
+          </div>
+          <div className="launch-feature-grid">
+            {CAPABILITIES.map(
+              ({ Icon, title, body, detail, className }, index) => (
+                <article key={title} className={`launch-feature ${className}`}>
+                  <div className="feature-topline">
+                    <span className="feature-number">0{index + 1}</span>
+                    <Icon className="size-5" aria-hidden />
+                  </div>
+                  <h3>{title}</h3>
+                  <p>{body}</p>
+                  {index === 0 ? (
+                    <div className="feature-message-stack" aria-hidden>
+                      <span>
+                        <HashMark /> chika{" "}
+                        <small>Keep the good conversations going.</small>
+                      </span>
+                      <span>
+                        <HashMark /> ideas{" "}
+                        <small>A thread for the next big thing.</small>
+                      </span>
+                      <span>
+                        <HashMark /> the-weekend{" "}
+                        <small>Make a plan with your people.</small>
+                      </span>
+                    </div>
+                  ) : index === 1 ? (
+                    <div className="feature-audio" aria-hidden>
+                      {[
+                        18, 35, 26, 50, 34, 62, 45, 28, 53, 36, 24, 42, 19, 31,
+                      ].map((height, i) => (
+                        <i key={i} style={{ height }} />
+                      ))}
+                    </div>
+                  ) : index === 2 ? (
+                    <div className="feature-event" aria-hidden>
+                      <span>
+                        YOUR NEXT
+                        <br />
+                        <strong>HANGOUT</strong>
+                      </span>
+                      <CalendarDays className="size-8" />
+                    </div>
+                  ) : (
+                    <div className="feature-community" aria-hidden>
+                      <span>PLAY</span>
+                      <span>CREATE</span>
+                      <span>LEARN</span>
+                      <span>BELONG</span>
+                    </div>
+                  )}
+                  <span className="feature-detail">{detail}</span>
+                </article>
+              ),
+            )}
+          </div>
+        </section>
+        <section
+          id="workspace"
+          className="launch-container launch-section workspace-story"
+          aria-labelledby="workspace-heading"
+          data-reveal
+        >
+          <div className="launch-section-heading">
+            <div>
+              <p className="section-kicker">02 / KEEP YOUR IDEAS CLOSE</p>
+              <h2 id="workspace-heading">
+                More than a chat.
+                <br />
+                <span>A place to make things.</span>
+              </h2>
+            </div>
+            <p>
+              Arrange your desktop your way.
+              <br />
+              Keep it focused on your phone.
+            </p>
+          </div>
+          <WorkspaceCloseup />
+          <div className="workspace-footnotes">
+            <span>
+              <Layers3 /> Floating desktop panels
+            </span>
+            <span>
+              <MonitorUp /> Notes, boards & whiteboards
+            </span>
+            <span>
+              <Smartphone /> Full-screen mobile spaces
+            </span>
+          </div>
+        </section>
+        <section
+          id="story"
+          className="launch-story"
+          aria-labelledby="story-heading"
+          data-reveal
+        >
+          <div className="launch-container story-grid">
+            <div>
+              <p className="section-kicker">03 / THE WAY WE FIGURE IT OUT</p>
+              <h2 id="story-heading">
+                May paraan.
+                <br />
+                <span>May Diskarte.</span>
+              </h2>
+              <p className="story-pronunciation">
+                dis·kar·te / ingenuity, resourcefulness, a way forward
+              </p>
+            </div>
+            <div className="story-copy">
+              <p>
+                Diskarte is what happens when an idea meets a little
+                resourcefulness. You find a way. You bring people together. You
+                make something out of what you have.
+              </p>
+              <p>
+                We built a space around that spirit: a tambayan for the friends
+                you play with, the people you learn from, and the projects you
+                haven&apos;t quite figured out yet.
+              </p>
+              <p>Less getting in the way. More room for your people.</p>
+              <Link href={start} className="launch-text-link">
+                Find your place <ArrowRight className="size-4" aria-hidden />
+              </Link>
+            </div>
+          </div>
+        </section>
+        <section
+          className="launch-container launch-section launch-details"
+          aria-label="Make Diskarte yours"
+          data-reveal
+        >
+          <article>
+            <Palette className="size-5" aria-hidden />
+            <h3>Your own kind of space.</h3>
+            <p>
+              Themes, profiles, statuses and a workspace you can arrange around
+              the way you hang out.
+            </p>
+          </article>
+          <article>
+            <Smartphone className="size-5" aria-hidden />
+            <h3>Same people. Any screen.</h3>
+            <p>
+              Use your browser or install Diskarte as a PWA. Your desktop and
+              phone keep you connected.
+            </p>
+          </article>
+          <article>
+            <ShieldCheck className="size-5" aria-hidden />
+            <h3>A little peace of mind.</h3>
+            <p>
+              Private channels, community roles, moderation tools and account
+              security that stays in your hands.
+            </p>
+          </article>
+          <article>
+            <GithubMark className="size-5" />
+            <h3>Open, by design.</h3>
+            <p>
+              Explore the source, self-host, and see what makes Diskarte tick.
+            </p>
+            <a
+              href="https://github.com/xndrncp08/Diskarte"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="launch-text-link"
+            >
+              Source code on GitHub{" "}
+              <ArrowUpRight className="size-4" aria-hidden />
+            </a>
+          </article>
+        </section>
+        <section
+          id="sign-in"
+          className="launch-container launch-section launch-closing"
+          aria-labelledby="closing-heading"
+          data-reveal
+        >
+          <div>
+            <p className="section-kicker">YOUR NEXT CONVERSATION STARTS HERE</p>
+            <h2 id="closing-heading">
+              Bring your people.
+              <br />
+              <span>We&apos;ll make room.</span>
             </h2>
-            <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {FEATURES.map(({ icon: Icon, title, body }) => (
-                <li key={title} className="glass rounded-2xl p-5 transition-colors hover:border-sun/30">
-                  <Icon className="mb-3 size-6 text-sun" aria-hidden />
-                  <h3 className="font-bold text-white">{title}</h3>
-                  <p className="mt-1 text-sm text-slate-400">{body}</p>
-                </li>
-              ))}
-            </ul>
-          </section>
-        </div>
-
-        <footer className="relative z-10 border-t border-white/5 py-8 text-center text-xs text-slate-500">
-          <p>
-            Diskarte is open-source software. Gawa ng komunidad, para sa komunidad. <span className="font-silk tabular-nums">© {new Date().getFullYear()}</span>
-          </p>
+            <p>
+              Chat, call, collaborate, or just tambay.
+              <br />A space that feels a little more like yours.
+            </p>
+            <div className="launch-cta-row">
+              <Link href={start} className="launch-primary">
+                {signedIn ? "Open Diskarte" : "Get started"}
+                <ArrowUpRight className="size-4" aria-hidden />
+              </Link>
+              <a href="#features" className="launch-secondary">
+                Take another look
+              </a>
+            </div>
+            <div className="closing-icons" aria-hidden>
+              <Gamepad2 />
+              <Users />
+              <Headphones />
+              <Layers3 />
+            </div>
+          </div>
+          <div className="auth-surface launch-signin">
+            {signedIn ? (
+              <div className="space-y-4">
+                <h3 className="text-2xl font-bold text-white">
+                  You&apos;re signed in
+                </h3>
+                <p className="text-sm text-slate-400">
+                  Your servers, friends and calls are waiting.
+                </p>
+                <Link href="/tambayan" className="launch-primary">
+                  Open Diskarte <ArrowUpRight className="size-4" aria-hidden />
+                </Link>
+              </div>
+            ) : tryGetPublicEnv() ? (
+              <>
+                <h3 className="mb-2 text-2xl font-bold text-white">
+                  Welcome back.
+                </h3>
+                <p className="mb-6 text-sm text-slate-400">
+                  Pick up where your barkada left off.
+                </p>
+                <LoginForm next="/tambayan" />
+                <div className="mt-5">
+                  <OAuthButtons
+                    providers={enabledOAuthProviders()}
+                    next="/tambayan"
+                  />
+                </div>
+              </>
+            ) : (
+              <ConfigNotice />
+            )}
+          </div>
+        </section>
+        <footer className="launch-footer launch-container">
+          <Link href="/" aria-label="Diskarte home">
+            <DiskarteWordmark height={34} className="public-wordmark" />
+          </Link>
+          <p>Gawa ng komunidad, para sa komunidad.</p>
+          <nav aria-label="Footer">
+            <a href="#features">Features</a>
+            <a href="#story">Our story</a>
+            <a
+              href="https://github.com/xndrncp08/Diskarte"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              GitHub
+            </a>
+          </nav>
+          <small>© {new Date().getFullYear()} Diskarte</small>
         </footer>
-      </div>
+      </LandingMotion>
     </main>
   );
 }
 
-function SignInCard() {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-extrabold text-white">Press start</h2>
-        <p className="mt-1 text-sm text-slate-400">Sign in to get back to your servers and friends.</p>
-      </div>
-      <LoginForm next="/tambayan" />
-      <OAuthButtons providers={enabledOAuthProviders()} next="/tambayan" />
-    </div>
-  );
-}
-
-function SignedInCard() {
-  return (
-    <div className="space-y-5 text-center">
-      <Gamepad2 className="mx-auto size-10 text-sun" aria-hidden />
-      <div>
-        <h2 className="text-2xl font-extrabold text-white">You&apos;re signed in</h2>
-        <p className="mt-1 text-sm text-slate-400">Your servers, friends and calls are waiting.</p>
-      </div>
-      <Link href="/tambayan" className={`${PRIMARY_BUTTON} w-full`}>
-        Open Diskarte
-      </Link>
-    </div>
-  );
-}
-
-/** A miniature of the app shell (decorative). */
-function AppPreview() {
-  return (
-    <div className="glass-strong relative overflow-hidden rounded-2xl shadow-2xl shadow-black/60" aria-hidden>
-      <div className="flex h-72 sm:h-80">
-        <div className="flex w-16 shrink-0 flex-col items-center gap-3 bg-abyss/80 py-4">
-          <DiskarteLogo size={40} />
-          <div className="h-0.5 w-8 rounded bg-white/10" />
-          {["#FFB800", "#0038A8", "#CE1126"].map((c) => (
-            <div key={c} className="size-10 rounded-2xl" style={{ background: c }} />
-          ))}
-        </div>
-        <div className="hidden w-48 shrink-0 border-r border-white/5 bg-black/30 p-3 sm:block">
-          <p className="mb-3 truncate text-sm font-bold text-white">Barkada HQ</p>
-          <p className="mb-1 font-silk text-[10px] uppercase text-slate-500">Text Channels</p>
-          {PREVIEW_CHANNELS.map((c, i) => (
-            <p key={c} className={`rounded px-2 py-1 text-sm ${i === 0 ? "bg-white/10 text-white" : "text-slate-400"}`}>
-              # {c}
-            </p>
-          ))}
-          <p className="mb-1 mt-3 font-silk text-[10px] uppercase text-slate-500">Voice Channels</p>
-          <p className="flex items-center gap-1.5 px-2 py-1 text-sm text-slate-400">
-            <Volume2 className="size-4" aria-hidden /> Tambayan 1
-          </p>
-          <div className="ml-5 flex items-center gap-1.5 text-xs text-slate-300">
-            <PixelStatus status="online" size={10} /> Juan
-          </div>
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col justify-end gap-3 p-4">
-          <div>
-            <p className="text-xs font-semibold text-sun">
-              Maria <span className="font-normal text-slate-500">ngayon</span>
-            </p>
-            <p className="text-sm text-slate-200">
-              Tara ranked mamaya? <Glyph code=":game:" />
-            </p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-sky-300">
-              Juan <span className="font-normal text-slate-500">ngayon</span>
-            </p>
-            <p className="text-sm text-slate-200">
-              G! Nagluto lang ng Canton <Glyph code=":canton:" />
-            </p>
-          </div>
-          <div className="flex items-center justify-between rounded-lg bg-black/40 px-3 py-2 text-xs text-slate-500">
-            Message #general <SignalBars level={4} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+function HashMark() {
+  return <span className="text-sun">#</span>;
 }

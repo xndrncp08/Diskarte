@@ -29,7 +29,7 @@ export function AppToaster() {
       offset={small ? { top: "max(0.75rem, env(safe-area-inset-top))" } : { bottom: 80 }}
       toastOptions={{
         classNames: {
-          toast: "!bg-black/70 !backdrop-blur-md !border !border-white/10 !text-slate-100 !rounded-xl",
+          toast: "!bg-panel/95 !backdrop-blur-md !border !border-white/10 !text-slate-100 !rounded-xl",
           description: "!text-slate-400",
         },
       }}

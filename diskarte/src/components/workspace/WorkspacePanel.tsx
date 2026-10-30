@@ -32,7 +32,7 @@ export function WorkspacePanel({ id, title, children, className }: WorkspacePane
 
   if (id === "main") {
     return (
-      <main ref={ref} style={panel.style} onPointerDownCapture={panel.raise} onFocusCapture={panel.raise} data-floating-panel={panel.floating ? "" : undefined} id="main-content" tabIndex={-1} inert={navOpen && !desktop} aria-label={title} data-panel="main" className={cn("relative flex min-h-0 min-w-0 flex-1 flex-col outline-none md:bg-abyss/40", panel.floating && "glass overflow-hidden rounded-2xl shadow-2xl", className)}>
+      <main ref={ref} style={panel.style} onPointerDownCapture={panel.raise} onFocusCapture={panel.raise} data-floating-panel={panel.floating ? "" : undefined} id="main-content" tabIndex={-1} inert={navOpen && !desktop} aria-label={title} data-panel="main" className={cn("workspace-main relative flex min-h-0 min-w-0 flex-1 flex-col outline-none md:bg-abyss/40", panel.floating && "glass overflow-hidden rounded-2xl shadow-2xl", className)}>
         {controls}{content}
       </main>
     );
@@ -50,7 +50,7 @@ export function WorkspacePanel({ id, title, children, className }: WorkspacePane
       onPointerDownCapture={panel.raise}
       onFocusCapture={panel.raise}
       className={cn(
-        "flex min-w-0 outline-none",
+        "workspace-sidebar flex min-w-0 outline-none",
         // Phones: the drawer next to the rail.
         "max-md:fixed max-md:inset-y-0 max-md:left-[72px] max-md:z-40 max-md:transition-transform max-md:duration-200 max-md:ease-out",
         navOpen ? "max-md:translate-x-0" : "max-md:-translate-x-[calc(100%+72px)]",

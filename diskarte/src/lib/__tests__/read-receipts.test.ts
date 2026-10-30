@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { closeNotifications, flushReads, notificationTag, pendingReads, queueRead } from "@/lib/read-receipts";
+import { closeNotifications, confirmRead, forgetRead, flushReads, notificationTag, pendingReads, queueRead } from "@/lib/read-receipts";
 
 type Result = { error: { message?: string; code?: string } | null };
 function client(answers: Record<string, Result | (() => Result)>) {
@@ -63,4 +63,17 @@ describe("read receipts", () => {
     await flushReads(supabase);
     expect(calls.map(([fn]) => fn)).toEqual(["mark_channel_read_until"]);
   });
+});
+
+
+it("acknowledges a bulk read without dropping a newer receipt, and cancels an intentional rewind", () => {
+  queueRead("channel", "one", "2026-10-16T10:00:00Z");
+  queueRead("channel", "one", "2026-10-16T11:00:00Z");
+  confirmRead("channel", "one", "2026-10-16T10:00:00Z");
+  expect(pendingReads()).toEqual({ "channel:one": "2026-10-16T11:00:00Z" });
+  confirmRead("channel", "one", "2026-10-16T11:00:00Z");
+  expect(pendingReads()).toEqual({});
+  queueRead("channel", "one", "2026-10-16T12:00:00Z");
+  forgetRead("channel", "one");
+  expect(pendingReads()).toEqual({});
 });

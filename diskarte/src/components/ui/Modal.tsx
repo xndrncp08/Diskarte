@@ -88,7 +88,7 @@ export function Modal({ open, onClose, title, description, children, className, 
             aria-modal="true"
             aria-labelledby={titleId}
             aria-describedby={description ? descId : undefined}
-            className={cn("glass-strong relative w-full max-w-md rounded-2xl p-6 shadow-2xl shadow-black/60", className)}
+            className={cn("ui-overlay glass-strong relative w-full max-w-md rounded-2xl p-6 shadow-2xl shadow-black/60", className)}
             initial={{ opacity: 0, scale: 0.96, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 4 }}
