@@ -9,7 +9,9 @@
 - Added optional community levels per Tambayan: 15 XP per message at most once a minute, a leaderboard, levels on member profiles, admin reset.
 - Added incoming channel webhooks (Server settings → Webhooks) at `POST /api/webhooks/<id>/<token>`, hashed one-time-shown tokens, rotation, audit log entries and per-webhook + per-IP limits.
 - Added welcome messages for new members (channel + template with `{user}` / `{server}`).
-- Needs five manual migrations and one optional cron job; see `RELEASE-2026-10-29.md`.
+- Added optional Moments on Home: 24-hour text/photo updates for all friends or favourites only, with mute, report and delete.
+- Account export and deletion now cover favourites, scheduled messages, moments (incl. photos), mutes and XP.
+- Needs seven manual migrations and one optional cron job; see `RELEASE-2026-10-29.md`.
 
 ## 2026-10-15 — live voice activity and Web Push
 

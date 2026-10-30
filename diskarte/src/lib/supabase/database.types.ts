@@ -325,6 +325,11 @@ export interface Database {
         { id: string; author_id: string; channel_id: string; content: string; send_at: string; created_at: string; failed_reason: string | null },
         { id?: string; author_id?: string; channel_id: string; content: string; send_at: string }
       >;
+      moments: TableDef<
+        { id: string; author_id: string; body: string | null; image_path: string | null; audience: "friends" | "favourites"; created_at: string; expires_at: string },
+        { body?: string | null; image_path?: string | null; audience?: "friends" | "favourites" }
+      >;
+      moment_mutes: TableDef<{ owner_id: string; target_id: string }, { owner_id?: string; target_id: string }>;
       channel_webhooks: TableDef<
         { id: string; server_id: string; channel_id: string; name: string; created_by: string | null; created_at: string; last_used_at: string | null },
         never
