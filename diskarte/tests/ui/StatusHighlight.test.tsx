@@ -118,6 +118,22 @@ describe("status indicator", () => {
     expect(online.className).toMatch(/focus-visible:bg-sun/);
   });
 
+  it("offers 'clear after' times only while a custom status is set", async () => {
+    const user = userEvent.setup();
+    renderPanel();
+    await user.click(within(panel()).getByRole("button", { name: /Set status/ }));
+    let menu = await screen.findByRole("menu", { name: "Set status" });
+    expect(within(menu).queryByRole("group", { name: "Clear after" })).toBeNull();
+    await user.keyboard("{Escape}");
+    await pick(user, /Nagluto ng Canton/);
+    await user.click(within(panel()).getByRole("button", { name: /Set status/ }));
+    menu = await screen.findByRole("menu", { name: "Set status" });
+    await user.click(within(within(menu).getByRole("group", { name: "Clear after" })).getByRole("menuitem", { name: "1 hour" }));
+    await waitFor(() =>
+      expect(profileActions.setStatusAction).toHaveBeenLastCalledWith({ status: "idle", customStatus: "Nagluto ng Canton", customStatusEmoji: expect.any(String), clearAfterMinutes: 60 }),
+    );
+  });
+
   it("publishes the new status in my presence, so other members' rosters update live", async () => {
     const user = userEvent.setup();
     renderPanel();

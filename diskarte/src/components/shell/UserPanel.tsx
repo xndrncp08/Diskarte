@@ -27,14 +27,17 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
 
-  function apply(next: { status?: PresenceStatus; customStatus?: string | null; customStatusEmoji?: string | null }) {
+  function apply(next: { status?: PresenceStatus; customStatus?: string | null; customStatusEmoji?: string | null; clearAfterMinutes?: number | null }) {
     const previous = me;
     const status = next.status ?? me.status;
     const customStatus = next.customStatus !== undefined ? next.customStatus : me.custom_status;
     const customStatusEmoji = next.customStatusEmoji !== undefined ? next.customStatusEmoji : me.custom_status_emoji;
-    setMe((p) => ({ ...p, status, custom_status: customStatus, custom_status_emoji: customStatusEmoji }));
+    const { clearAfterMinutes } = next;
+    // A changed status drops its old expiry; a new "clear after" time arrives with the refresh below.
+    const unchanged = customStatus === me.custom_status && customStatusEmoji === me.custom_status_emoji;
+    setMe((p) => ({ ...p, status, custom_status: customStatus, custom_status_emoji: customStatusEmoji, custom_status_expires_at: unchanged ? p.custom_status_expires_at : null }));
     startTransition(async () => {
-      const result = await setStatusAction({ status, customStatus, customStatusEmoji });
+      const result = await setStatusAction({ status, customStatus, customStatusEmoji, clearAfterMinutes });
       if (!result.ok) {
         setMe(() => previous);
         toast.error(result.error ?? "Couldn't update your status.");
@@ -70,6 +73,12 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
       onSelect: () => apply({ customStatus: null, customStatusEmoji: null }),
       hidden: !me.custom_status && !me.custom_status_emoji,
     },
+    ...CLEAR_AFTER.map((c) => ({
+      label: c.label,
+      group: me.custom_status_expires_at ? `Clears at ${new Date(me.custom_status_expires_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : "Clear after",
+      onSelect: () => apply({ clearAfterMinutes: c.minutes }),
+      hidden: !me.custom_status && !me.custom_status_emoji,
+    })),
   ];
 
   return (
@@ -131,6 +140,14 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
     </div>
   );
 }
+
+const CLEAR_AFTER = [
+  { label: "30 minutes", minutes: 30 },
+  { label: "1 hour", minutes: 60 },
+  { label: "4 hours", minutes: 240 },
+  { label: "24 hours", minutes: 1440 },
+  { label: "Don't clear", minutes: null },
+];
 
 const TOGGLE = "touch-target relative rounded-md p-2 transition-colors hover:bg-white/10 pointer-coarse:p-3.5";
 

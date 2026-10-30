@@ -7,7 +7,7 @@ import { joinTicTacToe, newTicTacToe, outcome, playMove, rematch, type TicTacToe
 import { answerTrivia, currentQuestion, leaderboard, newTrivia, nextTrivia, REVEAL_MS, revealTrivia, ROUND_SECONDS, shuffledOrder, TRIVIA_QUESTIONS } from "@/lib/games/trivia";
 import { getLowDataMode, imageQuality, resetLowDataCache, setLowDataMode, subscribeLowDataMode } from "@/lib/low-data";
 import { dequeue, enqueue, isNetworkError, outboxFor, outboxSize, type OutboxEntry } from "@/lib/outbox";
-import { classifyFriendships, conversationTitle, friendStatus, isUnread, sortConversations, type Friendship } from "@/lib/social";
+import { classifyFriendships, conversationTitle, friendStatus, isUnread, readReceipt, sortConversations, type Friendship, type SocialProfile } from "@/lib/social";
 import { BUILTIN_CLIPS, builtinClip, createThrottle, parseSoundboardMessage } from "@/lib/soundboard";
 import { cueDuration } from "@/lib/sfx";
 import { getSticker, isStickerId, STICKERS, STICKER_PACKS } from "@/lib/stickers";
@@ -340,5 +340,22 @@ describe("friends & DMs", () => {
     expect(isUnread({ lastMessageAt: "2026-09-27T02:00:00Z", lastReadAt: "2026-09-27T01:00:00Z" })).toBe(true);
     expect(isUnread({ lastMessageAt: "2026-09-27T01:00:00Z", lastReadAt: "2026-09-27T01:00:00Z" })).toBe(false);
     expect(sortConversations([{ lastMessageAt: "1" }, { lastMessageAt: "3" }, { lastMessageAt: "2" }]).map((c) => c.lastMessageAt)).toEqual(["3", "2", "1"]);
+  });
+});
+
+describe("readReceipt", () => {
+  const person = (id: string, display_name: string) => ({ id, display_name }) as SocialProfile;
+  const sent = "2026-10-29T05:00:00.123456+00:00";
+  it("says Sent until someone reads past it, then Seen (microseconds don't matter)", () => {
+    const ana = person("a", "Ana");
+    expect(readReceipt(sent, [ana], new Map(), "direct")).toBe("Sent");
+    expect(readReceipt(sent, [ana], new Map([["a", "2026-10-29T04:59:59Z"]]), "direct")).toBe("Sent");
+    expect(readReceipt(sent, [ana], new Map([["a", "2026-10-29T05:00:00.123Z"]]), "direct")).toBe("Seen");
+  });
+  it("names who saw it in a group, or everyone in a big one", () => {
+    const people = ["Ana", "Ben", "Cris", "Dina"].map((n) => person(n, n));
+    const read = "2026-10-29T06:00:00Z";
+    expect(readReceipt(sent, people, new Map([["Ana", read], ["Ben", read]]), "group")).toBe("Seen by Ana, Ben");
+    expect(readReceipt(sent, people, new Map(people.map((p) => [p.id, read])), "group")).toBe("Seen by everyone");
   });
 });

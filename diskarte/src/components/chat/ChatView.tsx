@@ -29,6 +29,7 @@ import { OfflineBanner } from "./OfflineBanner";
 import { PinsDrawer } from "./PinsDrawer";
 import { CreatePollButton } from "./Poll";
 import { ForwardDialog } from "./ForwardDialog";
+import { ScheduledBar } from "./ScheduledMessages";
 import { ThreadPanel } from "./ThreadPanel";
 import { Timestamp } from "./Timestamp";
 const MessageContext = dynamic(() => import("./MessageContext").then((m) => m.MessageContext), { ssr: false });
@@ -278,7 +279,9 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
         {restoringHistory && <p role="status" className="px-4 py-2 text-sm text-slate-400">Restoring your reading position…</p>}
         <OfflineBanner queued={chat.queuedCount} />
         {chat.recovery.problem && <div role="status" className="flex items-center justify-between gap-2 px-4 py-2 text-sm text-amber-200"><span>History couldn’t sync after reconnecting.</span><button type="button" onClick={() => void chat.recovery.recover()} className="min-h-11 rounded-lg px-3 hover:bg-white/10">Retry sync</button></div>}
+        {!locked && <ScheduledBar channelId={channel.id} />}
         <Composer
+          schedulable
           channelName={channel.name}
           serverId={server.id}
           channelId={channel.id}

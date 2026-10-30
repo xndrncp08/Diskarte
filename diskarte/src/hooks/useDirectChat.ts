@@ -39,10 +39,28 @@ export function useDirectChat(conversationId: string, initial: { messages: Direc
     incoming.current = onIncoming;
   }, [onIncoming]);
 
+  // Read receipts: how far each participant has read (dm_participants is visible to fellow participants).
+  const [reads, setReads] = useState<ReadonlyMap<string, string>>(() => new Map());
+  const loadReads = useCallback(async () => {
+    const { data } = await supabase.from("dm_participants").select("user_id, last_read_at").eq("conversation_id", conversationId);
+    if (data) setReads(new Map(data.map((r) => [r.user_id, r.last_read_at])));
+  }, [supabase, conversationId]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch; realtime keeps it current
+    void loadReads();
+    const resume = () => document.visibilityState === "visible" && void loadReads();
+    document.addEventListener("visibilitychange", resume);
+    return () => document.removeEventListener("visibilitychange", resume);
+  }, [loadReads]);
+
   useEffect(() => {
     const firstTime = createOnce();
     return subscribeDbChanges(supabase, `dm:${conversationId}`, (channel) =>
       channel
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "dm_participants", filter: `conversation_id=eq.${conversationId}` }, ({ new: row }) => {
+          const { user_id, last_read_at } = row as { user_id: string; last_read_at: string };
+          setReads((prev) => new Map(prev).set(user_id, last_read_at));
+        })
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "direct_messages", filter: `conversation_id=eq.${conversationId}` }, ({ new: row }) => {
           const dm = row as DirectMessage;
           setMessages((prev) => (prev.some((m) => m.id === dm.id) ? prev.map((m) => (m.id === dm.id ? { ...dmToChat(dm, m.author) } : m)) : [...prev, dmToChat(dm, authorOf(dm.author_id))].sort(byTime)));
@@ -213,5 +231,5 @@ export function useDirectChat(conversationId: string, initial: { messages: Direc
     setMessages((prev) => prev.filter((m) => m.id !== id));
   }, [me.id]);
 
-  return { messages, hasMore, loadingOlder, loadOlder, send, edit, remove, retry, discard, recovery, queuedCount: messages.filter((m) => m.queued).length };
+  return { messages, hasMore, loadingOlder, loadOlder, send, edit, remove, retry, discard, recovery, reads, queuedCount: messages.filter((m) => m.queued).length };
 }

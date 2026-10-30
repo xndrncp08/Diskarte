@@ -64,3 +64,16 @@ export function isUnread(conversation: Pick<ConversationSummary, "lastMessageAt"
 export function sortConversations<T extends Pick<ConversationSummary, "lastMessageAt">>(list: T[]): T[] {
   return [...list].sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt));
 }
+
+/** "Seen" (direct), "Seen by Ana, Ben" (group) or "Sent" for my latest message. */
+export function readReceipt(sentAt: string, others: SocialProfile[], reads: ReadonlyMap<string, string>, kind: "direct" | "group") {
+  // Compare as instants: Postgres keeps microseconds, JS dates milliseconds.
+  const sent = new Date(sentAt).getTime();
+  const seen = others.filter((p) => {
+    const read = reads.get(p.id);
+    return !!read && new Date(read).getTime() >= sent;
+  });
+  if (!seen.length) return "Sent";
+  if (kind === "direct") return "Seen";
+  return seen.length === others.length && others.length > 3 ? "Seen by everyone" : `Seen by ${seen.map((p) => p.display_name).join(", ")}`;
+}

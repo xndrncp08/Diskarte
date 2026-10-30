@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, BookmarkX, Clock, Copy, CornerUpLeft, Forward, MailOpen, MessagesSquare, Pencil, Pin, PinOff, RotateCw, Trash2, X } from "lucide-react";
+import { Bookmark, BookmarkX, Clock, Copy, CornerUpLeft, Forward, MailOpen, MessagesSquare, Pencil, Pin, PinOff, RotateCw, Trash2, Webhook, X } from "lucide-react";
 import { memo, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { PersonContextMenu } from "@/components/social/PersonMenu";
@@ -243,7 +243,7 @@ export const MessageItem = memo(function MessageItem({
   const menu = useContextMenu({ disabled: !interactive || editing });
   const swipe = useSwipeReply(() => actions.onReply(message), !interactive || editing || message.pending || message.failed || message.queued);
   const attachments = parseAttachments(message.attachments);
-  const name = message.author?.display_name ?? "Deleted user";
+  const name = message.author?.display_name ?? message.webhook_name ?? "Deleted user";
 
   return (
     <article
@@ -278,6 +278,10 @@ export const MessageItem = memo(function MessageItem({
           <Author message={message} actions={actions} decorative className="block rounded-full no-underline!">
             <UserAvatar profile={message.author} size={40} />
           </Author>
+        ) : message.webhook_name ? (
+          <span className="flex size-10 items-center justify-center rounded-full bg-sky-500/20 text-sky-200" aria-hidden>
+            <Webhook className="size-5" />
+          </span>
         ) : (
           <span className="block size-10 rounded-full bg-white/10" />
         )}
@@ -293,7 +297,7 @@ export const MessageItem = memo(function MessageItem({
             <CornerUpLeft className="size-3 shrink-0 -scale-x-100" aria-hidden />
             {replyTo ? (
               <>
-                <span className="shrink-0 whitespace-nowrap font-semibold text-slate-300">@{replyTo.author?.display_name ?? "Deleted user"}</span>
+                <span className="shrink-0 whitespace-nowrap font-semibold text-slate-300">@{replyTo.author?.display_name ?? replyTo.webhook_name ?? "Deleted user"}</span>
                 <span className="truncate">{previewText(replyTo.content) || (replyTo.sticker ? "Sticker" : "Attachment")}</span>
               </>
             ) : (
@@ -306,6 +310,7 @@ export const MessageItem = memo(function MessageItem({
             <Author message={message} actions={actions} className="truncate font-semibold text-white">
               {name}
             </Author>
+            {!message.author && message.webhook_name && <span className="shrink-0 rounded bg-sky-500/20 px-1 font-silk text-[9px] uppercase text-sky-200">Webhook</span>}
             <Timestamp iso={message.created_at} className="shrink-0 whitespace-nowrap text-xs text-slate-500" />
             {message.pinned && <Pin className="size-3 shrink-0 text-sun" aria-label="Pinned" />}
           </p>

@@ -10,6 +10,7 @@ import { typingLabel } from "@/hooks/useTyping";
 import { formatDuration } from "@/lib/community";
 import { MAX_ATTACHMENTS, MESSAGE_MAX, type Attachment } from "@/lib/messages";
 import { ATTACHMENT_ACCEPT, uploadAttachment } from "@/lib/uploads";
+import { ScheduleButton } from "./ScheduledMessages";
 import { VoiceRecorder } from "./VoiceRecorder";
 import { onMentionRequest } from "@/lib/mention";
 import { cn, formatBytes } from "@/lib/utils";
@@ -59,7 +60,10 @@ export function Composer({
   lockKind = "verification",
   extra,
   draftScope = "main",
+  schedulable = false,
 }: {
+  /** Offer "Schedule message" (server text channels). */
+  schedulable?: boolean;
   /** More toolbar buttons (the channel's "Create poll"). */
   extra?: ReactNode;
   draftScope?: string;
@@ -394,6 +398,14 @@ export function Composer({
           />
           {onSticker && <StickerPicker onPick={onSticker} disabled={cooldown > 0} />}
           {extra}
+          {schedulable && (
+            <ScheduleButton
+              channelId={channelId}
+              content={draft.trim()}
+              disabled={!draft.trim() || draft.trim().length > MESSAGE_MAX || uploads.length > 0}
+              onScheduled={() => setDraft("")}
+            />
+          )}
           <button
             type="submit"
             disabled={(!draft.trim() && ready.length === 0) || busy || failedUpload || cooldown > 0}

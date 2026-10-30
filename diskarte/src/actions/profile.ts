@@ -72,7 +72,16 @@ export async function updateProfileAction(_prev: ProfileFormState, form: FormDat
 }
 
 /** Quick status switcher from the user panel (presence + optional custom status). */
-export async function setStatusAction(input: { status: string; customStatus?: string | null; customStatusEmoji?: string | null }): Promise<ProfileFormState> {
+/** "Clear after" choices for a custom status, in minutes. */
+const CLEAR_AFTER = new Set([30, 60, 240, 1440]);
+
+export async function setStatusAction(input: {
+  status: string;
+  customStatus?: string | null;
+  customStatusEmoji?: string | null;
+  /** Minutes until the custom status clears itself; null = never; undefined = leave as is. */
+  clearAfterMinutes?: number | null;
+}): Promise<ProfileFormState> {
   const user = await getSessionUser();
   if (!user) return { error: "Not signed in" };
   const limit = limiters.mutation.check(`profile:${user.id}`);
@@ -85,11 +94,18 @@ export async function setStatusAction(input: { status: string; customStatus?: st
     customStatusEmoji: input.customStatusEmoji ?? "",
   });
   if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error) };
+  const clearAfter = input.clearAfterMinutes;
+  if (clearAfter != null && !CLEAR_AFTER.has(clearAfter)) return { error: "Pick one of the listed times." };
 
   const supabase = await createClient();
   const { error } = await supabase
     .from("profiles")
-    .update({ status: parsed.data.status, custom_status: parsed.data.customStatus, custom_status_emoji: parsed.data.customStatusEmoji })
+    .update({
+      status: parsed.data.status,
+      custom_status: parsed.data.customStatus,
+      custom_status_emoji: parsed.data.customStatusEmoji,
+      ...(clearAfter !== undefined && { custom_status_expires_at: clearAfter === null ? null : new Date(Date.now() + clearAfter * 60_000).toISOString() }),
+    })
     .eq("id", user.id);
   if (error) return { error: "Couldn't update your status." };
   revalidatePath("/", "layout");

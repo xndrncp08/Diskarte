@@ -94,7 +94,7 @@ export async function joinServerAction(input: { invite: string }): Promise<Actio
   return { ok: true, data: { serverId: data } };
 }
 
-export async function updateServerAction(input: { serverId: string; name: string; description: string; iconUrl?: string | null; isPublic?: boolean; category?: string }): Promise<ActionResult> {
+export async function updateServerAction(input: { serverId: string; name: string; description: string; iconUrl?: string | null; isPublic?: boolean; category?: string; levelsEnabled?: boolean; welcome?: { channelId: string | null; message: string } }): Promise<ActionResult> {
   const { limited } = await authed();
   if (limited) return RATE_LIMITED;
   if (!uuidSchema.safeParse(input.serverId).success) return { ok: false, error: "Invalid server" };
@@ -102,6 +102,10 @@ export async function updateServerAction(input: { serverId: string; name: string
   if (!parsed.success) return { ok: false, fieldErrors: fieldErrors(parsed.error) };
   if (input.iconUrl && !isAllowedImageUrl(input.iconUrl)) return { ok: false, fieldErrors: { icon: "Invalid icon URL" } };
   if (input.category !== undefined && !SERVER_CATEGORIES.some((c) => c.id === input.category)) return { ok: false, fieldErrors: { category: "Pick a category" } };
+
+  const welcomeText = input.welcome?.message.trim() ?? "";
+  if (welcomeText.length > 500) return { ok: false, fieldErrors: { welcome: "Keep it under 500 characters" } };
+  if (input.welcome?.channelId && !uuidSchema.safeParse(input.welcome.channelId).success) return { ok: false, fieldErrors: { welcome: "Pick a channel" } };
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -113,6 +117,9 @@ export async function updateServerAction(input: { serverId: string; name: string
       // Only sent when changed, so saving works before the discovery migration is applied.
       ...(input.isPublic !== undefined ? { is_public: input.isPublic } : {}),
       ...(input.category !== undefined ? { category: input.category } : {}),
+      ...(input.levelsEnabled !== undefined ? { levels_enabled: input.levelsEnabled === true } : {}),
+      // Both or neither: a greeting needs a channel and text.
+      ...(input.welcome ? (input.welcome.channelId && welcomeText ? { welcome_channel_id: input.welcome.channelId, welcome_message: welcomeText } : { welcome_channel_id: null, welcome_message: null }) : {}),
     })
     .eq("id", input.serverId)
     .select("id");

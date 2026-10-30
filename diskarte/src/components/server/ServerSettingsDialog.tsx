@@ -15,6 +15,7 @@ import {
   Trash2,
   Users,
   Volume2,
+  Webhook,
 } from "lucide-react";
 import {
   useId,
@@ -32,6 +33,7 @@ import { useServer } from "@/components/providers/ServerProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { ServerIcon } from "@/components/shell/ServerIcon";
 import { Button } from "@/components/ui/Button";
+import { confirmAction } from "@/components/ui/ConfirmHost";
 import { InputField, TextareaField } from "@/components/ui/Field";
 import { FloatingWindow } from "@/components/ui/FloatingWindow";
 import { hasRole, SERVER_CATEGORIES } from "@/lib/servers";
@@ -45,6 +47,7 @@ import { EmojiSettings } from "@/components/server/settings/EmojiSettings";
 import { RolesSettings } from "./settings/RolesSettings";
 import { SoundboardSettings } from "./settings/SoundboardSettings";
 import { SupportSettings } from "./settings/SupportSettings";
+import { WebhooksPanel } from "./settings/WebhooksPanel";
 import { ExportSettings } from "./settings/ExportSettings";
 
 export type SettingsTab =
@@ -56,6 +59,7 @@ export type SettingsTab =
   | "invites"
   | "emoji"
   | "soundboard"
+  | "webhooks"
   | "support";
 
 const TABS: { id: SettingsTab; label: string; adminOnly: boolean }[] = [
@@ -67,6 +71,7 @@ const TABS: { id: SettingsTab; label: string; adminOnly: boolean }[] = [
   { id: "invites", label: "Invites", adminOnly: false },
   { id: "emoji", label: "Emoji", adminOnly: true },
   { id: "soundboard", label: "Soundboard", adminOnly: true },
+  { id: "webhooks", label: "Webhooks", adminOnly: true },
   { id: "support", label: "Support", adminOnly: true },
 ];
 
@@ -130,6 +135,7 @@ function SettingsTabs({
     invites: Link,
     emoji: Smile,
     soundboard: Volume2,
+    webhooks: Webhook,
     support: HeartHandshake,
   };
   const panels: Record<SettingsTab, ReactNode> = {
@@ -141,6 +147,7 @@ function SettingsTabs({
     invites: <InvitesPanel />,
     emoji: <EmojiSettings />,
     soundboard: <SoundboardSettings />,
+    webhooks: <WebhooksPanel />,
     support: <SupportSettings />,
   };
 
@@ -219,13 +226,17 @@ function SettingsTabs({
 }
 
 function ServerSettingsForm({ onClose }: { onClose: () => void }) {
-  const { server } = useServer();
+  const { server, channels } = useServer();
   const { me } = useMe();
   const supabase = useSupabase();
   const router = useRouter();
   const [iconUrl, setIconUrl] = useState<string | null>(server.icon_url);
   const [isPublic, setIsPublic] = useState(server.is_public ?? false);
   const [category, setCategory] = useState(server.category ?? "other");
+  const [levels, setLevels] = useState(server.levels_enabled ?? false);
+  const [welcomeChannel, setWelcomeChannel] = useState(server.welcome_channel_id ?? "");
+  const [welcomeText, setWelcomeText] = useState(server.welcome_message ?? "Mabuhay {user}! Welcome sa {server}.");
+  const welcomeChanged = (welcomeChannel || null) !== (server.welcome_channel_id ?? null) || (welcomeChannel && welcomeText.trim() !== (server.welcome_message ?? ""));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState(false);
   const [confirmName, setConfirmName] = useState("");
@@ -260,6 +271,8 @@ function ServerSettingsForm({ onClose }: { onClose: () => void }) {
         iconUrl,
         ...(isPublic !== (server.is_public ?? false) ? { isPublic } : {}),
         ...(category !== (server.category ?? "other") ? { category } : {}),
+        ...(levels !== (server.levels_enabled ?? false) ? { levelsEnabled: levels } : {}),
+        ...(welcomeChanged ? { welcome: { channelId: welcomeChannel || null, message: welcomeText } } : {}),
       });
       if (!result.ok) {
         setErrors(result.fieldErrors ?? {});
@@ -371,6 +384,64 @@ function ServerSettingsForm({ onClose }: { onClose: () => void }) {
             )}
           </div>
         )}
+        <fieldset className="space-y-2 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+          <legend className="px-1 text-sm font-semibold text-white">Welcome message</legend>
+          <label className="block text-sm text-slate-300">
+            Post in
+            <select
+              value={welcomeChannel}
+              onChange={(e) => setWelcomeChannel(e.target.value)}
+              className="mt-1 h-10 w-full rounded-lg border border-white/10 bg-black/40 px-3 text-sm text-white"
+            >
+              <option value="">Off</option>
+              {channels.filter((c) => c.type === "text").map((c) => (
+                <option key={c.id} value={c.id}>
+                  #{c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          {welcomeChannel && (
+            <TextareaField
+              label="Message"
+              hint="{user} becomes @their-name and pings them; {server} becomes this server's name."
+              value={welcomeText}
+              onChange={(e) => setWelcomeText(e.target.value)}
+              maxLength={500}
+              rows={2}
+              error={errors.welcome}
+            />
+          )}
+        </fieldset>
+        <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+          <Switch
+            checked={levels}
+            onChange={setLevels}
+            label="Community levels"
+            hint="Members earn XP for chatting (at most once a minute, so spam earns nothing) and get a leaderboard. Turning it off hides levels and keeps XP."
+          />
+          {server.levels_enabled && (
+            <button
+              type="button"
+              onClick={() =>
+                confirmAction({
+                  title: "Reset everyone's XP?",
+                  body: "Every member goes back to level 0. This can't be undone.",
+                  confirmLabel: "Reset XP",
+                  danger: true,
+                  onConfirm: async () => {
+                    const { error } = await supabase.rpc("reset_server_xp", { p_server: server.id });
+                    if (error) toast.error("Couldn't reset XP.");
+                    else toast.success("XP reset.");
+                  },
+                })
+              }
+              className="min-h-11 text-sm font-semibold text-red-300 hover:underline"
+            >
+              Reset all XP
+            </button>
+          )}
+        </div>
         <Button type="submit" loading={pending} disabled={uploading}>
           Save
         </Button>

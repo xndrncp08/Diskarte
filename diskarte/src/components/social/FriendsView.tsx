@@ -6,6 +6,7 @@ import {
   MessageCircle,
   Search,
   ShieldOff,
+  Star,
   UserPlus,
   Users,
   X,
@@ -39,9 +40,11 @@ type Tab = "all" | "pending" | "blocked" | "add";
 
 function PersonRow({
   profile,
+  favourite,
   children,
 }: {
   profile: SocialProfile | undefined;
+  favourite?: boolean;
   children: React.ReactNode;
 }) {
   const menu = useContextMenu({ disabled: !profile });
@@ -54,8 +57,9 @@ function PersonRow({
     >
       <UserAvatar profile={profile} size={36} />
       <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold text-white">
-          {profile.display_name}
+        <p className="flex items-center gap-1 truncate font-semibold text-white">
+          <span className="truncate">{profile.display_name}</span>
+          {favourite && <Star className="size-3.5 shrink-0 fill-sun text-sun" aria-label="Favourite" />}
         </p>
         <p className="truncate text-xs text-slate-400">
           @{profile.username}
@@ -81,7 +85,7 @@ const iconButton =
   "touch-target relative rounded-full bg-white/5 p-2 text-slate-300 transition-colors hover:bg-white/15 hover:text-white";
 
 export function FriendsView({ servers }: { servers: Server[] }) {
-  const { friends, blocked, profiles, reload, reloadConversations } =
+  const { friends, blocked, profiles, reload, reloadConversations, favourites, setFavourite } =
     useSocial();
   const { setNavOpen } = useShellUI();
   const router = useRouter();
@@ -93,15 +97,18 @@ export function FriendsView({ servers }: { servers: Server[] }) {
   const [error, setError] = useState<string | undefined>();
 
   const accepted = (friends ?? []).filter((f) => f.status === "accepted");
-  const matchingFriends = accepted.filter((friend) => {
-    const profile = profiles.get(friend.userId);
-    return (
-      !query.trim() ||
-      `${profile?.display_name ?? ""} ${profile?.username ?? ""}`
-        .toLowerCase()
-        .includes(query.trim().toLowerCase())
-    );
-  });
+  const matchingFriends = accepted
+    .filter((friend) => {
+      const profile = profiles.get(friend.userId);
+      return (
+        !query.trim() ||
+        `${profile?.display_name ?? ""} ${profile?.username ?? ""}`
+          .toLowerCase()
+          .includes(query.trim().toLowerCase())
+      );
+    })
+    // Favourites first; otherwise keep the existing order.
+    .sort((a, b) => Number(favourites.has(b.userId)) - Number(favourites.has(a.userId)));
   const requests = (friends ?? []).filter((f) => f.status !== "accepted");
   const incoming = requests.filter((f) => f.status === "incoming").length;
 
@@ -293,6 +300,7 @@ export function FriendsView({ servers }: { servers: Server[] }) {
                       <PersonRow
                         key={f.userId}
                         profile={profiles.get(f.userId)}
+                        favourite={favourites.has(f.userId)}
                       >
                         <button
                           type="button"
@@ -307,6 +315,13 @@ export function FriendsView({ servers }: { servers: Server[] }) {
                           label="Friend options"
                           align="end"
                           items={[
+                            {
+                              label: favourites.has(f.userId) ? "Remove from favourites" : "Add to favourites",
+                              onSelect: () =>
+                                void setFavourite(f.userId, !favourites.has(f.userId)).then((ok) => {
+                                  if (!ok) toast.error("Couldn't update favourites.");
+                                }),
+                            },
                             {
                               label: "Unfriend",
                               onSelect: () =>

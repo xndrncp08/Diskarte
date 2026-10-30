@@ -1,12 +1,13 @@
 "use client";
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";
-import { useConversations, useFriendNicknames, useFriends } from "@/hooks/useSocial";
+import { useConversations, useFriendFavourites, useFriendNicknames, useFriends } from "@/hooks/useSocial";
 import { isUnread, withNickname } from "@/lib/social";
 
 export type SocialValue = ReturnType<typeof useFriends> &
   Omit<ReturnType<typeof useConversations>, "reload"> &
-  ReturnType<typeof useFriendNicknames> & {
+  ReturnType<typeof useFriendNicknames> &
+  ReturnType<typeof useFriendFavourites> & {
     reloadConversations: () => Promise<void>;
     /** Incoming friend requests + unread conversations (for the Home badge). */
     attention: number;
@@ -22,6 +23,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
   const friends = useFriends();
   const { conversations, reload: reloadConversations, markRead } = useConversations();
   const { nicknames, setNickname } = useFriendNicknames();
+  const { favourites, setFavourite } = useFriendFavourites();
   const attention = (friends.friends?.filter((f) => f.status === "incoming").length ?? 0) + (conversations?.filter(isUnread).length ?? 0);
   // My private nicknames replace display names here, so every friends/DM surface shows them.
   const value = useMemo<SocialValue>(
@@ -34,8 +36,10 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       attention,
       nicknames,
       setNickname,
+      favourites,
+      setFavourite,
     }),
-    [friends, conversations, reloadConversations, markRead, attention, nicknames, setNickname],
+    [friends, conversations, reloadConversations, markRead, attention, nicknames, setNickname, favourites, setFavourite],
   );
   return <SocialContext.Provider value={value}>{children}</SocialContext.Provider>;
 }
