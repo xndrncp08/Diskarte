@@ -229,3 +229,13 @@ export function communityError(message: string | undefined | null, fallback = "S
   if (message.includes("row-level security") || message.includes("permission denied")) return "You don't have permission for this.";
   return fallback;
 }
+
+/** Community level for an XP total: level n needs 50·n² XP (15 XP a message, at most once a minute). */
+export function levelFor(xp: number) {
+  return Math.floor(Math.sqrt(Math.max(0, xp) / 50));
+}
+
+/** XP needed to reach a level. */
+export function xpForLevel(level: number) {
+  return 50 * level * level;
+}

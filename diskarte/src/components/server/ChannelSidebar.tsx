@@ -36,6 +36,7 @@ import type { ChannelType } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
 import { ChannelDialog } from "./ChannelDialog";
 import { EventsButton } from "./EventsButton";
+import { LeaderboardButton } from "./Leaderboard";
 import { InviteDialog } from "./InviteDialog";
 import type { SettingsTab } from "./ServerSettingsDialog";
 
@@ -543,6 +544,7 @@ export function ChannelSidebar() {
           <Radio className="size-4" aria-hidden /> LFG Board
         </Link>
         <EventsButton />
+        <LeaderboardButton />
         <Link href={`/tambayan/${server.id}/workspace`} onClick={() => setNavOpen(false)} aria-current={pathname.endsWith("/workspace") ? "page" : undefined} className="mb-2 flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm text-slate-300 hover:bg-white/5 aria-[current=page]:bg-white/10">Shared workspace</Link>
         {/* Just you here: the one thing worth doing next is bringing people in. */}
         {!server.is_system && members.length === 1 && (

@@ -66,7 +66,8 @@ export function createFakeSupabase(tables: Record<string, unknown[]> = {}) {
         orders.push({ col, asc: opts.ascending !== false });
         rows = [...rows].sort((a, b) => {
           for (const o of orders) {
-            const cmp = String(a[o.col]).localeCompare(String(b[o.col]));
+            const [x, y] = [a[o.col], b[o.col]];
+            const cmp = typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y));
             if (cmp) return o.asc ? cmp : -cmp;
           }
           return 0;

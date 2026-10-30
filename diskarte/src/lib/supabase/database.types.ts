@@ -81,6 +81,8 @@ export interface Database {
           /** Listed in Explore (admins opt in). Absent before the discovery migration. */
           is_public?: boolean;
           category?: string;
+          /** Community levels (XP) on. Absent before the community-levels migration. */
+          levels_enabled?: boolean;
           is_system: boolean;
           invite_code: string;
           automod_enabled: boolean;
@@ -100,6 +102,7 @@ export interface Database {
           owner_id: string | null;
           is_public?: boolean;
           category?: string;
+          levels_enabled?: boolean;
           is_system?: boolean;
           invite_code?: string;
           automod_enabled?: boolean;
@@ -314,6 +317,7 @@ export interface Database {
         { id: string; author_id: string; channel_id: string; content: string; send_at: string; created_at: string; failed_reason: string | null },
         { id?: string; author_id?: string; channel_id: string; content: string; send_at: string }
       >;
+      member_xp: TableDef<{ server_id: string; user_id: string; xp: number; last_award_at: string | null }, never>;
       friend_favourites: TableDef<{ owner_id: string; target_id: string; created_at: string }, { owner_id?: string; target_id: string }>;
       friend_nicknames: TableDef<{ owner_id: string; target_id: string; nickname: string }, { owner_id?: string; target_id: string; nickname: string }>;
       dm_conversations: TableDef<
@@ -467,6 +471,7 @@ export interface Database {
       add_to_group_dm: { Args: { p_conversation_id: string; p_user_id: string }; Returns: undefined };
       rename_group_dm: { Args: { p_conversation_id: string; p_name: string }; Returns: undefined };
       leave_dm: { Args: { p_conversation_id: string }; Returns: undefined };
+      reset_server_xp: { Args: { p_server: string }; Returns: undefined };
       publish_scheduled_messages: { Args: Record<string, never>; Returns: number };
       profile_connections: { Args: { p_user: string }; Returns: Json };
       clear_expired_custom_statuses: { Args: Record<string, never>; Returns: number };

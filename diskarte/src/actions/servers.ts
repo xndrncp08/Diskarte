@@ -94,7 +94,7 @@ export async function joinServerAction(input: { invite: string }): Promise<Actio
   return { ok: true, data: { serverId: data } };
 }
 
-export async function updateServerAction(input: { serverId: string; name: string; description: string; iconUrl?: string | null; isPublic?: boolean; category?: string }): Promise<ActionResult> {
+export async function updateServerAction(input: { serverId: string; name: string; description: string; iconUrl?: string | null; isPublic?: boolean; category?: string; levelsEnabled?: boolean }): Promise<ActionResult> {
   const { limited } = await authed();
   if (limited) return RATE_LIMITED;
   if (!uuidSchema.safeParse(input.serverId).success) return { ok: false, error: "Invalid server" };
@@ -113,6 +113,7 @@ export async function updateServerAction(input: { serverId: string; name: string
       // Only sent when changed, so saving works before the discovery migration is applied.
       ...(input.isPublic !== undefined ? { is_public: input.isPublic } : {}),
       ...(input.category !== undefined ? { category: input.category } : {}),
+      ...(input.levelsEnabled !== undefined ? { levels_enabled: input.levelsEnabled === true } : {}),
     })
     .eq("id", input.serverId)
     .select("id");
