@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-30 — community tools
+
+- Added built-in slash commands in the composer: /shrug, /tableflip, /unflip, /me, /spoiler (Tab completes).
+- Added server rules: members accept them before posting (moderators exempt; editing them asks again), enforced in the database.
+- Added recurring announcements (Server settings → Announcements): daily or weekly posts at a local time, with last-failure reporting.
+- Needs two manual migrations; see `RELEASE-2026-10-29.md` (steps 8–9).
+
 ## 2026-10-29 — social, scheduling and integrations
 
 - Fixed the mobile tab bar no longer matching the page colour behind the app (surface refactor regression).

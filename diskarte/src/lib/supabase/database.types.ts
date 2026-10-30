@@ -338,6 +338,13 @@ export interface Database {
         { id: string; server_id: string; channel_id: string; name: string; created_by: string | null; created_at: string; last_used_at: string | null },
         never
       >;
+      server_announcements: TableDef<
+        {
+          id: string; server_id: string; channel_id: string; content: string; weekday: number | null; at_time: string; time_zone: string;
+          enabled: boolean; next_run_at: string; last_run_at: string | null; last_error: string | null; created_by: string | null; created_at: string;
+        },
+        { server_id: string; channel_id: string; content: string; weekday?: number | null; at_time: string; time_zone: string; enabled?: boolean }
+      >;
       rules_acceptances: TableDef<{ server_id: string; user_id: string; accepted_at: string }, never>;
       member_xp: TableDef<{ server_id: string; user_id: string; xp: number; last_award_at: string | null }, never>;
       friend_favourites: TableDef<{ owner_id: string; target_id: string; created_at: string }, { owner_id?: string; target_id: string }>;
