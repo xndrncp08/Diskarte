@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-29 — social, scheduling and integrations
+
+- Fixed the mobile tab bar no longer matching the page colour behind the app (surface refactor regression).
+- Added favourite friends (listed first), custom statuses that clear after 30 min / 1 h / 4 h / 24 h, and mutual friends + shared Tambayans on member profiles.
+- Added scheduled messages in text channels (up to 30 days ahead, 25 pending per person) with a pending/failed list and cancel; they post as the author under the same rules as a live send.
+- Added Sent / Seen receipts under your latest DM (named readers in groups).
+- Added optional community levels per Tambayan: 15 XP per message at most once a minute, a leaderboard, levels on member profiles, admin reset.
+- Added incoming channel webhooks (Server settings → Webhooks) at `POST /api/webhooks/<id>/<token>`, hashed one-time-shown tokens, rotation, audit log entries and per-webhook + per-IP limits.
+- Added welcome messages for new members (channel + template with `{user}` / `{server}`).
+- Added optional Moments on Home: 24-hour text/photo updates for all friends or favourites only, with mute, report and delete.
+- Account export and deletion now cover favourites, scheduled messages, moments (incl. photos), mutes and XP.
+- Needs seven manual migrations and one optional cron job; see `RELEASE-2026-10-29.md`.
+
 ## 2026-10-15 — live voice activity and Web Push
 
 - Added authorized LiveKit hover previews and mobile long-press sheets, with shared Realtime updates and signed webhook invalidation.

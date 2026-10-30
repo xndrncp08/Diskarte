@@ -13,7 +13,8 @@ export const getMyServers = cache(async (userId: string): Promise<(Server & { en
   const supabase = await createClient();
   const { data } = await supabase
     .from("members")
-    .select("joined_at, server:servers!inner(*, channels(*))")
+    // Explicit FK: servers.welcome_channel_id is a second servers↔channels relationship.
+    .select("joined_at, server:servers!inner(*, channels!channels_server_id_fkey(*))")
     .eq("user_id", userId)
     .order("joined_at", { ascending: true });
   return (data ?? []).map((row) => {

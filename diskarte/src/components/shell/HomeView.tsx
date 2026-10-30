@@ -1,5 +1,6 @@
 "use client";
 
+import { MomentsStrip } from "@/components/social/Moments";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -102,6 +103,7 @@ export function HomeView({
                 </div>
                 <DiskarteLogo size={80} variant="mascot" />
               </header>
+              <MomentsStrip />
               <div className="home-signals">
                 <Link href="/tambayan/messages">
                   <MessageSquare className="size-4" aria-hidden />
