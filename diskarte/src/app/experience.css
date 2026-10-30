@@ -235,7 +235,8 @@ html[data-color-mode="light"] {
   box-shadow: var(--shadow-panel);
 }
 .mobile-navigation {
-  background: var(--surface-panel);
+  /* Same colour as the page behind the app, so the bottom of the screen reads as one surface. */
+  background: var(--color-abyss);
 }
 .mobile-tabs {
   min-height: 3.75rem;
