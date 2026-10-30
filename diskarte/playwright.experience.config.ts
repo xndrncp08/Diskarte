@@ -5,6 +5,7 @@ export default defineConfig({
   timeout: 30_000,
   outputDir: "test-results/experience",
   workers: 1,
+  retries: process.env.CI ? 1 : 0,
   use: {
     baseURL: "http://127.0.0.1:3130",
     channel: "chromium",
