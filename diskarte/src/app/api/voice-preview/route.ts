@@ -5,6 +5,11 @@ import { createRateLimiter } from "@/lib/rate-limit";
 import { getVoicePreview } from "@/lib/voice-preview-server";
 const limit = createRateLimiter({ limit: 45, windowMs: 60_000 });
 const headers = { "Cache-Control": "private, no-store" };
+/**
+ * GET /api/voice-preview?serverId= — who is in the server's voice channels, for hover previews.
+ * Membership, platform ban and MFA are checked here; channel visibility comes from the caller's RLS,
+ * and only those room names are asked of LiveKit. No room token is minted.
+ */
 export async function GET(request: Request) {
   const db = await createClient();
   const { data: { user } } = await db.auth.getUser();

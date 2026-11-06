@@ -10,6 +10,7 @@ const schema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("remove"), device: z.uuid() }),
   z.object({ action: z.literal("test"), device: z.uuid() }),
 ]);
+/** GET /api/push/subscription — whether push is configured, the public VAPID key and this account's devices. */
 export async function GET() {
   const db = await createClient(); const { data: { user } } = await db.auth.getUser();
   if (!user) return Response.json({ error: "Sign in to manage notifications." }, { status: 401, headers });
@@ -18,6 +19,11 @@ export async function GET() {
   if (ready.error || devices.error) return Response.json({ error: "Push database setup is incomplete." }, { status: 503, headers });
   return Response.json({ configured: !!pushConfig() && ready.data === true, publicKey: pushConfig()?.publicKey ?? null, devices: devices.data }, { headers });
 }
+/**
+ * POST /api/push/subscription — register this device's subscription, send a test, or remove it.
+ * The database binds the device to the current session and enforces ownership, the 10-device cap
+ * and rate limits; this handler validates the vendor endpoint and the P-256 key first.
+ */
 export async function POST(request: Request) {
   const db = await createClient(); const { data: { user } } = await db.auth.getUser();
   if (!user) return Response.json({ error: "Sign in to manage notifications." }, { status: 401, headers });
