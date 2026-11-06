@@ -16,7 +16,8 @@
     "brand:assets": "tsx scripts/generate-brand-assets.tsx",
     "start:standalone": "node scripts/start-standalone.mjs",
     "admin:grant": "node scripts/grant-admin.mjs",
-    "db:check": "node scripts/check-database.mjs"
+    "db:check": "node scripts/check-database.mjs",
+    "docs:db": "tsx scripts/generate-db-reference.mts"
   },
   "dependencies": {
     "@livekit/components-react": "^2.9.24",
