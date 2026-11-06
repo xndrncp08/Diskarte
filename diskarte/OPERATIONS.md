@@ -1,5 +1,9 @@
 # Diskarte release and recovery operations
 
+> Written for the October 14 releases and kept for history. The maintained runbook is
+> [`docs/operations/deployment.md`](../docs/operations/deployment.md); troubleshooting is in
+> [`docs/operations/troubleshooting.md`](../docs/operations/troubleshooting.md).
+
 ## Safe migration and release order
 
 1. Record the deployed application commit and current migration history. Keep a tested database backup, Storage object backup and protected environment configuration before changing production.
@@ -41,7 +45,7 @@ If schema is missing, confirm the target project and backup first, then apply `s
 | Stale chat after reconnect | Settings → Advanced → Connection diagnostics shows join/recovery events. Realtime must allow the private `db:*` topics. Check membership and session validity, then retry sync. |
 | Shared save conflict | Review the latest revision in the editor. Local edits remain until the editor closes. Explicitly retain local edits against the new revision before saving again. |
 | Voice cannot join/reconnect | Check the session, channel access, timeout, LiveKit configuration and browser microphone permissions. Never issue a broad room token to bypass membership. Diagnostics show reconnection and local quality events. |
-| PWA appears outdated | Settings → Advanced exposes a pending update. Finish a call and save edits before reloading. Clear downloaded app files if necessary; this preserves drafts/queued sends. Change the service worker cache version when changing the offline precache. |
+| PWA appears outdated | Settings → Storage & Data exposes a pending update. Finish a call and save edits before reloading. Clear downloaded app files if necessary; this preserves drafts/queued sends. Change the service worker cache version when changing the offline precache. |
 | Notifications stop | Check browser permission, quiet hours, temporary pause, server/channel mutes and sound settings. Background push is not enabled in this release. |
 
 Request errors emit JSON metadata to the server's normal log stream. Client connection events stay in a bounded, in-memory log; no automatic third-party transmission is configured. These diagnostics intentionally omit message text, usernames, tokens, query strings and headers.

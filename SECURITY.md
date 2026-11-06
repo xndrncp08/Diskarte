@@ -37,7 +37,7 @@ Maintainers aim to acknowledge reports within 3 days, share a remediation plan w
 | **PKCE** for OAuth and email links: `@supabase/ssr` forces `flowType: "pkce"` and keeps the verifier in a cookie; `/auth/callback` exchanges the one-time code, `/auth/confirm` verifies token hashes | `diskarte/src/app/auth/*` |
 | Open-redirect protection on every `?next=` | `safeRedirectPath` in `diskarte/src/lib/security.ts` |
 | Cookies are host-only (no `Domain`), `Path=/`, `SameSite=Lax`, and `Secure` on HTTPS | `diskarte/src/lib/supabase/cookies.ts` |
-| Password policy: 10–72 bytes with upper, lower, digit and symbol (Zod, mirrored in Supabase Auth config) | `passwordSchema` in `diskarte/src/lib/profile.ts`, `supabase/config.toml` |
+| Password policy: 10–72 bytes with upper, lower, digit and symbol (Zod, mirrored in Supabase Auth config) | `passwordSchema` in `diskarte/src/lib/schemas/profile.ts`, `supabase/config.toml` |
 | Sign-in never reveals the policy or whether an account exists; sign-up and reset use vague, uniform messages | `diskarte/src/lib/auth-errors.ts`, `diskarte/src/app/(auth)/actions.ts` |
 | Timing floor (450 ms) on sign-in, sign-up and reset, so fast-fail and slow paths look the same; Supabase compares bcrypt hashes in constant time | `withMinimumDuration` |
 | **Rate limiting**: 5 auth attempts/min/IP (login, sign-up, forgot/reset/change password) and 20 auth callbacks/min/IP. Excess requests get **`429 Too Many Requests` + `Retry-After`**. Also a per-account limit on password changes | `diskarte/src/proxy.ts`, `diskarte/src/lib/rate-limit.ts` |

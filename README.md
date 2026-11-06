@@ -5,60 +5,86 @@
 <p align="center"><strong>Tara, Tambay Tayo. Ang Bagong Istambayan ng Bayan.</strong><br>
 An open-source Discord alternative for the Philippines: chat, voice, video and screen share for gamers, student orgs and creators.</p>
 
+<p align="center">
+  <a href="docs/README.md">Documentation</a> ·
+  <a href="docs/getting-started/quick-start.md">Quick start</a> ·
+  <a href="docs/architecture/overview.md">Architecture</a> ·
+  <a href="docs/user-guide/README.md">User guide</a> ·
+  <a href="SECURITY.md">Security</a>
+</p>
+
 ---
 
-## Repository
+## What it is
 
-The Diskarte app and its Supabase migrations. The app folder is **self-contained** (own `package.json`, `package-lock.json`, Dockerfile and config), so Render builds it with Root Directory `diskarte`.
+Diskarte gives communities ("Tambayans") text, voice and forum channels; friends, DMs and group calls;
+moderation tools; a shared workspace; and an installable mobile app — all deployable on free tiers of
+Vercel (or any Docker host), Supabase and LiveKit.
 
-```
-.
-├── diskarte/               The Diskarte app: Tambayans, realtime chat, LiveKit voice/video,
-│                           Bantay-Bayan moderation, friends & DMs, and the Super Admin
-│                           Control Center  → Render (Docker)
-├── supabase/               Migrations (schema, RLS, triggers, RPCs) + local config
-├── package.json            Orchestrator: scripts that run in the app (no shared lockfile)
-├── docker-compose.yml      Local containers (app, LiveKit)
-├── render.yaml             Render Blueprint (rootDir: diskarte)
-└── SECURITY.md             Threat model and controls
-```
+- **Messaging** — Markdown, threads, reactions, attachments, voice messages, polls, scheduled messages, search, offline queue
+- **Voice and video** — LiveKit calls, screen share, soundboard, watch parties and mini-games
+- **Communities** — roles and private channels, invites and discovery, rules, events, levels, webhooks
+- **Moderation** — Bantay-Bayan auto-mod, timeouts, bans, audit log, and a Super Admin Control Center
+- **Everywhere** — PWA, opt-in Web Push, themes, accessibility settings, low-data mode
 
-| | Docs | Deploys to |
-| --- | --- | --- |
-| **Diskarte app** | [diskarte/README.md](diskarte/README.md) · [diskarte/DEPLOYMENT.md](diskarte/DEPLOYMENT.md) | Render (Docker), with Supabase + LiveKit Cloud |
-| **Database** | [`supabase/migrations/`](supabase/migrations) | Supabase (`npx supabase db push` from this folder) |
+See the [feature catalogue](docs/features/README.md) for status and details.
 
 ## Quick start
 
 ```bash
-npm install                                          # runs `npm ci` inside diskarte/
-cp diskarte/.env.example diskarte/.env.local          # Supabase + LiveKit credentials
-npm run dev                                          # Diskarte → http://localhost:3000
+npm install                                     # runs `npm ci` inside diskarte/
+cp diskarte/.env.example diskarte/.env.local    # Supabase + LiveKit credentials
+npm run dev                                     # http://localhost:3000
 ```
 
-Local Supabase: `npx supabase start` (needs Docker). It applies `supabase/migrations` and prints the local keys.
+Apply the database first (`npx supabase db push` to a hosted project, or `npx supabase start` with
+Docker). Full walkthrough: [docs/getting-started/quick-start.md](docs/getting-started/quick-start.md).
 
-## Scripts (repository root)
+## Repository
 
-| Command | What it does |
+```text
+.
+├── diskarte/          The Next.js 16 app (self-contained: own lockfile, Dockerfile) — deploys to Vercel or Docker
+├── supabase/          Database migrations (schema, RLS, triggers, RPCs) and local config
+├── docs/              Documentation
+├── docker-compose.yml Local container + optional LiveKit dev server
+├── render.yaml        Render Blueprint (rootDir: diskarte)
+└── SECURITY.md        Threat model, controls and vulnerability reporting
+```
+
+The root `package.json` only forwards scripts to the app; it is not an npm workspace.
+
+| Command (from the root) | What it does |
 | --- | --- |
-| `npm run dev` | Dev server |
-| `npm run build` | Production build |
-| `npm run lint` · `npm run typecheck` · `npm test` | Lint, type-check and the Vitest suite (unit, component and PGlite RLS tests) |
-| `npm run test:e2e` | Playwright suite (journeys run when `E2E_FULL=1`) |
-| `npm run brand:assets` | Re-render icons and OG cards |
-| `npm run admin:grant -- you@example.com` | Make the first Super Admin (service role key required); after that, roles are managed in the Control Center |
+| `npm run dev` · `npm run build` | Dev server · production build |
+| `npm run lint` · `npm run typecheck` · `npm test` | ESLint · `next typegen` + `tsc` · Vitest (unit, component, PGlite RLS, docs checks) |
+| `npm run test:e2e` | Playwright (backend journeys run with `E2E_FULL=1`) |
+| `npm run brand:assets` | Re-render icons and social cards |
+| `npm run admin:grant -- you@example.com` | Make the first Super Admin (needs the service role key) |
+| `npm run docs:db --prefix diskarte` | Regenerate the [database reference](docs/reference/database.md) |
 
-## Super Admin Control Center
+## Stack
 
-The old Early Access waitlist portal is retired; its admin role table, routes and dashboard were recycled into a Control Center inside the signed-in workspace:
+Next.js 16 (App Router, React 19.2) · TypeScript · Tailwind CSS 4 · Supabase (Postgres + RLS, Auth,
+Realtime, Storage) · LiveKit · Zod · Vitest + PGlite · Playwright · Docker · GitHub Actions · Vercel.
 
-- **Access:** `/admin` (and `/tambayan/admin`) for platform `super_admin`s only. The proxy, the page and every Server Action / API route verify the role in the database (`is_super_admin()`); everyone else is redirected to the canvas before anything renders, and the Control Center code is only downloaded by super admins.
-- **On the canvas** it's a glass panel that docks to the right edge, snaps magnetically and shares coupled resizing with neighbouring panels; on phones it's a full-screen page.
-- **Network roster & presence inspector:** every account with live presence (Online, AFK / Tulog, Nagluto ng Canton, Busy, Offline), LiveKit stage connections, device fingerprints, sessions and last-active times; instant client-side filters plus server-side search.
-- **Moderation:** roles (Super Admin, Moderator, Standard Member — mirrored into Diskarte HQ), forced status overrides, session revocation and temporary or permanent bans, all written to `admin_audit_logs`.
-- **Global Announcement Dispatcher:** compose with headers, callout boxes (`> [!INFO]`, `[!SUCCESS]`, `[!WARNING]`, `[!CRITICAL]`) and code blocks, preview, and broadcast to HQ's #announcements and/or #global-lounge. Connected canvases update live; flag it sticky to pin a banner on every canvas.
+## Documentation
 
-## License & security
+| | |
+| --- | --- |
+| [Introduction](docs/getting-started/introduction.md) | What Diskarte is and its vocabulary |
+| [Architecture](docs/architecture/overview.md) | How the pieces fit, realtime, voice, background jobs, decisions |
+| [Database](docs/database.md) · [reference](docs/reference/database.md) | Schema, permissions, RLS |
+| [API](docs/reference/api.md) · [Environment](docs/reference/environment.md) | Endpoints, actions, configuration |
+| [Security](docs/security.md) · [Testing](docs/testing.md) · [Design system](docs/design-system.md) | Engineering guides |
+| [Deployment](docs/operations/deployment.md) · [Troubleshooting](docs/operations/troubleshooting.md) | Operating Diskarte |
+| [User guide](docs/user-guide/README.md) | For everyday users |
+| [Contributing](docs/contributing/README.md) | Workflow and conventions |
+| [Changelog](diskarte/CHANGELOG.md) · [Known limitations](docs/known-limitations.md) | Status |
 
-Report vulnerabilities privately; see [SECURITY.md](SECURITY.md).
+## Credits and security
+
+The wordmark uses glyph outlines from [Knewave](https://fonts.google.com/specimen/Knewave) by Tyler
+Finck, under the SIL Open Font License 1.1 (`diskarte/assets/fonts/OFL-Knewave.txt`).
+
+Report vulnerabilities privately — see [SECURITY.md](SECURITY.md).
