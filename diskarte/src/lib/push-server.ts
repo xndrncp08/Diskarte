@@ -5,6 +5,11 @@ import { z } from "zod";
 import { createServiceClient } from "./supabase/service";
 import { allowPush, safePushPath, validPushEndpoint } from "./push-policy";
 import { parseNotifyPrefs, PUSH_KINDS } from "./notify-prefs";
+/**
+ * Validated Web Push settings, or null when any is missing or malformed: both VAPID keys (and that
+ * they form one P-256 pair), a mailto:/https: subject, a dispatcher secret of 32+ characters and the
+ * service-role key. Null keeps push off without affecting the rest of the app.
+ */
 export function pushConfig() {
   const publicKey = process.env.VAPID_PUBLIC_KEY ?? "", privateKey = process.env.VAPID_PRIVATE_KEY ?? "", subject = process.env.VAPID_SUBJECT ?? "", secret = process.env.PUSH_DISPATCH_SECRET ?? "";
   if (!/^[A-Za-z0-9_-]{87}$/.test(publicKey) || !/^[A-Za-z0-9_-]{43}$/.test(privateKey) || !/^(mailto:[^\s@]+@[^\s@]+|https:\/\/[^\s]+)$/.test(subject) || secret.length < 32 || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
@@ -12,6 +17,7 @@ export function pushConfig() {
   catch { return null; }
   return { publicKey, privateKey, subject, secret };
 }
+/** Constant-time check of the dispatcher's `Authorization: Bearer <PUSH_DISPATCH_SECRET>` header. */
 export function authorizedPushJob(header: string | null, secret: string) {
   const given = Buffer.from(header ?? ""), expected = Buffer.from(`Bearer ${secret}`);
   return given.length === expected.length && timingSafeEqual(given, expected);
@@ -22,6 +28,10 @@ const jobSchema = z.object({
   subscription: z.object({ endpoint: z.string().max(2048).refine(validPushEndpoint), keys: z.object({ p256dh: z.string().regex(/^[A-Za-z0-9_-]{87}$/), auth: z.string().regex(/^[A-Za-z0-9_-]{22}$/) }) }),
 });
 export type PushJob = z.infer<typeof jobSchema>;
+/**
+ * The encrypted payload the service worker receives. Without previews enabled (the default) the
+ * lock screen shows only "Diskarte" and a generic line; the link is re-validated to a local path.
+ */
 export function pushPayload(job: PushJob) {
   const prefs = parseNotifyPrefs(JSON.stringify(job.prefs));
   const previews = prefs.push?.previews === true || job.kind === "test";
@@ -37,6 +47,12 @@ export function pushFailure(error: unknown, attempt = 1, now = Date.now()) {
   const requested = typeof retryAfter === "string" ? (/^\d+$/.test(retryAfter) ? Number(retryAfter) : (Date.parse(retryAfter) - now) / 1000) : 0;
   return { result: "retry", status, code: status === 429 ? "provider_rate_limit" : "provider_unavailable", delay: Math.min(3600, Math.max(15 * 2 ** Math.min(attempt - 1, 8) + Math.floor(Math.random() * 10), Number.isFinite(requested) ? requested : 0)) };
 }
+/**
+ * Drains one batch of the push outbox as the service role: claim up to 20 leased jobs, prepare each
+ * (the database rechecks access and read state and returns null when it no longer applies), apply
+ * preferences, send 4 at a time and record the outcome so the database schedules retries or removes
+ * expired subscriptions. A full batch asks the database to wake the dispatcher again.
+ */
 export async function dispatchPush(db = createServiceClient(), send = webpush.sendNotification) {
   const config = pushConfig();
   if (!config) throw new Error("PUSH_UNCONFIGURED");

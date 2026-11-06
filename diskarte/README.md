@@ -11,6 +11,9 @@
 
 ---
 
+> **Full documentation lives in [`../docs/`](../docs/README.md)** — architecture, features, database and API
+> reference, deployment, testing, user guides and contributing. This page is a short tour of the app folder.
+
 ## Features
 
 - **Tambayan (servers)**: create or join with shareable invite links, categorized text and voice channels, and Admin / Moderator / Member roles enforced in the database.
@@ -52,7 +55,7 @@
 
 ## Stack
 
-Next.js 16 (App Router, React 19.2, Turbopack) · TypeScript · Tailwind CSS 4 · Framer Motion · Lucide · Supabase (Postgres, Auth, Realtime, Storage) · LiveKit (`livekit-client`, `@livekit/components-react`, `livekit-server-sdk`) · Zod · Vitest + Testing Library + PGlite · Playwright · Docker · Render · GitHub Actions
+Next.js 16 (App Router, React 19.2, Turbopack) · TypeScript · Tailwind CSS 4 · Framer Motion · Lucide · Supabase (Postgres, Auth, Realtime, Storage) · LiveKit (`livekit-client`, `@livekit/components-react`, `livekit-server-sdk`) · Zod · Vitest + Testing Library + PGlite · Playwright · Docker · Vercel (production) or Render · GitHub Actions
 
 ## Quick start
 
@@ -71,7 +74,7 @@ For a free production deploy (Supabase + LiveKit Cloud + Render) and local Supab
 
 ## Scripts
 
-Run these inside `diskarte/`, or from the repo root with `-w diskarte` (e.g. `npm run test -w diskarte`).
+Run these inside `diskarte/`, or from the repo root with `--prefix diskarte` (e.g. `npm test --prefix diskarte`). The root is not an npm workspace.
 
 | Command | What it does |
 | --- | --- |
@@ -81,28 +84,31 @@ Run these inside `diskarte/`, or from the repo root with `-w diskarte` (e.g. `np
 | `npm run typecheck` | Route type generation + `tsc --noEmit` |
 | `npm test` | Unit, component, hook, API route and database (RLS) tests with Vitest |
 | `npm run test:e2e` | Playwright end-to-end suite (needs Supabase + LiveKit) |
+| `npm run test:experience` | Responsive component browser suite (Playwright + Vite, fixture data) |
 | `npm run brand:assets` | Re-render favicons, app icons and OG cards from the SVG components |
+| `npm run admin:grant -- you@example.com` | Grant a platform role (needs `SUPABASE_SERVICE_ROLE_KEY`) |
+| `npm run db:check` | Read-only check that the configured Supabase project has the expected objects |
+| `npm run docs:db` | Regenerate `docs/reference/database.md` from the migrations |
 
 ## Project layout
 
 ```
 src/
-  app/                 routes: landing, (auth), (app)/tambayan, invite, settings, api/health, api/livekit/token
-  actions/             server actions (profiles, servers/channels/members, messages)
-  components/
-    brand/             <DiskarteLogo />, <DiskarteWordmark />
-    chat/              ChatView, MessageItem, Composer, PinsDrawer, EmojiPicker…
-    voice/             CallProvider, VoiceStage, CallGrid, CallDock, FloatingCallHUD…
-    server/ shell/     channel sidebar, member list, command rail, dialogs
-    workspace/         floating canvas: panels, presets, tray, roster drawer, call overlay
-    providers/         runtime config, presence, per-server realtime state
-  hooks/               useChannelChat, useTyping, useSignedUrls…
-  lib/                 env, security (CSP/CSRF), rate limiting, validation, sfx, supabase clients
-  proxy.ts             CSP nonce, session refresh, auth redirects, CSRF for /api
+  app/                 routes: landing, (auth), (app)/tambayan/*, (app)/settings, (app)/admin,
+                       invite/[code], onboarding, mfa, reset-password, auth/*, api/*
+  actions/             server actions, one file per domain (messages, servers, social, moderation…)
+  components/          UI by domain: chat, voice, server, shell, social, profile, admin, workspace, ui…
+  hooks/               client hooks: useChannelChat, useDirectChat, useTyping, useSocial…
+  lib/                 env, security (CSP/CSRF), rate limiting, realtime, outbox, read receipts,
+                       push, schemas/, supabase/ clients, data/ server reads
+  proxy.ts             CSP nonce, session refresh, route guards, CSRF and rate limits for /api
 ../supabase/migrations/  complete schema (tables, RLS, triggers, RPCs, realtime + storage policies)
-tests/                 PGlite database tests, fixtures
+tests/                 Vitest suites incl. PGlite database tests, fixtures, mocks
 e2e/                   Playwright specs
+docs/                  feature runbooks (web-push, voice-preview) and sql/ installers
 ```
+
+See [the architecture overview](../docs/architecture/overview.md) for how these fit together.
 
 ## Testing
 

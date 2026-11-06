@@ -1,5 +1,8 @@
 # Deploying Diskarte for ₱0
 
+> The maintained deployment and operations runbook is [`docs/operations/deployment.md`](../docs/operations/deployment.md)
+> (production runs on Vercel). This page remains as the original free-tier walkthrough.
+
 Diskarte runs entirely on free tiers:
 
 | Piece | Service (free tier) | What it does |
@@ -48,7 +51,7 @@ For the October 14 changes, follow the [safe migration, backup and rollback proc
 1. Sign up at [cloud.livekit.io](https://cloud.livekit.io) and create a project.
 2. Copy the WebSocket URL (`wss://<project>.livekit.cloud`) → `LIVEKIT_URL`.
 3. **Settings → Keys → Create key** → `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET`.
-   The secret stays on the server; browsers only ever receive 2-hour tokens scoped to one voice room, issued after Diskarte verifies the Supabase session and channel membership.
+   The secret stays on the server; browsers only ever receive 1-hour tokens scoped to one voice room, issued after Diskarte verifies the Supabase session and channel membership.
 
 ## 3. Render (web container)
 
@@ -136,7 +139,7 @@ The multi-stage `diskarte/Dockerfile` installs from the app's own lockfile (`npm
 ## CI/CD
 
 `.github/workflows/ci.yml` runs on every pull request and push to `main`:
-lint → type-check → unit/DB tests → Docker build (size check + container health smoke test) → Playwright E2E against a throwaway local Supabase stack and a LiveKit dev server. The E2E suite includes the Control Center journey: non-admins are refused, and a super admin broadcasts a sticky announcement that reaches another member's open canvas live, changes their role and bans them. No repository secrets are required. Render auto-deploys `main` once it's green.
+lint → type-check → unit/DB tests → Docker build (size check + container health smoke test) → Playwright E2E against a throwaway local Supabase stack and a LiveKit dev server. The E2E suite includes the Control Center journey: non-admins are refused, and a super admin broadcasts a sticky announcement that reaches another member's open canvas live, changes their role and bans them. No repository secrets are required. Vercel deploys `main` on push, in parallel with CI (Render, if used, auto-deploys `main` too), so watch the CI run after every push.
 
 ## Security checklist
 
@@ -155,7 +158,7 @@ See **[SECURITY.md](../SECURITY.md)** for the full threat model and controls. Hi
 
 | Symptom | Fix |
 | --- | --- |
-| “Kulang ang configuration” on the login page | `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `LIVEKIT_URL` missing or malformed. Check `/api/health`. |
+| “Missing configuration” notice on the login page | `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `LIVEKIT_URL` missing or malformed. Check `/api/health`. |
 | OAuth returns to `/login?error=…` | The redirect URL isn't in Supabase's allow-list, or the provider callback isn't `https://<ref>.supabase.co/auth/v1/callback`. |
 | Messages don't appear live | Confirm the migration ran (it adds tables to the `supabase_realtime` publication) and the browser can reach `wss://<ref>.supabase.co`. |
 | Presence / typing never shows | Private channels need the `realtime.messages` policies from the migration; re-run it on a fresh project. |

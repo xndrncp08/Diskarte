@@ -1,4 +1,10 @@
 import { DEFAULT_PUSH_PREFS, notificationsQuiet, parseNotifyPrefs, serverNotify, type PushKind } from "./notify-prefs";
+/**
+ * Whether the recipient's synced notification preferences allow this push right now: push on,
+ * outside quiet hours / Do Not Disturb, the category enabled, and the server or channel not muted.
+ * Applied by the dispatcher after `prepare_push_job` has rechecked access, so a preference change
+ * made after the event was queued still wins.
+ */
 export function allowPush(raw: unknown, kind: PushKind | "test", serverId: string | null, channelId: string | null, now = new Date()) {
   const prefs = parseNotifyPrefs(JSON.stringify(raw));
   const push = prefs.push ?? DEFAULT_PUSH_PREFS;

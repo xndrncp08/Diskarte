@@ -1,6 +1,11 @@
 import { WebhookReceiver } from "livekit-server-sdk";
 import { getServerEnv } from "@/lib/env";
 import { createServiceClient } from "@/lib/supabase/service";
+/**
+ * POST /api/livekit/webhook — LiveKit's signed room events. Verifies the JWT and body digest with the
+ * LiveKit key/secret, then broadcasts an empty `voice_changed` on the server's private `server:<id>`
+ * topic so open voice previews refetch. Never forwards participant data. 503 lets LiveKit retry.
+ */
 export async function POST(request: Request) {
   if (Number(request.headers.get("content-length")) > 65536) return new Response(null, { status: 413 });
   const raw = await request.text();
