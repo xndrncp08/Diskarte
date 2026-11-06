@@ -48,7 +48,7 @@ npx supabase status    # prints API URL (http://127.0.0.1:54321) and anon key
 ```
 
 Local settings ([`supabase/config.toml`](../../supabase/config.toml)): email confirmation off, the
-same password policy as production, Inbucket mail viewer on port 54324.
+same password policy as production, a local mail catcher (`[local_smtp]`) on port 54324.
 
 ## 3. Configure
 

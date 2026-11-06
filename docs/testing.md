@@ -155,7 +155,8 @@ flowchart LR
   E["e2e<br/>supabase start (applies migrations) ·<br/>db:check · LiveKit dev server · build ·<br/>test:experience · playwright (E2E_FULL=1)"]
 ```
 
-The three jobs run in parallel. On failure, the Playwright report and traces are uploaded as the
+The three jobs run in parallel. The Supabase CLI is pinned (`supabase@2.122.1`) so a new CLI major
+release can't break the E2E job; bump it deliberately and check `supabase/config.toml` still loads. On failure, the Playwright report and traces are uploaded as the
 `playwright-report` artifact for 7 days. No repository secrets are needed: CI uses a throwaway local
 Supabase stack and LiveKit's dev keys. Polling CI without the GitHub CLI:
 `https://api.github.com/repos/xndrncp08/Diskarte/actions/runs`.
