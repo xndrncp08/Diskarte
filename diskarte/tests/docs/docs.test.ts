@@ -3,6 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { generate, OUTPUT } from "../../scripts/generate-db-reference.mjs";
+import { build, CONTENT_OUT, MANIFEST, SEARCH_OUT, unclassified, type Manifest } from "../../scripts/build-docs-site.mjs";
+import { HELP } from "@/lib/docs/help";
 
 /** Repository root: docs/ and supabase/ live beside diskarte/. */
 const ROOT = path.resolve(__dirname, "../../..");
@@ -91,5 +93,53 @@ describe("documentation", () => {
     }
     const doc = fs.readFileSync(path.join(ROOT, "docs/reference/environment.md"), "utf8");
     expect([...names].filter((name) => !doc.includes(`\`${name}\``)).sort()).toEqual([]);
+  });
+
+  it("keeps the Help Center content in sync with the Markdown", async () => {
+    const { content, search } = await build();
+    const fresh = fs.readFileSync(CONTENT_OUT, "utf8") === content && fs.readFileSync(SEARCH_OUT, "utf8") === search;
+    expect(fresh, "Run `npm run docs:site --prefix diskarte` and commit the result.").toBe(true);
+  }, 60_000);
+
+  it("classifies every Markdown page in docs/ as published or internal, never both", () => {
+    const manifest = JSON.parse(fs.readFileSync(MANIFEST, "utf8")) as Manifest;
+    const published = manifest.sections.flatMap((s) => s.pages.map((p) => p.source));
+    expect(unclassified(manifest)).toEqual([]);
+    expect(published.filter((p) => manifest.internal.includes(p))).toEqual([]);
+    expect(new Set(manifest.sections.flatMap((s) => s.pages.map((p) => p.slug))).size).toBe(published.length);
+  });
+
+  it("publishes no internal pages and nothing that looks like a secret", () => {
+    const manifest = JSON.parse(fs.readFileSync(MANIFEST, "utf8")) as Manifest;
+    const bundle = fs.readFileSync(CONTENT_OUT, "utf8") + fs.readFileSync(SEARCH_OUT, "utf8");
+    const sources = (JSON.parse(fs.readFileSync(CONTENT_OUT, "utf8")) as { pages: Record<string, { source: string }> }).pages;
+    expect(Object.values(sources).filter((p) => manifest.internal.includes(p.source))).toEqual([]);
+    expect(bundle).not.toMatch(/eyJ[\w-]{20,}\.[\w-]{10,}/);
+    expect(bundle).not.toMatch(/-----BEGIN [A-Z ]*PRIVATE KEY-----/);
+    expect(bundle).not.toMatch(/(SERVICE_ROLE_KEY|API_SECRET|PRIVATE_KEY|DISPATCH_SECRET)=[A-Za-z0-9_-]{16,}/);
+  });
+
+  it("points every in-app help link at a published page and heading", () => {
+    const pages = (JSON.parse(fs.readFileSync(CONTENT_OUT, "utf8")) as { pages: Record<string, { html: string }> }).pages;
+    const broken = Object.entries(HELP).filter(([, href]) => {
+      const [route, anchor] = href.split("#");
+      if (route === "/docs") return false;
+      const page = pages[route.replace(/^\/docs\//, "")];
+      return !page || (anchor !== undefined && !page.html.includes(`id="${anchor}"`));
+    });
+    expect(broken).toEqual([]);
+  });
+
+  it("documents exactly the HTTP methods the route handlers export", () => {
+    const api = path.join(APP, "src/app/api");
+    const walk = (d: string): string[] => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : e.name === "route.ts" ? [path.join(d, e.name)] : []));
+    const actual = new Set(walk(api).flatMap((file) => {
+      const route = `/api/${path.relative(api, path.dirname(file)).split(path.sep).join("/")}`.replace(/\[(\w+)\]/g, "<$1>");
+      return [...fs.readFileSync(file, "utf8").matchAll(/export (?:async )?function (GET|POST|PUT|PATCH|DELETE|HEAD)\b/g)].map((m) => `${m[1]} ${route}`);
+    }));
+    const markdown = fs.readFileSync(path.join(ROOT, "docs/reference/api.md"), "utf8");
+    const documented = new Set([...markdown.matchAll(/`((?:GET|POST|PUT|PATCH|DELETE|HEAD)(?:\/(?:GET|POST|PUT|PATCH|DELETE|HEAD))*) (\/api\/[^`\s?]+)`/g)].flatMap((m) => m[1].split("/").map((method) => `${method} ${m[2]}`)));
+    expect([...actual].filter((e) => !documented.has(e)).sort(), "route handlers missing from docs/reference/api.md").toEqual([]);
+    expect([...documented].filter((e) => !actual.has(e)).sort(), "documented endpoints with no handler").toEqual([]);
   });
 });
