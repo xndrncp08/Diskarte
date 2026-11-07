@@ -70,6 +70,7 @@ code in `main` and the release notes, not on plans.
 | PWA install, offline fallback, offline outbox | Shipped | Conversations aren't readable offline |
 | Web Push | Needs setup | Production configuration and physical-device delivery unverified |
 | Native mobile apps | Not implemented | The PWA is the mobile app |
+| Help Center (`/docs`) with search and in-app help links | Shipped | Public; documents `main` |
 
 ## Feature page format
 

@@ -137,6 +137,28 @@ Read [database-migrations.md](database-migrations.md) before touching `supabase/
 Docs live in `docs/` (product and engineering) plus runbooks in `diskarte/docs/`. Update them in the
 same PR as the code.
 
+### The Help Center (`/docs`)
+
+The public Help Center is rendered from the same Markdown:
+
+- [`docs/site.json`](../site.json) lists the published pages, their URL slugs, sidebar sections and
+  the `reviewed` date. **Only listed pages are published**; every other Markdown file under `docs/`
+  must be in its `internal` list (operational runbooks, the generated database reference, templates).
+  The repository itself is public, so "internal" means "not on the website or in its search", not
+  secret — never write secrets into any doc.
+- `npm run docs:site --prefix diskarte` renders the published pages to HTML (headings, anchors,
+  highlighted code, method badges, Mermaid containers, rewritten links) into
+  `diskarte/src/content/docs-site.json` and builds the search index
+  `diskarte/public/docs-assets/search-index.json`. Commit both.
+- Links to published pages become `/docs/...`; links to code or internal pages become GitHub links.
+  Raw HTML isn't allowed in published pages (the build fails).
+- Images live in `diskarte/public/docs-assets/` and are referenced with a relative path from the
+  Markdown. `npm run docs:screens --prefix diskarte` recaptures the product screenshots from the
+  fixture harness (sample data only) and the production build, then rebuilds the site content.
+- In-app help links are defined once in [`src/lib/docs/help.ts`](../../diskarte/src/lib/docs/help.ts).
+  If you rename a heading they point at, the docs test tells you.
+- When you check a page against the code, update its `reviewed` date in `site.json`.
+
 **Docs checklist for a PR**
 
 - [ ] New/changed feature → its page in `docs/features/` (use the [feature template](templates/feature.md)) and the status table in `docs/features/README.md`
@@ -147,10 +169,15 @@ same PR as the code.
 - [ ] Architectural decision → an entry in `docs/architecture/decisions.md` ([ADR template](templates/adr.md))
 - [ ] Manual deploy steps → `diskarte/CHANGELOG.md` / `RELEASE-<date>.md` and `docs/operations/deployment.md`
 - [ ] Limitation found or removed → `docs/known-limitations.md`
+- [ ] New Markdown page → publish it in `docs/site.json` or list it as `internal`; then `npm run docs:site --prefix diskarte`
+- [ ] UI the screenshots show changed → `npm run docs:screens --prefix diskarte`
 
 `npm test` includes [`tests/docs/docs.test.ts`](../../diskarte/tests/docs/docs.test.ts), which fails
-on broken relative links or anchors in Markdown, a stale database reference, or an environment
-variable read by the code but missing from the environment reference.
+on broken relative links or anchors in Markdown, a stale database reference or Help Center build, an
+unclassified or doubly classified page, an internal page or secret-looking string in the public
+bundle, an in-app help link to a missing page or heading, an API route handler missing from (or
+invented in) `docs/reference/api.md`, or an environment variable read by the code but missing from
+the environment reference. `e2e/docs.spec.ts` checks the site itself in a browser.
 
 **Writing style:** plain, specific, present tense; explain *why* when it isn't obvious; real commands
 and paths; mark anything unverified as such. Diagrams use Mermaid (rendered by GitHub) and must

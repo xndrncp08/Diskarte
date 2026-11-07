@@ -19,7 +19,7 @@
 | **Database / RLS** | Vitest + PGlite (Postgres compiled to WASM) | `tests/db/*.test.ts` (one file per feature) | `npm test` |
 | Accessibility (components) | axe-core in jsdom | `tests/a11y/axe.test.tsx` | `npm test` |
 | Performance (virtualization) | Vitest | `tests/performance/virtualization.test.tsx` | `npm test` |
-| Documentation | Vitest | `tests/docs/docs.test.ts` | `npm test` |
+| Documentation | Vitest | `tests/docs/docs.test.ts`, `tests/docs/search.test.ts` | `npm test` |
 | Responsive component browser | Playwright + Vite, real components with fixture data | `tests/browser/experience.spec.ts` | `npm run test:experience` |
 | End to end | Playwright against the production standalone build | `e2e/*.spec.ts` | `npm run test:e2e` |
 
@@ -130,6 +130,7 @@ fake media devices, reduced motion, one worker locally (two in CI) and one retry
 | `voice.spec.ts` | yes | Two-person voice call with live preview |
 | `admin.spec.ts` | yes | Control Center: non-admin refusal, sticky broadcast reaching another canvas, role change, ban |
 | `a11y.spec.ts` | yes | axe-core audits of signed-in screens |
+| `docs.spec.ts` | no | Help Center: home, navigation, search, copy buttons, diagrams, colour modes, 320–768 px layouts, internal pages not published, axe in dark and light |
 
 Journeys are skipped unless `E2E_FULL=1`. Locally that requires Docker for `npx supabase start` and a
 LiveKit dev server; without them, run the smoke specs:

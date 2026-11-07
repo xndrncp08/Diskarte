@@ -18,6 +18,7 @@ comments and release notes; the date is when the decision shows up in history. N
 | [010](#010-free-tier-first) | Free-tier first | Accepted |
 | [011](#011-vercel-for-production) | Vercel for production, Docker kept portable | Accepted |
 | [012](#012-no-emoji-glyph-vocabulary) | Vector glyph vocabulary instead of emoji | Accepted |
+| [013](#013-help-center-rendered-at-authoring-time-inside-the-app) | Help Center rendered at authoring time inside the app | Accepted |
 
 ## 001. Authorization lives in Postgres
 
@@ -116,3 +117,23 @@ icons by `<Glyph>` ([`lib/glyphs.ts`](../../diskarte/src/lib/glyphs.ts)); the da
 reaction codes.
 **Consequences.** Consistent rendering across platforms; custom server emoji use the same `:name:`
 syntax backed by images.
+
+## 013. Help Center rendered at authoring time inside the app
+
+**Status.** Accepted — *2026-11-06*
+
+**Context.** The Markdown docs live in the repository root, but hosts build only `diskarte/`. A
+public Help Center needed search, navigation and diagrams without new infrastructure or a heavier
+signed-in app.
+**Decision.** `scripts/build-docs-site.mts` renders the pages listed in `docs/site.json` to HTML and a
+search index, committed inside the app (like the generated database reference) and served at `/docs`
+by the existing Next.js app. Pages are Server Components that inject the pre-rendered HTML; only
+search, copy buttons, the table-of-contents highlight and Mermaid (lazy, only on pages with
+diagrams) run in the browser.
+**Alternatives considered.** Fumadocs/Nextra (a second app or MDX pipeline, a separate deploy and a
+styling system to reconcile); rendering Markdown per request (ships a parser and highlighter to the
+server for every view); an external search service (cost, and private pages could leak into it).
+**Consequences.** No new deployment; the docs inherit the app's themes, CSP and fonts. Authors run
+`npm run docs:site` after editing published Markdown (the docs test fails otherwise). Publication is an
+explicit allow-list, so new runbooks stay off the site by default.
+
