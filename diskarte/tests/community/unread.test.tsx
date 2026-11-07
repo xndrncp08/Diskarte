@@ -58,9 +58,18 @@ describe("unread conversations", () => {
 
     act(() => result.current.markRead(CONV));
     expect(isUnread(result.current.conversations![0])).toBe(false);
+    // The receipt sent to the server covers the newest message, not this device's earlier clock —
+    // otherwise the server would keep it unread and it would come back after the next reload.
+    await waitFor(() => expect(fake.client.rpc).toHaveBeenCalledWith("mark_dm_read_until", { p_conversation_id: CONV, p_at: ahead }));
     // A reload that still sees the old last_read_at (the receipt hasn't landed) keeps it read.
     await act(() => result.current.reload());
     expect(isUnread(result.current.conversations![0])).toBe(false);
+  });
+
+  it("counts a message sent moments after the conversation was read or opened", () => {
+    // Opening a new DM sets last_read_at = now(); a first message 200 ms later is still new.
+    expect(isUnread({ lastReadAt: "2026-11-07T00:00:00.000Z", lastMessageAt: "2026-11-07T00:00:00.200Z" })).toBe(true);
+    expect(isUnread({ lastReadAt: "2026-11-07T00:00:00.200Z", lastMessageAt: "2026-11-07T00:00:00.200Z" })).toBe(false);
   });
 
   it("picks the later timestamp", () => {

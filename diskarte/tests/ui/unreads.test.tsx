@@ -181,6 +181,18 @@ describe("unreads", () => {
     );
   });
 
+  it("never sends a receipt older than the newest message, even when this device's clock is behind", async () => {
+    const ahead = new Date(Date.now() + 120_000).toISOString();
+    vi.mocked(fake.client.rpc).mockImplementation((async (fn: string) =>
+      fn === "my_unreads"
+        ? { data: [{ channel_id: CHIKA, server_id: SERVER_ID, last_message_at: ahead, read_at: old, mentions: 0 }], error: null }
+        : { data: null, error: null }) as never);
+    const { result } = renderHook(() => ({ ctx: useOptionalUnreads()!, chika: useChannelUnread(CHIKA) }), { wrapper });
+    await waitFor(() => expect(result.current.chika.unread).toBe(true));
+    act(() => result.current.ctx.markRead(CHIKA));
+    await waitFor(() => expect(fake.client.rpc).toHaveBeenCalledWith("mark_channel_read_until", { p_channel: CHIKA, p_at: ahead }), { timeout: 3000 });
+  });
+
   it("treats receipts left by a closed tab as read and resends them on start", async () => {
     localStorage.setItem(
       "diskarte:pending-reads",
