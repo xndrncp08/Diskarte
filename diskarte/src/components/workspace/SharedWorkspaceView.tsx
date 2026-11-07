@@ -1,5 +1,6 @@
 "use client";
 
+import { HelpLink } from "@/components/ui/HelpLink";
 import { BookOpen, Columns3, Menu, Plus, Timer, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -179,7 +180,7 @@ export function SharedWorkspaceView() {
         <div className="mx-auto max-w-5xl space-y-4">
           <p className="text-sm text-slate-400">
             Plan, study and keep resources together in {server.name}. Each item
-            follows its channel’s permissions.
+            follows its channel’s permissions. <HelpLink topic="workspace" label="How it works" className="align-middle" />
           </p>
           <label className="block max-w-sm text-sm">
             Channel

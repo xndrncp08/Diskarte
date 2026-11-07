@@ -65,7 +65,10 @@ export function LoginForm({ next, initialError, initialEmail }: { next: string; 
         error={state.fieldErrors?.password}
         placeholder="••••••••"
       />
-      <p className="-mt-2 text-right text-xs">
+      <p className="-mt-2 flex justify-end gap-3 text-xs">
+        <a href="/docs/help/sign-in" target="_blank" rel="noopener" className="inline-flex items-center pointer-coarse:min-h-11 pointer-coarse:px-1 text-slate-400 hover:text-sun hover:underline">
+          Trouble signing in?
+        </a>
         <Link href="/forgot-password" className="inline-flex items-center pointer-coarse:min-h-11 pointer-coarse:min-w-11 pointer-coarse:justify-center pointer-coarse:px-1 text-slate-400 hover:text-sun hover:underline">
           Forgot your password?
         </Link>

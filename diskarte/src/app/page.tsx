@@ -99,6 +99,7 @@ export default async function LandingPage() {
                 <a href="#features">Features</a>
                 <a href="#workspace">Workspace</a>
                 <a href="#story">Our story</a>
+                <Link href="/docs">Help Center</Link>
               </nav>
               <nav aria-label="Account" className="launch-account-nav">
                 <a href="#sign-in">Log in</a>
@@ -115,6 +116,7 @@ export default async function LandingPage() {
                   <a href="#features">Features</a>
                   <a href="#workspace">Workspace</a>
                   <a href="#story">Our story</a>
+                  <Link href="/docs">Help Center</Link>
                 </nav>
               </details>
             </header>
@@ -440,6 +442,7 @@ export default async function LandingPage() {
           <nav aria-label="Footer">
             <a href="#features">Features</a>
             <a href="#story">Our story</a>
+            <Link href="/docs">Help Center</Link>
             <a
               href="https://github.com/xndrncp08/Diskarte"
               target="_blank"

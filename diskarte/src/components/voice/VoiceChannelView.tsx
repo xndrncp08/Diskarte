@@ -1,5 +1,6 @@
 "use client";
 
+import { HelpLink } from "@/components/ui/HelpLink";
 import { motion } from "framer-motion";
 import { Volume2 } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -81,6 +82,7 @@ export function VoiceChannelView({ channel }: { channel: Channel }) {
           <p className="max-w-sm text-xs text-slate-500">
             Your browser will ask for microphone access. You can turn on your camera and screen share once you&apos;re in.
           </p>
+          <HelpLink topic="voice" label="Trouble connecting?" />
         </div>
       )}
     </motion.section>

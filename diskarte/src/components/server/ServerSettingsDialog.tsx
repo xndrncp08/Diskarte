@@ -1,5 +1,6 @@
 "use client";
 
+import { HelpLink } from "@/components/ui/HelpLink";
 import { Switch } from "@/components/ui/Switch";
 import { useRouter } from "next/navigation";
 import {
@@ -218,6 +219,7 @@ function SettingsTabs({
             );
           })}
         </div>
+        <HelpLink topic={tab === "roles" ? "roles" : tab === "audit" || tab === "bans" || tab === "automod" ? "moderation" : "community"} label="Community help" className="mt-2" />
       </div>
       <div
         className="admin-settings-panel"

@@ -1,5 +1,6 @@
 "use client";
 
+import { HelpLink } from "@/components/ui/HelpLink";
 import { useId, useRef, useState, type KeyboardEvent } from "react";
 import {
   Accessibility,
@@ -187,6 +188,7 @@ export function SettingsPanels({
           </p>
         )}
         <div className="mt-3 md:mt-auto md:pt-6">
+          <HelpLink topic="home" label="Help Center" className="mb-2 w-full justify-center" />
           <SignOutButton className="w-full" />
         </div>
       </div>
@@ -207,6 +209,7 @@ export function SettingsPanels({
           <AccountSyncStatus kind="display" />
         )}
         {tab === "notifications" && <AccountSyncStatus kind="notifications" />}
+        <div className="-mb-2 flex justify-end"><HelpLink topic={tab} label="Help with this" /></div>
         {tab === "profile" ? (
           <>
             <h2 className="mb-6 text-2xl font-extrabold text-white">
