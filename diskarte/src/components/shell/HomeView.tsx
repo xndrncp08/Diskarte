@@ -1,5 +1,7 @@
 "use client";
 
+import { useLocale } from "@/lib/locale";
+import { GettingStarted, WhatsNew } from "./GettingStarted";
 import { MomentsStrip } from "@/components/social/Moments";
 import Link from "next/link";
 import {
@@ -63,6 +65,9 @@ export function HomeView({
   const mentions = [...(unreads?.channels.entries() ?? [])].filter(
     ([, channel]) => channel.mentions > 0,
   );
+  const { t } = useLocale();
+  // New here: nothing yet besides Diskarte HQ and no friends.
+  const fresh = !servers.some((s) => !s.is_system) && friends.length === 0;
   const incoming =
     social?.friends?.filter((friend) => friend.status === "incoming").length ??
     0;
@@ -98,11 +103,13 @@ export function HomeView({
                   <p className="section-kicker">
                     SMART TAMBAY / YOUR DAILY SPACE
                   </p>
-                  <h2>Welcome back, {me.display_name}!</h2>
-                  <p>Your people. Your plans. Pick up where you left off.</p>
+                  <h2>{fresh ? `${t("Welcome to Diskarte")}, ${me.display_name}!` : `${t("Welcome back")}, ${me.display_name}!`}</h2>
+                  <p>{fresh ? t("Find your people: start a Tambayan, add friends and say hello.") : t("Your people. Your plans. Pick up where you left off.")}</p>
                 </div>
                 <DiskarteLogo size={80} variant="mascot" />
               </header>
+              <WhatsNew />
+              <GettingStarted servers={servers} onCreate={() => setDialog("create")} />
               <MomentsStrip />
               <div className="home-signals">
                 <Link href="/tambayan/messages">
