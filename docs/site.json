@@ -1,0 +1,103 @@
+{
+  "$comment": "Pages published at /docs. Only pages listed in `sections` are public; every other Markdown file in docs/ must be listed in `internal` (repository-only). Paths are relative to the repository root. `reviewed` is the last date a person checked the page against the code. Rebuild with `npm run docs:site --prefix diskarte`.",
+  "reviewed": "2026-11-06",
+  "sections": [
+    {
+      "id": "getting-started",
+      "title": "Getting started",
+      "audience": "Everyone",
+      "pages": [
+        { "source": "docs/getting-started/introduction.md", "slug": "getting-started/introduction", "title": "What is Diskarte?" },
+        { "source": "docs/user-guide/getting-started.md", "slug": "getting-started/account-and-install", "title": "Create an account and install" }
+      ]
+    },
+    {
+      "id": "guides",
+      "title": "User guides",
+      "audience": "Everyone",
+      "pages": [
+        { "source": "docs/user-guide/README.md", "slug": "guides", "title": "User guides" },
+        { "source": "docs/user-guide/tambayans.md", "slug": "guides/tambayans", "title": "Tambayans" },
+        { "source": "docs/user-guide/messages.md", "slug": "guides/messages", "title": "Messages" },
+        { "source": "docs/user-guide/calls.md", "slug": "guides/calls", "title": "Voice and video calls" },
+        { "source": "docs/user-guide/events-and-moments.md", "slug": "guides/events-and-moments", "title": "Events and Moments" },
+        { "source": "docs/user-guide/workspace.md", "slug": "guides/workspace", "title": "Shared workspace" },
+        { "source": "docs/user-guide/notifications-and-privacy.md", "slug": "guides/notifications-and-privacy", "title": "Notifications, privacy and safety" }
+      ]
+    },
+    {
+      "id": "features",
+      "title": "Feature reference",
+      "audience": "Everyone",
+      "pages": [
+        { "source": "docs/features/README.md", "slug": "features", "title": "Feature catalogue" },
+        { "source": "docs/features/messaging.md", "slug": "features/messaging" },
+        { "source": "docs/features/social.md", "slug": "features/social" },
+        { "source": "docs/features/communities.md", "slug": "features/communities" },
+        { "source": "docs/features/moderation.md", "slug": "features/moderation" },
+        { "source": "docs/features/voice-and-video.md", "slug": "features/voice-and-video" },
+        { "source": "docs/features/workspace.md", "slug": "features/workspace" },
+        { "source": "docs/features/account-and-settings.md", "slug": "features/account-and-settings" }
+      ]
+    },
+    {
+      "id": "help",
+      "title": "Help and troubleshooting",
+      "audience": "Everyone",
+      "pages": [
+        { "source": "docs/help/faq.md", "slug": "help/faq" },
+        { "source": "docs/help/connection.md", "slug": "help/connection" },
+        { "source": "docs/help/notifications.md", "slug": "help/notifications" },
+        { "source": "docs/help/sign-in.md", "slug": "help/sign-in" },
+        { "source": "docs/help/mobile-app.md", "slug": "help/mobile-app" },
+        { "source": "docs/help/report-a-problem.md", "slug": "help/report-a-problem" },
+        { "source": "docs/known-limitations.md", "slug": "help/known-issues", "title": "Known issues and limitations" }
+      ]
+    },
+    {
+      "id": "developers",
+      "title": "Developers",
+      "audience": "Contributors",
+      "pages": [
+        { "source": "docs/getting-started/quick-start.md", "slug": "developers/local-setup", "title": "Local setup" },
+        { "source": "docs/architecture/overview.md", "slug": "developers/architecture" },
+        { "source": "docs/architecture/realtime.md", "slug": "developers/realtime" },
+        { "source": "docs/architecture/voice-and-video.md", "slug": "developers/voice-and-video" },
+        { "source": "docs/architecture/notifications-and-pwa.md", "slug": "developers/notifications-and-pwa" },
+        { "source": "docs/database.md", "slug": "developers/database" },
+        { "source": "docs/security.md", "slug": "developers/security" },
+        { "source": "docs/reference/environment.md", "slug": "developers/environment" },
+        { "source": "docs/testing.md", "slug": "developers/testing" },
+        { "source": "docs/design-system.md", "slug": "developers/design-system" },
+        { "source": "docs/architecture/decisions.md", "slug": "developers/decisions" },
+        { "source": "docs/contributing/README.md", "slug": "developers/contributing", "title": "Contributing" },
+        { "source": "docs/contributing/database-migrations.md", "slug": "developers/database-migrations" }
+      ]
+    },
+    {
+      "id": "api",
+      "title": "API",
+      "audience": "Integrators",
+      "pages": [
+        { "source": "docs/reference/api.md", "slug": "api", "title": "API reference" }
+      ]
+    },
+    {
+      "id": "changelog",
+      "title": "Changelog",
+      "audience": "Everyone",
+      "pages": [
+        { "source": "diskarte/CHANGELOG.md", "slug": "changelog", "title": "Changelog" }
+      ]
+    }
+  ],
+  "internal": [
+    "docs/README.md",
+    "docs/architecture/background-jobs.md",
+    "docs/operations/deployment.md",
+    "docs/operations/troubleshooting.md",
+    "docs/reference/database.md",
+    "docs/contributing/templates/adr.md",
+    "docs/contributing/templates/feature.md"
+  ]
+}

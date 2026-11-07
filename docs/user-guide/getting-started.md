@@ -13,10 +13,13 @@
 
 You're now in Diskarte and already a member of **Diskarte HQ**.
 
+![The Diskarte sign-up form on a phone, with email, username, display name and password fields](../../diskarte/public/docs-assets/screens/signup-mobile.webp)
+*Sample data.*
+
 > If sign-up says registrations are paused, the community running this Diskarte only accepts invited
 > members for now.
 
-**Forgot your password?** On the sign-in page choose **Forgot password**, enter your email, and follow
+**Forgot your password?** On the sign-in page choose **Forgot your password?**, enter your email, and follow
 the link we send.
 
 ## Install Diskarte on your phone
@@ -39,10 +42,10 @@ a full-screen app and (on iPhone) notifications.
 3. Open it from your home screen or app drawer.
 
 **Computer (Chrome or Edge)** — click the install icon in the address bar, or Settings → **Storage &
-Data** → Install.
+Data** → **Install Diskarte**.
 
-**Updating:** when a new version is ready, Settings → Storage & Data shows an update button. Finish
-any call first.
+**Updating:** when a new version is ready, Settings → Storage & Data shows **Reload to update**.
+Finish any call first.
 
 ## Customize your profile
 
@@ -62,6 +65,9 @@ Open **User settings** (gear next to your name, bottom left; on phones, the **Pr
 | --- | --- |
 | Left edge: your Tambayans. Next column: channels or your DMs. Middle: the conversation. Right: members | Bottom tabs: **Home**, **Messages**, **Explore**, **Profile**. Swipe from the left edge to open channels |
 | **Ctrl + K** (Windows) or **⌘ K** (Mac) jumps to any channel or conversation | Tap a conversation to open it full screen |
+
+![Diskarte Home on a computer: the server rail on the left, your Tambayans, friends and upcoming events](../../diskarte/public/docs-assets/screens/home-desktop.webp)
+*Sample data.*
 
 **Slow or expensive internet?** Settings → Storage & Data → **Low-data mode** loads smaller images,
 stops GIFs from autoplaying and lowers video quality.

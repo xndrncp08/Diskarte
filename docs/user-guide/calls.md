@@ -6,6 +6,9 @@
 2. Click **Join**. Allow microphone access the first time.
 3. You stay in the call while you look at other channels, other Tambayans or your DMs.
 
+![A voice channel lobby with the Join Voice button and a Trouble connecting help link](../../diskarte/public/docs-assets/screens/voice-lobby-desktop.webp)
+*Sample data.*
+
 Hover a Tambayan's icon (or long-press it and choose **Voice activity**) to see who's talking before
 you join.
 
