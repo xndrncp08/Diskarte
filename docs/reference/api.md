@@ -55,6 +55,7 @@ callers is the [incoming channel webhook](#post-apiwebhooksidtoken).
 | [`GET /api/unfurl/image`](#get-apiunfurlimage) | HMAC signature | Proxy a preview image |
 | [`GET /api/gifs`](#get-apigifs) | session | GIPHY search |
 | [`GET /api/admin/snapshot`](#get-apiadminsnapshot) | super admin | Control Center data |
+| [`POST /api/admin/releases`](#post-apiadminreleases) | super admin | Publish, withdraw or republish a release announcement |
 | [`GET /auth/callback`](#auth-routes) | — | OAuth / email PKCE code exchange |
 | [`GET /auth/confirm`](#auth-routes) | — | Token-hash email confirmation |
 | [`GET /auth/revoked`](#auth-routes) | — | Clear a dead session cookie |
@@ -211,6 +212,19 @@ Pages of 24, rated PG-13. `503` when `GIPHY_API_KEY` isn't set, `401`, `429`, `5
 Super admins only (proxy and handler both check `is_super_admin()`; every RPC checks again).
 `?q=<≤64 chars>` filters the roster server-side. Returns `{ overview, users, voice, audit, broadcasts,
 reports, traffic, generatedAt }` in one round trip. `401`, `403`, `500` (migration missing).
+
+### `POST /api/admin/releases`
+
+Super admins only (proxy, handler and every RPC check). Body `{ "action": "publish" | "withdraw" | "reset", "id": "<release id from src/content/releases.json>" }`.
+
+| Action | Effect |
+| --- | --- |
+| `publish` | Posts the release now (service role, same path as the automatic post); `{ "result": "published" \| "already-published" \| "superseded" \| "failed" }` |
+| `withdraw` | Deletes the post and keeps the record, so it isn't posted again automatically; `{ "result": "withdrawn" }` |
+| `reset` | Deletes the post and the record, then publishes the current notes again |
+
+`400` unknown release, `403` not a super admin, `503` migration missing, service role key missing or publishing failed.
+See [release announcements](../operations/release-announcements.md).
 
 ### Auth routes
 

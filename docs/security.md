@@ -160,3 +160,21 @@ The security-relevant suites are listed in [SECURITY.md → Security testing](..
 and in [testing.md](testing.md). Run them all with `npm test` from the repository root. When adding a
 table, policy or definer function, add a PGlite test that attacks it as a non-member, a member and a
 lower-ranked moderator (see [contributing/database-migrations.md](contributing/database-migrations.md)).
+
+## Public repository review (2026-11-07)
+
+The GitHub repository is public, so everything committed — including Markdown that the Help Center
+doesn't publish — is readable by anyone. A review of tracked files and history found:
+
+| Finding | Severity | Status |
+| --- | --- | --- |
+| No credentials, keys, tokens, connection strings or `.env` files in tracked files or git history (pattern scan for JWTs, cloud keys, private keys and `*_KEY=` values) | — | `.env*` is ignored except `.env.example`; keep it that way |
+| Operational runbooks (`docs/operations/*`, `diskarte/docs/web-push.md`, `docs/sql/*`) describe procedures, job names, Vault secret *names* and endpoint paths, but no secret values or private hosts | Low | Acceptable: every privileged path is authenticated by a secret or the service role. Never add values, project refs or customer data to these files |
+| `20261005000000_super_server.sql` seeds the owner's production account UUID and handle as the Diskarte HQ creator | Low | A UUID isn't a credential and grants nothing by itself; future seeds should be applied by hand rather than committed |
+| Commit metadata carries the author's personal email | Info | Consider GitHub's no-reply address for future commits |
+| Unpublished docs are excluded from the Help Center and its search by an allow-list | — | Preserved (`docs/site.json`); this is about discoverability, not secrecy |
+
+If material ever needs to be genuinely private (incident write-ups with user data, vendor contracts,
+real infrastructure identifiers), keep it out of this repository — in a private repository or the
+hosting providers' own access-controlled settings — rather than relying on the Help Center allow-list.
+

@@ -142,4 +142,24 @@ describe("documentation", () => {
     expect([...actual].filter((e) => !documented.has(e)).sort(), "route handlers missing from docs/reference/api.md").toEqual([]);
     expect([...documented].filter((e) => !actual.has(e)).sort(), "documented endpoints with no handler").toEqual([]);
   });
+
+  it("keeps release notes well-formed, newest first, with links to published pages", async () => {
+    const { RELEASES } = await import("@/lib/releases");
+    const pages = (JSON.parse(fs.readFileSync(CONTENT_OUT, "utf8")) as { pages: Record<string, { html: string }> }).pages;
+    const problems: string[] = [];
+    RELEASES.forEach((r, i) => {
+      if (!/^\d{4}-\d{2}-\d{2}-[a-z0-9-]{1,60}$/.test(r.id) || !r.id.startsWith(r.date)) problems.push(`${r.id}: id must be <date>-<slug>`);
+      if (i > 0 && r.date > RELEASES[i - 1].date) problems.push(`${r.id}: not newest first`);
+      if (!r.title.trim() || r.title.length > 120 || !r.summary.trim()) problems.push(`${r.id}: title/summary`);
+      for (const href of [...r.highlights.flatMap((h) => (h.href ? [h.href] : [])), ...r.links.map((l) => l.href)]) {
+        if (/^https?:/.test(href)) continue;
+        const [route, anchor] = href.split("#");
+        const page = route === "/docs" ? { html: "" } : pages[route.replace(/^\/docs\//, "")];
+        if (!page || (anchor && !page.html.includes(`id="${anchor}"`))) problems.push(`${r.id}: broken link ${href}`);
+      }
+    });
+    expect(new Set(RELEASES.map((r) => r.id)).size).toBe(RELEASES.length);
+    expect(problems).toEqual([]);
+  });
 });
+

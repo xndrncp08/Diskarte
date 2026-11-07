@@ -181,7 +181,11 @@ Realtime) and when the tab becomes visible.
    `mark_dm_read_until(p_conversation_id, p_at)`, one flush at a time. Confirmed receipts leave the
    queue; failures stay for the next try.
 3. Because a receipt names a moment, sending it late never marks newer messages read. The server
-   caps `p_at` at its own clock.
+   caps `p_at` at its own clock. The moment is the **later of this device's clock and the newest
+   message's server timestamp**, so a phone whose clock runs behind can't save a receipt older than
+   what it showed (which used to bring read conversations back as unread after a reload).
+   Unread is then an exact comparison of two database timestamps (`lastMessageAt > lastReadAt`); an
+   earlier 500 ms tolerance hid a first message sent right after a conversation was opened.
 4. **Mark Unread** calls `forgetRead()` first, so a receipt that hasn't left the device cannot undo
    the user's intent, then `mark_channel_unread`.
 5. On databases older than `20261015010000_notification_read_state`, the client falls back to the

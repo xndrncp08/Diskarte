@@ -41,6 +41,7 @@ return 503.
 | `GIPHY_API_KEY` | GIF picker | Without it the GIF button says search isn't set up |
 | `SIGNUP_MODE` | Closing registration | `invite` pauses public sign-up (also turn off "Allow new users to sign up" in Supabase so OAuth can't create accounts) |
 | `ALLOWED_ORIGINS` | Cross-origin API callers | Comma-separated extra origins for CORS + CSRF on `/api/*` |
+| `RELEASE_ANNOUNCEMENTS` | Official update posts | `on` lets each new production deployment post its release notes to Diskarte HQ #announcements (needs `SUPABASE_SERVICE_ROLE_KEY` and the `20261107000000` migration). Set it for **Production only** |
 
 Push is enabled only when **all five** push values are valid (`pushConfig()` in
 [`lib/push-server.ts`](../../diskarte/src/lib/push-server.ts)) and the database setup has run.
@@ -69,6 +70,8 @@ node -e 'console.log(require("node:crypto").randomBytes(32).toString("base64url"
 | `PORT`, `HOSTNAME` | Dockerfile (`3000`, `0.0.0.0`), Render injects `PORT` | Standalone server bind address |
 | `NODE_ENV` | Next.js | Dev-only CSP relaxations (`unsafe-eval`, localhost sockets) |
 | `RENDER_EXTERNAL_URL`, `RENDER_GIT_COMMIT` | Render | `SITE_URL` fallback, health `version` |
+| `VERCEL_ENV` | Vercel | Release announcements run only when it is `production` (or unset, e.g. Docker) |
+| `NEXT_RUNTIME` | Next.js | `instrumentation.ts` only announces releases in the Node.js runtime |
 | `DISKARTE_SHARP_TARGET` | Dockerfile build stage (`linuxmusl`) | Excludes non-musl `sharp` binaries from the standalone trace |
 | `NEXT_PUBLIC_IMAGE_HOSTS` | `next.config.ts` | Internal: serialized image-optimizer host list for `<SmartImage>` |
 
