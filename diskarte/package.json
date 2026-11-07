@@ -17,7 +17,9 @@
     "start:standalone": "node scripts/start-standalone.mjs",
     "admin:grant": "node scripts/grant-admin.mjs",
     "db:check": "node scripts/check-database.mjs",
-    "docs:db": "tsx scripts/generate-db-reference.mts"
+    "docs:db": "tsx scripts/generate-db-reference.mts",
+    "docs:site": "tsx scripts/build-docs-site.mts",
+    "docs:screens": "DOCS_SCREENS=1 playwright test --config playwright.experience.config.ts docs-screens && DOCS_SCREENS=1 playwright test e2e/docs-screens.spec.ts && npm run docs:site"
   },
   "dependencies": {
     "@livekit/components-react": "^2.9.24",
@@ -31,6 +33,7 @@
     "livekit-client": "^2.22.3",
     "livekit-server-sdk": "^2.19.1",
     "lucide-react": "^1.48.0",
+    "mermaid": "^12.3.0",
     "next": "16.4.1",
     "ogl": "^1.0.11",
     "react": "19.2.8",
@@ -42,7 +45,7 @@
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.7.0",
     "web-push": "^3.6.7",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
@@ -64,6 +67,7 @@
     "jsdom": "^30.1.1",
     "opentype.js": "^2.0.0",
     "png-to-ico": "^3.0.2",
+    "rehype-stringify": "^10.0.1",
     "sharp": "^0.35.4",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
