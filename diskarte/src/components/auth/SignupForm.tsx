@@ -102,6 +102,10 @@ export function SignupForm() {
       <Button type="submit" size="lg" className="w-full" loading={pending} disabled={mismatch}>
         Sign up
       </Button>
+      <p className="text-center text-xs text-slate-400">
+        See what Diskarte stores and how to delete it:{" "}
+        <a href="/docs/help/privacy" target="_blank" rel="noopener" className="inline-flex items-center pointer-coarse:min-h-11 underline underline-offset-2 hover:text-sun">Privacy and your data</a>
+      </p>
       <p className="text-center text-sm text-slate-400">
         May account ka na?{" "}
         <Link href="/login" className="inline-flex items-center pointer-coarse:min-h-11 pointer-coarse:min-w-11 pointer-coarse:justify-center pointer-coarse:px-1 font-semibold text-sun hover:underline">

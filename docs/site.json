@@ -51,6 +51,7 @@
         { "source": "docs/help/sign-in.md", "slug": "help/sign-in" },
         { "source": "docs/help/mobile-app.md", "slug": "help/mobile-app" },
         { "source": "docs/help/report-a-problem.md", "slug": "help/report-a-problem" },
+        { "source": "docs/help/privacy.md", "slug": "help/privacy", "title": "Privacy and your data" },
         { "source": "docs/known-limitations.md", "slug": "help/known-issues", "title": "Known issues and limitations" }
       ]
     },
@@ -96,6 +97,7 @@
     "docs/architecture/background-jobs.md",
     "docs/operations/deployment.md",
     "docs/operations/troubleshooting.md",
+    "docs/operations/release-announcements.md",
     "docs/reference/database.md",
     "docs/contributing/templates/adr.md",
     "docs/contributing/templates/feature.md"

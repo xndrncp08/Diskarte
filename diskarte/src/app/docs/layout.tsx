@@ -48,6 +48,7 @@ export default function DocsLayout({ children }: LayoutProps<"/docs">) {
         <nav aria-label="Footer">
           <Link href="/">Diskarte home</Link>
           <Link href="/docs/help/report-a-problem">Report a problem</Link>
+          <Link href="/docs/help/privacy">Privacy</Link>
           <a href="https://github.com/xndrncp08/Diskarte" target="_blank" rel="noopener noreferrer">GitHub</a>
           <a href="https://github.com/xndrncp08/Diskarte/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer">Security</a>
         </nav>
