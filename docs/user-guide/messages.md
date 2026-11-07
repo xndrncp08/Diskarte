@@ -4,6 +4,9 @@
 
 Type in the box at the bottom and press **Enter**. **Shift + Enter** starts a new line.
 
+![A text channel on a computer: channels on the left, messages in the middle, the message box with attach, voice, emoji, GIF, sticker, poll and schedule buttons, and the member list on the right](../../diskarte/public/docs-assets/screens/chat-desktop.webp)
+*Sample data.*
+
 - **Mention** someone with `@username`. Moderators can use `@everyone`, `@here` or a role.
 - **Format** text with Markdown: `**bold**`, `*italic*`, `` `code` ``, ```` ``` ```` for code blocks,
   `||spoiler||` to hide something until clicked.
@@ -71,6 +74,9 @@ Click a result to jump to that exact message.
   friends.
 - Under your latest message you'll see **Sent** or **Seen**.
 - Right-click a DM to mark it read, see the person's options, or leave a group.
+
+![The Messages tab on a phone listing direct messages, with search and an Unread filter](../../diskarte/public/docs-assets/screens/messages-mobile.webp)
+*Sample data.*
 
 ## Unread messages
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-06 — Help Center
+
+- Added the public Help Center at `/docs`: user guides, help and troubleshooting, the feature reference, developer docs, the API reference and this changelog, with search (Ctrl/⌘ K), section filters, breadcrumbs, an on-page contents list, previous/next links, copyable code, rendered diagrams, product screenshots, dark/light/system modes and a phone layout.
+- Added contextual help links in Settings (every section), server settings, the voice lobby, the shared workspace, an empty Tambayan and the sign-in page, plus Help Center links on the landing page.
+- Added "Suggest an improvement" on every docs page (signed-in feedback goes to the existing report queue; anyone can open a GitHub issue).
+- Updated zod to 4.6.7 (memory-exhaustion advisory) and added Mermaid 12 for diagrams; the production dependency audit reports zero vulnerabilities.
+- No database migrations or environment changes are needed.
+
 ## 2026-10-30 — community tools
 
 - Added built-in slash commands in the composer: /shrug, /tableflip, /unflip, /me, /spoiler (Tab completes).

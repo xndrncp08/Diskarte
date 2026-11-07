@@ -63,6 +63,12 @@ something is unverified.
   [2026-10-15](../diskarte/RELEASE-2026-10-15.md), [2026-10-14](../diskarte/RELEASE-2026-10-14.md),
   [2026-10-14 follow-up](../diskarte/RELEASE-2026-10-14-remaining.md)
 
+## The Help Center website
+
+Published pages are served by the app itself at **`/docs`** (public, no sign-in), with search,
+navigation, rendered diagrams, screenshots and in-app help links. Which pages are published is decided
+in [`site.json`](site.json); see [contributing → The Help Center](contributing/README.md#the-help-center-docs).
+
 ## Keeping these docs accurate
 
 - `npm test --prefix diskarte` runs [`tests/docs/docs.test.ts`](../diskarte/tests/docs/docs.test.ts):
@@ -70,4 +76,4 @@ something is unverified.
   environment variables the code reads but [environment.md](reference/environment.md) doesn't list.
 - After a migration: `npm run docs:db --prefix diskarte`.
 - Every PR follows the [docs checklist](contributing/README.md#documentation).
-- Diagrams are Mermaid, which GitHub renders; there is no separate documentation site.
+- Diagrams are Mermaid, which GitHub and the Help Center both render.

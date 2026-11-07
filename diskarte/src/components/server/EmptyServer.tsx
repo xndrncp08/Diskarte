@@ -1,5 +1,6 @@
 "use client";
 
+import { HelpLink } from "@/components/ui/HelpLink";
 import { Hash, Menu as MenuIcon } from "lucide-react";
 import { useState } from "react";
 import { useServer } from "@/components/providers/ServerProvider";
@@ -32,6 +33,7 @@ export function EmptyServer() {
         ) : (
           <p className="text-slate-400">Waiting for an admin to create a channel.</p>
         )}
+        <HelpLink topic="channels" label="Setting up channels" />
       </div>
     </section>
   );

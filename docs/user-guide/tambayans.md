@@ -19,6 +19,9 @@
 
 People who were banned can't rejoin with any link.
 
+![The Tambayan menu open with Invite people, Server settings and notification options](../../diskarte/public/docs-assets/screens/server-menu-desktop.webp)
+*Sample data.*
+
 ## Set up channels
 
 Right-click the channel list → **Create channel**:
@@ -47,6 +50,9 @@ member list. Roles can unlock private channels.
 
 Open **Server settings** from the Tambayan's menu. Admins see every tab; moderators see the audit log,
 bans and invites.
+
+![Server settings with the Overview, Roles, Bantay-Bayan, Audit log and other tabs](../../diskarte/public/docs-assets/screens/server-settings-desktop.webp)
+*Sample data.*
 
 | Tab | Use it to |
 | --- | --- |

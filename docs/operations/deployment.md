@@ -144,6 +144,7 @@ probes a project with the public key for the objects newer features need (exit 0
 | Platform job | `select jobname, active from cron.job;` | `diskarte-platform-tick` active |
 | Push | see [web-push.md diagnostics](../../diskarte/docs/web-push.md#diagnostics-and-recovery) | deliveries leaving `pending` |
 | Pages | load `/login`, sign in, open a channel, send a message, start a two-person call | no errors |
+| Help Center | load `/docs`, search for "install", open `/docs/developers/architecture` (diagrams render) | 200, results, SVG diagrams |
 
 ## Logging and monitoring
 

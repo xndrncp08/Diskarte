@@ -63,5 +63,8 @@ These were not verified by automated tests or during the writing of this documen
   file; only the Knewave font's OFL licence is included. The maintainers should choose and add one.
 - The `problem_reports` migration header mentions a `.github/workflows/fix-agent.yml` "autofix"
   workflow; that workflow and the automated report action were removed (manual triage only).
-- No documentation website is built; these Markdown files render on GitHub (including Mermaid). A
-  site generator can be added later without restructuring.
+- The Help Center has no interactive API console (copyable `curl` examples only), no per-version
+  docs (it documents `main`), and no "was this helpful" counter — feedback is free text into the
+  existing report queue or a GitHub issue.
+- Help Center screenshots come from the fixture harness and the production build with sample data;
+  they are not captured on physical phones and show only English UI.

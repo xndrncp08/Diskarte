@@ -4,6 +4,9 @@ Every Tambayan has a **workspace** for planning and studying together. Open it f
 menu or channel list. Everything belongs to a text channel, and anyone who can see that channel can
 see its documents.
 
+![The shared workspace listing notes, boards and focus timers for a Tambayan](../../diskarte/public/docs-assets/screens/workspace-desktop.webp)
+*Sample data.*
+
 | Tool | Good for |
 | --- | --- |
 | **Note** | Meeting notes, reviewers, guides (Markdown) |

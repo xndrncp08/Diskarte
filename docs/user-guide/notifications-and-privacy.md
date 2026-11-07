@@ -4,6 +4,9 @@
 
 Open **Settings → Notifications**:
 
+![Notification settings on a phone: push for this device and one switch per kind of notification](../../diskarte/public/docs-assets/screens/settings-notifications-mobile.webp)
+*Sample data.*
+
 - **Desktop notifications** for new DMs while Diskarte is open in a tab.
 - **Sounds** — the little 8-bit beeps. Change the volume from the speaker button next to your name.
 - **Quiet hours** — no sounds, rings or alerts between times you choose.
@@ -25,6 +28,9 @@ Tambayan's menu under Notification Settings. Right-click a channel →
 
 - **Who can add you:** Settings → **Privacy & Safety** → everyone, only people in a Tambayan with you,
   or nobody.
+
+![Privacy & Safety settings on a phone with the three friend-request options](../../diskarte/public/docs-assets/screens/settings-privacy-mobile.webp)
+*Sample data.*
 - **DMs** only come from friends.
 - **Friend nicknames and notes** you add are visible only to you.
 - **Favourites** are private too.

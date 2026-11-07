@@ -80,6 +80,7 @@ node -e 'console.log(require("node:crypto").randomBytes(32).toString("base64url"
 | `E2E_BASE_URL` | Playwright | Test an already-running deployment instead of starting the standalone build |
 | `E2E_PORT` | Playwright | Port for the local standalone server (default 3000) |
 | `CI` | Playwright | Retries, 2 workers, `forbidOnly`, GitHub reporter |
+| `DOCS_SCREENS` | `npm run docs:screens` | `1` runs the screenshot specs that refresh the Help Center's product images |
 
 ## Supabase-side configuration (not environment variables)
 
