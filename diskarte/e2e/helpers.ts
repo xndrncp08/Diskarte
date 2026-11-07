@@ -41,7 +41,8 @@ export async function signUpAndOnboard(page: Page, user: TestUser, opts: { avata
   if (opts.bio) await page.getByLabel("Bio").fill(opts.bio);
   await page.getByRole("button", { name: "Let's go!" }).click();
   await expect(page).toHaveURL(/\/tambayan$/);
-  await expect(page.getByRole("heading", { name: `Welcome back, ${user.displayName}!` })).toBeVisible();
+  // A brand-new account (only Diskarte HQ, no friends) gets the first-time greeting.
+  await expect(page.getByRole("heading", { name: `Welcome to Diskarte, ${user.displayName}!` })).toBeVisible();
 }
 
 export async function logIn(page: Page, user: TestUser) {
