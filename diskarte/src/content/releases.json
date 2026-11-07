@@ -1,0 +1,34 @@
+[
+  {
+    "id": "2026-11-07-smoother-start",
+    "date": "2026-11-07",
+    "title": "A smoother start and dependable notifications",
+    "summary": "New to Diskarte? Home now walks you through your first steps. We also fixed messages that could slip past your notifications, and every update like this one will now show up here in #announcements.",
+    "highlights": [
+      { "title": "Getting started on Home", "text": "A short checklist helps you join or create a Tambayan, add a friend, say hello and install the app. Hide it anytime.", "href": "/docs/getting-started/account-and-install" },
+      { "title": "What's new", "text": "Home shows a short summary of each update until you've seen it, and the full post lives here in #announcements.", "href": "/docs/changelog" },
+      { "title": "Privacy and your data", "text": "A plain-language page explains what Diskarte stores, who can see it, and how to download or delete it.", "href": "/docs/help/privacy" },
+      { "title": "More Filipino", "text": "The new Home panels and in-app help links follow your language setting.", "href": "/docs/help/faq#can-i-use-diskarte-in-filipino" }
+    ],
+    "fixes": [
+      "A message sent within a second of opening a conversation (or of you reading it) no longer skips your unread badge.",
+      "Messages and channels you've read stay read even if your phone's clock runs a little behind."
+    ],
+    "links": [
+      { "label": "Help Center", "href": "/docs" },
+      { "label": "Full changelog", "href": "/docs/changelog" }
+    ]
+  },
+  {
+    "id": "2026-11-06-help-center",
+    "date": "2026-11-06",
+    "title": "Meet the Diskarte Help Center",
+    "summary": "Guides, answers and troubleshooting are now one search away at /docs, with help links right where you need them in the app.",
+    "highlights": [
+      { "title": "Help Center", "text": "Step-by-step guides with screenshots, plus fixes for sign-in, notifications, calls and the mobile app.", "href": "/docs" },
+      { "title": "Help where you are", "text": "Settings, server settings, voice channels and the shared workspace link to the right article." }
+    ],
+    "fixes": [],
+    "links": [{ "label": "Open the Help Center", "href": "/docs" }]
+  }
+]
