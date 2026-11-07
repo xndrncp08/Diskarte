@@ -171,6 +171,7 @@ The public Help Center is rendered from the same Markdown:
 - [ ] Limitation found or removed → `docs/known-limitations.md`
 - [ ] New Markdown page → publish it in `docs/site.json` or list it as `internal`; then `npm run docs:site --prefix diskarte`
 - [ ] UI the screenshots show changed → `npm run docs:screens --prefix diskarte`
+- [ ] Release users should hear about → an entry at the top of `diskarte/src/content/releases.json` ([how](../operations/release-announcements.md))
 
 `npm test` includes [`tests/docs/docs.test.ts`](../../diskarte/tests/docs/docs.test.ts), which fails
 on broken relative links or anchors in Markdown, a stale database reference or Help Center build, an

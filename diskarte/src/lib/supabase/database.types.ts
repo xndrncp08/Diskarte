@@ -345,6 +345,7 @@ export interface Database {
         },
         { server_id: string; channel_id: string; content: string; weekday?: number | null; at_time: string; time_zone: string; enabled?: boolean }
       >;
+      release_announcements: TableDef<{ release_id: string; released_on: string; title: string; message_id: string | null; published_at: string; withdrawn_at: string | null }, never>;
       rules_acceptances: TableDef<{ server_id: string; user_id: string; accepted_at: string }, never>;
       member_xp: TableDef<{ server_id: string; user_id: string; xp: number; last_award_at: string | null }, never>;
       friend_favourites: TableDef<{ owner_id: string; target_id: string; created_at: string }, { owner_id?: string; target_id: string }>;
@@ -503,6 +504,9 @@ export interface Database {
       save_channel_webhook: { Args: { p_channel: string; p_name: string; p_id?: string | null }; Returns: Json };
       post_webhook_message: { Args: { p_id: string; p_token: string; p_content: string; p_name?: string | null }; Returns: string };
       accept_server_rules: { Args: { p_server: string }; Returns: undefined };
+      publish_release_announcement: { Args: { p_release_id: string; p_released_on: string; p_title: string; p_content: string }; Returns: string };
+      admin_withdraw_release_announcement: { Args: { p_release_id: string }; Returns: undefined };
+      admin_reset_release_announcement: { Args: { p_release_id: string }; Returns: undefined };
       reset_server_xp: { Args: { p_server: string }; Returns: undefined };
       publish_scheduled_messages: { Args: Record<string, never>; Returns: number };
       profile_connections: { Args: { p_user: string }; Returns: Json };

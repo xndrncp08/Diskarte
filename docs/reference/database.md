@@ -4,13 +4,13 @@
 > `supabase/migrations/`. The Vitest suite fails when this file is stale. Descriptions come from the SQL
 > comment directly above each `create table` / `create function`, so document objects there.
 
-Built by applying all 51 migrations to PGlite with the Supabase stand-ins in
+Built by applying all 52 migrations to PGlite with the Supabase stand-ins in
 `diskarte/tests/db/supabase-shim.sql`. Supabase-managed schemas (`auth`, `storage`, `realtime`) are only
 shown where Diskarte adds policies or rows. Table grants reflect Supabase's default privileges (mirrored by
 the shim) minus the migrations' revokes; RLS policies, not grants, decide which rows a role sees.
 For the narrative overview see [database.md](../database.md).
 
-**59 tables · 113 RLS policies · 190 functions · 66 triggers · 30 Realtime tables · 5 Storage buckets**
+**60 tables · 114 RLS policies · 193 functions · 66 triggers · 30 Realtime tables · 5 Storage buckets**
 
 ## Contents
 
@@ -66,6 +66,7 @@ For the narrative overview see [database.md](../database.md).
 | [`public.problem_reports`](#public-problem-reports) | on |  |  |
 | [`public.profiles`](#public-profiles) | on |  | profiles |
 | [`public.reactions`](#public-reactions) | on | yes | reactions |
+| [`public.release_announcements`](#public-release-announcements) | on |  | One row per announced release. Readable by everyone signed in (the What's New status); written only by the definer functions below. |
 | [`public.rules_acceptances`](#public-rules-acceptances) | on |  |  |
 | [`public.saved_messages`](#public-saved-messages) | on |  |  |
 | [`public.scheduled_messages`](#public-scheduled-messages) | on |  |  |
@@ -1546,6 +1547,36 @@ Triggers:
 - `reactions_before_insert BEFORE INSERT ON public.reactions FOR EACH ROW EXECUTE FUNCTION reactions_before_insert()`
 - `reactions_timeout_guard BEFORE INSERT ON public.reactions FOR EACH ROW EXECUTE FUNCTION timeout_send_guard('user_id')`
 
+<a id="public-release-announcements"></a>
+
+### `public.release_announcements`
+
+One row per announced release. Readable by everyone signed in (the What's New status); written only by the definer functions below.
+
+RLS **enabled** · created in `20261107000000_release_announcements`
+
+Grants: `anon` REFERENCES, SELECT, TRIGGER; `authenticated` REFERENCES, SELECT, TRIGGER
+
+| Column | Type | Null | Default |
+| --- | --- | --- | --- |
+| `release_id` | `text` |  |  |
+| `released_on` | `date` |  |  |
+| `title` | `text` |  |  |
+| `message_id` | `uuid` | yes |  |
+| `published_at` | `timestamp with time zone` |  | `now()` |
+| `withdrawn_at` | `timestamp with time zone` | yes |  |
+
+| Constraint | Kind | Definition |
+| --- | --- | --- |
+| `release_announcements_release_id_check` | check | `CHECK ((release_id ~ '^\d{4}-\d{2}-\d{2}-[a-z0-9-]{1,60}$'::text))` |
+| `release_announcements_title_check` | check | `CHECK (((char_length(btrim(title)) >= 1) AND (char_length(btrim(title)) <= 120)))` |
+| `release_announcements_message_id_fkey` | foreign key | `FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE SET NULL` |
+| `release_announcements_pkey` | primary key | `PRIMARY KEY (release_id)` |
+
+| Policy | Command | Roles | Using | With check |
+| --- | --- | --- | --- | --- |
+| signed-in users read release announcements | SELECT | authenticated | `true` |  |
+
 <a id="public-rules-acceptances"></a>
 
 ### `public.rules_acceptances`
@@ -2323,6 +2354,7 @@ rights, so each one re-checks the caller itself; invoker functions stay subject 
 | `admin_list_users(p_query text, p_limit integer)` | `TABLE(id uuid, username text, display_name text, avatar_preset text, avatar_url text, status presence_status, custom_status text, email text, created_at timestamp with time zone, last_sign_in_at timestamp with time zone, role text, banned_until timestamp with time zone, ban_reason text, sessions integer, last_seen_at timestamp with time zone, devices jsonb)` | definer, stable | authenticated | The network roster: every account with its role, ban state, sessions and devices. |
 | `admin_log(p_action text, p_target uuid, p_details jsonb)` | `void` | definer, volatile | internal |  |
 | `admin_overview()` | `jsonb` | definer, stable | authenticated | Headline numbers plus sign-ups per day for the last week (Asia/Manila days). |
+| `admin_reset_release_announcement(p_release_id text)` | `void` | definer, volatile | authenticated | Removes a release's post and its record, so corrected notes can be published again. |
 | `admin_retract_broadcast(p_broadcast uuid)` | `void` | definer, volatile | authenticated | Takes a broadcast's sticky banner down (the channel messages stay, like any post). |
 | `admin_revoke_sessions(p_user uuid)` | `integer` | definer, volatile | authenticated |  |
 | `admin_set_report_status(p_report uuid, p_status text, p_issue_url text)` | `void` | definer, volatile | authenticated | Triage: mark a report sent to the fix agent (with its issue), resolved, dismissed or open again. |
@@ -2330,6 +2362,7 @@ rights, so each one re-checks the caller itself; invoker functions stay subject 
 | `admin_set_status(p_user uuid, p_status presence_status, p_custom_status text)` | `void` | definer, volatile | authenticated | Forces someone's status (e.g. clears an offensive custom status); their open canvases adopt it. |
 | `admin_site_traffic()` | `jsonb` | definer, stable | authenticated | Unique visitors today, over 7 and 30 days, and per day for the last 30 days. |
 | `admin_unban_user(p_user uuid)` | `void` | definer, volatile | authenticated |  |
+| `admin_withdraw_release_announcement(p_release_id text)` | `void` | definer, volatile | authenticated | Removes a release's post and keeps the record, so it isn't published again automatically. |
 | `announcement_next_run(p_weekday smallint, p_time time without time zone, p_tz text, p_after timestamp with time zone)` | `timestamp with time zone` | invoker, stable | anon, authenticated | The next local `p_time` (on `p_weekday`, if set) strictly after `p_after`, in `p_tz`. |
 | `are_friends(a uuid, b uuid)` | `boolean` | definer, stable | internal |  |
 | `assert_super_admin()` | `void` | definer, stable | internal | Control Center RPCs (super admins only) |
@@ -2438,6 +2471,7 @@ rights, so each one re-checks the caller itself; invoker functions stay subject 
 | `profiles_guard()` | `trigger` | invoker, volatile | authenticated | Keep id / created_at immutable from the client side. |
 | `profiles_join_system_server()` | `trigger` | definer, volatile | anon, authenticated | New accounts and creator changes now respect platform roles too. |
 | `profiles_status_expiry()` | `trigger` | invoker, volatile | anon, authenticated | A new status without its own expiry doesn't inherit the old one; a cleared status has none. |
+| `publish_release_announcement(p_release_id text, p_released_on date, p_title text, p_content text)` | `text` | definer, volatile | internal | Posts a release's notes to Diskarte HQ #announcements, at most once. Service role only (the deployment's own server). Returns 'published', 'already-published' or 'superseded'. |
 | `publish_scheduled_messages()` | `integer` | definer, volatile | authenticated | Publishes due scheduled messages: the caller's own when signed in, everyone's when run by the platform job. Returns how many were sent. Each row is attempted in its own subtransaction. |
 | `push_ready()` | `boolean` | definer, stable | authenticated |  |
 | `reactions_before_insert()` | `trigger` | definer, volatile | authenticated | Reactions: derive channel/server from the message, cap distinct emoji per message. |
@@ -2669,6 +2703,7 @@ erDiagram
   public_reactions }o--|| public_messages : "message_id"
   public_reactions }o--|| public_servers : "server_id"
   public_reactions }o--|| public_profiles : "user_id"
+  public_release_announcements }o--|| public_messages : "message_id"
   public_rules_acceptances }o--|| public_servers : "server_id"
   public_rules_acceptances }o--|| public_profiles : "user_id"
   public_saved_messages }o--|| public_messages : "message_id"
@@ -2764,3 +2799,4 @@ Applied in filename order. The first descriptive comment line of each file:
 | [`20261029060000_account_data_coverage.sql`](../../supabase/migrations/20261029060000_account_data_coverage.sql) | Account export and deletion cover the 2026-10-29 additions: the existing functions are kept as |
 | [`20261030000000_server_rules.sql`](../../supabase/migrations/20261030000000_server_rules.sql) | Server rules: admins write them; members accept them before they can post. Changing the rules |
 | [`20261030010000_recurring_announcements.sql`](../../supabase/migrations/20261030010000_recurring_announcements.sql) | Recurring announcements: an admin automation that posts a message in a text channel every day, |
+| [`20261107000000_release_announcements.sql`](../../supabase/migrations/20261107000000_release_announcements.sql) | Official release announcements: when a production deployment of Diskarte starts serving, the |

@@ -57,8 +57,13 @@ export function conversationTitle(conversation: Pick<ConversationSummary, "kind"
   return names.length <= 3 ? names.join(", ") : `${names.slice(0, 3).join(", ")} +${names.length - 3}`;
 }
 
+/**
+ * Both timestamps come from the database clock (receipts are never earlier than the newest message
+ * the reader saw — see markRead), so the comparison is exact. A tolerance here once hid a first
+ * message sent within half a second of opening the conversation.
+ */
 export function isUnread(conversation: Pick<ConversationSummary, "lastMessageAt" | "lastReadAt">) {
-  return new Date(conversation.lastMessageAt).getTime() > new Date(conversation.lastReadAt).getTime() + 500;
+  return new Date(conversation.lastMessageAt).getTime() > new Date(conversation.lastReadAt).getTime();
 }
 
 export function sortConversations<T extends Pick<ConversationSummary, "lastMessageAt">>(list: T[]): T[] {

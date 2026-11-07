@@ -443,6 +443,7 @@ export default async function LandingPage() {
             <a href="#features">Features</a>
             <a href="#story">Our story</a>
             <Link href="/docs">Help Center</Link>
+            <Link href="/docs/help/privacy">Privacy</Link>
             <a
               href="https://github.com/xndrncp08/Diskarte"
               target="_blank"

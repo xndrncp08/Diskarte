@@ -104,7 +104,8 @@ so a pair can't have two 1:1 DMs.
 ### Platform
 
 `platform_admins` (role table), `account_controls`, `admin_audit_logs`, `system_broadcasts`,
-`system_creators`, `site_visits`, `problem_reports`, `user_devices`. Diskarte HQ is a system server
+`system_creators`, `site_visits`, `problem_reports`, `user_devices`, `release_announcements` (one row
+per officially announced release; see [release announcements](operations/release-announcements.md)). Diskarte HQ is a system server
 (`is_system`, fixed id `d15ca47e-0000-4000-8000-000000000001`) that every profile joins automatically.
 
 ## Permission model

@@ -11,7 +11,9 @@
 4. Check your email and tap the confirmation link (if you don't see it, look in Spam).
 5. Set up your profile: pick a salakot avatar colour or upload a photo, add a banner and a short bio.
 
-You're now in Diskarte and already a member of **Diskarte HQ**.
+You're now in Diskarte and already a member of **Diskarte HQ**. Home shows a short **Getting
+started** checklist — join or create a Tambayan, add a friend, say hello, install the app — that ticks
+itself off as you go. Hide it anytime with the ✕.
 
 ![The Diskarte sign-up form on a phone, with email, username, display name and password fields](../../diskarte/public/docs-assets/screens/signup-mobile.webp)
 *Sample data.*
@@ -68,6 +70,9 @@ Open **User settings** (gear next to your name, bottom left; on phones, the **Pr
 
 ![Diskarte Home on a computer: the server rail on the left, your Tambayans, friends and upcoming events](../../diskarte/public/docs-assets/screens/home-desktop.webp)
 *Sample data.*
+
+**What's new:** after an update, Home shows a short summary until you've seen it, and the full post
+is in Diskarte HQ's `#announcements` channel (marked **Official**).
 
 **Slow or expensive internet?** Settings → Storage & Data → **Low-data mode** loads smaller images,
 stops GIFs from autoplaying and lowers video quality.

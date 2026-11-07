@@ -200,6 +200,9 @@ probes a project with the public key for the objects newer features need (exit 0
 
 - `main` is the integration branch and is always deployable; feature branches are merged with a merge
   commit (`merge(scope): …`).
+- Releases users should hear about also get an entry in
+  [`src/content/releases.json`](../../diskarte/src/content/releases.json); the production deployment
+  posts it to Diskarte HQ `#announcements` (see [release announcements](release-announcements.md)).
 - User-facing changes go in [`diskarte/CHANGELOG.md`](../../diskarte/CHANGELOG.md) under a dated
   heading; releases that need manual steps get a `diskarte/RELEASE-<date>.md` with the migrations,
   optional SQL and what was verified.

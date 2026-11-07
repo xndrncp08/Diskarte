@@ -8,6 +8,8 @@ import type { PresenceStatus } from "@/lib/supabase/database.types";
 
 /** Diskarte HQ and its two broadcast channels (fixed ids, seeded by migration 20261005000000). */
 export const HQ_SERVER_ID = "d15ca47e-0000-4000-8000-000000000001";
+/** Author name of official release posts in HQ #announcements (set only by publish_release_announcement). */
+export const UPDATES_NAME = "Diskarte Updates";
 export const HQ_CHANNELS = {
   announcements: "d15ca47e-0000-4000-8000-0000000000a1",
   "global-lounge": "d15ca47e-0000-4000-8000-0000000000a2",

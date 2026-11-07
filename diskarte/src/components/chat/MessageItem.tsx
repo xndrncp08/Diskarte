@@ -1,5 +1,6 @@
 "use client";
 
+import { HQ_SERVER_ID, UPDATES_NAME } from "@/lib/admin";
 import { Bookmark, BookmarkX, Clock, Copy, CornerUpLeft, Forward, MailOpen, MessagesSquare, Pencil, Pin, PinOff, RotateCw, Trash2, Webhook, X } from "lucide-react";
 import { memo, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { UserAvatar } from "@/components/profile/UserAvatar";
@@ -244,6 +245,8 @@ export const MessageItem = memo(function MessageItem({
   const swipe = useSwipeReply(() => actions.onReply(message), !interactive || editing || message.pending || message.failed || message.queued);
   const attachments = parseAttachments(message.attachments);
   const name = message.author?.display_name ?? message.webhook_name ?? "Deleted user";
+  // Only the release publisher posts as Diskarte Updates in Diskarte HQ (members can't set webhook names there).
+  const official = !message.author && message.webhook_name === UPDATES_NAME && message.server_id === HQ_SERVER_ID;
 
   return (
     <article
@@ -310,7 +313,7 @@ export const MessageItem = memo(function MessageItem({
             <Author message={message} actions={actions} className="truncate font-semibold text-white">
               {name}
             </Author>
-            {!message.author && message.webhook_name && <span className="shrink-0 rounded bg-sky-500/20 px-1 font-silk text-[9px] uppercase text-sky-200">Webhook</span>}
+            {!message.author && message.webhook_name && (official ? <span className="shrink-0 rounded bg-sun/20 px-1 font-silk text-[9px] uppercase text-sun">Official</span> : <span className="shrink-0 rounded bg-sky-500/20 px-1 font-silk text-[9px] uppercase text-sky-200">Webhook</span>)}
             <Timestamp iso={message.created_at} className="shrink-0 whitespace-nowrap text-xs text-slate-500" />
             {message.pinned && <Pin className="size-3 shrink-0 text-sun" aria-label="Pinned" />}
           </p>

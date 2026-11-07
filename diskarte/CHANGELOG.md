@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-07 — smoother start, dependable notifications, release posts
+
+- Fixed unread state missing a message sent within half a second of opening a conversation or of reading it (also the cause of the intermittently failing notification E2E journey): unread is now an exact comparison of database timestamps.
+- Fixed read DMs and channels coming back as unread on devices whose clock runs behind the server: receipts now cover the newest message shown.
+- Added a Getting started checklist and a What's New card on Home, with Filipino strings; a first-time greeting replaces "Welcome back" for new members.
+- Added official release announcements: each production deployment posts its developer-written release notes (src/content/releases.json) once to Diskarte HQ #announcements as "Diskarte Updates" with an Official badge; super admins can retry, withdraw or republish in the Control Center.
+- Added a plain-language Privacy and your data page, linked from the landing page, sign-up form and Help Center.
+- Needs migration `20261107000000_release_announcements.sql`, then `RELEASE_ANNOUNCEMENTS=on` (Production only) with `SUPABASE_SERVICE_ROLE_KEY`, for the release posts. Everything else works without it.
+
 ## 2026-11-06 — Help Center
 
 - Added the public Help Center at `/docs`: user guides, help and troubleshooting, the feature reference, developer docs, the API reference and this changelog, with search (Ctrl/⌘ K), section filters, breadcrumbs, an on-page contents list, previous/next links, copyable code, rendered diagrams, product screenshots, dark/light/system modes and a phone layout.

@@ -19,6 +19,7 @@ comments and release notes; the date is when the decision shows up in history. N
 | [011](#011-vercel-for-production) | Vercel for production, Docker kept portable | Accepted |
 | [012](#012-no-emoji-glyph-vocabulary) | Vector glyph vocabulary instead of emoji | Accepted |
 | [013](#013-help-center-rendered-at-authoring-time-inside-the-app) | Help Center rendered at authoring time inside the app | Accepted |
+| [014](#014-release-announcements-published-by-the-deployment-itself) | Release announcements published by the deployment itself | Accepted |
 
 ## 001. Authorization lives in Postgres
 
@@ -136,4 +137,21 @@ server for every view); an external search service (cost, and private pages coul
 **Consequences.** No new deployment; the docs inherit the app's themes, CSP and fonts. Authors run
 `npm run docs:site` after editing published Markdown (the docs test fails otherwise). Publication is an
 explicit allow-list, so new runbooks stay off the site by default.
+
+## 014. Release announcements published by the deployment itself
+
+**Status.** Accepted — *2026-11-07*
+
+**Context.** Each meaningful release should be announced in Diskarte HQ, but only once it is
+actually live: not on push, not for failed or preview builds. There is no GitHub CLI or repository
+secret available to wire a CI step, and pushes to `main` deploy on Vercel in parallel with CI.
+**Decision.** A production server instance announces its own release from `instrumentation.ts`
+`register()` (opt-in `RELEASE_ANNOUNCEMENTS=on`, production only). Notes are developer-written JSON
+formatted deterministically. A service-role-only SQL function posts once per release under an
+advisory lock and refuses older releases after newer ones.
+**Alternatives considered.** A GitHub Actions job on Vercel's `deployment_status` (needs a repository
+secret and an exposed publish endpoint); a Vercel deployment webhook (plan-dependent, another secret);
+publishing from CI on merge (would announce failed deployments).
+**Consequences.** Every instance start costs one cheap RPC (not awaited). If the first attempt fails,
+the next instance retries. Super admins can retry, withdraw or republish in the Control Center.
 

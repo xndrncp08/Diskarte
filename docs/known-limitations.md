@@ -16,8 +16,8 @@ couldn't confirm. Keep it current: remove items when they're fixed, add them whe
 | Workspace | No real-time co-editing, cursors, comments, history or export |
 | Voice/video | No recording, transcription, stage mode or E2E encryption; can't move members into private voice channels; push call alerts aren't native telephony |
 | Accounts | No passkeys, SMS 2FA, recovery codes or in-app email change |
-| Localization | Filipino covers core navigation and settings only |
-| Preferences | Most display/voice/notification preferences are per browser |
+| Localization | Filipino covers core navigation, settings, the Home onboarding panels and in-app help links; most screens, notifications and the Help Center are English |
+| Preferences | Most display/voice/notification preferences are per browser, as are the Getting started dismissal and the What's New "seen" marker |
 | Moderation | Rule-based auto-mod only; no ban appeals; audit logs kept indefinitely |
 | Native apps | None; the PWA is the mobile app |
 

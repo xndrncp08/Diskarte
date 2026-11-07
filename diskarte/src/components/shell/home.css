@@ -404,3 +404,55 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Getting started and What's new: compact panels above the dashboard. */
+.home-panel {
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--stroke);
+  border-radius: 1rem;
+  background: var(--surface-panel);
+  padding: 1rem 1.1rem;
+}
+.home-panel h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.whats-new {
+  border-color: color-mix(in srgb, var(--color-sun) 35%, var(--stroke));
+  background: linear-gradient(135deg, var(--accent-soft), transparent 60%), var(--surface-panel);
+}
+.getting-started-step {
+  display: flex;
+  gap: 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--stroke);
+  padding: 0.7rem 0.8rem;
+}
+.getting-started-step strong {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+.getting-started-step small {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.getting-started-step[data-done] {
+  background: color-mix(in srgb, var(--surface-base) 40%, transparent);
+}
+.getting-started-step[data-done] strong {
+  text-decoration: line-through;
+  text-decoration-color: var(--text-muted);
+}
+.getting-started-icon {
+  display: grid;
+  height: 2rem;
+  width: 2rem;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 0.6rem;
+  background: var(--accent-soft);
+  color: var(--text-accent);
+}

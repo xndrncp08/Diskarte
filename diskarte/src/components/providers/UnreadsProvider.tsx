@@ -84,6 +84,8 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
     () => new Map(),
   );
   const generation = useRef(0);
+  const current = useRef<ReadonlyMap<string, ChannelUnread>>(new Map());
+  useEffect(() => { current.current = channels; }, [channels]);
   const bulkRead = useRef<Promise<unknown> | null>(null);
   // Read marks made in this tab: a refresh racing the server write never brings an unread back.
   // Seeded with receipts a previous session queued but the server hadn't confirmed yet.
@@ -275,7 +277,8 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
   const markRead = useCallback(
     (channelId: string) => {
       rewinds.current.delete(channelId);
-      const at = new Date().toISOString();
+      // Never earlier than the newest message shown, even if this device's clock is behind the server's.
+      const at = later(new Date().toISOString(), current.current.get(channelId)?.lastMessageAt) as string;
       setChannels((prev) => {
         const c = prev.get(channelId);
         const upTo = later(at, c?.lastMessageAt) as string;
@@ -290,7 +293,7 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
           mentions: 0,
         });
       });
-      // The receipt says "read up to now" (the server caps it at its own clock).
+      // The receipt says "read up to here" (the server caps it at its own clock).
       queueRead("channel", channelId, at);
       closeNotifications(notificationTag("channel", channelId));
       if (!supabase) return;

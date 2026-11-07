@@ -97,6 +97,8 @@ export function useConversations() {
     ConversationSummary[] | null
   >(null);
   const generation = useRef(0);
+  const current = useRef<ConversationSummary[] | null>(null);
+  useEffect(() => { current.current = conversations; }, [conversations]);
   // What this tab has read, so a reload that races the read receipt (or a device clock behind the
   // server's) can never turn a conversation you've seen back to unread.
   const readMarks = useRef<Map<string, string>>(
@@ -201,22 +203,20 @@ export function useConversations() {
     };
   }, [supabase, me.id, load, reload]);
 
-  /** Clear the unread dot now (read up to at least the newest message you saw); the RPC saves it. */
+  /**
+   * Clear the unread dot now and save "read up to" on the server. The receipt is the later of this
+   * device's clock and the newest message's server timestamp, so a phone whose clock runs behind the
+   * server can't save a receipt older than what it showed (which made read DMs come back as unread).
+   */
   const markRead = useCallback(
     (conversationId: string) => {
+      const mark = latest(new Date().toISOString(), current.current?.find((c) => c.id === conversationId)?.lastMessageAt);
+      readMarks.current.set(conversationId, latest(mark, readMarks.current.get(conversationId)));
       setConversations(
         (prev) =>
-          prev?.map((c) => {
-            if (c.id !== conversationId) return c;
-            const mark = latest(new Date().toISOString(), c.lastMessageAt);
-            readMarks.current.set(
-              c.id,
-              latest(mark, readMarks.current.get(c.id)),
-            );
-            return { ...c, lastReadAt: latest(c.lastReadAt, mark) };
-          }) ?? prev,
+          prev?.map((c) => (c.id === conversationId ? { ...c, lastReadAt: latest(c.lastReadAt, latest(mark, c.lastMessageAt)) } : c)) ?? prev,
       );
-      queueRead("dm", conversationId, new Date().toISOString());
+      queueRead("dm", conversationId, mark);
       closeNotifications(notificationTag("dm", conversationId));
       void flushReads(supabase);
     },

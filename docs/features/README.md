@@ -71,6 +71,8 @@ code in `main` and the release notes, not on plans.
 | Web Push | Needs setup | Production configuration and physical-device delivery unverified |
 | Native mobile apps | Not implemented | The PWA is the mobile app |
 | Help Center (`/docs`) with search and in-app help links | Shipped | Public; documents `main` |
+| Getting started checklist on Home | Shipped | Derived from account data; dismissal is per browser |
+| What's New card and official release posts in Diskarte HQ | Needs setup | Posts need `RELEASE_ANNOUNCEMENTS=on`, the service role key and migration `20261107000000` |
 
 ## Feature page format
 

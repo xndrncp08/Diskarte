@@ -1,5 +1,6 @@
 "use client";
 
+import { ReleaseAnnouncements } from "./ReleaseAnnouncements";
 import { Activity, BarChart3, LifeBuoy, Megaphone, Radio, RefreshCw, ScrollText, ShieldCheck } from "lucide-react";
 import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -124,7 +125,7 @@ export function AdminControlCenter({ className }: { className?: string }) {
         ) : tab === "voice" ? (
           <VoiceTab snapshot={snap.data} now={now} />
         ) : tab === "broadcast" ? (
-          <BroadcastComposer snapshot={snap.data} now={now} onChanged={snap.refresh} />
+          <><BroadcastComposer snapshot={snap.data} now={now} onChanged={snap.refresh} /><ReleaseAnnouncements /></>
         ) : tab === "reports" ? (
           <ReportsTab snapshot={snap.data} onChanged={snap.refresh} />
         ) : (
