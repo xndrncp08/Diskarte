@@ -19,6 +19,11 @@
 
 People who were banned can't rejoin with any link.
 
+**Screen new members (admins).** Server settings → **Membership**: add up to 5 joining questions
+and, if you like, turn on **Moderators approve new members**. People joining then see your rules
+and questions first. With approval on, moderators review requests in the same tab (a "people want
+to join" button appears in the channel list when someone's waiting) and approve or decline them.
+
 ![The Tambayan menu open with Invite people, Server settings and notification options](../../diskarte/public/docs-assets/screens/server-menu-desktop.webp)
 *Sample data.*
 

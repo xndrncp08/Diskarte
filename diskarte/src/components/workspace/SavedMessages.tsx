@@ -22,7 +22,10 @@ export function SavedMessages({ onOpen }: { onOpen: () => void }) {
     if (!supabase) return;
     let live = true;
     void (async () => {
-      const { data: saved } = await supabase.from("saved_messages").select("message_id, saved_at, remind_at").order("saved_at", { ascending: false }).limit(50);
+      const query = (columns: string) => supabase.from("saved_messages").select(columns).order("saved_at", { ascending: false }).limit(50);
+      // Projects without the reminders migration have no remind_at column: list without it.
+      const withReminders = await query("message_id, saved_at, remind_at");
+      const { data: saved } = (withReminders.error ? await query("message_id, saved_at") : withReminders) as unknown as { data: { message_id: string; remind_at?: string | null }[] | null };
       const ids = (saved ?? []).map((s) => s.message_id);
       if (!ids.length) return live && setItems([]);
       const { data: messages } = await supabase.from("messages").select("id, content, channel_id, server_id, author_id").in("id", ids);

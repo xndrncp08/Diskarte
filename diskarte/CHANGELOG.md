@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-08 — Hangouts, membership screening, suggestion boards, reminders
+
+- Added Instant Hangouts: temporary group chats with a call for you and 1–9 friends, lasting 1–24 hours. Start one from Home, jump straight into voice and ring everyone; anyone adds an hour, the host keeps it, turns it into a Tambayan or ends it. Expired hangouts are deleted with their messages and take no file uploads.
+- Added friends who are around on Home: online friends first, their status and the voice channel they're in when you can see it. Invisible friends and anyone who turns off Settings → Privacy → "Show friends when I'm around" never appear.
+- Added membership screening: up to 5 joining questions and optional moderator approval, with a live queue in Server settings → Membership, a sidebar nudge for moderators and audit-log entries. Answers are included in the applicant's data export.
+- Added forum tags, Solved posts and pinned-first sorting, and suggestion boards with one-per-member upvotes, Top sorting and moderator statuses (Under consideration, Planned, In progress, Completed, Declined).
+- Added Remind me… on server messages: saved with a time and shown with a jump link (and a desktop notification when enabled) while Diskarte is open.
+- Needs four migrations: `20261108000000_hangouts.sql`, `20261108010000_membership_screening.sql`, `20261108020000_forum_tags_suggestions.sql`, `20261108030000_message_reminders.sql`. Existing features keep working without them; until they're applied the new actions fail with an error message.
+
 ## 2026-11-07 — smoother start, dependable notifications, release posts
 
 - Fixed unread state missing a message sent within half a second of opening a conversation or of reading it (also the cause of the intermittently failing notification E2E journey): unread is now an exact comparison of database timestamps.

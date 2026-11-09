@@ -1,5 +1,23 @@
 [
   {
+    "id": "2026-11-08-hangouts",
+    "date": "2026-11-08",
+    "title": "Hangouts, friendlier communities and reminders",
+    "summary": "Start a Hangout with friends in one tap, see who's around on Home, and let your Tambayan welcome new members with a few questions. Forums got tags and suggestion boards, and any message can now remind you later.",
+    "highlights": [
+      { "title": "Instant Hangouts", "text": "A temporary chat and call for you and up to 9 friends, for 1 to 8 hours. Jump into voice right away, add time, keep it, or turn it into a Tambayan.", "href": "/docs/guides/messages#hangouts" },
+      { "title": "Who's around", "text": "Home shows friends who are online and the voice channel they're in when you can see it. Turn it off in Settings, Privacy & Safety.", "href": "/docs/guides/notifications-and-privacy#privacy" },
+      { "title": "Membership screening", "text": "Admins can ask new members up to 5 questions and have moderators approve them from Server settings, Membership.", "href": "/docs/guides/tambayans#invite-friends" },
+      { "title": "Tags and suggestion boards", "text": "Tag forum posts, mark questions solved, and run a suggestion board where members upvote ideas and moderators share progress.", "href": "/docs/guides/messages#forum-channels" },
+      { "title": "Remind me", "text": "Right-click a message, choose Remind me, and Diskarte brings it back when it's time.", "href": "/docs/guides/messages#remind-me" }
+    ],
+    "fixes": [],
+    "links": [
+      { "label": "Help Center", "href": "/docs" },
+      { "label": "Full changelog", "href": "/docs/changelog" }
+    ]
+  },
+  {
     "id": "2026-11-07-smoother-start",
     "date": "2026-11-07",
     "title": "A smoother start and dependable notifications",

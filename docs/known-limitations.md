@@ -11,6 +11,9 @@ couldn't confirm. Keep it current: remove items when they're fixed, add them whe
 | Messaging | No message reporting inside Tambayans, translation, or scheduling in DMs; scheduled messages are text-only |
 | Search | `simple` text configuration — no stemming or language-aware matching |
 | DMs | Friends-only; no read-receipt or typing opt-out; group DMs have no roles or icons |
+| Hangouts | No shared notes/boards inside a hangout, no files while temporary; expired ones are deleted by the next purge (platform job or the next hangout anyone starts), but already stop accepting messages |
+| Reminders | Server messages only; shown while the app is open (no push) |
+| Forums | No post subscriptions or notifications for followed posts |
 | Moments | Photos of purged moments stay in Storage until the author deletes their account |
 | Communities | Custom roles grant only private-channel access; no outgoing webhooks, bot accounts, OAuth apps, interactive commands or general automation builder |
 | Workspace | No real-time co-editing, cursors, comments, history or export |
@@ -28,7 +31,7 @@ couldn't confirm. Keep it current: remove items when they're fixed, add them whe
 | Rate limits | In-memory per instance unless Upstash is configured; Server Action and route-level limits (messages, voice tokens, previews) are always per instance |
 | Link previews | Cache is per instance (1 hour, 500 entries) |
 | Free tiers | Render sleeps after ~15 min idle; Supabase pauses after a week idle |
-| Background jobs | Recurring announcements, the moments purge and offline status clearing need the `pg_cron` platform job |
+| Background jobs | Recurring announcements, the moments purge, the hangout purge (also run on demand) and offline status clearing need the `pg_cron` platform job |
 | Migrations | Applied manually; no automated drift detection beyond `npm run db:check` |
 | Monitoring | No alerting or uptime monitoring configured in the repository |
 | Staging | No staging environment defined in the repository |
