@@ -15,7 +15,8 @@
     "links": [
       { "label": "Help Center", "href": "/docs" },
       { "label": "Full changelog", "href": "/docs/changelog" }
-    ]
+    ],
+    "requires": ["dm_conversations.hangout_until", "servers.join_questions", "channels.forum_mode", "saved_messages.remind_at"]
   },
   {
     "id": "2026-11-07-smoother-start",

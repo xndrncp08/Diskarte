@@ -38,7 +38,8 @@ sequenceDiagram
      "summary": "One or two friendly sentences: what changed for people.",
      "highlights": [{ "title": "Feature", "text": "What it does for you.", "href": "/docs/..." }],
      "fixes": ["Plain-language description of a fix people would notice."],
-     "links": [{ "label": "Help Center", "href": "/docs" }]
+     "links": [{ "label": "Help Center", "href": "/docs" }],
+     "requires": ["servers.join_questions"]
    }
    ```
 
@@ -46,6 +47,10 @@ sequenceDiagram
    - Links are Help Center paths (`/docs/...`) or full `https://` URLs; the docs test fails on a
      missing page or heading.
    - Skip internal-only changes (refactors, tests, docs fixes) — no entry, no post.
+   - `requires` (optional) lists one `table.column` per migration the release depends on. Production
+     posts only once every one of them exists; until then the result is `waiting-for-database` and
+     the next instance start checks again. Apply the migrations, then redeploy (or wait for a cold
+     start) and the post goes out.
 3. Merge and deploy as normal. The post appears when the first production instance starts.
 4. Check HQ `#announcements` (or Control Center → Broadcast → Release announcements).
 
@@ -69,6 +74,7 @@ The post format is fixed by `formatReleasePost()` in
 | Restarts and later cold starts | `already-published` — one cheap RPC per instance start, not awaited |
 | Rollback to an older deployment | `superseded`: an older release is never announced after a newer one |
 | Failed build / failed deploy | No server starts, so nothing is posted |
+| Release migrations not applied yet | `waiting-for-database` (logs name the missing `table.column`); nothing is posted or recorded until they exist |
 | Database error, missing channel | Nothing is recorded (the post and record are one transaction); the next instance retries. Logs show `{"event":"release_announcement","result":"failed"}` |
 | Someone tries to impersonate it | Only the service role can call the publisher; members can't post in read-only `#announcements`, and a webhook name never sticks to a member's post. The **Official** badge appears only on Diskarte Updates posts in Diskarte HQ |
 | Notifications | It's a normal channel post with no mentions: an unread pill in HQ, no push, and HQ mutes apply |

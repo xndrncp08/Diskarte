@@ -2,7 +2,7 @@
 
 import { AlarmClock } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useEffectEvent } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
 import { toast } from "sonner";
 import { useOptionalSupabase, useSupabase } from "@/components/providers/RuntimeConfig";
 import { Modal } from "@/components/ui/Modal";
@@ -49,10 +49,13 @@ export function ReminderDialog({ messageId, onClose, onSaved }: { messageId: str
 export function ReminderWatcher() {
   const supabase = useOptionalSupabase();
   const router = useRouter();
+  // Set on a database without the reminders migration: stop asking until the next page load.
+  const unsupported = useRef(false);
 
   const check = useEffectEvent(async () => {
-    if (!supabase) return;
+    if (!supabase || unsupported.current) return;
     const { data: due, error } = await supabase.from("saved_messages").select("message_id").lte("remind_at", new Date().toISOString()).limit(10);
+    if (error?.code === "42703") unsupported.current = true;
     if (error || !due?.length) return;
     const ids = due.map((d) => d.message_id);
     // Clear first so a second tab doesn't announce the same reminder.

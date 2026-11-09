@@ -41,4 +41,19 @@ describe("release announcer", () => {
     expect(log.mock.calls.map((c) => JSON.parse(c[0] as string).result)).toEqual(["published", "already-published", "failed"]);
     log.mockRestore();
   });
+
+  it("waits to announce until the release's database columns exist", async () => {
+    const { announceRelease } = await import("@/lib/releases-server");
+    const limit = vi.fn().mockResolvedValueOnce({ error: null }).mockResolvedValueOnce({ error: { code: "42703" } }).mockResolvedValue({ error: null });
+    const from = vi.fn(() => ({ select: () => ({ limit }) }));
+    const rpc = vi.fn().mockResolvedValue({ data: "published", error: null });
+    const db = { from, rpc } as never;
+    const log = vi.spyOn(console, "info").mockImplementation(() => {});
+    const gated = { ...release("2026-11-08-a"), requires: ["servers.join_questions", "channels.forum_mode"] };
+    expect(await announceRelease(gated, db, "https://diskarte.example")).toBe("waiting-for-database");
+    expect(rpc).not.toHaveBeenCalled();
+    expect(await announceRelease(gated, db, "https://diskarte.example")).toBe("published");
+    expect(from).toHaveBeenCalledWith("channels");
+    log.mockRestore();
+  });
 });

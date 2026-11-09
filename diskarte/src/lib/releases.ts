@@ -15,6 +15,11 @@ export interface Release {
   highlights: { title: string; text: string; href?: string }[];
   fixes: string[];
   links: { label: string; href: string }[];
+  /**
+   * Database columns (`table.column`) the release's features need. Production waits to announce
+   * until they exist, so a post never promises features whose migrations haven't been applied.
+   */
+  requires?: string[];
 }
 
 export const RELEASES = releases as Release[];
