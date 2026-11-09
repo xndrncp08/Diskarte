@@ -90,6 +90,9 @@ export interface Database {
           /** Rules members accept before posting; rules_updated_at moves when they change. Absent before the server-rules migration. */
           rules?: string | null;
           rules_updated_at?: string | null;
+          /** Joining questions (≤ 5 strings) and whether moderators approve joins; absent before migration 20261108010000. */
+          join_questions?: Json;
+          join_approval?: boolean;
           is_system: boolean;
           invite_code: string;
           automod_enabled: boolean;
@@ -350,6 +353,10 @@ export interface Database {
         { server_id: string; channel_id: string; content: string; weekday?: number | null; at_time: string; time_zone: string; enabled?: boolean }
       >;
       release_announcements: TableDef<{ release_id: string; released_on: string; title: string; message_id: string | null; published_at: string; withdrawn_at: string | null }, never>;
+      join_requests: TableDef<
+        { server_id: string; user_id: string; answers: Json; status: "pending" | "approved" | "rejected"; created_at: string; decided_by: string | null; decided_at: string | null },
+        never
+      >;
       rules_acceptances: TableDef<{ server_id: string; user_id: string; accepted_at: string }, never>;
       member_xp: TableDef<{ server_id: string; user_id: string; xp: number; last_award_at: string | null }, never>;
       friend_favourites: TableDef<{ owner_id: string; target_id: string; created_at: string }, { owner_id?: string; target_id: string }>;
@@ -516,6 +523,10 @@ export interface Database {
       create_hangout: { Args: { p_user_ids: string[]; p_name?: string | null; p_topic?: HangoutTopic; p_hours?: number }; Returns: string };
       extend_hangout: { Args: { p_conversation_id: string; p_hours?: number; p_keep?: boolean }; Returns: string | null };
       end_hangout: { Args: { p_conversation_id: string }; Returns: undefined };
+      join_screening: { Args: { p_code?: string | null; p_server?: string | null }; Returns: Json };
+      request_to_join: { Args: { p_code?: string | null; p_server?: string | null; p_answers: string[] }; Returns: string };
+      decide_join_request: { Args: { p_server: string; p_user: string; p_approve: boolean }; Returns: undefined };
+      set_join_screening: { Args: { p_server: string; p_questions: string[]; p_approval: boolean }; Returns: undefined };
       friends_activity: {
         Args: Record<string, never>;
         Returns: { user_id: string; status: PresenceStatus; voice_server_id: string | null; voice_channel_id: string | null; last_seen_at: string }[];

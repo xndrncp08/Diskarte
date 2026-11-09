@@ -5,6 +5,7 @@ import { Switch } from "@/components/ui/Switch";
 import { useRouter } from "next/navigation";
 import {
   Ban,
+  ClipboardCheck,
   ClipboardList,
   HeartHandshake,
   ImagePlus,
@@ -52,6 +53,7 @@ import { SupportSettings } from "./settings/SupportSettings";
 import { WebhooksPanel } from "./settings/WebhooksPanel";
 import { AnnouncementsPanel } from "./settings/AnnouncementsPanel";
 import { ExportSettings } from "./settings/ExportSettings";
+import { MembershipPanel } from "./JoinScreening";
 
 export type SettingsTab =
   | "overview"
@@ -60,6 +62,7 @@ export type SettingsTab =
   | "audit"
   | "bans"
   | "invites"
+  | "membership"
   | "emoji"
   | "soundboard"
   | "webhooks"
@@ -73,6 +76,7 @@ const TABS: { id: SettingsTab; label: string; adminOnly: boolean }[] = [
   { id: "audit", label: "Audit log", adminOnly: false },
   { id: "bans", label: "Bans", adminOnly: false },
   { id: "invites", label: "Invites", adminOnly: false },
+  { id: "membership", label: "Membership", adminOnly: false },
   { id: "emoji", label: "Emoji", adminOnly: true },
   { id: "soundboard", label: "Soundboard", adminOnly: true },
   { id: "webhooks", label: "Webhooks", adminOnly: true },
@@ -138,6 +142,7 @@ function SettingsTabs({
     audit: ClipboardList,
     bans: Ban,
     invites: Link,
+    membership: ClipboardCheck,
     emoji: Smile,
     soundboard: Volume2,
     webhooks: Webhook,
@@ -151,6 +156,7 @@ function SettingsTabs({
     audit: <AuditLogPanel />,
     bans: <BansPanel />,
     invites: <InvitesPanel />,
+    membership: <MembershipPanel />,
     emoji: <EmojiSettings />,
     soundboard: <SoundboardSettings />,
     webhooks: <WebhooksPanel />,

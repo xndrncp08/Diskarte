@@ -4,13 +4,13 @@
 > `supabase/migrations/`. The Vitest suite fails when this file is stale. Descriptions come from the SQL
 > comment directly above each `create table` / `create function`, so document objects there.
 
-Built by applying all 53 migrations to PGlite with the Supabase stand-ins in
+Built by applying all 54 migrations to PGlite with the Supabase stand-ins in
 `diskarte/tests/db/supabase-shim.sql`. Supabase-managed schemas (`auth`, `storage`, `realtime`) are only
 shown where Diskarte adds policies or rows. Table grants reflect Supabase's default privileges (mirrored by
 the shim) minus the migrations' revokes; RLS policies, not grants, decide which rows a role sees.
 For the narrative overview see [database.md](../database.md).
 
-**60 tables · 114 RLS policies · 199 functions · 67 triggers · 30 Realtime tables · 5 Storage buckets**
+**61 tables · 115 RLS policies · 204 functions · 67 triggers · 31 Realtime tables · 5 Storage buckets**
 
 ## Contents
 
@@ -48,6 +48,7 @@ For the narrative overview see [database.md](../database.md).
 | [`public.friend_favourites`](#public-friend-favourites) | on |  |  |
 | [`public.friend_nicknames`](#public-friend-nicknames) | on |  |  |
 | [`public.friendships`](#public-friendships) | on | yes | Friends and blocks |
+| [`public.join_requests`](#public-join-requests) | on | yes |  |
 | [`public.lfg_beacons`](#public-lfg-beacons) | on | yes | LFG beacons |
 | [`public.lfg_party_members`](#public-lfg-party-members) | on | yes |  |
 | [`public.member_roles`](#public-member-roles) | on | yes |  |
@@ -839,6 +840,42 @@ Indexes:
 Triggers:
 
 - `push_friend AFTER INSERT ON public.friendships FOR EACH ROW EXECUTE FUNCTION private_push.capture()`
+
+<a id="public-join-requests"></a>
+
+### `public.join_requests`
+
+RLS **enabled** · in the `supabase_realtime` publication · created in `20261108010000_membership_screening`
+
+Grants: `authenticated` SELECT
+
+| Column | Type | Null | Default |
+| --- | --- | --- | --- |
+| `server_id` | `uuid` |  |  |
+| `user_id` | `uuid` |  |  |
+| `answers` | `jsonb` |  | `'[]'::jsonb` |
+| `status` | `text` |  | `'pending'::text` |
+| `created_at` | `timestamp with time zone` |  | `now()` |
+| `decided_by` | `uuid` | yes |  |
+| `decided_at` | `timestamp with time zone` | yes |  |
+
+| Constraint | Kind | Definition |
+| --- | --- | --- |
+| `join_requests_answers_check` | check | `CHECK (((jsonb_typeof(answers) = 'array'::text) AND (jsonb_array_length(answers) <= 5)))` |
+| `join_requests_status_check` | check | `CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])))` |
+| `join_requests_decided_by_fkey` | foreign key | `FOREIGN KEY (decided_by) REFERENCES profiles(id) ON DELETE SET NULL` |
+| `join_requests_server_id_fkey` | foreign key | `FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE` |
+| `join_requests_user_id_fkey` | foreign key | `FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE` |
+| `join_requests_pkey` | primary key | `PRIMARY KEY (server_id, user_id)` |
+
+Indexes:
+
+- `CREATE INDEX join_requests_pending_idx ON public.join_requests (server_id, created_at) WHERE (status = 'pending'::text)`
+- `CREATE INDEX join_requests_user_idx ON public.join_requests (user_id)`
+
+| Policy | Command | Roles | Using | With check |
+| --- | --- | --- | --- | --- |
+| applicants and moderators see join requests | SELECT | authenticated | `((user_id = ( SELECT auth.uid() AS uid)) OR has_server_role(server_id, 'moderator'::member_role))` |  |
 
 <a id="public-lfg-beacons"></a>
 
@@ -1993,6 +2030,8 @@ Grants: `authenticated` DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, U
 | `welcome_message` | `text` | yes |  |
 | `rules` | `text` | yes |  |
 | `rules_updated_at` | `timestamp with time zone` | yes |  |
+| `join_questions` | `jsonb` |  | `'[]'::jsonb` |
+| `join_approval` | `boolean` |  | `false` |
 
 | Constraint | Kind | Definition |
 | --- | --- | --- |
@@ -2002,6 +2041,7 @@ Grants: `authenticated` DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, U
 | `servers_description_check` | check | `CHECK ((char_length(description) <= 280))` |
 | `servers_gcash_number_check` | check | `CHECK (((gcash_number IS NULL) OR (gcash_number ~ '^09[0-9]{9}$'::text)))` |
 | `servers_icon_url_check` | check | `CHECK (((icon_url IS NULL) OR ((char_length(icon_url) <= 1024) AND (icon_url ~ '^https://[^[:space:]"''()<>]+$'::text))))` |
+| `servers_join_questions_check` | check | `CHECK (((jsonb_typeof(join_questions) = 'array'::text) AND (jsonb_array_length(join_questions) <= 5)))` |
 | `servers_maya_number_check` | check | `CHECK (((maya_number IS NULL) OR (maya_number ~ '^09[0-9]{9}$'::text)))` |
 | `servers_name_check` | check | `CHECK (((char_length(btrim(name)) >= 2) AND (char_length(btrim(name)) <= 64)))` |
 | `servers_rules_check` | check | `CHECK (((rules IS NULL) OR ((char_length(btrim(rules)) >= 1) AND (char_length(btrim(rules)) <= 2000))))` |
@@ -2381,7 +2421,7 @@ rights, so each one re-checks the caller itself; invoker functions stay subject 
 | `ban_member(p_server_id uuid, p_user_id uuid, p_reason text)` | `void` | definer, volatile | authenticated |  |
 | `block_user(p_user_id uuid)` | `void` | definer, volatile | authenticated |  |
 | `bootstrap_server()` | `trigger` | definer, volatile | authenticated |  |
-| `can_access_realtime_topic(p_topic text)` | `boolean` | definer, stable | anon, authenticated |  |
+| `can_access_realtime_topic(p_topic text)` | `boolean` | definer, stable | anon, authenticated | Moderators watch their server's join queue live (rows are still filtered by RLS). |
 | `can_edit_workspace(p_channel uuid)` | `boolean` | definer, stable | authenticated |  |
 | `can_see_moment(p_author uuid, p_audience text, p_expires timestamp with time zone)` | `boolean` | definer, stable | authenticated |  |
 | `can_upload_dm_attachment(p_conversation uuid)` | `boolean` | definer, stable | authenticated | Temporary hangouts take no file uploads, so deleting one never leaves files behind in Storage. |
@@ -2402,6 +2442,7 @@ rights, so each one re-checks the caller itself; invoker functions stay subject 
 | `create_poll(p_channel uuid, p_question text, p_options text[], p_multi boolean, p_hours integer)` | `uuid` | definer, volatile | authenticated | Post a poll: the question is the message text (so slow mode, AutoMod and read-only channels apply). |
 | `create_server(p_name text, p_description text, p_icon_url text)` | `uuid` | definer, volatile | authenticated | RPCs |
 | `create_server_from_template(p_name text, p_description text, p_template text)` | `uuid` | invoker, volatile | authenticated |  |
+| `decide_join_request(p_server uuid, p_user uuid, p_approve boolean)` | `void` | definer, volatile | authenticated | Moderators approve (adds the member) or reject a pending request. |
 | `delete_my_account(p_confirm text)` | `void` | definer, volatile | authenticated |  |
 | `delete_workspace_document(p_id uuid, p_revision integer)` | `void` | definer, volatile | authenticated |  |
 | `direct_messages_after_insert()` | `trigger` | definer, volatile | trigger |  |
@@ -2411,7 +2452,7 @@ rights, so each one re-checks the caller itself; invoker functions stay subject 
 | `discover_servers(p_query text, p_category text, p_limit integer, p_offset integer)` | `TABLE(id uuid, name text, description text, icon_url text, category text, member_count bigint, active_members bigint, is_member boolean)` | definer, stable | authenticated | Listed servers, most active first. `p_query` matches name or description. |
 | `dm_attachment_guard()` | `trigger` | definer, volatile | trigger |  |
 | `end_hangout(p_conversation_id uuid)` | `void` | definer, volatile | authenticated | The host ends a hangout for everyone now: the conversation and its messages are deleted. |
-| `export_my_data()` | `jsonb` | definer, stable | authenticated |  |
+| `export_my_data()` | `jsonb` | definer, stable | authenticated | Data export: your join requests and the answers you gave. |
 | `export_my_data_base()` | `jsonb` | definer, stable | internal |  |
 | `export_server_settings(p_server uuid)` | `jsonb` | invoker, stable | authenticated |  |
 | `extend_hangout(p_conversation_id uuid, p_hours integer, p_keep boolean)` | `timestamp with time zone` | definer, volatile | authenticated | Any participant can push the end time out by 1–6 hours (never more than 24 hours from now). The host can also keep it for good (p_keep), which turns it into an ordinary group DM. |
@@ -2439,7 +2480,8 @@ rights, so each one re-checks the caller itself; invoker functions stay subject 
 | `join_everyone_to_system_server()` | `integer` | definer, volatile | internal | Puts every profile in the global server (creators as admins). Idempotent; used for the backfill. |
 | `join_lfg(p_beacon_id uuid)` | `uuid` | definer, volatile | authenticated | 1-click "Join Party": returns the beacon's voice channel (if any) so the client can hop in. |
 | `join_public_server(p_server uuid)` | `uuid` | definer, volatile | authenticated | Join a listed server without an invite (same rules as joining by invite). |
-| `join_server(p_code text)` | `uuid` | definer, volatile | authenticated | Joining with a limited invite uses it up (rejoining as a member doesn't). |
+| `join_screening(p_code text, p_server uuid)` | `jsonb` | definer, stable | authenticated | What the join form shows: the server's name, rules, questions, and whether approval is needed. |
+| `join_server(p_code text)` | `uuid` | definer, volatile | authenticated | Joining by invite (and so from Explore) defers to the screening form while it's switched on. |
 | `leave_dm(p_conversation_id uuid)` | `void` | definer, volatile | authenticated |  |
 | `leave_lfg(p_beacon_id uuid)` | `void` | definer, volatile | authenticated |  |
 | `list_push_devices()` | `TABLE(id uuid, device_id uuid, label text, created_at timestamp with time zone, last_delivered_at timestamp with time zone)` | definer, stable | authenticated |  |
@@ -2499,7 +2541,9 @@ rights, so each one re-checks the caller itself; invoker functions stay subject 
 | `remove_timeout(p_server uuid, p_user uuid)` | `void` | definer, volatile | authenticated |  |
 | `rename_group_dm(p_conversation_id uuid, p_name text)` | `void` | definer, volatile | authenticated |  |
 | `request_push_test(p_device uuid)` | `void` | definer, volatile | authenticated |  |
+| `request_to_join(p_code text, p_server uuid, p_answers jsonb)` | `text` | definer, volatile | authenticated | Answer the questions and join (no approval), or file a pending request (approval). Returns 'joined' or 'pending'. A rejected applicant can ask again after a day. |
 | `reset_server_xp(p_server uuid)` | `void` | definer, volatile | authenticated | Admins can start a season over. |
+| `resolve_join_target(p_code text, p_server uuid, OUT server_id uuid, OUT invite_code text)` | `record` | definer, stable | internal | Server (and the limited invite, if any) a join form refers to: a live invite code, or a public server. |
 | `respond_friend_request(p_user_id uuid, p_accept boolean)` | `void` | definer, volatile | authenticated |  |
 | `respond_ring(p_ring uuid, p_accept boolean)` | `text` | definer, volatile | authenticated | Callee answers. A ring that has run out is marked missed and refused. |
 | `revoke_invite(p_code text)` | `void` | definer, volatile | authenticated |  |
@@ -2528,6 +2572,7 @@ rights, so each one re-checks the caller itself; invoker functions stay subject 
 | `servers_normalize()` | `trigger` | invoker, volatile | trigger | Custom auto-mod terms are stored trimmed, lower-case, unique and 2–60 characters long. |
 | `servers_owner_promote()` | `trigger` | definer, volatile | authenticated | Ownership transfer promotes the new owner to admin. |
 | `servers_rules_stamp()` | `trigger` | invoker, volatile | anon, authenticated |  |
+| `set_join_screening(p_server uuid, p_questions jsonb, p_approval boolean)` | `void` | definer, volatile | authenticated | Admins set the questions (0–5, each 1–200 characters) and whether moderators approve joins. |
 | `set_updated_at()` | `trigger` | invoker, volatile | authenticated | Utility functions |
 | `soundboard_clips_audit()` | `trigger` | definer, volatile | trigger |  |
 | `soundboard_clips_guard()` | `trigger` | definer, volatile | trigger |  |
@@ -2572,6 +2617,7 @@ Tables whose row changes Supabase Realtime streams (`postgres_changes`). Clients
 - `public.dm_participants`
 - `public.event_rsvps`
 - `public.friendships`
+- `public.join_requests`
 - `public.lfg_beacons`
 - `public.lfg_party_members`
 - `public.member_roles`
@@ -2678,6 +2724,8 @@ erDiagram
   public_friend_favourites }o--|| public_profiles : "owner_id"
   public_friend_nicknames }o--|| public_profiles : "owner_id"
   public_friendships }o--|| public_profiles : "requested_by"
+  public_join_requests }o--|| public_profiles : "decided_by"
+  public_join_requests }o--|| public_servers : "server_id"
   public_lfg_beacons }o--|| public_profiles : "author_id"
   public_lfg_beacons }o--|| public_servers : "server_id"
   public_lfg_beacons }o--|| public_channels : "voice_channel_id"
@@ -2817,3 +2865,4 @@ Applied in filename order. The first descriptive comment line of each file:
 | [`20261030010000_recurring_announcements.sql`](../../supabase/migrations/20261030010000_recurring_announcements.sql) | Recurring announcements: an admin automation that posts a message in a text channel every day, |
 | [`20261107000000_release_announcements.sql`](../../supabase/migrations/20261107000000_release_announcements.sql) | Official release announcements: when a production deployment of Diskarte starts serving, the |
 | [`20261108000000_hangouts.sql`](../../supabase/migrations/20261108000000_hangouts.sql) | Instant Hangouts + friends' live activity. |
+| [`20261108010000_membership_screening.sql`](../../supabase/migrations/20261108010000_membership_screening.sql) | Membership screening: joining questions and moderator approval. |

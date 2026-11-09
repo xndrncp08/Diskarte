@@ -42,7 +42,15 @@ const DB_ERRORS: Record<string, string> = {
   ONLY_ADMINS_CAN_REGENERATE_INVITES: "Only admins can reset the invite.",
   ONLY_ADMINS_CHANGE_PRIVACY: "Only admins can make a channel private or public.",
   server_roles_name_idx: "There's already a role with that name.",
+  INVALID_ANSWERS: "Answer every question (up to 500 characters each).",
+  JOIN_REQUEST_REJECTED: "Your request was declined. You can ask again tomorrow.",
+  JOIN_REQUEST_NOT_FOUND: "That request was already handled.",
+  INVALID_QUESTIONS: "Up to 5 questions, 200 characters each.",
+  NOT_ALLOWED: "You don't have permission to do that.",
 };
+
+/** join_server refused because the Tambayan asks questions or approves joins first. */
+const SCREENING: ActionResult<never> = { ok: false, code: "SCREENING_REQUIRED" };
 
 function dbError(message: string | undefined, fallback: string) {
   if (!message) return fallback;
@@ -89,6 +97,7 @@ export async function joinServerAction(input: { invite: string }): Promise<Actio
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("join_server", { p_code: code });
+  if (error?.message.includes("SCREENING_REQUIRED")) return SCREENING;
   if (error || !data) return { ok: false, error: dbError(error?.message, "Couldn't join. Try again.") };
   revalidatePath("/tambayan", "layout");
   return { ok: true, data: { serverId: data } };
@@ -137,9 +146,57 @@ export async function joinPublicServerAction(input: { serverId: string }): Promi
   if (!uuidSchema.safeParse(input.serverId).success) return { ok: false, error: "Invalid server" };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("join_public_server", { p_server: input.serverId });
+  if (error?.message.includes("SCREENING_REQUIRED")) return SCREENING;
   if (error || !data) return { ok: false, error: dbError(error?.message, "Couldn't join. Try again.") };
   revalidatePath("/tambayan", "layout");
   return { ok: true, data: { serverId: data } };
+}
+
+// ---------------------------------------------------------------------------------------
+// Membership screening (migration 20261108010000)
+// ---------------------------------------------------------------------------------------
+
+const joinTarget = z.union([z.object({ invite: z.string().min(1).max(200) }), z.object({ serverId: z.uuid() })]);
+
+/** Answer a Tambayan's joining questions: joins now, or files a request moderators approve. */
+export async function requestToJoinAction(input: z.input<typeof joinTarget> & { answers: string[] }): Promise<ActionResult<{ status: "joined" | "pending"; serverId?: string }>> {
+  const { limited } = await authed();
+  if (limited) return RATE_LIMITED;
+  const target = joinTarget.safeParse(input);
+  const answers = z.array(z.string().trim().min(1, "Answer every question.").max(500, "500 characters max")).max(5).safeParse(input.answers);
+  if (!target.success) return { ok: false, error: "Invalid invite" };
+  if (!answers.success) return { ok: false, error: answers.error.issues[0]?.message };
+  const code = "invite" in target.data ? parseInviteInput(target.data.invite) : null;
+  if ("invite" in target.data && !code) return { ok: false, error: "That invite is invalid or has expired." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("request_to_join", { p_code: code, p_server: "serverId" in target.data ? target.data.serverId : null, p_answers: answers.data });
+  if (error || !data) return { ok: false, error: dbError(error?.message, "Couldn't send that. Try again.") };
+  if (data === "joined") revalidatePath("/tambayan", "layout");
+  return { ok: true, data: { status: data === "joined" ? "joined" : "pending" } };
+}
+
+export async function setJoinScreeningAction(input: { serverId: string; questions: string[]; approval: boolean }): Promise<ActionResult> {
+  const { limited } = await authed();
+  if (limited) return RATE_LIMITED;
+  const parsed = z
+    .object({ serverId: z.uuid(), questions: z.array(z.string().trim().max(200, "200 characters max")).max(5, "Up to 5 questions."), approval: z.boolean() })
+    .safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_join_screening", { p_server: parsed.data.serverId, p_questions: parsed.data.questions.filter(Boolean), p_approval: parsed.data.approval });
+  return error ? { ok: false, error: dbError(error.message, "Couldn't save screening.") } : { ok: true };
+}
+
+export async function decideJoinRequestAction(input: { serverId: string; userId: string; approve: boolean }): Promise<ActionResult> {
+  const { limited } = await authed();
+  if (limited) return RATE_LIMITED;
+  const parsed = z.object({ serverId: z.uuid(), userId: z.uuid(), approve: z.boolean() }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid request" };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("decide_join_request", { p_server: parsed.data.serverId, p_user: parsed.data.userId, p_approve: parsed.data.approve });
+  if (error) return { ok: false, error: dbError(error.message, "Couldn't update the request.") };
+  revalidatePath(`/tambayan/${parsed.data.serverId}`, "layout");
+  return { ok: true };
 }
 
 export async function deleteServerAction(input: { serverId: string; confirmName: string }): Promise<ActionResult> {

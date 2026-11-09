@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState } from "react";
+import { JoinScreeningDialog, type JoinTarget } from "@/components/server/JoinScreening";
 import { toast } from "sonner";
 import { joinPublicServerAction } from "@/actions/servers";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
@@ -43,6 +44,7 @@ export function ExploreView({ servers }: { servers: Server[] }) {
   const [results, setResults] = useState<Listing[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [joining, setJoining] = useState<string | null>(null);
+  const [screening, setScreening] = useState<JoinTarget | null>(null);
   const [offset, setOffset] = useState(0);
   const [more, setMore] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -105,6 +107,7 @@ export function ExploreView({ servers }: { servers: Server[] }) {
     setJoining(listing.id);
     try {
       const result = await joinPublicServerAction({ serverId: listing.id });
+      if (result.code === "SCREENING_REQUIRED") return setScreening({ serverId: listing.id });
       if (!result.ok) return void toast.error(result.error ?? "Couldn't join.");
       toast.success(`Welcome to ${listing.name}!`);
       router.push(`/tambayan/${listing.id}`);
@@ -319,6 +322,7 @@ export function ExploreView({ servers }: { servers: Server[] }) {
           </div>
         </section>
       </WorkspacePanel>
+      <JoinScreeningDialog target={screening} onClose={() => setScreening(null)} onJoined={(serverId) => router.push(`/tambayan/${serverId}`)} />
     </>
   );
 }
