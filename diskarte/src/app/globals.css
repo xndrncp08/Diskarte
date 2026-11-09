@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./experience.css";
+@import "./pulse.css";
 
 @theme {
   --color-midnight: #0f172a;

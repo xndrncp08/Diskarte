@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { cookies, headers } from "next/headers";
-import { Inter, JetBrains_Mono, Press_Start_2P, Silkscreen } from "next/font/google";
+import { Bricolage_Grotesque, Figtree, Inter, JetBrains_Mono, Press_Start_2P, Silkscreen } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { AppToaster } from "@/components/AppToaster";
 import { RuntimeConfigProvider } from "@/components/providers/RuntimeConfig";
 import { PwaProvider } from "@/components/providers/PwaProvider";
 import { VisitBeacon } from "@/components/VisitBeacon";
 import { tryGetPublicEnv } from "@/lib/env";
+import { parseShell, SHELL_COOKIE } from "@/lib/shell";
 import { isTheme, THEME_COOKIE } from "@/lib/theme";
 import "./globals.css";
 
@@ -14,6 +15,9 @@ const inter = Inter({ variable: "--font-inter", subsets: ["latin"], display: "sw
 const pressStart = Press_Start_2P({ variable: "--font-press-start", weight: "400", subsets: ["latin"], display: "swap" });
 const silkscreen = Silkscreen({ variable: "--font-silkscreen", weight: ["400", "700"], subsets: ["latin"], display: "swap" });
 const jetbrains = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"], display: "swap" });
+// Pulse-only fonts: not preloaded, so Classic never downloads them (only Pulse styles reference them).
+const bricolage = Bricolage_Grotesque({ variable: "--font-bricolage", weight: ["500", "700", "800"], subsets: ["latin"], display: "swap", preload: false });
+const figtree = Figtree({ variable: "--font-figtree", weight: ["400", "500", "600", "700"], subsets: ["latin"], display: "swap", preload: false });
 
 export const TAGLINE = "Tara, Tambay Tayo. Ang Bagong Istambayan ng Bayan.";
 
@@ -70,7 +74,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       lang={language}
       data-color-mode={mode}
       data-theme={isTheme(theme) ? theme : undefined}
-      className={`${inter.variable} ${pressStart.variable} ${silkscreen.variable} ${jetbrains.variable} h-full`}
+      data-shell={parseShell(jar.get(SHELL_COOKIE)?.value)}
+      className={`${inter.variable} ${pressStart.variable} ${silkscreen.variable} ${jetbrains.variable} ${bricolage.variable} ${figtree.variable} h-full`}
       suppressHydrationWarning
     >
       <head>{mode === "system" && <script nonce={nonce ?? undefined} dangerouslySetInnerHTML={{ __html: "document.documentElement.dataset.colorMode=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'" }} />}</head>

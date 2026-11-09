@@ -1,0 +1,157 @@
+/*
+ * Diskarte Pulse tokens (docs/design-system.md#diskarte-pulse). Everything is scoped to
+ * html[data-shell="pulse"], so Classic renders exactly as before. Colour hexes mirror
+ * src/lib/pulse-tokens.ts; tests/ui/pulse-tokens.test.ts keeps them in sync and checks contrast.
+ */
+
+/* Tailwind aliases (bg-pulse-surface, text-pulse-muted, rounded-pulse-card, font-display…). `inline` makes
+   utilities read the --pulse-* var where they are used; they only resolve inside the Pulse shell. */
+@theme inline {
+  --color-pulse-bg: var(--pulse-bg);
+  --color-pulse-surface: var(--pulse-surface);
+  --color-pulse-raised: var(--pulse-raised);
+  --color-pulse-line: var(--pulse-line);
+  --color-pulse-line-strong: var(--pulse-line-strong);
+  --color-pulse-text: var(--pulse-text);
+  --color-pulse-muted: var(--pulse-text-muted);
+  --color-pulse-faint: var(--pulse-text-faint);
+  --color-pulse-accent: var(--pulse-accent);
+  --color-pulse-accent-ink: var(--pulse-accent-ink);
+  --color-pulse-on-accent: var(--pulse-on-accent);
+  --color-pulse-live: var(--pulse-live);
+  --color-pulse-alert: var(--pulse-alert);
+  --color-pulse-people: var(--pulse-people);
+  --color-pulse-focus: var(--pulse-focus-ring);
+  --color-pulse-online: var(--pulse-presence-online);
+  --color-pulse-idle: var(--pulse-presence-idle);
+  --color-pulse-dnd: var(--pulse-presence-dnd);
+  --color-pulse-offline: var(--pulse-presence-offline);
+
+  --radius-pulse-control: var(--pulse-radius-control);
+  --radius-pulse-item: var(--pulse-radius-item);
+  --radius-pulse-card: var(--pulse-radius-card);
+  --radius-pulse-sheet: var(--pulse-radius-sheet);
+
+  --shadow-pulse-1: var(--pulse-elevation-1);
+  --shadow-pulse-2: var(--pulse-elevation-2);
+  --shadow-pulse-3: var(--pulse-elevation-3);
+
+  --font-display: var(--pulse-font-display);
+  --font-text: var(--pulse-font-text);
+
+  --text-pulse-caption: var(--pulse-size-12);
+  --text-pulse-caption--line-height: var(--pulse-leading-12);
+  --text-pulse-label: var(--pulse-size-13);
+  --text-pulse-label--line-height: var(--pulse-leading-13);
+  --text-pulse-body: var(--pulse-size-15);
+  --text-pulse-body--line-height: var(--pulse-leading-15);
+  --text-pulse-lead: var(--pulse-size-17);
+  --text-pulse-lead--line-height: var(--pulse-leading-17);
+  --text-pulse-title: var(--pulse-size-20);
+  --text-pulse-title--line-height: var(--pulse-leading-20);
+  --text-pulse-heading: var(--pulse-size-24);
+  --text-pulse-heading--line-height: var(--pulse-leading-24);
+  --text-pulse-display: var(--pulse-size-32);
+  --text-pulse-display--line-height: var(--pulse-leading-32);
+  --text-pulse-hero: var(--pulse-size-44);
+  --text-pulse-hero--line-height: var(--pulse-leading-44);
+}
+
+/* Dark (default) palette and every mode-independent token. */
+html[data-shell="pulse"] {
+  --pulse-bg: #121016;
+  --pulse-surface: #1b1820;
+  --pulse-raised: #24202b;
+  --pulse-line: #312c39;
+  --pulse-line-strong: #443d4f;
+  --pulse-text: #f2eee6;
+  --pulse-text-muted: #a8a2b3;
+  --pulse-text-faint: #8b8597;
+  --pulse-sun: #ffb800;
+  --pulse-on-sun: #1a1300;
+  --pulse-sun-ink: #ffc93d;
+  --pulse-dagat: #2cc8b4;
+  --pulse-gumamela: #ff6b5e;
+  --pulse-ube: #a68cf0;
+  --pulse-presence-online: #3ecf6e;
+  --pulse-presence-idle: #ffb800;
+  --pulse-presence-dnd: #ff6b5e;
+  --pulse-presence-offline: #8b8597;
+  --pulse-elevation-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --pulse-elevation-2: 0 8px 24px rgb(0 0 0 / 0.45);
+  --pulse-elevation-3: 0 24px 64px rgb(0 0 0 / 0.55);
+
+  /* Semantic roles: components use these, never the palette names above. */
+  --pulse-accent: var(--pulse-sun);
+  --pulse-accent-ink: var(--pulse-sun-ink);
+  --pulse-on-accent: var(--pulse-on-sun);
+  --pulse-live: var(--pulse-dagat);
+  --pulse-alert: var(--pulse-gumamela);
+  --pulse-people: var(--pulse-ube);
+  --pulse-focus-ring: var(--pulse-sun-ink);
+
+  --pulse-radius-control: 6px;
+  --pulse-radius-item: 10px;
+  --pulse-radius-card: 16px;
+  --pulse-radius-sheet: 24px;
+
+  --pulse-dur-press: 120ms;
+  --pulse-dur-ui: 200ms;
+  --pulse-dur-sheet: 320ms;
+  --pulse-dur-loop: 1.6s;
+  --pulse-ease: cubic-bezier(0.23, 1, 0.32, 1);
+
+  --pulse-font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --pulse-font-text: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+  --pulse-size-12: 12px; --pulse-leading-12: 16px;
+  --pulse-size-13: 13px; --pulse-leading-13: 18px;
+  --pulse-size-15: 15px; --pulse-leading-15: 22px;
+  --pulse-size-17: 17px; --pulse-leading-17: 24px;
+  --pulse-size-20: 20px; --pulse-leading-20: 26px;
+  --pulse-size-24: 24px; --pulse-leading-24: 30px;
+  --pulse-size-32: 32px; --pulse-leading-32: 38px;
+  --pulse-size-44: 44px; --pulse-leading-44: 48px;
+
+  /* 4 px grid; Tailwind's own spacing (p-1 = 4 px) already matches, these are for raw CSS. */
+  --pulse-space-1: 4px; --pulse-space-2: 8px; --pulse-space-3: 12px; --pulse-space-4: 16px; --pulse-space-5: 20px;
+  --pulse-space-6: 24px; --pulse-space-8: 32px; --pulse-space-10: 40px; --pulse-space-12: 48px; --pulse-space-16: 64px;
+}
+
+html[data-shell="pulse"][data-color-mode="light"] {
+  --pulse-bg: #f7f6f2;
+  --pulse-surface: #ffffff;
+  --pulse-raised: #efede7;
+  --pulse-line: #e1ddd3;
+  --pulse-line-strong: #cfc9bc;
+  --pulse-text: #1a1720;
+  --pulse-text-muted: #5f596a;
+  --pulse-text-faint: #7a7484;
+  --pulse-sun: #ffb800;
+  --pulse-on-sun: #1a1300;
+  --pulse-sun-ink: #8a5a00;
+  --pulse-dagat: #0a786b;
+  --pulse-gumamela: #c4342a;
+  --pulse-ube: #6a4fb3;
+  --pulse-presence-online: #1f8a4c;
+  --pulse-presence-idle: #a86b00;
+  --pulse-presence-dnd: #c4342a;
+  --pulse-presence-offline: #7a7484;
+  --pulse-elevation-1: 0 1px 2px rgb(26 23 32 / 0.08);
+  --pulse-elevation-2: 0 8px 24px rgb(26 23 32 / 0.12);
+  --pulse-elevation-3: 0 24px 64px rgb(26 23 32 / 0.18);
+}
+
+/* The six themes (src/lib/theme.ts) recolour the accent and tint the ground; Solar keeps the exact palette. */
+html[data-shell="pulse"][data-theme]:not([data-theme="solar"]) {
+  --pulse-sun: var(--color-sun);
+  --pulse-sun-ink: var(--color-sun);
+  --pulse-bg: color-mix(in srgb, var(--color-sun) 6%, #121016);
+}
+html[data-shell="pulse"][data-color-mode="light"][data-theme]:not([data-theme="solar"]) {
+  --pulse-sun-ink: color-mix(in srgb, var(--color-sun) 42%, #1a1720);
+  --pulse-bg: color-mix(in srgb, var(--color-sun) 6%, #f7f6f2);
+}
+
+html[data-shell="pulse"] body {
+  font-family: var(--pulse-font-text);
+}
