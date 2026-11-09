@@ -546,7 +546,8 @@
   border-radius: 0.75rem;
   padding-inline: 1rem;
   background: var(--color-sun);
-  color: var(--color-abyss);
+  /* Fixed dark text: --color-abyss turns light in light mode, and sun needs dark text either way. */
+  color: #0f172a;
   font-size: 0.8125rem;
   font-weight: 700;
   transition: transform 120ms ease-out;
