@@ -44,3 +44,20 @@ describe("saved messages", () => {
     expect(new Date(u.last_message_at) > new Date(u.read_at)).toBe(true);
   });
 });
+
+describe("message reminders", () => {
+  it("sets and clears a reminder on your own saved message, never someone else's", async () => {
+    await asUser(db, juan);
+    await db.query("update public.saved_messages set remind_at = now() + interval '1 hour' where message_id = $1", [message]);
+    expect(await rows(db, "select message_id from public.saved_messages where remind_at is not null")).toEqual([{ message_id: message }]);
+    // Only the reminder time can change.
+    expect(await failure(db, "update public.saved_messages set saved_at = now() where message_id = $1", [message])).toMatch(/permission denied/);
+    await asUser(db, owner);
+    await db.query("insert into public.saved_messages (message_id) values ($1)", [message]);
+    await db.query("update public.saved_messages set remind_at = now() where user_id = $1", [juan]);
+    await asUser(db, juan);
+    expect(await rows(db, "select 1 from public.saved_messages where remind_at <= now()")).toHaveLength(0);
+    await db.query("update public.saved_messages set remind_at = null where message_id = $1", [message]);
+    expect(await rows(db, "select 1 from public.saved_messages where remind_at is not null")).toHaveLength(0);
+  });
+});

@@ -29,6 +29,7 @@ import { OfflineBanner } from "./OfflineBanner";
 import { PinsDrawer } from "./PinsDrawer";
 import { CreatePollButton } from "./Poll";
 import { ForwardDialog } from "./ForwardDialog";
+import { ReminderDialog } from "./Reminders";
 import { ScheduledBar } from "./ScheduledMessages";
 import { RulesGate } from "@/components/server/RulesGate";
 import { ThreadPanel } from "./ThreadPanel";
@@ -109,6 +110,7 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
   const unreads = useOptionalUnreads();
   const [savedIds, setSavedIds] = useState<ReadonlySet<string>>(() => new Set());
   const [forwarding, setForwarding] = useState<ChatMessage | null>(null);
+  const [reminding, setReminding] = useState<string | null>(null);
   const loadedIds = chat.messages
     .slice(-100)
     .filter((m) => !m.pending && !m.failed && !m.queued)
@@ -157,6 +159,7 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
       onOpenProfile: openMemberProfile,
       onForward: setForwarding,
       onSave: (m, on) => void save(m, on),
+      onRemind: (m) => setReminding(m.id),
       savedIds,
       onMarkUnread: markUnread ? (m) => (markUnread(channel.id, m.created_at), toast("Marked unread from here.")) : undefined,
     }),
@@ -200,6 +203,7 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
           sourceChannel={channel.name}
           onClose={() => setForwarding(null)}
         />
+        <ReminderDialog messageId={reminding} onClose={() => setReminding(null)} onSaved={(id) => setSavedIds((prev) => new Set(prev).add(id))} />
         <PinsDrawer
           open={pinsOpen}
           onClose={() => setPinsOpen(false)}

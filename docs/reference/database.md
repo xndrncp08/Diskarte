@@ -4,7 +4,7 @@
 > `supabase/migrations/`. The Vitest suite fails when this file is stale. Descriptions come from the SQL
 > comment directly above each `create table` / `create function`, so document objects there.
 
-Built by applying all 55 migrations to PGlite with the Supabase stand-ins in
+Built by applying all 56 migrations to PGlite with the Supabase stand-ins in
 `diskarte/tests/db/supabase-shim.sql`. Supabase-managed schemas (`auth`, `storage`, `realtime`) are only
 shown where Diskarte adds policies or rows. Table grants reflect Supabase's default privileges (mirrored by
 the shim) minus the migrations' revokes; RLS policies, not grants, decide which rows a role sees.
@@ -1732,6 +1732,7 @@ Grants: `authenticated` DELETE, INSERT, SELECT
 | `user_id` | `uuid` |  | `auth.uid()` |
 | `message_id` | `uuid` |  |  |
 | `saved_at` | `timestamp with time zone` |  | `now()` |
+| `remind_at` | `timestamp with time zone` | yes |  |
 
 | Constraint | Kind | Definition |
 | --- | --- | --- |
@@ -1741,6 +1742,7 @@ Grants: `authenticated` DELETE, INSERT, SELECT
 
 Indexes:
 
+- `CREATE INDEX saved_messages_remind_idx ON public.saved_messages (user_id, remind_at) WHERE (remind_at IS NOT NULL)`
 - `CREATE INDEX saved_messages_user_idx ON public.saved_messages (user_id, saved_at DESC)`
 
 | Policy | Command | Roles | Using | With check |
@@ -2949,3 +2951,4 @@ Applied in filename order. The first descriptive comment line of each file:
 | [`20261108000000_hangouts.sql`](../../supabase/migrations/20261108000000_hangouts.sql) | Instant Hangouts + friends' live activity. |
 | [`20261108010000_membership_screening.sql`](../../supabase/migrations/20261108010000_membership_screening.sql) | Membership screening: joining questions and moderator approval. |
 | [`20261108020000_forum_tags_suggestions.sql`](../../supabase/migrations/20261108020000_forum_tags_suggestions.sql) | Forum tags, solved posts and suggestion boards. |
+| [`20261108030000_message_reminders.sql`](../../supabase/migrations/20261108030000_message_reminders.sql) | Message reminders: "Remind me" on a message saves it with a time (saved_messages.remind_at). |

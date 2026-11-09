@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BookmarkX, Loader2 } from "lucide-react";
+import { AlarmClock, BookmarkX, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useOptionalSupabase } from "@/components/providers/RuntimeConfig";
 
@@ -10,6 +10,7 @@ interface SavedItem {
   content: string;
   href: string;
   author: string;
+  remindAt: string | null;
 }
 
 /** Your saved messages (Discord's bookmarks), newest saved first, each opening its channel. */
@@ -21,7 +22,7 @@ export function SavedMessages({ onOpen }: { onOpen: () => void }) {
     if (!supabase) return;
     let live = true;
     void (async () => {
-      const { data: saved } = await supabase.from("saved_messages").select("message_id, saved_at").order("saved_at", { ascending: false }).limit(50);
+      const { data: saved } = await supabase.from("saved_messages").select("message_id, saved_at, remind_at").order("saved_at", { ascending: false }).limit(50);
       const ids = (saved ?? []).map((s) => s.message_id);
       if (!ids.length) return live && setItems([]);
       const { data: messages } = await supabase.from("messages").select("id, content, channel_id, server_id, author_id").in("id", ids);
@@ -29,10 +30,11 @@ export function SavedMessages({ onOpen }: { onOpen: () => void }) {
       const { data: people } = authorIds.length ? await supabase.from("profiles").select("id, display_name").in("id", authorIds) : { data: [] };
       const names = new Map((people ?? []).map((p) => [p.id, p.display_name]));
       const byId = new Map((messages ?? []).map((m) => [m.id, m]));
+      const reminders = new Map((saved ?? []).map((s) => [s.message_id, s.remind_at ?? null]));
       // Saved order; messages you can no longer read simply drop out.
       const list = ids.flatMap((id) => {
         const m = byId.get(id);
-        return m ? [{ id, content: m.content || "(attachment)", href: `/tambayan/${m.server_id}/${m.channel_id}`, author: (m.author_id && names.get(m.author_id)) || "Someone" }] : [];
+        return m ? [{ id, content: m.content || "(attachment)", href: `/tambayan/${m.server_id}/${m.channel_id}`, author: (m.author_id && names.get(m.author_id)) || "Someone", remindAt: reminders.get(id) ?? null }] : [];
       });
       if (live) setItems(list);
     })();
@@ -55,6 +57,11 @@ export function SavedMessages({ onOpen }: { onOpen: () => void }) {
           <Link href={item.href} onClick={onOpen} className="min-w-0 flex-1 px-2 py-2 text-sm">
             <span className="block truncate font-semibold text-white">{item.author}</span>
             <span className="line-clamp-2 text-xs text-slate-400">{item.content}</span>
+            {item.remindAt && (
+              <span className="mt-0.5 flex items-center gap-1 text-[11px] text-sun">
+                <AlarmClock className="size-3" aria-hidden /> Reminder {new Date(item.remindAt).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })}
+              </span>
+            )}
           </Link>
           <button type="button" onClick={() => void remove(item.id)} aria-label="Remove from Saved" className="m-1 rounded-md p-1.5 text-slate-500 opacity-0 hover:bg-white/10 hover:text-white focus:opacity-100 group-hover:opacity-100">
             <BookmarkX className="size-4" aria-hidden />

@@ -331,7 +331,10 @@ export interface Database {
       >;
       event_rsvps: TableDef<{ event_id: string; server_id: string; user_id: string; created_at: string }, { event_id: string; server_id: string; user_id?: string }>;
       server_emojis: TableDef<{ id: string; server_id: string; name: string; path: string; created_by: string | null; created_at: string }, { id?: string; server_id: string; name: string; path: string; created_by?: string | null }>;
-      saved_messages: TableDef<{ user_id: string; message_id: string; saved_at: string }, { user_id?: string; message_id: string; saved_at?: string }>;
+      saved_messages: TableDef<
+        { user_id: string; message_id: string; saved_at: string; /** Absent before migration 20261108030000. */ remind_at?: string | null },
+        { user_id?: string; message_id: string; saved_at?: string; remind_at?: string | null }
+      >;
       workspace_documents: TableDef<{ id: string; server_id: string; channel_id: string; kind: "note" | "board" | "focus"; title: string; content: Json; revision: number; created_by: string | null; updated_by: string | null; created_at: string; updated_at: string }, never>;
       channel_reads: TableDef<{ user_id: string; channel_id: string; last_read_at: string }, never>;
       message_mentions: TableDef<{ message_id: string; user_id: string; channel_id: string; server_id: string; created_at: string }, never>;

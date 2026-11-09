@@ -51,6 +51,8 @@ export function createFakeSupabase(tables: Record<string, unknown[]> = {}) {
       like: (col: string, pattern: string) => ((rows = rows.filter((r) => String(r[col]).startsWith(pattern.replace(/%$/, "")))), api),
       lt: (col: string, val: string) => ((rows = rows.filter((r) => String(r[col]) < val)), api),
       gt: (col: string, val: string) => ((rows = rows.filter((r) => String(r[col]) > val)), api),
+      lte: (col: string, val: string) => ((rows = rows.filter((r) => r[col] != null && String(r[col]) <= val)), api),
+      not: (col: string, op: string, val: unknown) => ((rows = rows.filter((r) => !(op === "is" ? (r[col] ?? null) === val : r[col] === val))), api),
       in: (col: string, vals: unknown[]) => ((rows = rows.filter((r) => vals.includes(r[col]))), api),
       // Exact forward/backward keyset forms used by history and reconnect reconciliation.
       or: (filter: string) => {
