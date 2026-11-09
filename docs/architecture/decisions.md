@@ -20,6 +20,8 @@ comments and release notes; the date is when the decision shows up in history. N
 | [012](#012-no-emoji-glyph-vocabulary) | Vector glyph vocabulary instead of emoji | Accepted |
 | [013](#013-help-center-rendered-at-authoring-time-inside-the-app) | Help Center rendered at authoring time inside the app | Accepted |
 | [014](#014-release-announcements-published-by-the-deployment-itself) | Release announcements published by the deployment itself | Accepted |
+| [015](#015-hangouts-are-temporary-group-conversations) | Hangouts are temporary group conversations | Accepted |
+| [016](#016-pulse-ships-behind-a-per-browser-shell-preference) | Pulse ships behind a per-browser shell preference | Accepted |
 
 ## 001. Authorization lives in Postgres
 
@@ -173,3 +175,24 @@ than a quick get-together needs, and cleanup would touch many tables).
 **Consequences.** Every DM code path already handles hangouts; the UI only adds the end-time bar,
 list badges and the start dialog. Hangouts follow group-DM rules (friends only, ≤ 10 people). Files
 need the hangout to be kept first.
+
+## 016. Pulse ships behind a per-browser shell preference
+
+**Status.** Accepted — *2026-11-08*
+
+**Context.** The Diskarte Pulse redesign (Spaces navigator, Conversation Canvas, Context sheet) replaces
+the whole look. It has to be built and tested in production-like conditions over several releases
+while Classic, the current UI, stays exactly as it is for everyone else.
+**Decision.** A `diskarte-shell` cookie (`classic` by default, or `pulse`) is read by the root layout,
+which server-renders `<html data-shell>` like the theme and colour mode. Every Pulse style is scoped
+to `html[data-shell="pulse"]` ([`pulse.css`](../../diskarte/src/app/pulse.css)) and Pulse components
+live in `components/pulse/`, lint-restricted to Pulse tokens. Switching sets the attribute, writes the
+cookie and calls `router.refresh()` ([`lib/shell.ts`](../../diskarte/src/lib/shell.ts)), never a full
+reload, so the call and session providers in the `(app)` layout stay mounted.
+**Alternatives considered.** A separate route tree or app (duplicates data loading and would drop
+the call when switching); a server-side flag per account (needs a migration and makes a stuck user
+unable to switch back in another browser); a `localStorage` flag (the server can't see it, so the
+first paint would flash the wrong shell).
+**Consequences.** Classic needs no changes and its tests prove it is untouched. Pulse fonts load only
+when Pulse styles use them. Until there is a visible switch, Pulse is reached by setting the cookie.
+The preference is per browser, like the theme; syncing it across devices would be a later decision.
