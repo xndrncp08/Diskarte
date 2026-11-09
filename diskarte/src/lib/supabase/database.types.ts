@@ -11,6 +11,7 @@ export type BadgeKind = "booster" | "lodi_supporter" | "gcash_contributor";
 export type LfgStatus = "open" | "full" | "closed";
 export type FriendshipStatus = "pending" | "accepted";
 export type DmKind = "direct" | "group";
+export type HangoutTopic = "hangout" | "gaming" | "study" | "project" | "watch" | "create";
 export type RingKind = "dm" | "voice";
 export type RingStatus = "ringing" | "accepted" | "declined" | "missed" | "cancelled";
 
@@ -312,7 +313,10 @@ export interface Database {
       poll_votes: TableDef<{ message_id: string; channel_id: string; user_id: string; option: number; created_at: string }, never>;
       message_edits: TableDef<{ id: number; message_id: string; server_id: string; author_id: string | null; content: string; replaced_at: string }, never>;
       member_warnings: TableDef<{ id: string; server_id: string; user_id: string; moderator_id: string | null; reason: string; acknowledged_at: string | null; created_at: string }, never>;
-      privacy_settings: TableDef<{ user_id: string; friend_requests_from: string; updated_at: string }, { user_id?: string; friend_requests_from: string; updated_at?: string }>;
+      privacy_settings: TableDef<
+        { user_id: string; friend_requests_from: string; share_activity: boolean; updated_at: string },
+        { user_id?: string; friend_requests_from?: string; share_activity?: boolean; updated_at?: string }
+      >;
       server_invites: TableDef<{ code: string; server_id: string; created_by: string | null; max_uses: number | null; uses: number; expires_at: string | null; created_at: string }, never>;
       server_events: TableDef<
         { id: string; server_id: string; channel_id: string | null; location: string | null; name: string; description: string; starts_at: string; ends_at: string | null; created_by: string | null; created_at: string; capacity?: number | null; rsvp_count?: number },
@@ -351,7 +355,18 @@ export interface Database {
       friend_favourites: TableDef<{ owner_id: string; target_id: string; created_at: string }, { owner_id?: string; target_id: string }>;
       friend_nicknames: TableDef<{ owner_id: string; target_id: string; nickname: string }, { owner_id?: string; target_id: string; nickname: string }>;
       dm_conversations: TableDef<
-        { id: string; kind: DmKind; name: string | null; owner_id: string | null; direct_key: string | null; created_at: string; last_message_at: string },
+        {
+          id: string;
+          kind: DmKind;
+          name: string | null;
+          owner_id: string | null;
+          direct_key: string | null;
+          created_at: string;
+          last_message_at: string;
+          /** Set while the conversation is a temporary Hangout; absent before migration 20261108000000. */
+          hangout_until?: string | null;
+          hangout_topic?: HangoutTopic | null;
+        },
         never
       >;
       dm_participants: TableDef<{ conversation_id: string; user_id: string; joined_at: string; last_read_at: string }, never>;
@@ -498,6 +513,13 @@ export interface Database {
       unblock_user: { Args: { p_user_id: string }; Returns: undefined };
       open_dm: { Args: { p_user_id: string }; Returns: string };
       create_group_dm: { Args: { p_user_ids: string[]; p_name?: string | null }; Returns: string };
+      create_hangout: { Args: { p_user_ids: string[]; p_name?: string | null; p_topic?: HangoutTopic; p_hours?: number }; Returns: string };
+      extend_hangout: { Args: { p_conversation_id: string; p_hours?: number; p_keep?: boolean }; Returns: string | null };
+      end_hangout: { Args: { p_conversation_id: string }; Returns: undefined };
+      friends_activity: {
+        Args: Record<string, never>;
+        Returns: { user_id: string; status: PresenceStatus; voice_server_id: string | null; voice_channel_id: string | null; last_seen_at: string }[];
+      };
       add_to_group_dm: { Args: { p_conversation_id: string; p_user_id: string }; Returns: undefined };
       rename_group_dm: { Args: { p_conversation_id: string; p_name: string }; Returns: undefined };
       leave_dm: { Args: { p_conversation_id: string }; Returns: undefined };

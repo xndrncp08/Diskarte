@@ -13,6 +13,7 @@ import {
   MessageSquare,
   Plus,
   RefreshCw,
+  Sparkles,
   Users,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -23,6 +24,10 @@ import { useMe } from "@/components/providers/MeProvider";
 import { useOptionalSocial } from "@/components/providers/SocialProvider";
 import { useOptionalUnreads } from "@/components/providers/UnreadsProvider";
 import { DmRow, HomeSidebar } from "@/components/social/HomeSidebar";
+import { StartHangoutDialog, useNow } from "@/components/social/Hangouts";
+import { activityStatus, useFriendsActivity } from "@/hooks/useFriendsActivity";
+import { hangoutTimeLeft, isLiveHangout, topicLabel } from "@/lib/hangouts";
+import { conversationTitle } from "@/lib/social";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -57,11 +62,22 @@ export function HomeView({
   const call = useCall();
   const router = useRouter();
   const [dialog, setDialog] = useState<"create" | "join" | null>(null);
+  // Start-a-hangout dialog, optionally with friends already picked.
+  const [hangoutWith, setHangoutWith] = useState<string[] | null>(null);
+  const activity = useFriendsActivity();
+  const now = useNow();
   const conversations = social?.conversations;
   const unread = conversations?.filter(isUnread).length ?? 0;
-  const friends = (social?.friends ?? []).filter(
-    (friend) => friend.status === "accepted",
-  );
+  // Friends who are around first, then everyone else alphabetically.
+  const friends = (social?.friends ?? [])
+    .filter((friend) => friend.status === "accepted")
+    .sort(
+      (a, b) =>
+        Number(activity?.has(b.userId) ?? false) - Number(activity?.has(a.userId) ?? false) ||
+        (social?.profiles.get(a.userId)?.display_name ?? "").localeCompare(social?.profiles.get(b.userId)?.display_name ?? ""),
+    );
+  const around = friends.filter((f) => activity?.has(f.userId));
+  const hangouts = (conversations ?? []).filter((c) => isLiveHangout(c.hangoutUntil, now));
   const mentions = [...(unreads?.channels.entries() ?? [])].filter(
     ([, channel]) => channel.mentions > 0,
   );
@@ -132,6 +148,53 @@ export function HomeView({
                   <span>your tambayans</span>
                 </a>
               </div>
+              <section className="home-hangouts surface-card" aria-labelledby="home-hangouts-title" data-testid="home-hangouts">
+                <div>
+                  <p className="section-kicker">INSTANT HANGOUTS</p>
+                  <h2 id="home-hangouts-title">{hangouts.length ? "Your hangouts" : "Hang out now"}</h2>
+                  {hangouts.length ? (
+                    <ul className="home-hangout-list">
+                      {hangouts.map((h) => (
+                        <li key={h.id}>
+                          <Link href={`/tambayan/dm/${h.id}`}>
+                            <strong>{conversationTitle(h)}</strong>
+                            <small>
+                              {topicLabel(h.hangoutTopic)} · {hangoutTimeLeft(h.hangoutUntil!, now)}
+                            </small>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>
+                      {around.length
+                        ? `${around.length} friend${around.length === 1 ? " is" : "s are"} around. Start something for the next few hours.`
+                        : "A temporary space with voice and chat for right now. It cleans itself up afterwards."}
+                    </p>
+                  )}
+                </div>
+                <div className="home-hangout-side">
+                  {around.length > 0 && (
+                    <ul className="home-around" aria-label="Friends around now">
+                      {around.slice(0, 6).map(({ userId }) => {
+                        const profile = social?.profiles.get(userId);
+                        return profile ? (
+                          <li key={userId}>
+                            <Tooltip label={`Hang out with ${profile.display_name}`}>
+                              <button type="button" onClick={() => setHangoutWith([userId])} aria-label={`Hang out with ${profile.display_name}`}>
+                                <UserAvatar profile={profile} size={36} status={activityStatus(activity?.get(userId))} />
+                              </button>
+                            </Tooltip>
+                          </li>
+                        ) : null;
+                      })}
+                    </ul>
+                  )}
+                  <button type="button" className="home-hangout-start" onClick={() => setHangoutWith([])}>
+                    <Sparkles className="size-4" aria-hidden /> Start a Hangout
+                  </button>
+                </div>
+              </section>
               {call.target && call.status !== "idle" && (
                 <Link
                   href={callHref(call.target)}
@@ -380,23 +443,32 @@ export function HomeView({
                   </div>
                   {friends.length ? (
                     <ul>
-                      {friends.slice(0, 5).map(({ userId }) => {
+                      {friends.slice(0, 6).map(({ userId }) => {
                         const profile = social?.profiles.get(userId);
+                        const live = activity?.get(userId);
+                        const voiceServer = live?.voice_server_id ? servers.find((s) => s.id === live.voice_server_id) : undefined;
                         return profile ? (
-                          <li key={userId}>
+                          <li key={userId} className="home-person-row">
                             <Link
-                              href="/tambayan/friends"
+                              href={voiceServer && live?.voice_channel_id ? `/tambayan/${voiceServer.id}/${live.voice_channel_id}` : "/tambayan/friends"}
                               className="home-person"
                             >
-                              <UserAvatar profile={profile} size={32} />
+                              <UserAvatar profile={profile} size={32} status={activityStatus(live)} />
                               <span>
                                 <strong>{profile.display_name}</strong>
                                 <small>
-                                  {profile.custom_status ||
-                                    `@${profile.username}`}
+                                  {voiceServer
+                                    ? `In voice · ${voiceServer.name}`
+                                    : profile.custom_status ||
+                                      (live ? (live.status === "dnd" ? "Busy" : "Around now") : `@${profile.username}`)}
                                 </small>
                               </span>
                             </Link>
+                            <Tooltip label={`Hang out with ${profile.display_name}`}>
+                              <button type="button" onClick={() => setHangoutWith([userId])} aria-label={`Hang out with ${profile.display_name}`} className="home-person-action">
+                                <Sparkles className="size-4" aria-hidden />
+                              </button>
+                            </Tooltip>
                           </li>
                         ) : null;
                       })}
@@ -441,6 +513,12 @@ export function HomeView({
           </div>
         </section>
       </WorkspacePanel>
+      <StartHangoutDialog
+        key={hangoutWith?.join() ?? "closed"}
+        open={hangoutWith !== null}
+        onClose={() => setHangoutWith(null)}
+        preselect={hangoutWith ?? []}
+      />
       <AddServerDialog
         key={dialog ?? "closed"}
         open={dialog !== null}

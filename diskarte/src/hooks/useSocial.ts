@@ -10,6 +10,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
+import { isListedConversation } from "@/lib/hangouts";
 import { subscribeDbChanges } from "@/lib/realtime";
 import {
   classifyFriendships,
@@ -153,11 +154,13 @@ export function useConversations() {
     );
     setConversations(
       sortConversations(
-        (convs ?? []).map((c) => ({
+        (convs ?? []).filter((c) => isListedConversation({ hangoutUntil: c.hangout_until })).map((c) => ({
           id: c.id,
           kind: c.kind,
           name: c.name,
           ownerId: c.owner_id,
+          hangoutUntil: c.hangout_until ?? null,
+          hangoutTopic: c.hangout_topic ?? null,
           lastMessageAt: c.last_message_at,
           lastReadAt: latest(
             readAt.get(c.id) ?? c.created_at,

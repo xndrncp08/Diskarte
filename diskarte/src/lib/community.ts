@@ -193,6 +193,7 @@ export function minutesLeft(expiresAt: string, now = Date.now()) {
 // ---------------------------------------------------------------------------------------
 
 const COMMUNITY_ERRORS: Record<string, string> = {
+  HANGOUT_ENDED: "This hangout has ended.",
   BANNED: "You're banned from this server.",
   CANNOT_BAN_MEMBER: "You can't ban that member.",
   TIMED_OUT: "You're timed out in this server for now.",

@@ -4,13 +4,13 @@
 > `supabase/migrations/`. The Vitest suite fails when this file is stale. Descriptions come from the SQL
 > comment directly above each `create table` / `create function`, so document objects there.
 
-Built by applying all 52 migrations to PGlite with the Supabase stand-ins in
+Built by applying all 53 migrations to PGlite with the Supabase stand-ins in
 `diskarte/tests/db/supabase-shim.sql`. Supabase-managed schemas (`auth`, `storage`, `realtime`) are only
 shown where Diskarte adds policies or rows. Table grants reflect Supabase's default privileges (mirrored by
 the shim) minus the migrations' revokes; RLS policies, not grants, decide which rows a role sees.
 For the narrative overview see [database.md](../database.md).
 
-**60 tables · 114 RLS policies · 193 functions · 66 triggers · 30 Realtime tables · 5 Storage buckets**
+**60 tables · 114 RLS policies · 199 functions · 67 triggers · 30 Realtime tables · 5 Storage buckets**
 
 ## Contents
 
@@ -636,6 +636,7 @@ Triggers:
 - `direct_messages_after_insert AFTER INSERT ON public.direct_messages FOR EACH ROW EXECUTE FUNCTION direct_messages_after_insert()`
 - `direct_messages_before_insert BEFORE INSERT ON public.direct_messages FOR EACH ROW EXECUTE FUNCTION direct_messages_before_insert()`
 - `direct_messages_before_update BEFORE UPDATE ON public.direct_messages FOR EACH ROW EXECUTE FUNCTION direct_messages_before_update()`
+- `direct_messages_hangout_guard BEFORE INSERT ON public.direct_messages FOR EACH ROW EXECUTE FUNCTION direct_messages_hangout_guard()`
 - `dm_attachment_guard BEFORE INSERT OR UPDATE ON public.direct_messages FOR EACH ROW EXECUTE FUNCTION dm_attachment_guard()`
 - `push_dm AFTER INSERT ON public.direct_messages FOR EACH ROW EXECUTE FUNCTION private_push.capture()`
 - `push_invite_guard BEFORE INSERT OR UPDATE ON public.direct_messages FOR EACH ROW EXECUTE FUNCTION private_push.guard_invite()`
@@ -659,15 +660,23 @@ Grants: `authenticated` REFERENCES, SELECT, TRIGGER
 | `direct_key` | `text` | yes |  |
 | `created_at` | `timestamp with time zone` |  | `now()` |
 | `last_message_at` | `timestamp with time zone` |  | `now()` |
+| `hangout_until` | `timestamp with time zone` | yes |  |
+| `hangout_topic` | `text` | yes |  |
 
 | Constraint | Kind | Definition |
 | --- | --- | --- |
 | `dm_conversations_check` | check | `CHECK (((kind = 'direct'::text) = (direct_key IS NOT NULL)))` |
+| `dm_conversations_hangout_group` | check | `CHECK (((hangout_until IS NULL) OR (kind = 'group'::text)))` |
+| `dm_conversations_hangout_topic_check` | check | `CHECK ((hangout_topic = ANY (ARRAY['hangout'::text, 'gaming'::text, 'study'::text, 'project'::text, 'watch'::text, 'create'::text])))` |
 | `dm_conversations_kind_check` | check | `CHECK ((kind = ANY (ARRAY['direct'::text, 'group'::text])))` |
 | `dm_conversations_name_check` | check | `CHECK (((name IS NULL) OR ((char_length(btrim(name)) >= 1) AND (char_length(btrim(name)) <= 64))))` |
 | `dm_conversations_owner_id_fkey` | foreign key | `FOREIGN KEY (owner_id) REFERENCES profiles(id) ON DELETE SET NULL` |
 | `dm_conversations_pkey` | primary key | `PRIMARY KEY (id)` |
 | `dm_conversations_direct_key_key` | unique | `UNIQUE (direct_key)` |
+
+Indexes:
+
+- `CREATE INDEX dm_conversations_hangout_until_idx ON public.dm_conversations (hangout_until) WHERE (hangout_until IS NOT NULL)`
 
 | Policy | Command | Roles | Using | With check |
 | --- | --- | --- | --- | --- |
@@ -1385,6 +1394,7 @@ Grants: `authenticated` INSERT, SELECT, UPDATE
 | `user_id` | `uuid` |  | `auth.uid()` |
 | `friend_requests_from` | `text` |  | `'everyone'::text` |
 | `updated_at` | `timestamp with time zone` |  | `now()` |
+| `share_activity` | `boolean` |  | `true` |
 
 | Constraint | Kind | Definition |
 | --- | --- | --- |
@@ -2374,7 +2384,7 @@ rights, so each one re-checks the caller itself; invoker functions stay subject 
 | `can_access_realtime_topic(p_topic text)` | `boolean` | definer, stable | anon, authenticated |  |
 | `can_edit_workspace(p_channel uuid)` | `boolean` | definer, stable | authenticated |  |
 | `can_see_moment(p_author uuid, p_audience text, p_expires timestamp with time zone)` | `boolean` | definer, stable | authenticated |  |
-| `can_upload_dm_attachment(p_conversation uuid)` | `boolean` | definer, stable | authenticated |  |
+| `can_upload_dm_attachment(p_conversation uuid)` | `boolean` | definer, stable | authenticated | Temporary hangouts take no file uploads, so deleting one never leaves files behind in Storage. |
 | `can_view_channel(p_channel_id uuid)` | `boolean` | definer, stable | authenticated | Can I see this channel? Members see public channels; private ones need has_channel_grant. |
 | `cancel_rings(p_target uuid)` | `void` | definer, volatile | authenticated | Caller hangs up before anyone answers: cancel their ringing invitations for that DM or channel. |
 | `channel_server_id(p_channel_id uuid)` | `uuid` | definer, stable | authenticated |  |
@@ -2386,6 +2396,7 @@ rights, so each one re-checks the caller itself; invoker functions stay subject 
 | `clear_expired_custom_statuses()` | `integer` | definer, volatile | authenticated | Clears every expired custom status. Idempotent and cheap (partial index); run by the minute platform job and by a signed-in client whose own status just ran out. |
 | `close_lfg(p_beacon_id uuid)` | `void` | definer, volatile | authenticated |  |
 | `create_group_dm(p_user_ids uuid[], p_name text)` | `uuid` | definer, volatile | authenticated | Group DMs: up to 10 people, and you can only add your friends. |
+| `create_hangout(p_user_ids uuid[], p_name text, p_topic text, p_hours integer)` | `uuid` | definer, volatile | authenticated | Start a hangout with 1–9 friends for 1–24 hours. Same friendship/block rules as group DMs. |
 | `create_invite(p_server uuid, p_max_age_minutes integer, p_max_uses integer)` | `text` | definer, volatile | authenticated | New invite: expires after 30 min, 1 h, 6 h, 12 h, 1 day, 7 days or never (0); 1–100 uses or unlimited (0). |
 | `create_lfg(p_server_id uuid, p_game text, p_description text, p_party_size integer, p_voice_channel_id uuid, p_duration_minutes integer)` | `uuid` | definer, volatile | authenticated |  |
 | `create_poll(p_channel uuid, p_question text, p_options text[], p_multi boolean, p_hours integer)` | `uuid` | definer, volatile | authenticated | Post a poll: the question is the message text (so slow mode, AutoMod and read-only channels apply). |
@@ -2396,13 +2407,17 @@ rights, so each one re-checks the caller itself; invoker functions stay subject 
 | `direct_messages_after_insert()` | `trigger` | definer, volatile | trigger |  |
 | `direct_messages_before_insert()` | `trigger` | definer, volatile | trigger | DMs: author + timestamps are server-set; 1:1 DMs need an unblocked friendship; phishing links are always refused; 8 messages per 10 seconds across all DMs. |
 | `direct_messages_before_update()` | `trigger` | definer, volatile | trigger |  |
+| `direct_messages_hangout_guard()` | `trigger` | definer, volatile | trigger | No new messages once a hangout's time is up (the purge may not have run yet). |
 | `discover_servers(p_query text, p_category text, p_limit integer, p_offset integer)` | `TABLE(id uuid, name text, description text, icon_url text, category text, member_count bigint, active_members bigint, is_member boolean)` | definer, stable | authenticated | Listed servers, most active first. `p_query` matches name or description. |
 | `dm_attachment_guard()` | `trigger` | definer, volatile | trigger |  |
+| `end_hangout(p_conversation_id uuid)` | `void` | definer, volatile | authenticated | The host ends a hangout for everyone now: the conversation and its messages are deleted. |
 | `export_my_data()` | `jsonb` | definer, stable | authenticated |  |
 | `export_my_data_base()` | `jsonb` | definer, stable | internal |  |
 | `export_server_settings(p_server uuid)` | `jsonb` | invoker, stable | authenticated |  |
+| `extend_hangout(p_conversation_id uuid, p_hours integer, p_keep boolean)` | `timestamp with time zone` | definer, volatile | authenticated | Any participant can push the end time out by 1–6 hours (never more than 24 hours from now). The host can also keep it for good (p_keep), which turns it into an ordinary group DM. |
 | `finish_push_job(p_id uuid, p_lease uuid, p_result text, p_status integer, p_code text, p_delay integer)` | `void` | definer, volatile | internal |  |
 | `forget_device(p_device_id uuid)` | `void` | definer, volatile | authenticated | Signing out of a browser forgets it. |
+| `friends_activity()` | `TABLE(user_id uuid, status presence_status, voice_server_id uuid, voice_channel_id uuid, last_seen_at timestamp with time zone)` | definer, stable | authenticated | Friends who are around right now (heartbeat in the last 2 minutes). Status is the newest device's; invisible friends and friends who don't share activity are omitted. The voice channel (and its server) is returned only when the caller can view that channel. |
 | `generate_invite_code()` | `text` | invoker, volatile | authenticated | 10 characters from a 32-symbol alphabet without look-alikes (0/O, 1/I/L) ≈ 50 bits of entropy. |
 | `get_invite(p_code text)` | `TABLE(server_id uuid, name text, description text, icon_url text, member_count bigint, already_member boolean)` | definer, stable | anon, authenticated | Preview: the permanent code, or a live invite. |
 | `get_reactions_snapshot(p_channel uuid, p_messages uuid[])` | `jsonb` | invoker, stable | authenticated | One statement snapshot avoids offset-pagination races and PostgREST's row-count truncation. |
@@ -2473,6 +2488,7 @@ rights, so each one re-checks the caller itself; invoker functions stay subject 
 | `profiles_status_expiry()` | `trigger` | invoker, volatile | anon, authenticated | A new status without its own expiry doesn't inherit the old one; a cleared status has none. |
 | `publish_release_announcement(p_release_id text, p_released_on date, p_title text, p_content text)` | `text` | definer, volatile | internal | Posts a release's notes to Diskarte HQ #announcements, at most once. Service role only (the deployment's own server). Returns 'published', 'already-published' or 'superseded'. |
 | `publish_scheduled_messages()` | `integer` | definer, volatile | authenticated | Publishes due scheduled messages: the caller's own when signed in, everyone's when run by the platform job. Returns how many were sent. Each row is attempted in its own subtransaction. |
+| `purge_expired_hangouts()` | `integer` | definer, volatile | internal | Deletes hangouts whose end time has passed (messages and rings cascade). Returns how many. |
 | `push_ready()` | `boolean` | definer, stable | authenticated |  |
 | `reactions_before_insert()` | `trigger` | definer, volatile | authenticated | Reactions: derive channel/server from the message, cap distinct emoji per message. |
 | `record_site_visit(p_visitor uuid)` | `void` | definer, volatile | anon, authenticated | Counts this browser once for today; a later signed-in visit the same day marks it signed in. |
@@ -2800,3 +2816,4 @@ Applied in filename order. The first descriptive comment line of each file:
 | [`20261030000000_server_rules.sql`](../../supabase/migrations/20261030000000_server_rules.sql) | Server rules: admins write them; members accept them before they can post. Changing the rules |
 | [`20261030010000_recurring_announcements.sql`](../../supabase/migrations/20261030010000_recurring_announcements.sql) | Recurring announcements: an admin automation that posts a message in a text channel every day, |
 | [`20261107000000_release_announcements.sql`](../../supabase/migrations/20261107000000_release_announcements.sql) | Official release announcements: when a production deployment of Diskarte starts serving, the |
+| [`20261108000000_hangouts.sql`](../../supabase/migrations/20261108000000_hangouts.sql) | Instant Hangouts + friends' live activity. |

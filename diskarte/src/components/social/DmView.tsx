@@ -28,6 +28,8 @@ import { conversationTitle, readReceipt, withNickname, type SocialProfile } from
 import type { Tables } from "@/lib/supabase/database.types";
 import { WorkspacePanel } from "@/components/workspace/WorkspacePanel";
 import { ConversationAvatar, HomeSidebar } from "./HomeSidebar";
+import { HangoutBar, useNow } from "./Hangouts";
+import { isLiveHangout } from "@/lib/hangouts";
 
 const VoiceStage = dynamic(() => import("@/components/voice/live/VoiceStage").then((m) => m.VoiceStage), { ssr: false, loading: () => <StageSkeleton /> });
 
@@ -51,7 +53,13 @@ export function DmView({
   const messageTarget = useSearchParams().get("message");
   const { markRead, reloadConversations, nicknames, conversations } = useSocial();
   // Re-mark whenever the newest message moves on while you're looking at it.
-  const lastMessageAt = conversations?.find((c) => c.id === conversation.id)?.lastMessageAt;
+  const summary = conversations?.find((c) => c.id === conversation.id);
+  const lastMessageAt = summary?.lastMessageAt;
+  // The live list follows extensions/keeps over realtime; the server row covers the first render.
+  const hangoutUntil = summary ? (summary.hangoutUntil ?? null) : (conversation.hangout_until ?? null);
+  const now = useNow();
+  const hangoutLive = isLiveHangout(hangoutUntil, now);
+  const hangoutEnded = !!hangoutUntil && !hangoutLive;
   const { setNavOpen } = useShellUI();
   const call = useCall();
   const router = useRouter();
@@ -148,6 +156,10 @@ export function DmView({
             </div>
           </header>
 
+          {hangoutLive && (
+            <HangoutBar conversation={{ id: conversation.id, hangoutUntil, hangoutTopic: conversation.hangout_topic ?? null }} title={title} isHost={conversation.owner_id === me.id} />
+          )}
+
           {inCall && call.status === "connected" && (
             <div className="flex max-h-[55%] min-h-64 shrink-0 flex-col border-b border-white/5" data-testid="dm-call">
               <VoiceStage />
@@ -166,7 +178,11 @@ export function DmView({
                 <ConversationAvatar conversation={{ id: conversation.id, kind: conversation.kind, name: conversation.name, ownerId: conversation.owner_id, lastMessageAt: "", lastReadAt: "", others }} size={72} />
                 <h2 className="mt-3 text-2xl font-extrabold text-white">{title}</h2>
                 <p className="text-slate-400">
-                  {conversation.kind === "direct" ? `This is the start of your DMs with @${others[0]?.username ?? "?"}.` : `Welcome to the group DM! There are ${participants.length} of you here.`}
+                  {conversation.kind === "direct"
+                    ? `This is the start of your DMs with @${others[0]?.username ?? "?"}.`
+                    : hangoutUntil
+                      ? `Your hangout is on! There are ${participants.length} of you here. It disappears when the time runs out unless the host keeps it.`
+                      : `Welcome to the group DM! There are ${participants.length} of you here.`}
                 </p>
               </div>
             )}
@@ -229,7 +245,8 @@ export function DmView({
             typingNames={[]}
             onTyping={() => undefined}
             onStopTyping={() => undefined}
-            locked={canSend ? null : "You're no longer friends (or someone blocked the other), so you can't message here anymore."}
+            uploads={!hangoutUntil}
+            locked={hangoutEnded ? "This hangout has ended." : canSend ? null : "You're no longer friends (or someone blocked the other), so you can't message here anymore."}
           />
         </section>
       </WorkspacePanel>
