@@ -1,7 +1,14 @@
 "use client";
 
-import { Loader2, MessagesSquare, Plus, Search } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { CheckCircle2, ChevronUp, Loader2, MessagesSquare, Pin, Plus, Search, Settings2 } from "lucide-react";
+import { useCallback, useEffect, useState, useTransition, type FormEvent, type ReactNode } from "react";
+import { toast } from "sonner";
+import { setForumPostAction, setForumSettingsAction, toggleForumVoteAction } from "@/actions/messages";
+import { useSupabase } from "@/components/providers/RuntimeConfig";
+import { Modal } from "@/components/ui/Modal";
+import { FORUM_STATUS_LABEL, NO_STATE, SUGGESTION_STATUSES, sortPosts, type ForumMode, type PostState } from "@/lib/forum";
+import type { ForumStatus } from "@/lib/supabase/database.types";
+import { cn } from "@/lib/utils";
 import { useMe } from "@/components/providers/MeProvider";
 import { useServer } from "@/components/providers/ServerProvider";
 import { useOptionalUnreads } from "@/components/providers/UnreadsProvider";
@@ -31,6 +38,14 @@ export function ForumView({ channel: initialChannel, initial }: { channel: Chann
   const [openId, setOpenId] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
   const [query, setQuery] = useState("");
+  const [tag, setTag] = useState<string | null>(null);
+  const [status, setStatus] = useState<ForumStatus | "open" | null>(null);
+  const [top, setTop] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const mode: ForumMode = channel.forum_mode ?? "discussion";
+  const tags = channel.forum_tags ?? [];
+  const { states, reload } = usePostStates(channel.id, chat.messages.length);
+  const state = (id: string) => states.get(id) ?? NO_STATE;
 
   const markRead = useOptionalUnreads()?.markRead;
   const newest = chat.messages.at(-1)?.id;
@@ -43,9 +58,18 @@ export function ForumView({ channel: initialChannel, initial }: { channel: Chann
   const locked = timedOut ? "You're timed out, so you can read posts but not write." : readOnly ? READ_ONLY_NOTICE : channel.requires_verification && !verified && !canModerate ? VERIFY_NOTICE : null;
 
   const q = query.trim().toLowerCase();
-  const posts = chat.messages
-    .filter((m) => !q || (m.title ?? "").toLowerCase().includes(q) || m.content.toLowerCase().includes(q))
-    .sort((a, b) => activity(b) - activity(a));
+  const posts = sortPosts(
+    chat.messages.filter((m) => {
+      const s = state(m.id);
+      return (!q || (m.title ?? "").toLowerCase().includes(q) || m.content.toLowerCase().includes(q))
+        && (!tag || s.tags.includes(tag))
+        && (!status || (status === "open" ? !s.status || s.status === "under_consideration" : s.status === status));
+    }),
+    activity,
+    state,
+    top && mode === "suggestions",
+  );
+  const filtered = !!(q || tag || status);
   const open = openId ? chat.messages.find((m) => m.id === openId) : undefined;
 
   return (
@@ -60,25 +84,75 @@ export function ForumView({ channel: initialChannel, initial }: { channel: Chann
           </label>
           {!locked && (
             <Button size="sm" onClick={() => setComposing((c) => !c)} aria-expanded={composing}>
-              <Plus className="size-4" aria-hidden /> New Post
+              <Plus className="size-4" aria-hidden /> {mode === "suggestions" ? "Suggest" : "New Post"}
             </Button>
           )}
+          {canModerate && (
+            <button type="button" onClick={() => setSettingsOpen(true)} aria-label="Forum settings" className="flex size-9 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white pointer-coarse:size-11">
+              <Settings2 className="size-4" aria-hidden />
+            </button>
+          )}
         </div>
+        {(tags.length > 0 || mode === "suggestions") && (
+          <div className="scrollbar-thin flex items-center gap-1.5 overflow-x-auto border-b border-white/5 px-4 py-2" role="toolbar" aria-label="Filter posts">
+            {mode === "suggestions" && (
+              <>
+                <Chip active={top} onClick={() => setTop((t) => !t)}>Top</Chip>
+                <select value={status ?? ""} onChange={(e) => setStatus((e.target.value || null) as ForumStatus | "open" | null)} aria-label="Filter by status" className="h-8 rounded-full border border-white/10 bg-abyss px-2 text-xs text-slate-200">
+                  <option value="">Any status</option>
+                  <option value="open">Open</option>
+                  {SUGGESTION_STATUSES.map((s) => <option key={s} value={s}>{FORUM_STATUS_LABEL[s]}</option>)}
+                </select>
+              </>
+            )}
+            {tags.map((t) => (
+              <Chip key={t} active={tag === t} onClick={() => setTag((cur) => (cur === t ? null : t))}>{t}</Chip>
+            ))}
+          </div>
+        )}
         {locked && <p className="mx-4 mt-3 rounded-lg bg-white/5 px-3 py-2 text-sm text-slate-300" role="status">{locked}</p>}
-        {composing && !locked && <NewPost onCancel={() => setComposing(false)} onPost={async (title, content) => (await chat.send(content, [], null, { title })) !== "rejected" && (setComposing(false), true)} />}
+        {composing && !locked && (
+          <NewPost
+            tags={tags}
+            suggestion={mode === "suggestions"}
+            onCancel={() => setComposing(false)}
+            onPost={async (title, content, picked) => {
+              const id = crypto.randomUUID();
+              const result = await chat.send(content, [], null, { title, id });
+              if (result === "rejected") return false;
+              setComposing(false);
+              // Tags go on once the post exists (a queued offline post keeps none; it can be tagged later).
+              if (result === "sent" && picked.length) void setForumPostAction({ messageId: id, tags: picked }).then(() => reload());
+              return true;
+            }}
+          />
+        )}
         <ul className="scrollbar-thin min-h-0 flex-1 space-y-2 overflow-y-auto p-4" data-testid="forum-posts">
-          {posts.length === 0 && <li className="py-12 text-center text-sm text-slate-400">{q ? "No posts match." : "No posts yet. Start the first one!"}</li>}
+          {posts.length === 0 && <li className="py-12 text-center text-sm text-slate-400">{filtered ? "No posts match." : mode === "suggestions" ? "No suggestions yet. Share the first idea!" : "No posts yet. Start the first one!"}</li>}
           {posts.map((post) => {
             const author = post.author ?? members.find((m) => m.user_id === post.author_id)?.profile;
+            const s = state(post.id);
             return (
-              <li key={post.id}>
+              <li key={post.id} className="flex gap-2">
+                {mode === "suggestions" && <VoteButton messageId={post.id} state={s} disabled={!!locked || !!post.pending} onDone={reload} />}
+                <div className="min-w-0 flex-1">
                 <button
                   type="button"
                   onClick={() => setOpenId(post.id)}
                   aria-current={openId === post.id ? "true" : undefined}
                   className="block w-full rounded-xl border border-white/10 bg-white/[0.03] p-3 text-left transition-colors hover:border-white/20 hover:bg-white/[0.06] aria-[current=true]:border-sun/50"
                 >
-                  <span className="block truncate text-base font-bold text-white">{post.title ?? previewText(post.content, 80)}</span>
+                  <span className="flex items-center gap-1.5">
+                    {post.pinned && <Pin className="size-3.5 shrink-0 text-sun" aria-label="Pinned" />}
+                    {s.status === "solved" && <CheckCircle2 className="size-4 shrink-0 text-signal-green" aria-hidden />}
+                    <span className="truncate text-base font-bold text-white">{post.title ?? previewText(post.content, 80)}</span>
+                  </span>
+                  {(s.tags.length > 0 || s.status) && (
+                    <span className="mt-1 flex flex-wrap gap-1">
+                      {s.status && <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", s.status === "solved" || s.status === "completed" ? "bg-signal-green/15 text-signal-green" : s.status === "declined" ? "bg-red-500/15 text-red-300" : "bg-sun/15 text-sun")}>{FORUM_STATUS_LABEL[s.status]}</span>}
+                      {s.tags.map((t) => <span key={t} className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-slate-300">{t}</span>)}
+                    </span>
+                  )}
                   <span className="mt-1 line-clamp-2 block text-sm text-slate-300">{previewText(post.content, 200)}</span>
                   <span className="mt-2 flex items-center gap-2 text-xs text-slate-400">
                     {author && <UserAvatar profile={author} size={18} />}
@@ -91,6 +165,10 @@ export function ForumView({ channel: initialChannel, initial }: { channel: Chann
                     {(post.pending || post.queued) && <Loader2 className="size-3 animate-spin" aria-label="Posting" />}
                   </span>
                 </button>
+                {openId === post.id && !post.pending && (canModerate || post.author_id === me.id) && (
+                  <PostControls messageId={post.id} mode={mode} tags={tags} state={s} canModerate={canModerate} onDone={reload} />
+                )}
+                </div>
               </li>
             );
           })}
@@ -104,19 +182,150 @@ export function ForumView({ channel: initialChannel, initial }: { channel: Chann
         </ul>
       </section>
       {open && <ThreadPanel key={open.id} channel={channel} root={open} onClose={() => setOpenId(null)} locked={locked} />}
+      {canModerate && (
+        <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Forum settings">
+          {settingsOpen && <ForumSettings channelId={channel.id} mode={mode} tags={tags} onDone={() => setSettingsOpen(false)} />}
+        </Modal>
+      )}
     </div>
   );
 }
 
-function NewPost({ onPost, onCancel }: { onPost: (title: string, content: string) => Promise<boolean>; onCancel: () => void }) {
+/** Tags, status and votes for the channel's posts; refetched when posts come or go and after changes. */
+function usePostStates(channelId: string, postCount: number) {
+  const supabase = useSupabase();
+  const [states, setStates] = useState<Map<string, PostState>>(new Map());
+  const reload = useCallback(async () => {
+    const { data, error } = await supabase.rpc("forum_overview", { p_channel: channelId });
+    if (!error) setStates(new Map((data ?? []).map((row) => [row.message_id, { tags: row.tags, status: row.status, votes: row.votes, voted: row.voted }])));
+  }, [supabase, channelId]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch on load and as posts arrive
+    void reload();
+  }, [reload, postCount]);
+  return { states, reload };
+}
+
+function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button type="button" aria-pressed={active} onClick={onClick} className={cn("h-8 shrink-0 rounded-full border px-3 text-xs font-semibold transition-colors pointer-coarse:h-11", active ? "border-sun/60 bg-sun/15 text-sun" : "border-white/10 text-slate-300 hover:bg-white/5")}>
+      {children}
+    </button>
+  );
+}
+
+function VoteButton({ messageId, state, disabled, onDone }: { messageId: string; state: PostState; disabled: boolean; onDone: () => void }) {
+  const [pending, startTransition] = useTransition();
+  return (
+    <button
+      type="button"
+      aria-pressed={state.voted}
+      aria-label={`${state.voted ? "Remove your vote" : "Upvote"} (${state.votes})`}
+      disabled={disabled || pending}
+      onClick={() =>
+        startTransition(async () => {
+          const result = await toggleForumVoteAction({ messageId });
+          if (!result.ok) toast.error(result.error ?? "Couldn't vote.");
+          await onDone();
+        })
+      }
+      className={cn("flex w-12 shrink-0 flex-col items-center justify-center rounded-xl border text-sm font-bold tabular-nums transition-colors disabled:opacity-50", state.voted ? "border-sun/60 bg-sun/15 text-sun" : "border-white/10 text-slate-300 hover:bg-white/5")}
+    >
+      <ChevronUp className="size-5" aria-hidden />
+      {state.votes}
+    </button>
+  );
+}
+
+/** Under the open post: its tags (author or moderator) and status (Solved, or the board statuses for moderators). */
+function PostControls({ messageId, mode, tags, state, canModerate, onDone }: { messageId: string; mode: ForumMode; tags: string[]; state: PostState; canModerate: boolean; onDone: () => void }) {
+  const [pending, startTransition] = useTransition();
+  const run = (input: Parameters<typeof setForumPostAction>[0]) =>
+    startTransition(async () => {
+      const result = await setForumPostAction(input);
+      if (!result.ok) toast.error(result.error ?? "Couldn't update the post.");
+      await onDone();
+    });
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-1.5 rounded-xl border border-white/10 bg-black/20 p-2" aria-label="Post settings" role="group">
+      {mode === "discussion" ? (
+        <Chip active={state.status === "solved"} onClick={() => !pending && run({ messageId, status: state.status === "solved" ? null : "solved" })}>
+          {state.status === "solved" ? "Solved ✓" : "Mark solved"}
+        </Chip>
+      ) : (
+        canModerate && (
+          <select value={state.status ?? ""} disabled={pending} onChange={(e) => run({ messageId, status: (e.target.value || null) as ForumStatus | null })} aria-label="Suggestion status" className="h-8 rounded-full border border-white/10 bg-abyss px-2 text-xs text-slate-200 pointer-coarse:h-11">
+            <option value="">No status</option>
+            {SUGGESTION_STATUSES.map((s) => <option key={s} value={s}>{FORUM_STATUS_LABEL[s]}</option>)}
+          </select>
+        )
+      )}
+      {tags.map((t) => {
+        const on = state.tags.includes(t);
+        return (
+          <Chip key={t} active={on} onClick={() => !pending && (on || state.tags.length < 5) && run({ messageId, tags: on ? state.tags.filter((x) => x !== t) : [...state.tags, t] })}>
+            {t}
+          </Chip>
+        );
+      })}
+    </div>
+  );
+}
+
+function ForumSettings({ channelId, mode: initialMode, tags: initialTags, onDone }: { channelId: string; mode: ForumMode; tags: string[]; onDone: () => void }) {
+  const [mode, setMode] = useState(initialMode);
+  const [tags, setTags] = useState(initialTags.join(", "));
+  const [pending, startTransition] = useTransition();
+  return (
+    <form
+      className="space-y-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        startTransition(async () => {
+          const result = await setForumSettingsAction({ channelId, mode, tags: tags.split(",").map((t) => t.trim()).filter(Boolean) });
+          if (!result.ok) return void toast.error(result.error ?? "Couldn't save.");
+          toast.success("Forum updated.");
+          onDone();
+        });
+      }}
+    >
+      <fieldset className="space-y-2">
+        <legend className="mb-1 text-sm font-semibold text-white">Kind of forum</legend>
+        {(
+          [
+            ["discussion", "Discussion", "Questions and long-lived threads. Posts can be marked Solved."],
+            ["suggestions", "Suggestion board", "Members upvote ideas; moderators set Planned, In progress, Completed or Declined."],
+          ] as const
+        ).map(([value, label, hint]) => (
+          <label key={value} className={cn("block cursor-pointer rounded-lg border px-3 py-2", mode === value ? "border-sun/70 bg-sun/10" : "border-white/10 hover:border-white/25")}>
+            <input type="radio" name="forum-mode" value={value} checked={mode === value} onChange={() => setMode(value)} className="sr-only" />
+            <span className="block text-sm font-semibold text-white">{label}</span>
+            <span className="block text-xs text-slate-400">{hint}</span>
+          </label>
+        ))}
+      </fieldset>
+      <label className="block">
+        <span className="mb-1 block text-sm font-semibold text-white">Tags</span>
+        <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Help, Events, Bug" className={`${field} h-11`} aria-describedby="forum-tags-hint" />
+        <span id="forum-tags-hint" className="mt-1 block text-xs text-slate-400">Comma separated, up to 12. Removing a tag takes it off every post.</span>
+      </label>
+      <Button type="submit" loading={pending} className="w-full">
+        Save
+      </Button>
+    </form>
+  );
+}
+
+function NewPost({ onPost, onCancel, tags, suggestion }: { onPost: (title: string, content: string, tags: string[]) => Promise<boolean>; onCancel: () => void; tags: string[]; suggestion: boolean }) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [picked, setPicked] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!title.trim() || !content.trim()) return;
     setBusy(true);
-    const ok = await onPost(title.trim(), content.trim());
+    const ok = await onPost(title.trim(), content.trim(), picked);
     setBusy(false);
     if (ok) {
       setTitle("");
@@ -126,7 +335,16 @@ function NewPost({ onPost, onCancel }: { onPost: (title: string, content: string
   return (
     <form onSubmit={submit} className="mx-4 mt-3 space-y-2 rounded-xl border border-white/10 bg-black/20 p-3" aria-label="New post">
       <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={100} required placeholder="Post title" aria-label="Post title" autoFocus className={`${field} h-10 font-semibold`} />
-      <textarea value={content} onChange={(e) => setContent(e.target.value)} maxLength={4000} required rows={4} placeholder="What's it about?" aria-label="Post message" className={`${field} py-2`} />
+      <textarea value={content} onChange={(e) => setContent(e.target.value)} maxLength={4000} required rows={4} placeholder={suggestion ? "Describe your idea and why it helps" : "What's it about?"} aria-label="Post message" className={`${field} py-2`} />
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Tags">
+          {tags.map((t) => (
+            <Chip key={t} active={picked.includes(t)} onClick={() => setPicked((p) => (p.includes(t) ? p.filter((x) => x !== t) : p.length < 5 ? [...p, t] : p))}>
+              {t}
+            </Chip>
+          ))}
+        </div>
+      )}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
           Cancel

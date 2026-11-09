@@ -4,13 +4,13 @@
 > `supabase/migrations/`. The Vitest suite fails when this file is stale. Descriptions come from the SQL
 > comment directly above each `create table` / `create function`, so document objects there.
 
-Built by applying all 54 migrations to PGlite with the Supabase stand-ins in
+Built by applying all 55 migrations to PGlite with the Supabase stand-ins in
 `diskarte/tests/db/supabase-shim.sql`. Supabase-managed schemas (`auth`, `storage`, `realtime`) are only
 shown where Diskarte adds policies or rows. Table grants reflect Supabase's default privileges (mirrored by
 the shim) minus the migrations' revokes; RLS policies, not grants, decide which rows a role sees.
 For the narrative overview see [database.md](../database.md).
 
-**61 tables · 115 RLS policies · 204 functions · 67 triggers · 31 Realtime tables · 5 Storage buckets**
+**63 tables · 117 RLS policies · 209 functions · 67 triggers · 31 Realtime tables · 5 Storage buckets**
 
 ## Contents
 
@@ -45,6 +45,8 @@ For the narrative overview see [database.md](../database.md).
 | [`public.dm_conversations`](#public-dm-conversations) | on | yes | Direct messages and group DMs |
 | [`public.dm_participants`](#public-dm-participants) | on | yes |  |
 | [`public.event_rsvps`](#public-event-rsvps) | on | yes |  |
+| [`public.forum_post_state`](#public-forum-post-state) | on |  |  |
+| [`public.forum_votes`](#public-forum-votes) | on |  |  |
 | [`public.friend_favourites`](#public-friend-favourites) | on |  |  |
 | [`public.friend_nicknames`](#public-friend-nicknames) | on |  |  |
 | [`public.friendships`](#public-friendships) | on | yes | Friends and blocks |
@@ -555,10 +557,14 @@ Grants: `authenticated` DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, U
 | `read_only` | `boolean` |  | `false` |
 | `is_private` | `boolean` |  | `false` |
 | `last_message_at` | `timestamp with time zone` | yes |  |
+| `forum_mode` | `text` |  | `'discussion'::text` |
+| `forum_tags` | `text[]` |  | `'{}'::text[]` |
 
 | Constraint | Kind | Definition |
 | --- | --- | --- |
 | `channels_category_check` | check | `CHECK (((char_length(btrim(category)) >= 1) AND (char_length(btrim(category)) <= 32)))` |
+| `channels_forum_mode_check` | check | `CHECK ((forum_mode = ANY (ARRAY['discussion'::text, 'suggestions'::text])))` |
+| `channels_forum_tags_check` | check | `CHECK (((cardinality(forum_tags) <= 12) AND (array_position(forum_tags, NULL::text) IS NULL)))` |
 | `channels_name_format` | check | `CHECK (((((type)::text = ANY (ARRAY['text'::text, 'forum'::text])) AND (name ~ '^[a-z0-9][a-z0-9_-]{0,31}$'::text)) OR (((type)::text = 'voice'::text) AND ((char_length(btrim(name)) >= 1) AND (char_length(btrim(name)) <= 32)))))` |
 | `channels_slowmode_seconds_check` | check | `CHECK (((slowmode_seconds >= 0) AND (slowmode_seconds <= 21600)))` |
 | `channels_topic_check` | check | `CHECK ((char_length(topic) <= 256))` |
@@ -748,6 +754,71 @@ Indexes:
 Triggers:
 
 - `event_rsvp_count AFTER INSERT OR DELETE ON public.event_rsvps FOR EACH ROW EXECUTE FUNCTION update_event_count()`
+
+<a id="public-forum-post-state"></a>
+
+### `public.forum_post_state`
+
+RLS **enabled** · created in `20261108020000_forum_tags_suggestions`
+
+Grants: `authenticated` SELECT
+
+| Column | Type | Null | Default |
+| --- | --- | --- | --- |
+| `message_id` | `uuid` |  |  |
+| `channel_id` | `uuid` |  |  |
+| `tags` | `text[]` |  | `'{}'::text[]` |
+| `status` | `text` | yes |  |
+| `status_by` | `uuid` | yes |  |
+| `updated_at` | `timestamp with time zone` |  | `now()` |
+
+| Constraint | Kind | Definition |
+| --- | --- | --- |
+| `forum_post_state_status_check` | check | `CHECK ((status = ANY (ARRAY['solved'::text, 'under_consideration'::text, 'planned'::text, 'in_progress'::text, 'completed'::text, 'declined'::text])))` |
+| `forum_post_state_tags_check` | check | `CHECK ((cardinality(tags) <= 5))` |
+| `forum_post_state_channel_id_fkey` | foreign key | `FOREIGN KEY (channel_id) REFERENCES channels(id) ON DELETE CASCADE` |
+| `forum_post_state_message_id_fkey` | foreign key | `FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE` |
+| `forum_post_state_status_by_fkey` | foreign key | `FOREIGN KEY (status_by) REFERENCES profiles(id) ON DELETE SET NULL` |
+| `forum_post_state_pkey` | primary key | `PRIMARY KEY (message_id)` |
+
+Indexes:
+
+- `CREATE INDEX forum_post_state_channel_idx ON public.forum_post_state (channel_id)`
+
+| Policy | Command | Roles | Using | With check |
+| --- | --- | --- | --- | --- |
+| channel viewers see post state | SELECT | authenticated | `can_view_channel(channel_id)` |  |
+
+<a id="public-forum-votes"></a>
+
+### `public.forum_votes`
+
+RLS **enabled** · created in `20261108020000_forum_tags_suggestions`
+
+Grants: `authenticated` SELECT
+
+| Column | Type | Null | Default |
+| --- | --- | --- | --- |
+| `message_id` | `uuid` |  |  |
+| `channel_id` | `uuid` |  |  |
+| `user_id` | `uuid` |  |  |
+| `created_at` | `timestamp with time zone` |  | `now()` |
+
+| Constraint | Kind | Definition |
+| --- | --- | --- |
+| `forum_votes_channel_id_fkey` | foreign key | `FOREIGN KEY (channel_id) REFERENCES channels(id) ON DELETE CASCADE` |
+| `forum_votes_message_id_fkey` | foreign key | `FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE` |
+| `forum_votes_user_id_fkey` | foreign key | `FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE` |
+| `forum_votes_pkey` | primary key | `PRIMARY KEY (message_id, user_id)` |
+
+Indexes:
+
+- `CREATE INDEX forum_votes_channel_idx ON public.forum_votes (channel_id)`
+- `CREATE INDEX forum_votes_user_idx ON public.forum_votes (user_id)`
+
+| Policy | Command | Roles | Using | With check |
+| --- | --- | --- | --- | --- |
+| channel viewers see votes | SELECT | authenticated | `can_view_channel(channel_id)` |  |
 
 <a id="public-friend-favourites"></a>
 
@@ -2458,6 +2529,8 @@ rights, so each one re-checks the caller itself; invoker functions stay subject 
 | `extend_hangout(p_conversation_id uuid, p_hours integer, p_keep boolean)` | `timestamp with time zone` | definer, volatile | authenticated | Any participant can push the end time out by 1–6 hours (never more than 24 hours from now). The host can also keep it for good (p_keep), which turns it into an ordinary group DM. |
 | `finish_push_job(p_id uuid, p_lease uuid, p_result text, p_status integer, p_code text, p_delay integer)` | `void` | definer, volatile | internal |  |
 | `forget_device(p_device_id uuid)` | `void` | definer, volatile | authenticated | Signing out of a browser forgets it. |
+| `forum_overview(p_channel uuid)` | `TABLE(message_id uuid, tags text[], status text, votes integer, voted boolean)` | invoker, stable | authenticated | Tags, status and vote totals for a forum's posts (only for a channel the caller can see). |
+| `forum_post(p_message uuid, OUT channel_id uuid, OUT server_id uuid, OUT author_id uuid, OUT mode text, OUT tags text[])` | `record` | definer, stable | internal | Top-level post in a forum channel the caller can see, or raises. |
 | `friends_activity()` | `TABLE(user_id uuid, status presence_status, voice_server_id uuid, voice_channel_id uuid, last_seen_at timestamp with time zone)` | definer, stable | authenticated | Friends who are around right now (heartbeat in the last 2 minutes). Status is the newest device's; invisible friends and friends who don't share activity are omitted. The voice channel (and its server) is returned only when the caller can view that channel. |
 | `generate_invite_code()` | `text` | invoker, volatile | authenticated | 10 characters from a 32-symbol alphabet without look-alikes (0/O, 1/I/L) ≈ 50 bits of entropy. |
 | `get_invite(p_code text)` | `TABLE(server_id uuid, name text, description text, icon_url text, member_count bigint, already_member boolean)` | definer, stable | anon, authenticated | Preview: the permanent code, or a live invite. |
@@ -2572,6 +2645,8 @@ rights, so each one re-checks the caller itself; invoker functions stay subject 
 | `servers_normalize()` | `trigger` | invoker, volatile | trigger | Custom auto-mod terms are stored trimmed, lower-case, unique and 2–60 characters long. |
 | `servers_owner_promote()` | `trigger` | definer, volatile | authenticated | Ownership transfer promotes the new owner to admin. |
 | `servers_rules_stamp()` | `trigger` | invoker, volatile | anon, authenticated |  |
+| `set_forum_post(p_message uuid, p_tags text[], p_status text, p_set_status boolean)` | `void` | definer, volatile | authenticated | Tag a post (its author or a moderator; up to 5 of the forum's tags) and set its status: 'solved'/null on discussion forums (author or moderator); the board statuses on suggestion boards (moderators only). Pass p_set_status = false to leave the status alone. |
+| `set_forum_settings(p_channel uuid, p_mode text, p_tags text[])` | `void` | definer, volatile | authenticated | Moderators: discussion forum or suggestion board, and its tags (1–20 characters, unique). |
 | `set_join_screening(p_server uuid, p_questions jsonb, p_approval boolean)` | `void` | definer, volatile | authenticated | Admins set the questions (0–5, each 1–200 characters) and whether moderators approve joins. |
 | `set_updated_at()` | `trigger` | invoker, volatile | authenticated | Utility functions |
 | `soundboard_clips_audit()` | `trigger` | definer, volatile | trigger |  |
@@ -2582,6 +2657,7 @@ rights, so each one re-checks the caller itself; invoker functions stay subject 
 | `tick_push()` | `void` | definer, volatile | internal |  |
 | `timeout_member(p_server uuid, p_user uuid, p_minutes integer, p_reason text)` | `timestamp with time zone` | definer, volatile | authenticated | Time someone out for 1, 5, 10, 60 minutes, a day or a week. |
 | `timeout_send_guard()` | `trigger` | definer, volatile | anon, authenticated | Sending and reacting are blocked while timed out. Triggers (not policies) so RPC paths such as create_poll() are covered too. Triggers fire in name order: this one runs after messages_before_insert fills server_id and before AutoMod (which may silently drop the row). |
+| `toggle_forum_vote(p_message uuid)` | `boolean` | definer, volatile | authenticated | Upvote a suggestion, or take the vote back. One vote per person; returns whether you now vote for it. |
 | `try_uuid(value text)` | `uuid` | invoker, immutable | authenticated | Casts text to uuid, returning null instead of raising (used on user-controlled paths/topics). |
 | `unban_member(p_server_id uuid, p_user_id uuid)` | `void` | definer, volatile | authenticated |  |
 | `unblock_user(p_user_id uuid)` | `void` | definer, volatile | authenticated |  |
@@ -2721,6 +2797,12 @@ erDiagram
   public_event_rsvps }o--|| public_server_events : "event_id"
   public_event_rsvps }o--|| public_servers : "server_id"
   public_event_rsvps }o--|| public_profiles : "user_id"
+  public_forum_post_state }o--|| public_channels : "channel_id"
+  public_forum_post_state }o--|| public_messages : "message_id"
+  public_forum_post_state }o--|| public_profiles : "status_by"
+  public_forum_votes }o--|| public_channels : "channel_id"
+  public_forum_votes }o--|| public_messages : "message_id"
+  public_forum_votes }o--|| public_profiles : "user_id"
   public_friend_favourites }o--|| public_profiles : "owner_id"
   public_friend_nicknames }o--|| public_profiles : "owner_id"
   public_friendships }o--|| public_profiles : "requested_by"
@@ -2866,3 +2948,4 @@ Applied in filename order. The first descriptive comment line of each file:
 | [`20261107000000_release_announcements.sql`](../../supabase/migrations/20261107000000_release_announcements.sql) | Official release announcements: when a production deployment of Diskarte starts serving, the |
 | [`20261108000000_hangouts.sql`](../../supabase/migrations/20261108000000_hangouts.sql) | Instant Hangouts + friends' live activity. |
 | [`20261108010000_membership_screening.sql`](../../supabase/migrations/20261108010000_membership_screening.sql) | Membership screening: joining questions and moderator approval. |
+| [`20261108020000_forum_tags_suggestions.sql`](../../supabase/migrations/20261108020000_forum_tags_suggestions.sql) | Forum tags, solved posts and suggestion boards. |

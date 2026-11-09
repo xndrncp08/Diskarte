@@ -11,6 +11,7 @@ export type BadgeKind = "booster" | "lodi_supporter" | "gcash_contributor";
 export type LfgStatus = "open" | "full" | "closed";
 export type FriendshipStatus = "pending" | "accepted";
 export type DmKind = "direct" | "group";
+export type ForumStatus = "solved" | "under_consideration" | "planned" | "in_progress" | "completed" | "declined";
 export type HangoutTopic = "hangout" | "gaming" | "study" | "project" | "watch" | "create";
 export type RingKind = "dm" | "voice";
 export type RingStatus = "ringing" | "accepted" | "declined" | "missed" | "cancelled";
@@ -172,6 +173,9 @@ export interface Database {
           is_private: boolean;
           /** When the channel last got a (non-thread) message. */
           last_message_at?: string | null;
+          /** Forum channels: discussion forum or suggestion board, and its tags (absent before migration 20261108020000). */
+          forum_mode?: "discussion" | "suggestions";
+          forum_tags?: string[];
           created_at: string;
         };
         Insert: {
@@ -353,6 +357,8 @@ export interface Database {
         { server_id: string; channel_id: string; content: string; weekday?: number | null; at_time: string; time_zone: string; enabled?: boolean }
       >;
       release_announcements: TableDef<{ release_id: string; released_on: string; title: string; message_id: string | null; published_at: string; withdrawn_at: string | null }, never>;
+      forum_post_state: TableDef<{ message_id: string; channel_id: string; tags: string[]; status: ForumStatus | null; status_by: string | null; updated_at: string }, never>;
+      forum_votes: TableDef<{ message_id: string; channel_id: string; user_id: string; created_at: string }, never>;
       join_requests: TableDef<
         { server_id: string; user_id: string; answers: Json; status: "pending" | "approved" | "rejected"; created_at: string; decided_by: string | null; decided_at: string | null },
         never
@@ -523,6 +529,10 @@ export interface Database {
       create_hangout: { Args: { p_user_ids: string[]; p_name?: string | null; p_topic?: HangoutTopic; p_hours?: number }; Returns: string };
       extend_hangout: { Args: { p_conversation_id: string; p_hours?: number; p_keep?: boolean }; Returns: string | null };
       end_hangout: { Args: { p_conversation_id: string }; Returns: undefined };
+      set_forum_settings: { Args: { p_channel: string; p_mode: "discussion" | "suggestions"; p_tags: string[] }; Returns: undefined };
+      set_forum_post: { Args: { p_message: string; p_tags?: string[] | null; p_status?: ForumStatus | null; p_set_status?: boolean }; Returns: undefined };
+      toggle_forum_vote: { Args: { p_message: string }; Returns: boolean };
+      forum_overview: { Args: { p_channel: string }; Returns: { message_id: string; tags: string[]; status: ForumStatus | null; votes: number; voted: boolean }[] };
       join_screening: { Args: { p_code?: string | null; p_server?: string | null }; Returns: Json };
       request_to_join: { Args: { p_code?: string | null; p_server?: string | null; p_answers: string[] }; Returns: string };
       decide_join_request: { Args: { p_server: string; p_user: string; p_approve: boolean }; Returns: undefined };
