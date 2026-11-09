@@ -82,9 +82,22 @@ There are no bot or app commands.
 ## Forum channels
 
 Every top-level message is a post with a 1–100 character title (`POST_TITLE_REQUIRED` otherwise);
-replies go in the post's thread. Posts are sorted by latest activity
+replies go in the post's thread. Pinned posts come first, then latest activity
 ([`ForumView`](../../diskarte/src/components/chat/ForumView.tsx)). Slow mode, auto-mod, timeouts and
-unreads apply. Tests: `tests/db/forum.test.ts`, `tests/ui/forum.test.tsx`.
+unreads apply.
+
+| Feature | Who | Detail |
+| --- | --- | --- |
+| Forum kind and tags | Moderators (forum ⚙) | **Discussion** or **Suggestion board**; up to 12 tags, 20 characters, case-insensitively unique (`set_forum_settings`). Removing a tag takes it off every post |
+| Tagging a post | Its author or a moderator | Up to 5 of the forum's tags, when posting or from the open post (`set_forum_post`) |
+| Solved | Its author or a moderator | Discussion forums only |
+| Votes and statuses | Members vote; moderators set statuses | Suggestion boards only (`toggle_forum_vote`); see [suggestion boards](communities.md#suggestion-boards) |
+| Filters | Everyone | Search, tag chips, status filter and **Top** sorting |
+
+State lives in `forum_post_state` and `forum_votes` (readable by whoever can view the channel,
+written only through the functions, deleted with the post); `forum_overview(channel)` returns tags,
+status and vote totals. Migration `20261108020000_forum_tags_suggestions.sql`. Tests:
+`tests/db/forum.test.ts`, `tests/db/forum-suggestions.test.ts`, `tests/ui/forum.test.tsx`.
 
 ## Reactions
 
@@ -178,13 +191,20 @@ Tests: `tests/db/unreads.test.ts`, `tests/db/mark-all-read.test.ts`, `tests/db/n
 
 - **Save Message** bookmarks a message privately (`saved_messages`); you only see it while you can
   still read the channel ([`SavedMessages`](../../diskarte/src/components/workspace/SavedMessages.tsx)).
+- **Remind me…** saves the message with a reminder time (20 minutes, 1 or 3 hours, tomorrow 9:00
+  or next week; `saved_messages.remind_at`). While Diskarte is open it checks every minute, shows a
+  toast with **Open** (and a desktop notification if enabled), then clears the reminder; Saved shows
+  pending reminders ([`Reminders.tsx`](../../diskarte/src/components/chat/Reminders.tsx)). Reminders
+  that come due while the app is closed appear the next time you open it — there's no push for
+  them. Migration `20261108030000_message_reminders.sql`.
 - **Forward** posts a quote ("Forwarded from *author* in #channel") to a channel in the same server
   or one of your DMs; attachments are not copied. Tests: `tests/db/saved-messages.test.ts`,
   `tests/ui/forward-saved.test.tsx`.
 
 ## Known limitations
 
-- No message translation, bookmarks folders, or message scheduling in DMs.
+- No message translation, bookmarks folders, or message scheduling or reminders in DMs.
+- Reminders aren't pushed to closed apps; forum subscriptions ("follow a post") don't exist yet.
 - Link preview cache is per server instance (1 hour).
 - Search uses the `simple` text configuration: no stemming or Filipino/English-specific language rules.
 - Offline, previously loaded conversations aren't available; only sending is queued.

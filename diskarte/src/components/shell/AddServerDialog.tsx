@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Compass, Sparkles } from "lucide-react";
 import { useId, useState, useTransition, type FormEvent } from "react";
+import { JoinScreeningDialog, type JoinTarget } from "@/components/server/JoinScreening";
 import { toast } from "sonner";
 import { createServerAction, joinServerAction } from "@/actions/servers";
 import { Button } from "@/components/ui/Button";
@@ -18,6 +19,8 @@ export function AddServerDialog({ open, onClose, initialTab = "create" }: { open
   const tabsId = useId();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
+  // The invite's Tambayan asks questions first: its form opens over this dialog.
+  const [screening, setScreening] = useState<JoinTarget | null>(null);
 
   function close() {
     setErrors({});
@@ -45,7 +48,9 @@ export function AddServerDialog({ open, onClose, initialTab = "create" }: { open
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     startTransition(async () => {
-      const result = await joinServerAction({ invite: String(form.get("invite") ?? "") });
+      const invite = String(form.get("invite") ?? "");
+      const result = await joinServerAction({ invite });
+      if (result.code === "SCREENING_REQUIRED") return setScreening({ invite });
       if (!result.ok || !result.data) {
         setErrors(result.fieldErrors ?? {});
         if (result.error) toast.error(result.error);
@@ -59,6 +64,18 @@ export function AddServerDialog({ open, onClose, initialTab = "create" }: { open
   }
 
   return (
+    <>
+    <JoinScreeningDialog
+      target={screening}
+      onClose={() => {
+        setScreening(null);
+        close();
+      }}
+      onJoined={(serverId) => {
+        router.push(`/tambayan/${serverId}`);
+        router.refresh();
+      }}
+    />
     <Modal
       open={open}
       onClose={close}
@@ -148,5 +165,6 @@ export function AddServerDialog({ open, onClose, initialTab = "create" }: { open
         )}
       </div>
     </Modal>
+    </>
   );
 }

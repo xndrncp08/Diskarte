@@ -1,7 +1,7 @@
 "use client";
 
 import { HQ_SERVER_ID, UPDATES_NAME } from "@/lib/admin";
-import { Bookmark, BookmarkX, Clock, Copy, CornerUpLeft, Forward, MailOpen, MessagesSquare, Pencil, Pin, PinOff, RotateCw, Trash2, Webhook, X } from "lucide-react";
+import { AlarmClock, Bookmark, BookmarkX, Clock, Copy, CornerUpLeft, Forward, MailOpen, MessagesSquare, Pencil, Pin, PinOff, RotateCw, Trash2, Webhook, X } from "lucide-react";
 import { memo, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { PersonContextMenu } from "@/components/social/PersonMenu";
@@ -42,6 +42,8 @@ export interface MessageActions {
   onSave?: (m: ChatMessage, saved: boolean) => void;
   savedIds?: ReadonlySet<string>;
   onMarkUnread?: (m: ChatMessage) => void;
+  /** "Remind me…" (servers only, like Save). */
+  onRemind?: (m: ChatMessage) => void;
   /** Opens an author's profile (servers only: DMs have no member profiles). */
   onOpenProfile?: (userId: string, anchor: HTMLElement) => void;
 }
@@ -194,6 +196,7 @@ function MessageMenuItems({ message, mine, canModerate, actions, setEditing }: {
       onSelect: () => actions.onSave?.(message, !actions.savedIds?.has(message.id)),
       hidden: !settled || !actions.onSave,
     },
+    { label: "Remind me…", icon: <AlarmClock className={icon} aria-hidden />, onSelect: () => actions.onRemind?.(message), hidden: !settled || !actions.onRemind },
     { label: "Mark Unread", icon: <MailOpen className={icon} aria-hidden />, onSelect: () => actions.onMarkUnread?.(message), hidden: !settled || !actions.onMarkUnread },
     { label: "Copy text", icon: <Copy className={icon} aria-hidden />, onSelect: () => void copyText(message.content, "Message"), hidden: !message.content },
     { label: "Delete message", icon: <Trash2 className={icon} aria-hidden />, danger: true, onSelect: () => actions.onDelete(message, false), hidden: !settled || !(mine || canModerate) },

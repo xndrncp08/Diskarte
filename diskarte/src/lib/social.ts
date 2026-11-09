@@ -1,5 +1,5 @@
 import type { MessageAuthor } from "@/lib/messages";
-import type { DmKind, Tables } from "@/lib/supabase/database.types";
+import type { DmKind, HangoutTopic, Tables } from "@/lib/supabase/database.types";
 
 export type Friendship = Tables<"friendships">;
 export type SocialProfile = MessageAuthor & { custom_status?: string | null; custom_status_emoji?: string | null };
@@ -39,6 +39,9 @@ export interface ConversationSummary {
   ownerId: string | null;
   lastMessageAt: string;
   lastReadAt: string;
+  /** Set while this is a temporary Hangout (see lib/hangouts.ts). */
+  hangoutUntil?: string | null;
+  hangoutTopic?: HangoutTopic | null;
   /** Everyone except me. */
   others: SocialProfile[];
 }

@@ -90,7 +90,7 @@ beforeEach(() => {
       };
       let rows = [...(rowsByTable[table] ?? [])];
       const api: Record<string, unknown> = {};
-      for (const op of ["select", "order", "limit", "neq", "is", "in", "lt"]) api[op] = () => api;
+      for (const op of ["select", "order", "limit", "neq", "is", "in", "lt", "lte", "not"]) api[op] = () => api;
       api.eq = (col: string, val: unknown) => ((rows = rows.filter((r) => r[col] === val)), api);
       api.gt = () => api;
       api.maybeSingle = () => Promise.resolve({ data: rows[0] ?? null, error: null });

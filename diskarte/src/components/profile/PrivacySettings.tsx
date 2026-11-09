@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
+import { Switch } from "@/components/ui/Switch";
 import { cn } from "@/lib/utils";
 
 type From = "everyone" | "server_members" | "nobody";
@@ -18,6 +19,8 @@ export function PrivacySettings() {
   const supabase = useSupabase();
   const { me } = useMe();
   const [from, setFrom] = useState<From | null>(null);
+  // null while loading, or on a project without migration 20261108000000 (the switch stays hidden).
+  const [shareActivity, setShareActivity] = useState<boolean | null>(null);
 
   useEffect(() => {
     void supabase
@@ -25,6 +28,11 @@ export function PrivacySettings() {
       .select("friend_requests_from")
       .maybeSingle()
       .then(({ data, error }) => setFrom(error ? null : ((data?.friend_requests_from as From | undefined) ?? "everyone")));
+    void supabase
+      .from("privacy_settings")
+      .select("share_activity")
+      .maybeSingle()
+      .then(({ data, error }) => setShareActivity(error ? null : (data?.share_activity ?? true)));
   }, [supabase]);
 
   async function choose(next: From) {
@@ -33,6 +41,15 @@ export function PrivacySettings() {
     const { error } = await supabase.from("privacy_settings").upsert({ user_id: me.id, friend_requests_from: next, updated_at: new Date().toISOString() });
     if (error) {
       setFrom(before);
+      toast.error("Couldn't save that.");
+    }
+  }
+
+  async function share(next: boolean) {
+    setShareActivity(next);
+    const { error } = await supabase.from("privacy_settings").upsert({ user_id: me.id, share_activity: next, updated_at: new Date().toISOString() });
+    if (error) {
+      setShareActivity(!next);
       toast.error("Couldn't save that.");
     }
   }
@@ -60,6 +77,14 @@ export function PrivacySettings() {
           ))}
         </div>
       </fieldset>
+      {shareActivity !== null && (
+        <Switch
+          checked={shareActivity}
+          onChange={(next) => void share(next)}
+          label="Show friends when I'm around"
+          hint="Friends see you on their Home when you're online, and which voice channel you're in if they can see it too. Invisible status always hides you."
+        />
+      )}
       <p className="text-xs text-slate-400">Direct messages: only friends can start one with you. Block someone from their profile menu to stop them entirely.</p>
     </div>
   );

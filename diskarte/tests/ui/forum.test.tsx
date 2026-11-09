@@ -15,6 +15,9 @@ vi.mock("@/actions/messages", () => ({
   deleteMessageAction: vi.fn(),
   setPinnedAction: vi.fn(),
   toggleReactionAction: vi.fn(),
+  toggleForumVoteAction: vi.fn(async () => ({ ok: true, data: { voted: true } })),
+  setForumPostAction: vi.fn(async () => ({ ok: true })),
+  setForumSettingsAction: vi.fn(async () => ({ ok: true })),
 }));
 
 const messageActions = await import("@/actions/messages");
@@ -74,5 +77,34 @@ describe("forum channels", () => {
     await user.click(screen.getByRole("button", { name: "Post" }));
     await waitFor(() => expect(messageActions.sendMessageAction).toHaveBeenCalledWith(expect.objectContaining({ channelId: FORUM, title: "Game night ideas", content: "Among Us or Valorant?" })));
     await waitFor(() => expect(within(list).getAllByRole("button")[0].querySelector("span")).toHaveTextContent("Game night ideas"));
+  });
+
+  it("runs a suggestion board: status badges, Top sorting by votes, and voting", async () => {
+    const user = userEvent.setup();
+    const board = { ...channel, forum_mode: "suggestions" as const, forum_tags: ["Events"] };
+    let votes = 1;
+    (fake.client.rpc as unknown as ReturnType<typeof vi.fn>).mockImplementation(async (fn: string) =>
+      fn === "forum_overview"
+        ? { data: [{ message_id: "p2", tags: ["Events"], status: "planned", votes: 5, voted: false }, { message_id: "p1", tags: [], status: null, votes, voted: votes > 1 }], error: null }
+        : { data: null, error: null },
+    );
+    render(
+      <ServerFixture members={members} meId={MEMBER_ID} myRole="member" overrides={{ channels: [board] }}>
+        <ForumView channel={board} initial={{ messages: [post("p1", "Mic help", "2026-10-10T00:00:00Z", "2026-10-12T00:00:00Z"), post("p2", "Movie night", "2026-10-11T00:00:00Z")], reactions: [], hasMore: false }} />
+      </ServerFixture>,
+    );
+    expect(await screen.findByText("Planned")).toBeInTheDocument();
+    const titles = () => within(screen.getByTestId("forum-posts")).getAllByRole("button", { name: /Mic help|Movie night/ }).map((b) => (b.textContent?.includes("Mic help") ? "p1" : "p2"));
+    expect(titles()).toEqual(["p1", "p2"]);
+    await user.click(screen.getByRole("button", { name: "Top" }));
+    expect(titles()).toEqual(["p2", "p1"]);
+
+    votes = 2;
+    await user.click(screen.getByRole("button", { name: "Upvote (1)" }));
+    expect(messageActions.toggleForumVoteAction).toHaveBeenCalledWith({ messageId: "p1" });
+    expect(await screen.findByRole("button", { name: "Remove your vote (2)" })).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(screen.getByRole("button", { name: "Events" }));
+    expect(titles()).toEqual(["p2"]);
   });
 });

@@ -62,7 +62,10 @@ export function Composer({
   extra,
   draftScope = "main",
   schedulable = false,
+  uploads: allowUploads = true,
 }: {
+  /** false: no files or voice messages (temporary Hangouts, whose files would outlive them). */
+  uploads?: boolean;
   /** Offer "Schedule message" (server text channels). */
   schedulable?: boolean;
   /** More toolbar buttons (the channel's "Create poll"). */
@@ -150,6 +153,7 @@ export function Composer({
 
   const addFiles = useCallback(
     (files: File[]) => {
+      if (!allowUploads) return void (files.length && toast.error("Files can't be shared in a temporary hangout. Keep it to share files."));
       const room = MAX_ATTACHMENTS - liveUploads.current.length;
       if (files.length > room) toast.error(`Up to ${MAX_ATTACHMENTS} files per message.`);
       for (const file of files.slice(0, Math.max(0, room))) {
@@ -160,7 +164,7 @@ export function Composer({
         void upload(item);
       }
     },
-    [upload, updateUploads],
+    [upload, updateUploads, allowUploads],
   );
 
   async function removeUpload(key: string) {
@@ -367,7 +371,7 @@ export function Composer({
             void submit();
           }}
         >
-          {
+          {allowUploads && (
             <>
               <input
                 ref={fileInput}
@@ -389,7 +393,7 @@ export function Composer({
               </button>
               <VoiceRecorder disabled={cooldown > 0} onRecorded={(file, seconds) => void sendVoice(file, seconds)} />
             </>
-          }
+          )}
           <span aria-hidden className="flex-1 @xl:hidden" />
           <label htmlFor={`composer-${channelId}`} className="sr-only">
             Message #{channelName}

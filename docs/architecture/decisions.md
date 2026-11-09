@@ -155,3 +155,21 @@ publishing from CI on merge (would announce failed deployments).
 **Consequences.** Every instance start costs one cheap RPC (not awaited). If the first attempt fails,
 the next instance retries. Super admins can retry, withdraw or republish in the Control Center.
 
+
+## 015. Hangouts are temporary group conversations
+
+**Status.** Accepted — *2026-11-08*
+
+**Context.** Friends needed a spontaneous way to talk and call without creating a permanent
+Tambayan, and without leaving abandoned rooms or files behind.
+**Decision.** A Hangout is a `dm_conversations` group row with an end time (`hangout_until`). It
+reuses group-DM text, read state, Realtime, the DM call room and rings unchanged. Expired hangouts
+stop accepting messages immediately (trigger) and are deleted by `purge_expired_hangouts` (platform
+job, and whenever a hangout is created). Uploads are refused while temporary so deletion never
+orphans Storage objects; "Keep" clears the end time.
+**Alternatives considered.** A new `hangouts` table with its own messages and LiveKit rooms
+(duplicates DMs, calls and their RLS); temporary Tambayans (channels, roles and invites are far more
+than a quick get-together needs, and cleanup would touch many tables).
+**Consequences.** Every DM code path already handles hangouts; the UI only adds the end-time bar,
+list badges and the start dialog. Hangouts follow group-DM rules (friends only, ≤ 10 people). Files
+need the hangout to be kept first.

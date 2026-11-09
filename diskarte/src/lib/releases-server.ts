@@ -3,7 +3,7 @@ import { getPublicEnv } from "@/lib/env";
 import { createServiceClient } from "@/lib/supabase/service";
 import { formatReleasePost, RELEASES, type Release } from "@/lib/releases";
 
-export type AnnounceResult = "published" | "already-published" | "superseded" | "disabled" | "none" | "failed";
+export type AnnounceResult = "published" | "already-published" | "superseded" | "disabled" | "none" | "failed" | "waiting-for-database";
 
 /** Opt-in per environment (set RELEASE_ANNOUNCEMENTS=on for Production only), never on preview builds. */
 export function releaseAnnouncementsEnabled(env: Record<string, string | undefined> = process.env) {
@@ -17,6 +17,15 @@ export function releaseAnnouncementsEnabled(env: Record<string, string | undefin
  */
 export async function announceRelease(release: Release | undefined = RELEASES[0], db = createServiceClient(), siteUrl = getPublicEnv().siteUrl): Promise<AnnounceResult> {
   if (!release) return "none";
+  // Every column the release relies on must exist (a zero-row read; missing → PostgREST error).
+  for (const need of release.requires ?? []) {
+    const [table, column] = need.split(".");
+    const { error: missing } = await db.from(table as never).select(column).limit(0);
+    if (missing) {
+      console.info(JSON.stringify({ event: "release_announcement", release: release.id, result: "waiting-for-database", missing: need }));
+      return "waiting-for-database";
+    }
+  }
   const { data, error } = await db.rpc("publish_release_announcement", {
     p_release_id: release.id,
     p_released_on: release.date,

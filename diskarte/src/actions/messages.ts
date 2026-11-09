@@ -149,3 +149,58 @@ export async function toggleReactionAction(input: { messageId: string; emoji: st
   }
   return { ok: true };
 }
+
+// ---------------------------------------------------------------------------------------
+// Forum tags, solved posts and suggestion boards (migration 20261108020000)
+// ---------------------------------------------------------------------------------------
+
+function forumError(message: string | undefined, fallback: string) {
+  if (message?.includes("INVALID_FORUM_SETTINGS")) return "Up to 12 tags, 20 characters each.";
+  if (message?.includes("INVALID_TAGS")) return "Pick up to 5 of this forum's tags.";
+  if (message?.includes("INVALID_STATUS")) return "That status doesn't fit this forum.";
+  if (message?.includes("POST_NOT_FOUND")) return "That post is gone.";
+  if (message?.includes("NOT_ALLOWED")) return "You don't have permission for this.";
+  if (message?.includes("RATE_LIMITED")) return "Slow down a little with the votes.";
+  return communityError(message, fallback);
+}
+
+const FORUM_STATUSES = ["solved", "under_consideration", "planned", "in_progress", "completed", "declined"] as const;
+
+export async function setForumSettingsAction(input: { channelId: string; mode: "discussion" | "suggestions"; tags: string[] }): Promise<ActionResult> {
+  const { ok } = await requireUser();
+  if (!ok) return { ok: false, error: "Slow down a little.", code: "RATE_LIMITED" };
+  const parsed = z
+    .object({ channelId: z.uuid(), mode: z.enum(["discussion", "suggestions"]), tags: z.array(z.string().trim().max(20, "Tags are 20 characters max")).max(12, "Up to 12 tags.") })
+    .safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_forum_settings", { p_channel: parsed.data.channelId, p_mode: parsed.data.mode, p_tags: parsed.data.tags });
+  return error ? { ok: false, error: forumError(error.message, "Couldn't save the forum settings.") } : { ok: true };
+}
+
+/** Tags (null = unchanged) and, when `status` is present (null clears it), the post's status. */
+export async function setForumPostAction(input: { messageId: string; tags?: string[] | null; status?: (typeof FORUM_STATUSES)[number] | null }): Promise<ActionResult> {
+  const { ok } = await requireUser();
+  if (!ok) return { ok: false, error: "Slow down a little.", code: "RATE_LIMITED" };
+  const parsed = z
+    .object({ messageId: z.uuid(), tags: z.array(z.string().max(20)).max(5).nullish(), status: z.enum(FORUM_STATUSES).nullish() })
+    .safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid post settings" };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_forum_post", {
+    p_message: parsed.data.messageId,
+    p_tags: parsed.data.tags ?? null,
+    p_status: parsed.data.status ?? null,
+    p_set_status: "status" in input,
+  });
+  return error ? { ok: false, error: forumError(error.message, "Couldn't update the post.") } : { ok: true };
+}
+
+export async function toggleForumVoteAction(input: { messageId: string }): Promise<ActionResult<{ voted: boolean }>> {
+  const { ok } = await requireUser();
+  if (!ok) return { ok: false, error: "Slow down a little.", code: "RATE_LIMITED" };
+  if (!uuidSchema.safeParse(input.messageId).success) return { ok: false, error: "Invalid post" };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("toggle_forum_vote", { p_message: input.messageId });
+  return error ? { ok: false, error: forumError(error.message, "Couldn't vote.") } : { ok: true, data: { voted: data === true } };
+}

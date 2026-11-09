@@ -28,6 +28,8 @@ code in `main` and the release notes, not on plans.
 | --- | --- | --- |
 | Text channels, replies, reactions, attachments, pins, edits | Shipped | |
 | Threads and forum channels | Shipped | |
+| Forum tags, Solved posts, suggestion boards with votes and statuses | Shipped | Needs migration `20261108020000`; no post subscriptions |
+| Message reminders ("Remind me") | Shipped | Server messages only; delivered while the app is open (no push) |
 | Voice messages, polls, stickers | Shipped | |
 | GIF search | Needs setup | `GIPHY_API_KEY` |
 | Link previews | Shipped | Per-instance cache |
@@ -38,6 +40,8 @@ code in `main` and the release notes, not on plans.
 | Friends, blocking, privacy, nicknames, notes, favourites | Shipped | |
 | DMs and group DMs (≤ 10), DM media | Shipped | |
 | DM read receipts (Sent / Seen) | Partial | No opt-out |
+| Instant Hangouts (temporary group chat + call, 1–24 h) | Shipped | Needs migration `20261108000000`; no files while temporary; purge also runs with the platform job |
+| Friends who are around (Home) | Shipped | Heartbeat-based; respects Invisible and the "Show friends when I'm around" setting |
 | Custom status with expiry | Shipped | Offline users' statuses clear only with the cron job |
 | Moments | Partial | Purged photos stay in Storage until account deletion |
 | Tambayans, channels, categories, reordering | Shipped | |
@@ -46,6 +50,7 @@ code in `main` and the release notes, not on plans.
 | Discovery (Explore) | Shipped | |
 | Templates and settings export | Shipped | |
 | Server rules | Shipped | |
+| Membership screening (joining questions, moderator approval) | Shipped | Needs migration `20261108010000` |
 | Welcome messages | Shipped | |
 | Recurring announcements | Needs setup | Only posted by the platform cron job |
 | Events with RSVPs, capacity, weekly series, calendar export | Shipped | Reminders need Web Push |

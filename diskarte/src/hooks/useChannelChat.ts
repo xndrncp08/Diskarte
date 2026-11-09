@@ -28,6 +28,8 @@ export interface SendExtras {
   sticker?: string | null;
   /** Forum post title. */
   title?: string | null;
+  /** Use this message id (so the caller can follow up on the message, e.g. tag a forum post). */
+  id?: string;
 }
 
 export interface ChatScope {
@@ -299,7 +301,7 @@ export function useChannelChat(
   const send = useCallback(
     async (content: string, attachments: Attachment[] = [], replyToId: string | null = null, extras: SendExtras = {}): Promise<SendResult> => {
       const entry: OutboxEntry = {
-        id: crypto.randomUUID(), userId: me.id,
+        id: extras.id ?? crypto.randomUUID(), userId: me.id,
         target: channelId,
         content,
         attachments,

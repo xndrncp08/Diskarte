@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { CheckCheck, LogOut, Plus, Users } from "lucide-react";
+import { CheckCheck, Hourglass, LogOut, Plus, Sparkles, Users } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { createGroupDmAction, leaveDmAction } from "@/actions/social";
@@ -18,6 +18,8 @@ import { confirmAction } from "@/components/ui/ConfirmHost";
 import { ContextMenu, ContextMenuItems, useContextMenu } from "@/components/ui/ContextMenu";
 import type { MenuItem } from "@/components/ui/Menu";
 import { PersonMenuItems } from "./PersonMenu";
+import { StartHangoutDialog, useNow } from "./Hangouts";
+import { hangoutTimeLeft, topicLabel } from "@/lib/hangouts";
 import { InputField } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { CallDock } from "@/components/voice/CallDock";
@@ -90,7 +92,14 @@ export function DmRow({ conversation: c, active }: { conversation: ConversationS
         <ConversationAvatar conversation={c} />
         <span className="min-w-0 flex-1">
           <span className="block truncate">{conversationTitle(c)}</span>
-          {c.kind === "group" && <span className="block text-[11px] font-normal text-slate-500">{c.others.length + 1} members</span>}
+          {c.hangoutUntil ? (
+            <span className="flex items-center gap-1 text-[11px] font-normal text-sun/80">
+              <Hourglass className="size-3" aria-hidden />
+              {topicLabel(c.hangoutTopic)} · <HangoutLeft until={c.hangoutUntil} />
+            </span>
+          ) : (
+            c.kind === "group" && <span className="block text-[11px] font-normal text-slate-500">{c.others.length + 1} members</span>
+          )}
         </span>
         {unread && (
           <span className="size-2 shrink-0 rounded-full bg-sun">
@@ -103,6 +112,10 @@ export function DmRow({ conversation: c, active }: { conversation: ConversationS
       </ContextMenu>
     </li>
   );
+}
+
+function HangoutLeft({ until }: { until: string }) {
+  return <>{hangoutTimeLeft(until, useNow())}</>;
 }
 
 function ServerRow({ server }: { server: Server }) {
@@ -130,6 +143,7 @@ export function HomeSidebar({ servers = [] }: { servers?: Server[] }) {
   const { setNavOpen } = useShellUI();
   const pathname = usePathname();
   const [groupOpen, setGroupOpen] = useState(false);
+  const [hangoutOpen, setHangoutOpen] = useState(false);
   const incoming = friends?.filter((f) => f.status === "incoming").length ?? 0;
   const accepted = (friends ?? []).filter((f) => f.status === "accepted");
 
@@ -156,6 +170,15 @@ export function HomeSidebar({ servers = [] }: { servers?: Server[] }) {
               </span>
             )}
           </Link>
+
+          <button
+            type="button"
+            onClick={() => setHangoutOpen(true)}
+            className="mb-3 flex w-full items-center gap-2.5 rounded-md border border-sun/20 bg-sun/5 px-2 py-2 text-left text-sm font-semibold text-sun transition-colors hover:bg-sun/10 pointer-coarse:min-h-11"
+          >
+            <Sparkles className="size-5" aria-hidden />
+            Start a Hangout
+          </button>
 
           <div className="mb-1 flex items-center justify-between px-2">
             <p className="font-silk text-[11px] uppercase tracking-wider text-slate-400">Direct messages</p>
@@ -193,6 +216,7 @@ export function HomeSidebar({ servers = [] }: { servers?: Server[] }) {
         <CallDock />
         <UserPanel />
       </aside>
+      <StartHangoutDialog open={hangoutOpen} onClose={() => setHangoutOpen(false)} />
       <Modal open={groupOpen} onClose={() => setGroupOpen(false)} title="New group DM">
         <GroupDmForm friendIds={accepted.map((f) => f.userId)} profiles={profiles} onDone={() => setGroupOpen(false)} />
       </Modal>

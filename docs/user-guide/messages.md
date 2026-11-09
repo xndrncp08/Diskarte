@@ -48,7 +48,23 @@ Hover a message (long-press on phones) for actions:
 
 ## Forum channels
 
-Each new post needs a title. Replies go inside the post. The most active posts float to the top.
+Each new post needs a title. Replies go inside the post. Pinned posts stay on top, then the most
+active ones.
+
+- **Tags:** pick up to 5 of the forum's tags when you post, or open your post to change them. Tap a
+  tag above the list to show only those posts.
+- **Solved:** open your question and tap **Mark solved** once it's answered.
+- **Suggestion boards:** some forums collect ideas. Tap the arrow to upvote (tap again to take it
+  back), use **Top** to see the most wanted ideas, and watch for the status a moderator sets:
+  Under consideration, Planned, In progress, Completed or Declined.
+- **Moderators:** the ⚙ button sets the forum's kind and its tags.
+
+## Remind me
+
+Right-click (long-press on phones) any message → **Remind me…** → pick a time. Diskarte saves the
+message and pops up a reminder with an **Open** button when it's time. Reminders show while Diskarte
+is open; if it's closed, you'll see it next time you open the app. Find pending reminders under
+**Notifications → Saved**.
 
 ## Schedule a message
 
@@ -74,6 +90,19 @@ Click a result to jump to that exact message.
   friends.
 - Under your latest message you'll see **Sent** or **Seen**.
 - Right-click a DM to mark it read, see the person's options, or leave a group.
+
+## Hangouts
+
+A Hangout is a quick, temporary space for you and up to 9 friends — chat plus a call — that
+cleans itself up afterwards.
+
+1. On **Home**, tap **Start a Hangout** (or the ✦ next to a friend who's around).
+2. Pick what it's for, who's coming and how long (1, 3 or 8 hours).
+3. Leave **Jump into voice** on to join the call right away and ring everyone.
+
+Anyone in it can add an hour. The host can **Keep** it (it becomes a normal group chat), **Make it
+a Tambayan** (everyone gets an invite), or **End** it. When the time runs out, the hangout and its
+messages are deleted. Files can't be shared in a hangout until it's kept.
 
 ![The Messages tab on a phone listing direct messages, with search and an Unread filter](../../diskarte/public/docs-assets/screens/messages-mobile.webp)
 *Sample data.*

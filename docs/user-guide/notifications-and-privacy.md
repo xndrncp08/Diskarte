@@ -34,6 +34,8 @@ Tambayan's menu under Notification Settings. Right-click a channel →
 - **DMs** only come from friends.
 - **Friend nicknames and notes** you add are visible only to you.
 - **Favourites** are private too.
+- **Show friends when I'm around** (Settings → **Privacy & Safety**): turn it off and friends won't
+  see you as online or which voice channel you're in on their Home. **Invisible** always hides you.
 - Seen receipts in DMs can't be turned off yet.
 
 ## Blocking

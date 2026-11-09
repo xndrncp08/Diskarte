@@ -11,6 +11,8 @@ export type BadgeKind = "booster" | "lodi_supporter" | "gcash_contributor";
 export type LfgStatus = "open" | "full" | "closed";
 export type FriendshipStatus = "pending" | "accepted";
 export type DmKind = "direct" | "group";
+export type ForumStatus = "solved" | "under_consideration" | "planned" | "in_progress" | "completed" | "declined";
+export type HangoutTopic = "hangout" | "gaming" | "study" | "project" | "watch" | "create";
 export type RingKind = "dm" | "voice";
 export type RingStatus = "ringing" | "accepted" | "declined" | "missed" | "cancelled";
 
@@ -89,6 +91,9 @@ export interface Database {
           /** Rules members accept before posting; rules_updated_at moves when they change. Absent before the server-rules migration. */
           rules?: string | null;
           rules_updated_at?: string | null;
+          /** Joining questions (≤ 5 strings) and whether moderators approve joins; absent before migration 20261108010000. */
+          join_questions?: Json;
+          join_approval?: boolean;
           is_system: boolean;
           invite_code: string;
           automod_enabled: boolean;
@@ -168,6 +173,9 @@ export interface Database {
           is_private: boolean;
           /** When the channel last got a (non-thread) message. */
           last_message_at?: string | null;
+          /** Forum channels: discussion forum or suggestion board, and its tags (absent before migration 20261108020000). */
+          forum_mode?: "discussion" | "suggestions";
+          forum_tags?: string[];
           created_at: string;
         };
         Insert: {
@@ -312,7 +320,10 @@ export interface Database {
       poll_votes: TableDef<{ message_id: string; channel_id: string; user_id: string; option: number; created_at: string }, never>;
       message_edits: TableDef<{ id: number; message_id: string; server_id: string; author_id: string | null; content: string; replaced_at: string }, never>;
       member_warnings: TableDef<{ id: string; server_id: string; user_id: string; moderator_id: string | null; reason: string; acknowledged_at: string | null; created_at: string }, never>;
-      privacy_settings: TableDef<{ user_id: string; friend_requests_from: string; updated_at: string }, { user_id?: string; friend_requests_from: string; updated_at?: string }>;
+      privacy_settings: TableDef<
+        { user_id: string; friend_requests_from: string; share_activity: boolean; updated_at: string },
+        { user_id?: string; friend_requests_from?: string; share_activity?: boolean; updated_at?: string }
+      >;
       server_invites: TableDef<{ code: string; server_id: string; created_by: string | null; max_uses: number | null; uses: number; expires_at: string | null; created_at: string }, never>;
       server_events: TableDef<
         { id: string; server_id: string; channel_id: string | null; location: string | null; name: string; description: string; starts_at: string; ends_at: string | null; created_by: string | null; created_at: string; capacity?: number | null; rsvp_count?: number },
@@ -320,7 +331,10 @@ export interface Database {
       >;
       event_rsvps: TableDef<{ event_id: string; server_id: string; user_id: string; created_at: string }, { event_id: string; server_id: string; user_id?: string }>;
       server_emojis: TableDef<{ id: string; server_id: string; name: string; path: string; created_by: string | null; created_at: string }, { id?: string; server_id: string; name: string; path: string; created_by?: string | null }>;
-      saved_messages: TableDef<{ user_id: string; message_id: string; saved_at: string }, { user_id?: string; message_id: string; saved_at?: string }>;
+      saved_messages: TableDef<
+        { user_id: string; message_id: string; saved_at: string; /** Absent before migration 20261108030000. */ remind_at?: string | null },
+        { user_id?: string; message_id: string; saved_at?: string; remind_at?: string | null }
+      >;
       workspace_documents: TableDef<{ id: string; server_id: string; channel_id: string; kind: "note" | "board" | "focus"; title: string; content: Json; revision: number; created_by: string | null; updated_by: string | null; created_at: string; updated_at: string }, never>;
       channel_reads: TableDef<{ user_id: string; channel_id: string; last_read_at: string }, never>;
       message_mentions: TableDef<{ message_id: string; user_id: string; channel_id: string; server_id: string; created_at: string }, never>;
@@ -346,12 +360,29 @@ export interface Database {
         { server_id: string; channel_id: string; content: string; weekday?: number | null; at_time: string; time_zone: string; enabled?: boolean }
       >;
       release_announcements: TableDef<{ release_id: string; released_on: string; title: string; message_id: string | null; published_at: string; withdrawn_at: string | null }, never>;
+      forum_post_state: TableDef<{ message_id: string; channel_id: string; tags: string[]; status: ForumStatus | null; status_by: string | null; updated_at: string }, never>;
+      forum_votes: TableDef<{ message_id: string; channel_id: string; user_id: string; created_at: string }, never>;
+      join_requests: TableDef<
+        { server_id: string; user_id: string; answers: Json; status: "pending" | "approved" | "rejected"; created_at: string; decided_by: string | null; decided_at: string | null },
+        never
+      >;
       rules_acceptances: TableDef<{ server_id: string; user_id: string; accepted_at: string }, never>;
       member_xp: TableDef<{ server_id: string; user_id: string; xp: number; last_award_at: string | null }, never>;
       friend_favourites: TableDef<{ owner_id: string; target_id: string; created_at: string }, { owner_id?: string; target_id: string }>;
       friend_nicknames: TableDef<{ owner_id: string; target_id: string; nickname: string }, { owner_id?: string; target_id: string; nickname: string }>;
       dm_conversations: TableDef<
-        { id: string; kind: DmKind; name: string | null; owner_id: string | null; direct_key: string | null; created_at: string; last_message_at: string },
+        {
+          id: string;
+          kind: DmKind;
+          name: string | null;
+          owner_id: string | null;
+          direct_key: string | null;
+          created_at: string;
+          last_message_at: string;
+          /** Set while the conversation is a temporary Hangout; absent before migration 20261108000000. */
+          hangout_until?: string | null;
+          hangout_topic?: HangoutTopic | null;
+        },
         never
       >;
       dm_participants: TableDef<{ conversation_id: string; user_id: string; joined_at: string; last_read_at: string }, never>;
@@ -498,6 +529,21 @@ export interface Database {
       unblock_user: { Args: { p_user_id: string }; Returns: undefined };
       open_dm: { Args: { p_user_id: string }; Returns: string };
       create_group_dm: { Args: { p_user_ids: string[]; p_name?: string | null }; Returns: string };
+      create_hangout: { Args: { p_user_ids: string[]; p_name?: string | null; p_topic?: HangoutTopic; p_hours?: number }; Returns: string };
+      extend_hangout: { Args: { p_conversation_id: string; p_hours?: number; p_keep?: boolean }; Returns: string | null };
+      end_hangout: { Args: { p_conversation_id: string }; Returns: undefined };
+      set_forum_settings: { Args: { p_channel: string; p_mode: "discussion" | "suggestions"; p_tags: string[] }; Returns: undefined };
+      set_forum_post: { Args: { p_message: string; p_tags?: string[] | null; p_status?: ForumStatus | null; p_set_status?: boolean }; Returns: undefined };
+      toggle_forum_vote: { Args: { p_message: string }; Returns: boolean };
+      forum_overview: { Args: { p_channel: string }; Returns: { message_id: string; tags: string[]; status: ForumStatus | null; votes: number; voted: boolean }[] };
+      join_screening: { Args: { p_code?: string | null; p_server?: string | null }; Returns: Json };
+      request_to_join: { Args: { p_code?: string | null; p_server?: string | null; p_answers: string[] }; Returns: string };
+      decide_join_request: { Args: { p_server: string; p_user: string; p_approve: boolean }; Returns: undefined };
+      set_join_screening: { Args: { p_server: string; p_questions: string[]; p_approval: boolean }; Returns: undefined };
+      friends_activity: {
+        Args: Record<string, never>;
+        Returns: { user_id: string; status: PresenceStatus; voice_server_id: string | null; voice_channel_id: string | null; last_seen_at: string }[];
+      };
       add_to_group_dm: { Args: { p_conversation_id: string; p_user_id: string }; Returns: undefined };
       rename_group_dm: { Args: { p_conversation_id: string; p_name: string }; Returns: undefined };
       leave_dm: { Args: { p_conversation_id: string }; Returns: undefined };

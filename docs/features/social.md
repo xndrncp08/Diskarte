@@ -85,6 +85,45 @@ Right-click a DM for mark read, the person's menu or leave (groups).
 
 Tests: `tests/db/dm-attachments.test.ts`, `tests/ui/dm-notifier.test.tsx`, `e2e/server-chat.spec.ts`.
 
+## Instant Hangouts
+
+**What.** A temporary space for right now: text chat plus the DM call room (voice, video, screen
+share, soundboard and activities such as watch party), for you and 1–9 friends, lasting 1, 3 or 8
+hours. **How.** Home → **Start a Hangout** (or the button in the Home sidebar, or the ✦ next to a
+friend on Home) → what it's for (Just hanging, Gaming, Study, Project, Watch party, Create) → who →
+how long → optionally **Jump into voice**, which joins the call and rings everyone picked.
+
+| Rule | Detail |
+| --- | --- |
+| What it is | A group conversation (`dm_conversations.kind = 'group'`) with `hangout_until` and `hangout_topic` set; created by `create_hangout` |
+| Who | Accepted friends with no block either way (`DM_NOT_ALLOWED`); 2–10 people including you |
+| How many | 3 live hangouts hosted at once per person (`RATE_LIMITED`) |
+| Extend | Any participant: **+1 hour** (`extend_hangout`), never more than 24 hours from now |
+| Keep | The host: **Keep** clears the end time; it becomes an ordinary group DM |
+| Make it a Tambayan | The host: creates a Tambayan from the matching template and posts its invite in the hangout |
+| End | The host: **End** deletes the conversation and its messages for everyone (`end_hangout`) |
+| Time's up | Sending stops (`HANGOUT_ENDED`), it leaves everyone's lists, and `purge_expired_hangouts` deletes it (run by the platform job and whenever someone starts a hangout) |
+| Files | Not while temporary (`can_upload_dm_attachment` is false), so a purge never leaves files behind; GIFs, stickers and links work |
+
+Code: [`Hangouts.tsx`](../../diskarte/src/components/social/Hangouts.tsx),
+[`lib/hangouts.ts`](../../diskarte/src/lib/hangouts.ts), actions in
+[`actions/social.ts`](../../diskarte/src/actions/social.ts). Migration `20261108000000_hangouts.sql`.
+Tests: `tests/db/hangouts.test.ts`, `tests/ui/hangouts.test.tsx`, `src/lib/__tests__/hangouts.test.ts`.
+
+## Friends who are around
+
+Home's **Instant Hangouts** card and **Your people** list show friends who are online now, online
+first, with their status and — when you can see that channel yourself — the voice channel they're
+in. Data comes from `friends_activity()`: accepted, unblocked friends with a device heartbeat in the
+last 2 minutes, polled once a minute while the tab is visible
+([`useFriendsActivity`](../../diskarte/src/hooks/useFriendsActivity.ts)).
+
+- **Invisible** friends never appear.
+- **Settings → Privacy → Show friends when I'm around** (`privacy_settings.share_activity`) hides you
+  from everyone's feed.
+- A voice channel is only revealed if `can_view_channel` is true for the viewer, so private
+  channels and Tambayans you're not in stay private.
+
 ## Moments
 
 **What.** Optional 24-hour updates on Home — text and/or one photo — for **all friends** or
@@ -101,6 +140,8 @@ Code: [`Moments.tsx`](../../diskarte/src/components/social/Moments.tsx). Tests:
 ## Known limitations
 
 - No read-receipt or typing-indicator opt-out.
+- Hangouts have no shared notes or task boards (the Tambayan workspace has them) and no files while temporary.
+- "Around now" is heartbeat-based (up to ~2 minutes behind) and per device, not per tab.
 - No message requests from non-friends; DMs are friends-only by design.
 - Group DMs have no roles, ownership transfer UI or custom icons.
 - Moments have no reactions or replies.

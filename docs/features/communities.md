@@ -76,6 +76,34 @@ Tests: `tests/db/private-channels.test.ts`, `tests/db/ownership.test.ts`, `tests
 - Moderators see and revoke every invite; members see and revoke their own (Server settings → Invites).
 - `/invite/<code>` previews the server (`get_invite`) before joining.
 
+## Membership screening
+
+**What.** Joining questions (up to 5, 200 characters each) and/or moderator approval for new
+members. **How.** Server settings → **Membership** (admins set it up; moderators see the queue).
+While either is on, joining by invite or from Explore opens a **Before you join** form with the
+rules and questions instead of joining straight away.
+
+| Setting | What joining does |
+| --- | --- |
+| Questions only | Answer them and you join immediately; the answers are kept |
+| Approval on | A pending request (`join_requests`) that moderators **Approve** (adds the member) or **Decline** |
+
+- `join_server` raises `SCREENING_REQUIRED`; the form reads `join_screening(code | server)`, which
+  only returns the name, rules, questions and your own request status — and only for a live invite
+  code or a server listed in Explore.
+- `request_to_join` validates one 1–500 character answer per question (`INVALID_ANSWERS`), counts a
+  limited invite's use, caps you at 10 pending requests, and makes a declined applicant wait a day
+  (`JOIN_REQUEST_REJECTED`).
+- `decide_join_request` is moderators-only, refuses banned users and writes `member.approve` /
+  `member.reject` to the audit log. Moderators watch the queue live on `db:join-requests:<server>`
+  and get a "N people want to join" nudge in the channel sidebar.
+- Applicants see only their own requests; other members never see applications. Answers are in
+  the applicant's data export.
+
+Code: [`JoinScreening.tsx`](../../diskarte/src/components/server/JoinScreening.tsx). Migration
+`20261108010000_membership_screening.sql`. Tests: `tests/db/membership-screening.test.ts`,
+`tests/ui/join-screening.test.tsx`.
+
 ## Server rules
 
 Admins write rules (Server settings → Overview). Members must accept the current rules before
@@ -157,6 +185,13 @@ post plain messages with `{"content": "…", "username": "…"}`. The token is s
 hashed; rotate it if it leaks. Webhook posts can't ping `@everyone`/`@here`, are limited to 30 per
 minute per webhook; creating and rotating webhooks is audited. Full API: [reference/api.md](../reference/api.md#post-apiwebhooksidtoken).
 Tests: `tests/db/channel-webhooks.test.ts`, `src/app/api/webhooks/[id]/[token]/__tests__/`.
+
+## Suggestion boards
+
+A forum channel can be switched to a **suggestion board** (forum ⚙ → Forum settings, moderators):
+members post ideas and upvote them (one vote each; 30 votes a minute), and moderators set a
+status — Under consideration, Planned, In progress, Completed or Declined. Filter by status or
+tag and sort by **Top**. See [Forum channels](messaging.md#forum-channels) for tags and Solved posts.
 
 ## Known limitations
 
