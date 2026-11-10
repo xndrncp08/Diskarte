@@ -14,6 +14,14 @@ export function parseShell(value: unknown): Shell {
 }
 
 /**
+ * The shell the server renders while Pulse is a super-admin preview: the cookie counts only for a super admin
+ * (the role the server verified), so nobody else can opt in by setting it by hand.
+ */
+export function previewShell(value: unknown, platformRole: string): Shell {
+  return platformRole === "super_admin" ? parseShell(value) : "classic";
+}
+
+/**
  * Switch shells in place. The attribute flips the CSS immediately; `router.refresh()` re-renders the
  * Server Components with the new cookie while client state (the LiveKit call in SessionProviders,
  * open chats, drafts) stays mounted. Never reload the page here: that would drop a live call.
