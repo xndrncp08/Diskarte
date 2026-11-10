@@ -13,7 +13,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Switch } from "@/components/ui/Switch";
 import { useProfileNames } from "@/hooks/useProfileNames";
 import { subscribeDbChanges } from "@/lib/realtime";
-import { parseInviteInput } from "@/lib/servers";
+import { hasRole, parseInviteInput } from "@/lib/servers";
 import type { Tables } from "@/lib/supabase/database.types";
 
 /** A join that the Tambayan screens: an invite (code or link) or a server listed in Explore. */
@@ -254,10 +254,12 @@ function ScreeningSetup({ questions: initial, approval: initialApproval }: { que
 /** Pending join requests for this server (0 when approval is off), checked on load and on focus. Moderators only: RLS hides the rest. */
 export function useJoinRequestCount() {
   const supabase = useSupabase();
-  const { server } = useServer();
+  const { server, myRole } = useServer();
   const [count, setCount] = useState(0);
+  // Only moderators can act on requests (and RLS shows them nothing else): no query or focus listener for anyone else.
+  const enabled = hasRole(myRole, "moderator") && !!server.join_approval;
   useEffect(() => {
-    if (!server.join_approval) return;
+    if (!enabled) return;
     const load = () =>
       void supabase
         .from("join_requests")
@@ -268,8 +270,8 @@ export function useJoinRequestCount() {
     load();
     window.addEventListener("focus", load);
     return () => window.removeEventListener("focus", load);
-  }, [supabase, server.id, server.join_approval]);
-  return server.join_approval ? count : 0;
+  }, [supabase, server.id, enabled]);
+  return enabled ? count : 0;
 }
 
 /** Sidebar nudge for moderators when people are waiting to be let in. */
