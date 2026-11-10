@@ -514,7 +514,7 @@ export function HomeView({
         </section>
       </WorkspacePanel>
       <StartHangoutDialog
-        key={hangoutWith?.join() ?? "closed"}
+        key={hangoutWith ? `hangout:${hangoutWith.join()}` : "hangout-closed"}
         open={hangoutWith !== null}
         onClose={() => setHangoutWith(null)}
         preselect={hangoutWith ?? []}
