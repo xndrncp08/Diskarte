@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { Pin, PinOff, X } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { usePinnedMessages } from "@/components/chat/PinsDrawer";
 import { Timestamp } from "@/components/chat/Timestamp";
 import { useServer } from "@/components/providers/ServerProvider";
@@ -75,11 +75,12 @@ function AboutTab({ channelId }: { channelId?: string }) {
 export function ContextPanel({ children }: { children: ReactNode }) {
   const ui = usePulseUI();
   const { channelId } = useParams<{ channelId?: string }>();
-  const [tab, setTab] = useState("people");
+  const tab = ui.contextTab === "pinned" && !channelId ? "people" : ui.contextTab;
   const body = (
-    <Tabs label="Context" items={TABS.filter((t) => t.id !== "pinned" || channelId)} value={tab === "pinned" && !channelId ? "people" : tab} onChange={setTab}>
+    <Tabs label="Context" items={TABS.filter((t) => t.id !== "pinned" || channelId)} value={tab} onChange={ui.setContextTab}>
       <div className="pt-3">
-        {tab === "pinned" && channelId ? <PinnedTab channelId={channelId} /> : tab === "about" ? <AboutTab channelId={channelId} /> : children}
+        {/* Keyed by channel: another channel's pins never show while the new list loads. */}
+        {tab === "pinned" && channelId ? <PinnedTab key={channelId} channelId={channelId} /> : tab === "about" ? <AboutTab channelId={channelId} /> : children}
       </div>
     </Tabs>
   );
@@ -89,8 +90,9 @@ export function ContextPanel({ children }: { children: ReactNode }) {
       <aside aria-label="Context" className="my-2 mr-2 flex w-80 shrink-0 flex-col overflow-hidden rounded-pulse-card border border-pulse-line bg-pulse-surface font-pulse-text text-pulse-text shadow-pulse-1" data-testid="context-panel">
         <div className="flex items-center gap-1 border-b border-pulse-line px-4 py-2">
           <h2 className="flex-1 font-pulse-display text-pulse-title font-semibold">Context</h2>
-          <IconButton size="sm" tooltip label="Unpin context" icon={<PinOff />} onClick={() => ui.setContextPinned(false)} />
-          <IconButton size="sm" tooltip label="Close context" icon={<X />} onClick={() => ui.setContextPinned(false)} />
+          {/* Unpin keeps Context in view, as a sheet; Close puts it away. */}
+          <IconButton size="sm" tooltip label="Unpin context" icon={<PinOff />} onClick={() => { ui.setContextPinned(false); ui.setContextOpen(true); }} />
+          <IconButton size="sm" tooltip label="Close context" icon={<X />} onClick={() => { ui.setContextPinned(false); ui.setContextOpen(false); }} />
         </div>
         <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-4 py-3">{body}</div>
       </aside>

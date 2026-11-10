@@ -16,6 +16,11 @@ interface PulseUIValue {
   /** Pinned and wide enough: the Context panel is a column, not a sheet. */
   docked: boolean;
   wide: boolean;
+  /** The Context tab showing (people, pinned, about). */
+  contextTab: string;
+  setContextTab: (tab: string) => void;
+  /** Shows Context on a tab: the docked column if pinned and wide, else the sheet (the masthead's pin button uses "pinned"). */
+  openContext: (tab: string) => void;
   /** Where the active Space's rooms render inside the navigator (null while the Spaces view is hidden). */
   roomsSlot: HTMLElement | null;
   setRoomsSlot: (el: HTMLElement | null) => void;
@@ -44,17 +49,23 @@ function subscribeWide(cb: () => void) {
 
 export function PulseUIProvider({ children }: { children: ReactNode }) {
   const [contextOpen, setContextOpen] = useState(false);
+  const [contextTab, setContextTab] = useState("people");
   const [roomsSlot, setRoomsSlot] = useState<HTMLElement | null>(null);
   const contextPinned = useSyncExternalStore(subscribePinned, readPinned, () => false);
   const wide = useSyncExternalStore(subscribeWide, () => window.matchMedia?.(WIDE).matches ?? false, () => false);
+  const docked = contextPinned && wide;
   const value = useMemo<PulseUIValue>(
-    () => ({ contextOpen, setContextOpen, contextPinned, setContextPinned: writePinned, docked: contextPinned && wide, wide, roomsSlot, setRoomsSlot }),
-    [contextOpen, contextPinned, wide, roomsSlot],
+    () => ({
+      contextOpen, setContextOpen, contextPinned, setContextPinned: writePinned, docked, wide, contextTab, setContextTab, roomsSlot, setRoomsSlot,
+      openContext: (tab: string) => { setContextTab(tab); if (!docked) setContextOpen(true); },
+    }),
+    [contextOpen, contextPinned, docked, wide, contextTab, roomsSlot],
   );
   return <PulseUIContext.Provider value={value}>{children}</PulseUIContext.Provider>;
 }
 
-const NOOP: PulseUIValue = { contextOpen: false, setContextOpen: () => {}, contextPinned: false, setContextPinned: () => {}, docked: false, wide: false, roomsSlot: null, setRoomsSlot: () => {} };
+const noop = () => {};
+const NOOP: PulseUIValue = { contextOpen: false, setContextOpen: noop, contextPinned: false, setContextPinned: noop, docked: false, wide: false, contextTab: "people", setContextTab: noop, openContext: noop, roomsSlot: null, setRoomsSlot: noop };
 
 /** The Pulse shell's state; a closed, inert default outside it (isolated renders). */
 export function usePulseUI(): PulseUIValue {

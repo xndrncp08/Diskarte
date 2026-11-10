@@ -11,6 +11,8 @@ import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { useServer } from "@/components/providers/ServerProvider";
 import { useOptionalUnreads } from "@/components/providers/UnreadsProvider";
 import { ChannelHeader } from "@/components/server/ChannelHeader";
+import { usePulseUI } from "@/components/pulse/shell/PulseUI";
+import { useShellKind } from "@/components/shell/ShellKind";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { mentionsUser, useChannelChat, type ChatMessage } from "@/hooks/useChannelChat";
@@ -69,6 +71,8 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
   const [editingId, setEditingId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [pinsOpen, setPinsOpen] = useState(false);
+  const pulse = useShellKind() === "pulse";
+  const pulseUI = usePulseUI();
   const [confirmDelete, setConfirmDelete] = useState<ChatMessage | null>(null);
   const { listRef, atBottom, unseen, onScroll, scrollToBottom, restoringHistory } = useConversationScroll(`${me.id}:${channel.id}`, chat.messages, me.id, chat.loadOlder, chat.hasMore, chat.loadingOlder);
   useEffect(() => {
@@ -188,8 +192,9 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
               <button
                 type="button"
                 aria-label="Pinned messages"
-                aria-expanded={pinsOpen}
-                onClick={() => setPinsOpen((o) => !o)}
+                aria-expanded={pulse ? undefined : pinsOpen}
+                // Pulse: pins live in the Context sheet's Pinned tab.
+                onClick={() => (pulse ? pulseUI.openContext("pinned") : setPinsOpen((o) => !o))}
                 className={cn("touch-target relative rounded-md p-1.5 transition-colors hover:bg-white/10", pinsOpen ? "text-white" : "text-slate-400")}
               >
                 <Pin className="size-5" aria-hidden />
@@ -230,10 +235,13 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
               </div>
             ) : (
               <div className="px-4 pb-2 pt-10">
-                <span className="mb-3 flex size-16 items-center justify-center rounded-full bg-white/10">
-                  <Hash className="size-9 text-white" aria-hidden />
-                </span>
-                <h2 className="text-3xl font-extrabold text-white">Welcome to #{channel.name}!</h2>
+                {/* Pulse: the masthead leads; the welcome is a quiet note under it. */}
+                {!pulse && (
+                  <span className="mb-3 flex size-16 items-center justify-center rounded-full bg-white/10">
+                    <Hash className="size-9 text-white" aria-hidden />
+                  </span>
+                )}
+                <h2 className={pulse ? "text-lg font-semibold text-white" : "text-3xl font-extrabold text-white"}>Welcome to #{channel.name}!</h2>
                 <p className="text-slate-400">{channel.topic || "This is the start of the channel."}</p>
               </div>
             )
