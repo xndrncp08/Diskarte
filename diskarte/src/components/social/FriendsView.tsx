@@ -1,5 +1,6 @@
 "use client";
 
+import { CountBadge } from "@/components/pulse/Chip";
 import { Masthead } from "@/components/pulse/shell/Masthead";
 import { useShellKind } from "@/components/shell/ShellKind";
 import {
@@ -186,7 +187,7 @@ export function FriendsView({ servers }: { servers: Server[] }) {
           <div
             role="tablist"
             aria-label="Friends"
-            className="social-tabs scrollbar-none flex gap-1 overflow-x-auto"
+            className={pulse ? "scrollbar-none flex shrink-0 gap-1 overflow-x-auto border-b border-pulse-line px-3 py-2 font-pulse-text md:px-5" : "social-tabs scrollbar-none flex gap-1 overflow-x-auto"}
             onKeyDown={(event) => {
               const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
               const next = step
@@ -215,7 +216,12 @@ export function FriendsView({ servers }: { servers: Server[] }) {
                 tabIndex={tab === t.id ? 0 : -1}
                 aria-selected={tab === t.id}
                 onClick={() => setTab(t.id)}
-                className={cn(
+                className={pulse ? cn(
+                  // Pulse: selected is a tint plus a sun underline; Add Friend is the page's one gold action until chosen.
+                  "flex min-h-9 shrink-0 items-center gap-1.5 rounded-pulse-control px-3 text-pulse-label font-semibold transition-colors pointer-coarse:min-h-11",
+                  tab === t.id ? "bg-pulse-selected text-pulse-text underline decoration-pulse-accent-mark decoration-2 underline-offset-4"
+                    : t.id === "add" ? "bg-pulse-accent text-pulse-on-accent hover:brightness-105" : "text-pulse-muted hover:bg-pulse-hover hover:text-pulse-text",
+                ) : cn(
                   "flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-semibold transition-colors pointer-coarse:py-2",
                   t.id === "add"
                     ? tab === t.id
@@ -227,7 +233,7 @@ export function FriendsView({ servers }: { servers: Server[] }) {
                 )}
               >
                 {t.label}
-                {t.count ? (
+                {pulse ? <CountBadge count={t.count ?? 0} label="pending" tone="accent" /> : t.count ? (
                   <span className="rounded-full bg-red-600 px-1.5 text-[10px] text-white">
                     {t.count}
                   </span>
