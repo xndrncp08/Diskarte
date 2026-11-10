@@ -23,6 +23,9 @@ export const PULSE_COLORS = {
     "presence-idle": "#ffb800",
     "presence-dnd": "#ff6b5e",
     "presence-offline": "#8b8597",
+    "on-live": "#04201c",
+    "on-alert": "#1a0a08",
+    code: "#0d0b10",
   },
   light: {
     bg: "#f7f6f2",
@@ -44,6 +47,9 @@ export const PULSE_COLORS = {
     "presence-idle": "#a86b00",
     "presence-dnd": "#c4342a",
     "presence-offline": "#7a7484",
+    "on-live": "#ffffff",
+    "on-alert": "#ffffff",
+    code: "#efede7",
   },
 } as const;
 
@@ -52,3 +58,6 @@ export const PULSE_COLORS = {
  * the ground gets a faint accent tint, and light mode darkens the accent for text.
  */
 export const PULSE_THEME_MIX = { ground: 6, lightInk: 42 } as const;
+
+/** Translucent tints (`color-mix(in srgb, <token> N%, transparent)`), in percent. */
+export const PULSE_TINTS = { hover: 6, pressed: 10, selected: 15, mention: 12, live: 14, people: 14, speaking: 24 } as const;

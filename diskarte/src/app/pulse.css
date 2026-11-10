@@ -4,7 +4,7 @@
  * src/lib/pulse-tokens.ts; tests/ui/pulse-tokens.test.ts keeps them in sync and checks contrast.
  */
 
-/* Tailwind aliases (bg-pulse-surface, text-pulse-muted, rounded-pulse-card, font-display…). `inline` makes
+/* Tailwind aliases (bg-pulse-surface, text-pulse-muted, rounded-pulse-card, font-pulse-display…). `inline` makes
    utilities read the --pulse-* var where they are used; they only resolve inside the Pulse shell. */
 @theme inline {
   --color-pulse-bg: var(--pulse-bg);
@@ -26,6 +26,20 @@
   --color-pulse-idle: var(--pulse-presence-idle);
   --color-pulse-dnd: var(--pulse-presence-dnd);
   --color-pulse-offline: var(--pulse-presence-offline);
+  --color-pulse-on-live: var(--pulse-on-live);
+  --color-pulse-on-alert: var(--pulse-on-alert);
+  --color-pulse-accent-mark: var(--pulse-accent-mark);
+  --color-pulse-input: var(--pulse-input-border);
+  --color-pulse-disabled: var(--pulse-disabled);
+  --color-pulse-hover: var(--pulse-hover);
+  --color-pulse-pressed: var(--pulse-pressed);
+  --color-pulse-selected: var(--pulse-selected);
+  --color-pulse-scrim: var(--pulse-scrim);
+  --color-pulse-code: var(--pulse-code);
+  --color-pulse-mention: var(--pulse-mention-bg);
+  --color-pulse-live-tint: var(--pulse-live-tint);
+  --color-pulse-people-tint: var(--pulse-people-tint);
+  --color-pulse-speaking: var(--pulse-speaking-tint);
 
   --radius-pulse-control: var(--pulse-radius-control);
   --radius-pulse-item: var(--pulse-radius-item);
@@ -36,8 +50,8 @@
   --shadow-pulse-2: var(--pulse-elevation-2);
   --shadow-pulse-3: var(--pulse-elevation-3);
 
-  --font-display: var(--pulse-font-display);
-  --font-text: var(--pulse-font-text);
+  --font-pulse-display: var(--pulse-font-display);
+  --font-pulse-text: var(--pulse-font-text);
 
   --text-pulse-caption: var(--pulse-size-12);
   --text-pulse-caption--line-height: var(--pulse-leading-12);
@@ -55,6 +69,13 @@
   --text-pulse-display--line-height: var(--pulse-leading-32);
   --text-pulse-hero: var(--pulse-size-44);
   --text-pulse-hero--line-height: var(--pulse-leading-44);
+}
+
+/* Pulse layout breakpoints, the one global addition: they only add new variants (pulse-sheet:, pulse-wide:)
+   and leave Tailwind's sm/md/lg/xl/2xl untouched. Phones are below md (48rem), as in Classic. */
+@theme {
+  --breakpoint-pulse-sheet: 75rem; /* the Context sheet docks beside the canvas instead of overlaying it */
+  --breakpoint-pulse-wide: 100rem; /* the canvas caps its reading column and centres it */
 }
 
 /* Dark (default) palette and every mode-independent token. */
@@ -77,6 +98,10 @@ html[data-shell="pulse"] {
   --pulse-presence-idle: #ffb800;
   --pulse-presence-dnd: #ff6b5e;
   --pulse-presence-offline: #8b8597;
+  --pulse-on-live: #04201c;
+  --pulse-on-alert: #1a0a08;
+  --pulse-code: #0d0b10;
+  --pulse-scrim: rgb(8 6 10 / 0.6);
   --pulse-elevation-1: 0 1px 2px rgb(0 0 0 / 0.4);
   --pulse-elevation-2: 0 8px 24px rgb(0 0 0 / 0.45);
   --pulse-elevation-3: 0 24px 64px rgb(0 0 0 / 0.55);
@@ -89,6 +114,30 @@ html[data-shell="pulse"] {
   --pulse-alert: var(--pulse-gumamela);
   --pulse-people: var(--pulse-ube);
   --pulse-focus-ring: var(--pulse-sun-ink);
+  /* Small accent marks (switch on, selected tab bar, unread dot): gold itself is 1.6:1 on paper. */
+  --pulse-accent-mark: var(--pulse-sun);
+  --pulse-input-border: var(--pulse-text-faint);
+  --pulse-disabled: var(--pulse-text-faint);
+
+  /* Interaction and tinted surfaces, translucent so they work on bg, surface and raised alike.
+     Text on them stays --pulse-text / --pulse-text-muted (contrast-tested over every surface). */
+  --pulse-hover: color-mix(in srgb, var(--pulse-text) 6%, transparent);
+  --pulse-pressed: color-mix(in srgb, var(--pulse-text) 10%, transparent);
+  --pulse-selected: color-mix(in srgb, var(--pulse-accent) 15%, transparent);
+  --pulse-mention-bg: color-mix(in srgb, var(--pulse-alert) 12%, transparent);
+  --pulse-live-tint: color-mix(in srgb, var(--pulse-live) 14%, transparent);
+  --pulse-people-tint: color-mix(in srgb, var(--pulse-people) 14%, transparent);
+  --pulse-speaking-tint: color-mix(in srgb, var(--pulse-live) 24%, transparent);
+
+  /* Stacking: the same steps Classic already uses, named (docs/design-system.md#stacking). Use z-(--pulse-z-…). */
+  --pulse-z-raised: 10;
+  --pulse-z-backdrop: 30;
+  --pulse-z-drawer: 40;
+  --pulse-z-window: 45;
+  --pulse-z-overlay: 50;
+  --pulse-z-call: 55;
+  --pulse-z-prompt: 60;
+  --pulse-z-menu: 70;
 
   --pulse-radius-control: 6px;
   --pulse-radius-item: 10px;
@@ -136,6 +185,11 @@ html[data-shell="pulse"][data-color-mode="light"] {
   --pulse-presence-idle: #a86b00;
   --pulse-presence-dnd: #c4342a;
   --pulse-presence-offline: #7a7484;
+  --pulse-on-live: #ffffff;
+  --pulse-on-alert: #ffffff;
+  --pulse-code: #efede7; /* = raised */
+  --pulse-scrim: rgb(26 23 32 / 0.4);
+  --pulse-accent-mark: var(--pulse-sun-ink);
   --pulse-elevation-1: 0 1px 2px rgb(26 23 32 / 0.08);
   --pulse-elevation-2: 0 8px 24px rgb(26 23 32 / 0.12);
   --pulse-elevation-3: 0 24px 64px rgb(26 23 32 / 0.18);
@@ -152,6 +206,20 @@ html[data-shell="pulse"][data-color-mode="light"][data-theme]:not([data-theme="s
   --pulse-bg: color-mix(in srgb, var(--color-sun) 6%, #f7f6f2);
 }
 
+/* The page behind the app (overscroll, safe areas, the gap above the keyboard) is Pulse ground too. */
+html[data-shell="pulse"],
+html[data-shell="pulse"] body {
+  background: var(--pulse-bg);
+  color: var(--pulse-text);
+}
 html[data-shell="pulse"] body {
   font-family: var(--pulse-font-text);
+}
+html[data-shell="pulse"] ::selection {
+  background: color-mix(in srgb, var(--pulse-accent) 35%, transparent);
+  color: var(--pulse-text);
+}
+/* Classic's sun outline is 1.6:1 on paper. High contrast keeps its own outline (globals.css). */
+html[data-shell="pulse"]:not([data-high-contrast]) :focus-visible {
+  outline-color: var(--pulse-focus-ring);
 }

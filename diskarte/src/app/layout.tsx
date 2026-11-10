@@ -16,8 +16,9 @@ const pressStart = Press_Start_2P({ variable: "--font-press-start", weight: "400
 const silkscreen = Silkscreen({ variable: "--font-silkscreen", weight: ["400", "700"], subsets: ["latin"], display: "swap" });
 const jetbrains = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"], display: "swap" });
 // Pulse-only fonts: not preloaded, so Classic never downloads them (only Pulse styles reference them).
-const bricolage = Bricolage_Grotesque({ variable: "--font-bricolage", weight: ["500", "700", "800"], subsets: ["latin"], display: "swap", preload: false });
-const figtree = Figtree({ variable: "--font-figtree", weight: ["400", "500", "600", "700"], subsets: ["latin"], display: "swap", preload: false });
+// Variable files: Bricolage keeps its optical-size axis for the 32/44 px display sizes; Figtree ships italics for emphasis.
+const bricolage = Bricolage_Grotesque({ variable: "--font-bricolage", axes: ["opsz"], subsets: ["latin"], display: "swap", preload: false });
+const figtree = Figtree({ variable: "--font-figtree", style: ["normal", "italic"], subsets: ["latin"], display: "swap", preload: false });
 
 export const TAGLINE = "Tara, Tambay Tayo. Ang Bagong Istambayan ng Bayan.";
 

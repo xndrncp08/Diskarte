@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { PULSE_COLORS, PULSE_THEME_MIX } from "@/lib/pulse-tokens";
+import { PULSE_COLORS, PULSE_THEME_MIX, PULSE_TINTS } from "@/lib/pulse-tokens";
 import { THEMES } from "@/lib/theme";
 
 const css = fs.readFileSync(path.join(__dirname, "../../src/app/pulse.css"), "utf8");
@@ -24,12 +24,14 @@ const contrast = (a: number[], b: number[]) => {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (hi + 0.05) / (lo + 0.05);
 };
-/** `color-mix(in srgb, a pct%, b)`. */
-const mix = (a: string, pct: number, b: string) => rgb(a).map((v, i) => (v * pct + rgb(b)[i] * (100 - pct)) / 100);
+type Color = string | number[];
+const channels = (c: Color) => (typeof c === "string" ? rgb(c) : c);
+/** `color-mix(in srgb, a pct%, b)`; also a `pct%` translucent tint of `a` composited over `b`. */
+const mix = (a: Color, pct: number, b: Color) => channels(a).map((v, i) => (v * pct + channels(b)[i] * (100 - pct)) / 100);
 
 const TEXT = ["text", "text-muted", "sun-ink", "dagat", "gumamela", "ube"] as const;
 const NON_TEXT = ["text-faint", "presence-online", "presence-idle", "presence-dnd", "presence-offline"] as const;
-const SURFACES = ["bg", "surface", "raised"] as const;
+const SURFACES = ["bg", "surface", "raised", "code"] as const;
 
 describe("Pulse tokens", () => {
   it.each(["dark", "light"] as const)("pulse.css mirrors the %s palette in pulse-tokens.ts", (mode) => {
@@ -45,6 +47,8 @@ describe("Pulse tokens", () => {
       for (const fg of NON_TEXT) if (contrast(rgb(c[fg]), rgb(c[surface])) < 3) failures.push(`${fg} on ${surface}`);
     }
     if (contrast(rgb(c["on-sun"]), rgb(c.sun)) < 4.5) failures.push("on-sun on sun");
+    if (contrast(rgb(c["on-live"]), rgb(c.dagat)) < 4.5) failures.push("on-live on live");
+    if (contrast(rgb(c["on-alert"]), rgb(c.gumamela)) < 4.5) failures.push("on-alert on alert");
     expect(failures).toEqual([]);
   });
 
@@ -64,6 +68,40 @@ describe("Pulse tokens", () => {
             if (contrast(color, surface) < 4.5) failures.push(`${theme.id} ${mode}: ${fg} on ${name}`);
         }
         if (contrast(rgb(c["on-sun"]), rgb(theme.accent)) < 4.5) failures.push(`${theme.id}: on-sun on accent`);
+      }
+    }
+    expect(failures).toEqual([]);
+  });
+
+  it("pulse.css builds the tints from the percentages in pulse-tokens.ts", () => {
+    const source = { hover: "text", pressed: "text", selected: "accent", mention: "alert", live: "live", people: "people", speaking: "live" } as const;
+    for (const [tint, pct] of Object.entries(PULSE_TINTS)) expect(css).toContain(`color-mix(in srgb, var(--pulse-${source[tint as keyof typeof source]}) ${pct}%, transparent)`);
+  });
+
+  it("tinted surfaces, control edges and accent marks hold contrast in every theme and mode", () => {
+    const { ground, lightInk } = PULSE_THEME_MIX;
+    const failures: string[] = [];
+    for (const theme of THEMES) {
+      for (const mode of ["dark", "light"] as const) {
+        const c = PULSE_COLORS[mode];
+        const solar = theme.id === "solar";
+        const mark = mode === "dark" ? rgb(theme.accent) : solar ? rgb(c["sun-ink"]) : mix(theme.accent, lightInk, c.text);
+        const grounds = { bg: solar ? rgb(c.bg) : mix(theme.accent, ground, c.bg), surface: rgb(c.surface), raised: rgb(c.raised) };
+        for (const [name, base] of Object.entries(grounds)) {
+          const at = `${theme.id} ${mode} on ${name}`;
+          const tints = {
+            hover: mix(c.text, PULSE_TINTS.hover, base),
+            pressed: mix(c.text, PULSE_TINTS.pressed, base),
+            selected: mix(theme.accent, PULSE_TINTS.selected, base),
+            mention: mix(c.gumamela, PULSE_TINTS.mention, base),
+            "live-tint": mix(c.dagat, PULSE_TINTS.live, base),
+            "people-tint": mix(c.ube, PULSE_TINTS.people, base),
+          };
+          for (const [tint, bg] of Object.entries(tints))
+            for (const fg of ["text", "text-muted"] as const) if (contrast(rgb(c[fg]), bg) < 4.5) failures.push(`${at}: ${fg} on ${tint}`);
+          if (contrast(rgb(c["text-faint"]), base) < 3) failures.push(`${at}: input border`);
+          if (contrast(mark, base) < 3) failures.push(`${at}: accent mark`);
+        }
       }
     }
     expect(failures).toEqual([]);
