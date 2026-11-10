@@ -4,7 +4,11 @@ import { z } from "zod";
 import { getPublicEnv, getServerEnv } from "./env";
 import { voiceRoomName } from "./livekit";
 import type { ServerSupabase } from "./supabase/server";
+import type { PresenceStatus } from "./supabase/database.types";
 import type { VoicePreview } from "./voice-preview";
+
+/** Nobody else learns that someone chose Invisible (the database also keeps it off profiles). */
+export const visibleProfileStatus = (status: PresenceStatus): PresenceStatus | "offline" => (status === "invisible" ? "offline" : status);
 
 async function bounded<T>(promise: Promise<T>) {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -13,12 +17,14 @@ async function bounded<T>(promise: Promise<T>) {
 }
 /** Only room names authorized by the caller's RLS query ever reach LiveKit. No voice token is minted. */
 export async function getVoicePreview(db: ServerSupabase, serverId: string, verified = true) : Promise<VoicePreview> {
-  const { data: channels, error } = await db.from("channels").select("id,name,requires_verification").eq("server_id", serverId).eq("type", "voice").order("position").limit(201);
+  const { data: channels, error } = await db.from("channels").select("id,name,requires_verification,is_private").eq("server_id", serverId).eq("type", "voice").order("position").limit(201);
   if (error) throw error;
   const { livekitApiKey, livekitApiSecret } = getServerEnv();
   const client = new RoomServiceClient(getPublicEnv().livekitUrl.replace(/^ws/, "http"), livekitApiKey, livekitApiSecret, { requestTimeout: 5 });
   const visible = (channels ?? []).slice(0, 200).filter((channel) => verified || !channel.requires_verification);
-  if (!visible.length) return { channels: [], limited: false };
+  // shortcut: live refresh covers the first 20 private voice channels; past that they update on the next refetch.
+  const privateChannelIds = visible.filter((channel) => channel.is_private).slice(0, 20).map((channel) => channel.id);
+  if (!visible.length) return { channels: [], limited: false, privateChannelIds };
   const rooms = await bounded(client.listRooms(visible.map((channel) => voiceRoomName(channel.id))));
   // Room summary counts can lag a join. Ask existing rooms for their authoritative participants.
   const active = visible.filter((channel) => rooms.some((room) => room.name === voiceRoomName(channel.id)))
@@ -43,7 +49,7 @@ export async function getVoicePreview(db: ServerSupabase, serverId: string, veri
       if (profiles.error) throw profiles.error;
       const byId = new Map(profiles.data?.map((profile) => [profile.id, profile]));
       return { id: channel.id, name: channel.name, count: peers.length,
-        participants: showing.flatMap((peer) => { const profile = byId.get(peer.identity); return profile ? [{ id: peer.identity, profile, muted: !peer.tracks.some((track) => track.source === TrackSource.MICROPHONE && !track.muted), screen: streams.some((stream) => stream.identity === peer.identity) }] : []; }),
+        participants: showing.flatMap((peer) => { const profile = byId.get(peer.identity); return profile ? [{ id: peer.identity, profile: { ...profile, status: visibleProfileStatus(profile.status) }, muted: !peer.tracks.some((track) => track.source === TrackSource.MICROPHONE && !track.muted), screen: streams.some((stream) => stream.identity === peer.identity) }] : []; }),
         streamers: streams.flatMap((peer) => { const profile = byId.get(peer.identity); return profile ? [{ id: peer.identity, name: profile.display_name }] : []; }),
       };
     }));
@@ -53,5 +59,5 @@ export async function getVoicePreview(db: ServerSupabase, serverId: string, veri
   const allowed = await db.from("channels").select("id,requires_verification").eq("server_id", serverId).eq("type", "voice");
   if (allowed.error) throw allowed.error;
   const visibleIds = new Set(allowed.data?.filter((channel) => verified || !channel.requires_verification).map((channel) => channel.id));
-  return { channels: found.filter((channel) => visibleIds.has(channel.id)), limited: active.length > 30 || (channels?.length ?? 0) > 200 };
+  return { channels: found.filter((channel) => visibleIds.has(channel.id)), limited: active.length > 30 || (channels?.length ?? 0) > 200, privateChannelIds: privateChannelIds.filter((id) => visibleIds.has(id)) };
 }

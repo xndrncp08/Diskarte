@@ -15,7 +15,7 @@ export interface ProfileCardData {
   banner_url: string | null;
   banner_preset: string;
   bio: string;
-  status: PresenceStatus;
+  status: PresenceStatus | "offline";
   custom_status: string | null;
   custom_status_emoji: string | null;
 }

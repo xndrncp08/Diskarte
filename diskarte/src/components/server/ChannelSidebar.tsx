@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { deleteChannelAction, leaveServerAction, reorderChannelsAction } from "@/actions/servers";
 import { SupportDialog } from "@/components/community/SupportDialog";
 import { useMe } from "@/components/providers/MeProvider";
-import { useServerSpeaking } from "@/components/providers/PresenceProvider";
+import { serverTopic, useTopicSpeaking, voiceTopic } from "@/components/providers/PresenceProvider";
 import { useServer } from "@/components/providers/ServerProvider";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { SignalBars } from "@/components/retro/SignalBars";
@@ -53,10 +53,11 @@ type DialogState =
 
 function VoiceOccupants({ channelId }: { channelId: string }) {
   const call = useCall();
-  const { server } = useServer();
+  const { server, channels } = useServer();
   // In the call: LiveKit's own active-speaker events. Watching from outside: the members' ephemeral
-  // "speaking" broadcasts on the server's presence channel.
-  const observed = useServerSpeaking(server.id);
+  // "speaking" broadcasts on the server's presence channel (a private channel's own topic).
+  const isPrivate = channels.find((c) => c.id === channelId)?.is_private === true;
+  const observed = useTopicSpeaking(isPrivate ? voiceTopic(channelId) : serverTopic(server.id));
   const live = call.status === "connected" && call.target?.channelId === channelId;
   return <OccupantList channelId={channelId} speaking={live ? new Set(call.speaking) : observed} />;
 }
@@ -67,13 +68,13 @@ function OccupantList({ channelId, speaking }: { channelId: string; speaking: Re
   return (
     <ul className="mb-1 ml-7 space-y-0.5" aria-label="In voice">
       {inRoom.map(({ member, presence }) => (
-        <Occupant key={member.user_id} member={member} presence={presence} speaking={speaking?.has(member.user_id) ?? false} />
+        <Occupant key={member.user_id} channelId={channelId} member={member} presence={presence} speaking={speaking?.has(member.user_id) ?? false} />
       ))}
     </ul>
   );
 }
 
-function Occupant({ member, presence: p, speaking }: { member: MemberWithProfile; presence: PresencePayload | undefined; speaking: boolean }) {
+function Occupant({ channelId, member, presence: p, speaking }: { channelId: string; member: MemberWithProfile; presence: PresencePayload | undefined; speaking: boolean }) {
   const menu = useContextMenu();
   return (
     <li className="flex items-center gap-2 rounded px-1.5 py-1 text-[13px] text-slate-300 hover:bg-white/5" data-speaking={speaking || undefined} {...menu.triggerProps}>
@@ -91,7 +92,7 @@ function Occupant({ member, presence: p, speaking }: { member: MemberWithProfile
           <MicOff className="size-3.5 text-red-400" aria-label="Muted" />
         ) : null}
       </span>
-      <PersonContextMenu menu={menu} person={member.profile} />
+      <PersonContextMenu menu={menu} person={member.profile} voiceChannelId={channelId} />
     </li>
   );
 }

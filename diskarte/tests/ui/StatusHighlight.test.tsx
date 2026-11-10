@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Tables } from "@/lib/supabase/database.types";
@@ -29,9 +29,9 @@ function WatchServer() {
   return null;
 }
 
-function renderPanel() {
+function renderPanel(profile = ME) {
   return render(
-    <MeProvider profile={ME}>
+    <MeProvider profile={profile}>
       <PresenceProvider>
         <WatchServer />
         <UserPanel />
@@ -132,6 +132,23 @@ describe("status indicator", () => {
     await waitFor(() =>
       expect(profileActions.setStatusAction).toHaveBeenLastCalledWith({ status: "idle", customStatus: "Nagluto ng Canton", customStatusEmoji: expect.any(String), clearAfterMinutes: 60 }),
     );
+  });
+
+  it("leaving Invisible rejoins presence only after the server has stored the new status", async () => {
+    const user = userEvent.setup();
+    let finish: (value: { ok: true }) => void = () => undefined;
+    vi.mocked(profileActions.setStatusAction).mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)));
+    renderPanel({ ...ME, status: "invisible" });
+    const SERVER = `server:${SERVER_ID}`;
+    const joins = () => fake.channels.filter((c) => c.name === SERVER);
+    await waitFor(() => expect(joins()).toHaveLength(1));
+    await pick(user, /^Online/);
+    await waitFor(() => expect(badge()).toHaveAttribute("data-status", "online"));
+    // Still invisible server-side: a fresh join now would be refused presence.
+    expect(joins()).toHaveLength(1);
+    await act(async () => finish({ ok: true }));
+    await waitFor(() => expect(joins()).toHaveLength(2));
+    await waitFor(() => expect(vi.mocked(joins()[1].handle.track)).toHaveBeenLastCalledWith(expect.objectContaining({ status: "online" })));
   });
 
   it("publishes the new status in my presence, so other members' rosters update live", async () => {

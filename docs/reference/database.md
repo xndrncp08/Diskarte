@@ -4,13 +4,13 @@
 > `supabase/migrations/`. The Vitest suite fails when this file is stale. Descriptions come from the SQL
 > comment directly above each `create table` / `create function`, so document objects there.
 
-Built by applying all 56 migrations to PGlite with the Supabase stand-ins in
+Built by applying all 57 migrations to PGlite with the Supabase stand-ins in
 `diskarte/tests/db/supabase-shim.sql`. Supabase-managed schemas (`auth`, `storage`, `realtime`) are only
 shown where Diskarte adds policies or rows. Table grants reflect Supabase's default privileges (mirrored by
 the shim) minus the migrations' revokes; RLS policies, not grants, decide which rows a role sees.
 For the narrative overview see [database.md](../database.md).
 
-**63 tables · 117 RLS policies · 209 functions · 67 triggers · 31 Realtime tables · 5 Storage buckets**
+**63 tables · 118 RLS policies · 213 functions · 69 triggers · 31 Realtime tables · 5 Storage buckets**
 
 ## Contents
 
@@ -369,6 +369,8 @@ Grants: `authenticated` REFERENCES, SELECT, TRIGGER
 | `target_id` | `uuid` | yes |  |
 | `metadata` | `jsonb` |  | `'{}'::jsonb` |
 | `created_at` | `timestamp with time zone` |  | `now()` |
+| `channel_id` | `uuid` | yes |  |
+| `channel_private` | `boolean` |  | `false` |
 
 | Constraint | Kind | Definition |
 | --- | --- | --- |
@@ -385,7 +387,11 @@ Indexes:
 
 | Policy | Command | Roles | Using | With check |
 | --- | --- | --- | --- | --- |
-| moderators read the audit log | SELECT | authenticated | `has_server_role(server_id, 'moderator'::member_role)` |  |
+| moderators read the audit log | SELECT | authenticated | `(has_server_role(server_id, 'moderator'::member_role) AND can_read_audit_channel(server_id, channel_id, channel_private))` |  |
+
+Triggers:
+
+- `audit_logs_tag_channel BEFORE INSERT ON public.audit_logs FOR EACH ROW EXECUTE FUNCTION audit_logs_tag_channel()`
 
 <a id="public-call-rings"></a>
 
@@ -1200,7 +1206,7 @@ Indexes:
 
 | Policy | Command | Roles | Using | With check |
 | --- | --- | --- | --- | --- |
-| authors and moderators read edit history | SELECT | authenticated | `((author_id = ( SELECT auth.uid() AS uid)) OR has_server_role(server_id, 'moderator'::member_role))` |  |
+| authors and moderators read edit history | SELECT | authenticated | `((author_id = ( SELECT auth.uid() AS uid)) OR (has_server_role(server_id, 'moderator'::member_role) AND (EXISTS ( SELECT 1 FROM messages m WHERE (m.id = message_edits.message_id)))))` |  |
 
 <a id="public-message-mentions"></a>
 
@@ -1503,6 +1509,7 @@ Grants: `authenticated` INSERT, SELECT, UPDATE
 | `friend_requests_from` | `text` |  | `'everyone'::text` |
 | `updated_at` | `timestamp with time zone` |  | `now()` |
 | `share_activity` | `boolean` |  | `true` |
+| `invisible` | `boolean` |  | `false` |
 
 | Constraint | Kind | Definition |
 | --- | --- | --- |
@@ -1598,6 +1605,7 @@ Grants: `authenticated` DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, U
 | `profiles_custom_status_check` | check | `CHECK (((custom_status IS NULL) OR (char_length(custom_status) <= 64)))` |
 | `profiles_custom_status_emoji_check` | check | `CHECK (((custom_status_emoji IS NULL) OR (char_length(custom_status_emoji) <= 16)))` |
 | `profiles_display_name_check` | check | `CHECK (((char_length(btrim(display_name)) >= 1) AND (char_length(btrim(display_name)) <= 32)))` |
+| `profiles_status_not_invisible` | check | `CHECK ((status <> 'invisible'::presence_status))` |
 | `profiles_username_check` | check | `CHECK ((username ~ '^[a-z0-9_.]{3,32}$'::text))` |
 | `profiles_id_fkey` | foreign key | `FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE` |
 | `profiles_pkey` | primary key | `PRIMARY KEY (id)` |
@@ -1616,6 +1624,7 @@ Indexes:
 Triggers:
 
 - `profiles_guard BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION profiles_guard()`
+- `profiles_hide_invisible BEFORE UPDATE OF status ON public.profiles FOR EACH ROW EXECUTE FUNCTION profiles_hide_invisible()`
 - `profiles_join_system_server AFTER INSERT ON public.profiles FOR EACH ROW EXECUTE FUNCTION profiles_join_system_server()`
 - `profiles_set_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION set_updated_at()`
 - `profiles_status_expiry BEFORE UPDATE OF custom_status, custom_status_emoji, custom_status_expires_at ON public.profiles FOR EACH ROW EXECUTE FUNCTION profiles_status_expiry()`
@@ -2489,19 +2498,22 @@ rights, so each one re-checks the caller itself; invoker functions stay subject 
 | `announcement_next_run(p_weekday smallint, p_time time without time zone, p_tz text, p_after timestamp with time zone)` | `timestamp with time zone` | invoker, stable | anon, authenticated | The next local `p_time` (on `p_weekday`, if set) strictly after `p_after`, in `p_tz`. |
 | `are_friends(a uuid, b uuid)` | `boolean` | definer, stable | internal |  |
 | `assert_super_admin()` | `void` | definer, stable | internal | Control Center RPCs (super admins only) |
+| `audit_logs_backfill_channels()` | `void` | definer, volatile | internal | Tags untagged (pre-migration) audit rows; unknown (deleted) channels count as private. Idempotent. |
+| `audit_logs_tag_channel()` | `trigger` | definer, volatile | trigger | Tags every new audit row with the channel it is about (callers can't choose these columns). |
 | `automod_match(p_content text, p_categories text[], p_custom text[])` | `text` | invoker, immutable | internal | Returns the first matching category ('phishing', 'hate', 'explicit', 'spam', 'custom') or null. Hate/explicit/custom terms are matched on a leetspeak-normalised copy ("n00b" → "noob"). |
 | `award_message_xp()` | `trigger` | definer, volatile | anon, authenticated |  |
 | `ban_member(p_server_id uuid, p_user_id uuid, p_reason text)` | `void` | definer, volatile | authenticated |  |
 | `block_user(p_user_id uuid)` | `void` | definer, volatile | authenticated |  |
 | `bootstrap_server()` | `trigger` | definer, volatile | authenticated |  |
-| `can_access_realtime_topic(p_topic text)` | `boolean` | definer, stable | anon, authenticated | Moderators watch their server's join queue live (rows are still filtered by RLS). |
+| `can_access_realtime_topic(p_topic text)` | `boolean` | definer, stable | anon, authenticated | Private voice occupancy on `voice:<channel id>` (latest definition + the voice case) |
 | `can_edit_workspace(p_channel uuid)` | `boolean` | definer, stable | authenticated |  |
+| `can_read_audit_channel(p_server_id uuid, p_channel_id uuid, p_private boolean)` | `boolean` | definer, stable | authenticated | Can I read an audit row about this channel? Only the server's moderators ever get true. Admins: always. Moderators: if they can view it. Says nothing about channels in other servers. |
 | `can_see_moment(p_author uuid, p_audience text, p_expires timestamp with time zone)` | `boolean` | definer, stable | authenticated |  |
 | `can_upload_dm_attachment(p_conversation uuid)` | `boolean` | definer, stable | authenticated | Temporary hangouts take no file uploads, so deleting one never leaves files behind in Storage. |
 | `can_view_channel(p_channel_id uuid)` | `boolean` | definer, stable | authenticated | Can I see this channel? Members see public channels; private ones need has_channel_grant. |
 | `cancel_rings(p_target uuid)` | `void` | definer, volatile | authenticated | Caller hangs up before anyone answers: cancel their ringing invitations for that DM or channel. |
 | `channel_server_id(p_channel_id uuid)` | `uuid` | definer, stable | authenticated |  |
-| `channels_audit()` | `trigger` | definer, volatile | trigger |  |
+| `channels_audit()` | `trigger` | definer, volatile | trigger | Latest channels_audit (20260927000000_community.sql) + the deleted channel's privacy. |
 | `channels_guard()` | `trigger` | invoker, volatile | authenticated | Channels: server_id is immutable. |
 | `channels_private_guard()` | `trigger` | invoker, volatile | anon, authenticated | Only admins make a channel private or public again (moderators can still edit everything else). |
 | `channels_private_insert_guard()` | `trigger` | invoker, volatile | anon, authenticated | Moderators can create channels, but only admins create private ones. |
@@ -2533,7 +2545,7 @@ rights, so each one re-checks the caller itself; invoker functions stay subject 
 | `forget_device(p_device_id uuid)` | `void` | definer, volatile | authenticated | Signing out of a browser forgets it. |
 | `forum_overview(p_channel uuid)` | `TABLE(message_id uuid, tags text[], status text, votes integer, voted boolean)` | invoker, stable | authenticated | Tags, status and vote totals for a forum's posts (only for a channel the caller can see). |
 | `forum_post(p_message uuid, OUT channel_id uuid, OUT server_id uuid, OUT author_id uuid, OUT mode text, OUT tags text[])` | `record` | definer, stable | internal | Top-level post in a forum channel the caller can see, or raises. |
-| `friends_activity()` | `TABLE(user_id uuid, status presence_status, voice_server_id uuid, voice_channel_id uuid, last_seen_at timestamp with time zone)` | definer, stable | authenticated | Friends who are around right now (heartbeat in the last 2 minutes). Status is the newest device's; invisible friends and friends who don't share activity are omitted. The voice channel (and its server) is returned only when the caller can view that channel. |
+| `friends_activity()` | `TABLE(user_id uuid, status presence_status, voice_server_id uuid, voice_channel_id uuid, last_seen_at timestamp with time zone)` | definer, stable | authenticated | Latest friends_activity (20261108000000_hangouts.sql) + the private invisible flag: a stale tab still reporting "online" must not make an invisible friend look around. |
 | `generate_invite_code()` | `text` | invoker, volatile | authenticated | 10 characters from a 32-symbol alphabet without look-alikes (0/O, 1/I/L) ≈ 50 bits of entropy. |
 | `get_invite(p_code text)` | `TABLE(server_id uuid, name text, description text, icon_url text, member_count bigint, already_member boolean)` | definer, stable | anon, authenticated | Preview: the permanent code, or a live invite. |
 | `get_reactions_snapshot(p_channel uuid, p_messages uuid[])` | `jsonb` | invoker, stable | authenticated | One statement snapshot avoids offset-pagination races and PostgREST's row-count truncation. |
@@ -2541,7 +2553,7 @@ rights, so each one re-checks the caller itself; invoker functions stay subject 
 | `handle_new_user()` | `trigger` | definer, volatile | authenticated |  |
 | `has_channel_grant(p_channel_id uuid, p_server_id uuid)` | `boolean` | definer, stable | authenticated | Am I let into this private channel: an admin, or granted directly or through a role? |
 | `has_server_role(p_server_id uuid, p_min member_role)` | `boolean` | definer, stable | authenticated |  |
-| `heartbeat_device(p_device_id uuid, p_fingerprint text, p_label text, p_status presence_status, p_custom_status text, p_voice_channel_id uuid)` | `jsonb` | definer, volatile | authenticated | One browser's heartbeat: records its status, voice channel and fingerprint, and tells it whether its session has been revoked or the account banned (so open canvases sign out promptly, not only when the access token next refreshes). |
+| `heartbeat_device(p_device_id uuid, p_fingerprint text, p_label text, p_status presence_status, p_custom_status text, p_voice_channel_id uuid)` | `jsonb` | definer, volatile | authenticated | Latest heartbeat_device (20261006000000_admin_control_center.sql) + my real status: whether I'm invisible (and when that last changed) and my public status, so a stale tab adopts a choice made in another tab within one beat and stops publishing presence. |
 | `hq_role_for(p_user uuid)` | `member_role` | definer, stable | internal | The HQ role someone should hold: super admins and creators are admins, moderators moderators. |
 | `invite_is_live(i server_invites)` | `boolean` | invoker, stable | authenticated | Still usable? |
 | `is_blocked_between(a uuid, b uuid)` | `boolean` | definer, stable | internal |  |
@@ -2601,6 +2613,7 @@ rights, so each one re-checks the caller itself; invoker functions stay subject 
 | `problem_reports_before_insert()` | `trigger` | definer, volatile | anon, authenticated | Five reports an hour per person: enough for real trouble, useless for flooding the queue. |
 | `profile_connections(p_user uuid)` | `jsonb` | definer, stable | authenticated | What the caller shares with another person: accepted friends in common and Tambayans both belong to. Only ever returns the caller's own friends and servers, and nothing across a block. |
 | `profiles_guard()` | `trigger` | invoker, volatile | authenticated | Keep id / created_at immutable from the client side. |
+| `profiles_hide_invisible()` | `trigger` | definer, volatile | trigger | Choosing Invisible is stored privately; the public status keeps its last visible value. |
 | `profiles_join_system_server()` | `trigger` | definer, volatile | anon, authenticated | New accounts and creator changes now respect platform roles too. |
 | `profiles_status_expiry()` | `trigger` | invoker, volatile | anon, authenticated | A new status without its own expiry doesn't inherit the old one; a cleared status has none. |
 | `publish_release_announcement(p_release_id text, p_released_on date, p_title text, p_content text)` | `text` | definer, volatile | internal | Posts a release's notes to Diskarte HQ #announcements, at most once. Service role only (the deployment's own server). Returns 'published', 'already-published' or 'superseded'. |
@@ -2755,6 +2768,7 @@ Policies on `realtime.messages` decide who may join private broadcast/presence t
 
 | Policy | Command | Roles | Using | With check |
 | --- | --- | --- | --- | --- |
+| invisible users publish no presence *(restrictive)* | INSERT | authenticated |  | `((extension <> 'presence'::text) OR (NOT COALESCE(( SELECT ps.invisible FROM privacy_settings ps WHERE (ps.user_id = ( SELECT auth.uid() AS uid))), false)))` |
 | members receive private server/channel broadcasts | SELECT | authenticated | `can_access_realtime_topic(( SELECT realtime.topic() AS topic))` |  |
 | members send private server/channel broadcasts | INSERT | authenticated |  | `((split_part(( SELECT realtime.topic() AS topic), ':'::text, 1) <> 'db'::text) AND can_access_realtime_topic(( SELECT realtime.topic() AS topic)))` |
 | two-factor sessions only (realtime) *(restrictive)* | ALL | authenticated | `( SELECT mfa_ok() AS mfa_ok)` | `( SELECT mfa_ok() AS mfa_ok)` |
@@ -2952,3 +2966,4 @@ Applied in filename order. The first descriptive comment line of each file:
 | [`20261108010000_membership_screening.sql`](../../supabase/migrations/20261108010000_membership_screening.sql) | Membership screening: joining questions and moderator approval. |
 | [`20261108020000_forum_tags_suggestions.sql`](../../supabase/migrations/20261108020000_forum_tags_suggestions.sql) | Forum tags, solved posts and suggestion boards. |
 | [`20261108030000_message_reminders.sql`](../../supabase/migrations/20261108030000_message_reminders.sql) | Message reminders: "Remind me" on a message saves it with a time (saved_messages.remind_at). |
+| [`20261109000000_privacy_hardening.sql`](../../supabase/migrations/20261109000000_privacy_hardening.sql) | Privacy hardening: three leaks found in a security review. |
