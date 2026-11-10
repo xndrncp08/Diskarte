@@ -183,6 +183,8 @@ time a private call), and LiveKit's "voice changed" signal for a private channel
 
 **Residual risks.**
 
+- A voice channel made private while someone is already in its call keeps that person listed on the
+  server-wide presence until they rejoin the call.
 - Realtime checks topic authorisation when a client joins (and when its token refreshes), so a
   client that was already subscribed when it went invisible or lost a channel grant keeps its
   subscription until it rejoins. The app untracks the moment you choose Invisible and rejoins once

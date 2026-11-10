@@ -45,7 +45,11 @@ insert into public.privacy_settings (user_id, invisible)
 select p.id, true from public.profiles p where p.status = 'invisible'
 on conflict (user_id) do update set invisible = true, updated_at = now();
 
+-- Without this, every moved row would share one updated_at (the transaction time): a public
+-- fingerprint of exactly who was invisible at deploy.
+alter table public.profiles disable trigger profiles_set_updated_at;
 update public.profiles set status = 'online' where status = 'invisible';
+alter table public.profiles enable trigger profiles_set_updated_at;
 
 alter table public.profiles add constraint profiles_status_not_invisible check (status <> 'invisible');
 
@@ -395,7 +399,9 @@ $$;
 -- drop trigger profiles_hide_invisible on public.profiles;
 -- drop function public.profiles_hide_invisible();
 -- alter table public.profiles drop constraint profiles_status_not_invisible;
+-- alter table public.profiles disable trigger profiles_set_updated_at;
 -- update public.profiles p set status = 'invisible'
 --   from public.privacy_settings ps where ps.user_id = p.id and ps.invisible;
+-- alter table public.profiles enable trigger profiles_set_updated_at;
 -- alter table public.privacy_settings drop column invisible;
 -- =====================================================================================

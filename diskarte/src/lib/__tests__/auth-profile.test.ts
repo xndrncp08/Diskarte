@@ -16,3 +16,17 @@ it("reads my real status: invisible comes from my private settings", async () =>
   tables.privacy_settings = [{ user_id: OWNER_ID, invisible: true }];
   expect((await getCurrentProfile())?.status).toBe("invisible");
 });
+
+it("fails closed when my privacy settings can't be read", async () => {
+  tables.profiles = [{ ...makeProfile(OWNER_ID, "Kapitan"), status: "online" }];
+  const from = client.from;
+  client.from = ((table: string) =>
+    table === "privacy_settings"
+      ? { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: { message: "network" } }) }) }) }
+      : from(table)) as typeof client.from;
+  try {
+    await expect(getCurrentProfile()).rejects.toThrow(/privacy settings/);
+  } finally {
+    client.from = from;
+  }
+});

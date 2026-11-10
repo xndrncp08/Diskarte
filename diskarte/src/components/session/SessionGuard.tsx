@@ -93,12 +93,14 @@ export function SessionGuard() {
 
     // Invisible chosen or left in another tab: follow it, so this tab stops (or resumes) publishing presence.
     const adoptInvisible = (verdict: Verdict) => {
+      // Visible on the server (e.g. changed in the profile builder or by an admin): topics joined while
+      // invisible must be rejoined to publish presence again. A no-op unless something is hidden.
+      if (verdict.invisible === false) rejoinPresence();
       if (typeof verdict.invisible !== "boolean" || !verdict.invisibleAt || Date.parse(verdict.invisibleAt) <= statusAt.current) return;
       if (verdict.invisible === (state.current.status === "invisible")) return;
       statusAt.current = Date.parse(verdict.invisibleAt);
       const status = verdict.invisible ? "invisible" : (verdict.status ?? "online");
       setMe((prev) => ({ ...prev, status }));
-      if (!verdict.invisible) rejoinPresence();
     };
 
     const beat = async () => {

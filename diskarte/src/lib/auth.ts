@@ -30,10 +30,12 @@ export const getCurrentProfile = cache(async (): Promise<Tables<"profiles"> | nu
   const user = await getSessionUser();
   if (!user) return null;
   const supabase = await createClient();
-  const [{ data }, { data: privacy }] = await Promise.all([
+  const [{ data }, { data: privacy, error: privacyError }] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
     supabase.from("privacy_settings").select("*").eq("user_id", user.id).maybeSingle(),
   ]);
+  // Fail closed: without the private flag an invisible user would be shown (and announced) as visible.
+  if (privacyError) throw new Error("Couldn't load your privacy settings.");
   // Invisible is kept off the public profile (only you can read privacy_settings).
   return data && privacy?.invisible ? { ...data, status: "invisible" } : data;
 });
