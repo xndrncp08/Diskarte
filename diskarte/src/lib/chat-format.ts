@@ -57,6 +57,20 @@ export function formatTimestamp(iso: string, now = new Date(), timeZone?: string
   return `${fmt("day", timeZone, hour24, language).format(date)} ${formatTime(iso, timeZone, hour24, language)}`;
 }
 
+/** "now", "5 min. ago", "in 3 hr.", "yesterday", "in 2 days"; a week or more either way, a short date ("Nov 1"). */
+export function formatRelative(iso: string, now = new Date(), timeZone?: string, language = "en") {
+  const locale = language === "fil" ? "fil-PH" : "en-PH";
+  const date = new Date(iso);
+  const diff = date.getTime() - now.getTime();
+  const abs = Math.abs(diff);
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto", style: "short" });
+  if (abs < 60_000) return rtf.format(0, "second");
+  if (abs < 3_600_000) return rtf.format(Math.round(diff / 60_000), "minute");
+  if (abs < 86_400_000) return rtf.format(Math.round(diff / 3_600_000), "hour");
+  if (abs < 7 * 86_400_000) return rtf.format(Math.round(diff / 86_400_000), "day");
+  return new Intl.DateTimeFormat(locale, { month: "short", day: "numeric", year: date.getFullYear() === now.getFullYear() ? undefined : "numeric", timeZone }).format(date);
+}
+
 export function formatDayDivider(iso: string, timeZone?: string, language = "en") {
   return fmt("day", timeZone, false, language).format(new Date(iso));
 }

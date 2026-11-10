@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { ArrowRight, CalendarDays, LayoutGrid, MessagesSquare, Radio, ScrollText, UserPlus, Users } from "lucide-react";
 import type { ReactNode } from "react";
-import { Timestamp } from "@/components/chat/Timestamp";
 import { useMe } from "@/components/providers/MeProvider";
 import { useOptionalRuntimeConfig } from "@/components/providers/RuntimeConfig";
 import { useServer } from "@/components/providers/ServerProvider";
+import { isUnread, useOptionalUnreads } from "@/components/providers/UnreadsProvider";
 import { useServerControls } from "@/components/server/ChannelSidebar";
 import { useJoinRequestCount } from "@/components/server/JoinScreening";
+import { useShellUI } from "@/components/shell/ShellUI";
+import { useCall } from "@/components/voice/CallProvider";
 import { communityAccent, communityBanner, landingTiles } from "@/lib/community-identity";
 import { eventStatus, type ServerEvent } from "@/lib/events";
 import { firstTextChannel, groupChannels, SERVER_CATEGORIES, type Channel } from "@/lib/servers";
@@ -17,6 +19,7 @@ import { Button } from "../Button";
 import { BentoGrid, BentoTile } from "../Card";
 import { Chip } from "../Chip";
 import { NavItem } from "../Nav";
+import { RelativeTime } from "../RelativeTime";
 import { RoomRow } from "../shell/Rooms";
 import { usePulseUI } from "../shell/PulseUI";
 import { Masthead } from "../shell/Masthead";
@@ -57,7 +60,24 @@ export function CommunityLanding({ events, eventsUnavailable = false }: { events
   const boards = channels.filter((c) => c.type === "forum");
   const category = SERVER_CATEGORIES.find((c) => c.id === server.category)?.label;
   const tagline = server.description?.trim() || "Your space to hang out.";
-  const row = (c: Channel, place: "live" | "category") => <RoomRow key={`${place}:${c.id}`} channel={c} active={false} canManage={canManageChannels} muted={mutes.muted.has(c.id)} onDialog={setDialog} place={place} />;
+  // Rooms tile: live voice rooms, then rooms with unread or mentions, then the rest (category order), six at most.
+  // Occupancy here is the Space's presence (private rooms announce on their own topic, so they rank as quiet) plus your call.
+  const unreads = useOptionalUnreads();
+  const call = useCall();
+  const { setNavOpen } = useShellUI();
+  const occupied = new Set([...presence.values()].flatMap((p) => (p.voice_channel_id ? [p.voice_channel_id] : [])));
+  if (call.status === "connected" && call.target) occupied.add(call.target.channelId);
+  const rank = (c: Channel) => {
+    const u = unreads?.channels.get(c.id);
+    return c.type === "voice" && occupied.has(c.id) ? 0 : !mutes.muted.has(c.id) && (u?.mentions || isUnread(u)) ? 1 : 2;
+  };
+  const rooms = groupChannels(channels).flatMap((g) => g.channels);
+  const topRooms = [...rooms].sort((a, b) => rank(a) - rank(b)).slice(0, 6);
+  // "All N rooms": the navigator lists them; open its drawer on phones, move focus to the Space's rooms on desktop.
+  function showAllRooms() {
+    if (!matchMedia("(min-width: 48rem)").matches) return setNavOpen(true);
+    document.querySelector<HTMLElement>("[data-testid=pulse-rooms] a[href]")?.focus();
+  }
 
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col font-pulse-text text-pulse-text" data-testid="community-landing">
@@ -69,20 +89,17 @@ export function CommunityLanding({ events, eventsUnavailable = false }: { events
               // eslint-disable-next-line @next/next/no-img-element -- allow-listed storage URL; decorative, the name is the h1 above
               <img src={banner} alt="" className="h-32 w-full object-cover md:h-44" referrerPolicy="no-referrer" data-testid="community-banner" />
             ) : accent ? (
-              <div className="flex h-20 items-end px-5 pb-3 md:h-28" style={accent} data-testid="community-accent">
-                <p className="font-pulse-display text-pulse-lead font-semibold">{server.name}</p>
-              </div>
+              <div className="h-20 md:h-28" style={{ background: accent.background }} aria-hidden data-testid="community-accent" />
             ) : null}
             <div className="flex flex-wrap items-center gap-4 p-5">
-              <Monogram name={server.name} src={server.icon_url} size={56} />
-              <div className="min-w-0 flex-1">
+              {/* Over a banner or band the icon overlaps it, like a cover. */}
+              <Monogram name={server.name} src={server.icon_url} size={64} className={banner || accent ? "-mt-12 ring-4 ring-pulse-surface" : undefined} />
+              <div className="min-w-48 flex-1">
                 <p className="text-pulse-lead text-pulse-text">{tagline}</p>
-                <p className="mt-1 text-pulse-label text-pulse-muted">
-                  {plural(members.length, "member")} · {online.length} online{category ? ` · ${category}` : ""}
-                </p>
+                {category && <Chip className="mt-2">{category}</Chip>}
               </div>
               {first && (
-                <Link href={`/tambayan/${server.id}/${first.id}`} className="inline-flex min-h-11 items-center gap-2 rounded-pulse-control bg-pulse-accent px-4 font-semibold text-pulse-on-accent shadow-pulse-1 hover:brightness-105">
+                <Link href={`/tambayan/${server.id}/${first.id}`} className="inline-flex min-h-11 items-center gap-2 rounded-pulse-control bg-pulse-accent px-4 font-semibold text-pulse-on-accent shadow-pulse-1 hover:brightness-105 max-sm:w-full max-sm:justify-center">
                   Open #{first.name} <ArrowRight className="size-4" aria-hidden />
                 </Link>
               )}
@@ -92,11 +109,15 @@ export function CommunityLanding({ events, eventsUnavailable = false }: { events
           <h2 className="sr-only">What&apos;s here</h2>
           <BentoGrid>
             <BentoTile span="tall" eyebrow="Rooms" title="Where people are" className="sm:col-span-2" data-testid="tile-rooms">
-              {/* Live voice rooms first, then the rest in their categories (the navigator's rows and menus). */}
-              <div className="-mx-3 max-h-96 overflow-y-auto">
-                <ul aria-label="Live rooms">{channels.filter((c) => c.type === "voice").map((c) => row(c, "live"))}</ul>
-                <ul aria-label="All rooms">{groupChannels(channels).flatMap(({ channels: list }) => list.map((c) => row(c, "category")))}</ul>
-              </div>
+              {/* The navigator's rows and right-click menus. */}
+              <ul className="-mx-3">
+                {topRooms.map((c) => <RoomRow key={c.id} channel={c} active={false} canManage={canManageChannels} muted={mutes.muted.has(c.id)} onDialog={setDialog} />)}
+              </ul>
+              {rooms.length > topRooms.length && (
+                <button type="button" onClick={showAllRooms} className={LINK}>
+                  All {rooms.length} rooms <ArrowRight className="size-4" aria-hidden />
+                </button>
+              )}
             </BentoTile>
 
             {tiles.has("events") && (
@@ -107,7 +128,7 @@ export function CommunityLanding({ events, eventsUnavailable = false }: { events
                   <ul className="space-y-1">
                     {events.map((e) => (
                       <li key={e.id}>
-                        <NavItem href={`/tambayan/${server.id}?event=${e.id}`} leading={<CalendarDays />} label={e.name} secondary={eventStatus(e) === "live" ? "Happening now" : <Timestamp iso={e.starts_at} />} live={eventStatus(e) === "live"} className="-mx-3 w-auto" />
+                        <NavItem href={`/tambayan/${server.id}?event=${e.id}`} leading={<CalendarDays />} label={e.name} secondary={eventStatus(e) === "live" ? "Happening now" : <RelativeTime iso={e.starts_at} />} live={eventStatus(e) === "live"} className="-mx-3 w-auto" />
                       </li>
                     ))}
                   </ul>

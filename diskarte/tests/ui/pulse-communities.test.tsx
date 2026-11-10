@@ -11,6 +11,7 @@ const { ShellKindContext } = await import("@/components/shell/ShellKind");
 const { CallProvider } = await import("@/components/voice/CallProvider");
 const { communityAccent, communityBanner, landingTiles, ON_ACCENT_DARK, ON_ACCENT_LIGHT } = await import("@/lib/community-identity");
 const { getBrowserClient } = await import("@/lib/supabase/browser");
+const { formatRelative } = await import("@/lib/chat-format");
 const { RUNTIME } = await import("../fixtures/layout");
 const { MEMBER_ID, OWNER_ID, ServerFixture, makeMember, server } = await import("../fixtures/server");
 
@@ -75,6 +76,19 @@ describe("community identity helpers", () => {
   });
 });
 
+describe("relative times", () => {
+  it("reads as now, minutes, hours and days either way, then a short date", () => {
+    const now = new Date("2026-11-10T12:00:00Z");
+    const at = (ms: number) => new Date(now.getTime() + ms).toISOString();
+    expect(formatRelative(at(-20_000), now, "UTC")).toBe("now");
+    expect(formatRelative(at(-5 * 60_000), now, "UTC")).toMatch(/^5 min\.? ago$/);
+    expect(formatRelative(at(3 * 3_600_000), now, "UTC")).toMatch(/^in 3 hr\.?$/);
+    expect(formatRelative(at(-86_400_000), now, "UTC")).toBe("yesterday");
+    expect(formatRelative("2026-10-01T12:00:00Z", now, "UTC")).toBe("Oct 1");
+    expect(formatRelative("2099-11-01T12:00:00Z", now, "UTC")).toBe("Nov 1, 2099");
+  });
+});
+
 describe("CommunityLanding", () => {
   it("shows a member the shared tiles but not the moderators' join requests", () => {
     render(<Landing role="member" />);
@@ -102,8 +116,25 @@ describe("CommunityLanding", () => {
     render(<Landing role="member" overrides={{ banner_url: "https://tracker.example/pixel.png", accent_color: "#1e3a8a" }} />);
     expect(screen.queryByTestId("community-banner")).toBeNull();
     expect(document.querySelector("img[src*='tracker']")).toBeNull();
-    // No usable banner: the accent band carries the name in its readable on-colour.
-    expect(screen.getByTestId("community-accent")).toHaveStyle({ background: "#1e3a8a", color: ON_ACCENT_LIGHT });
+    // No usable banner: a decorative accent band (no text on it; the name is the h1).
+    expect(screen.getByTestId("community-accent")).toHaveStyle({ background: "#1e3a8a" });
+    expect(screen.getByTestId("community-accent")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByTestId("community-accent")).toBeEmptyDOMElement();
+  });
+
+  it("lists live rooms, then unread, six at most, with a link to all rooms", async () => {
+    const { makeChannel, channels } = await import("../fixtures/server");
+    const many = [...channels, ...Array.from({ length: 6 }, (_, i) => makeChannel(`20000000-0000-4000-8000-0000000001${i}0`, `room-${i}`, "text", 20 + i))];
+    render(
+      <RuntimeConfigProvider value={RUNTIME}>
+        <ServerFixture members={MEMBERS} meId={MEMBER_ID} myRole="member" overrides={{ channels: many }}>
+          <PresenceProvider><CallProvider><ShellKindContext.Provider value="pulse"><CommunityLanding events={[]} /></ShellKindContext.Provider></CallProvider></PresenceProvider>
+        </ServerFixture>
+      </RuntimeConfigProvider>,
+    );
+    const tile = screen.getByTestId("tile-rooms");
+    expect(within(tile).getAllByRole("listitem")).toHaveLength(6);
+    expect(within(tile).getByRole("button", { name: `All ${many.length} rooms` })).toBeInTheDocument();
   });
 
   it("works without the identity columns (migration not applied)", () => {
