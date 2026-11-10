@@ -1,12 +1,14 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { useServerVoiceActivity } from "@/components/providers/PresenceProvider";
+import { useServerVoiceActivity, useTopicsRevision, voiceTopic } from "@/components/providers/PresenceProvider";
 import type { VoicePreview } from "@/lib/voice-preview";
 /** No interval: initial fetch, shared presence/webhook invalidations, reconnect and foreground. */
 export function useVoicePreview(serverId: string) {
   const activity = useServerVoiceActivity(serverId);
   const [data, setData] = useState<VoicePreview | null>(null), [problem, setProblem] = useState("");
   const [retry, setRetry] = useState(0);
+  // Private channels announce their changes only on their own topics (see the LiveKit webhook).
+  const privateRevision = useTopicsRevision((data?.privateChannelIds ?? []).map(voiceTopic));
   const schedule = useRef<() => void>(() => {});
   useEffect(() => {
     const controller = new AbortController(); let timer: ReturnType<typeof setTimeout> | undefined, loading = false, dirty = true, last = 0;
@@ -31,6 +33,6 @@ export function useVoicePreview(serverId: string) {
     window.addEventListener("online", refresh); window.addEventListener("offline", offline); document.addEventListener("visibilitychange", refresh);
     return () => { controller.abort(); schedule.current = () => {}; clearTimeout(timer); window.removeEventListener("online", refresh); window.removeEventListener("offline", offline); document.removeEventListener("visibilitychange", refresh); };
   }, [serverId, retry]);
-  useEffect(() => { schedule.current(); }, [activity.revision]);
+  useEffect(() => { schedule.current(); }, [activity.revision, privateRevision]);
   return { data, problem, reconnecting: !activity.connected, retry: () => setRetry((n) => n + 1) };
 }

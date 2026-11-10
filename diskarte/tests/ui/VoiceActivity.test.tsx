@@ -4,7 +4,8 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { createFakeSupabase } from "../fixtures/fake-supabase";
 import { livekitMock } from "../mocks/livekit";
 
-const fake = createFakeSupabase();
+const tables: Record<string, unknown[]> = {};
+const fake = createFakeSupabase(tables);
 vi.mock("@/components/providers/RuntimeConfig", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/components/providers/RuntimeConfig")>()),
   useSupabase: () => fake.client,
@@ -25,6 +26,7 @@ const { SERVER_ID, server } = await import("../fixtures/server");
 const ME = MEMBERS[0].profile;
 const MARIA = MEMBERS[1].profile;
 const TOPIC = `server:${SERVER_ID}`;
+tables.channels = [TAMBAYAN]; // public: its occupancy may go server-wide
 
 function Talking() {
   const speaking = useServerSpeaking(SERVER_ID);

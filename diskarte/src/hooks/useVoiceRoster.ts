@@ -1,6 +1,7 @@
 "use client";
 
 import { useMe } from "@/components/providers/MeProvider";
+import { useTopicPresence, voiceTopic } from "@/components/providers/PresenceProvider";
 import { useServer } from "@/components/providers/ServerProvider";
 import { useCall } from "@/components/voice/CallProvider";
 import type { PresencePayload } from "@/lib/presence";
@@ -9,9 +10,13 @@ import type { MemberWithProfile } from "@/lib/servers";
 /**
  * Who's in a voice channel: everyone else from presence, and you from your own call — instantly and
  * always right (Discord shows you the moment you join, without waiting for presence to echo back).
+ * A private channel's occupants come from its own `voice:<id>` topic, never the server-wide one.
  */
 export function useVoiceRoster(channelId: string): { member: MemberWithProfile; presence: PresencePayload | undefined }[] {
-  const { members, presence } = useServer();
+  const { members, presence: serverPresence, channels } = useServer();
+  const isPrivate = channels.find((c) => c.id === channelId)?.is_private === true;
+  const privatePresence = useTopicPresence(isPrivate ? voiceTopic(channelId) : null);
+  const presence = isPrivate ? privatePresence : serverPresence;
   const { me } = useMe();
   const call = useCall();
   const here = (call.status === "connected" || call.status === "reconnecting") && call.target?.channelId === channelId;

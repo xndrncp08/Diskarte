@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useMe } from "@/components/providers/MeProvider";
+import { usePresenceRejoin } from "@/components/providers/PresenceProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { useCall } from "@/components/voice/CallProvider";
 import { deviceFingerprint, deviceLabel, getDeviceId } from "@/lib/device";
@@ -20,6 +21,10 @@ interface Verdict {
   banReason?: string | null;
   statusOverride?: { status: PresenceStatus; custom_status: string | null } | null;
   statusOverrideAt?: string | null;
+  /** My real status: the private Invisible flag (and when it last changed) and the public status. */
+  invisible?: boolean;
+  invisibleAt?: string | null;
+  status?: PresenceStatus;
 }
 
 interface AccountControlsRow {
@@ -44,15 +49,22 @@ function signOutMessage(reason: Verdict["reason"], banReason?: string | null) {
 export function SessionGuard() {
   const supabase = useSupabase();
   const { me, setMe } = useMe();
+  const rejoinPresence = usePresenceRejoin();
   const call = useCall();
   const loadedAt = useRef(0);
   const ended = useRef(false);
   const voice = call.status === "connected" && call.target && call.target.kind !== "dm" ? call.target.channelId : null;
   const state = useRef({ status: me.status, custom: me.custom_status, voice });
+  /** When this tab last chose (or adopted) its status: older server news about Invisible is ignored. */
+  const statusAt = useRef(0);
 
   useEffect(() => {
     state.current = { status: me.status, custom: me.custom_status, voice };
   }, [me.status, me.custom_status, voice]);
+
+  useEffect(() => {
+    statusAt.current = Date.now();
+  }, [me.status]);
 
   useEffect(() => {
     loadedAt.current = Date.now();
@@ -79,6 +91,18 @@ export function SessionGuard() {
       setMe((prev) => ({ ...prev, status: override.status, custom_status: override.custom_status, custom_status_emoji: null }));
     };
 
+    // Invisible chosen or left in another tab: follow it, so this tab stops (or resumes) publishing presence.
+    const adoptInvisible = (verdict: Verdict) => {
+      // Visible on the server (e.g. changed in the profile builder or by an admin): topics joined while
+      // invisible must be rejoined to publish presence again. A no-op unless something is hidden.
+      if (verdict.invisible === false) rejoinPresence();
+      if (typeof verdict.invisible !== "boolean" || !verdict.invisibleAt || Date.parse(verdict.invisibleAt) <= statusAt.current) return;
+      if (verdict.invisible === (state.current.status === "invisible")) return;
+      statusAt.current = Date.parse(verdict.invisibleAt);
+      const status = verdict.invisible ? "invisible" : (verdict.status ?? "online");
+      setMe((prev) => ({ ...prev, status }));
+    };
+
     const beat = async () => {
       if (cancelled || ended.current) return;
       fingerprint ??= deviceFingerprint();
@@ -95,6 +119,7 @@ export function SessionGuard() {
       const verdict = data as Verdict;
       if (verdict.signOut) return end(verdict.reason, verdict.banReason);
       adoptOverride(verdict.statusOverride, verdict.statusOverrideAt);
+      adoptInvisible(verdict);
     };
 
     const schedule = () => {
@@ -128,7 +153,7 @@ export function SessionGuard() {
       document.removeEventListener("visibilitychange", onVisible);
       unsubscribe();
     };
-  }, [supabase, me.id, setMe]);
+  }, [supabase, me.id, setMe, rejoinPresence]);
 
   // A status or voice change is news for the inspector: report it now rather than at the next beat.
   useEffect(() => {

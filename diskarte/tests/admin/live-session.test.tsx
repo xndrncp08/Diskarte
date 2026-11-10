@@ -165,6 +165,20 @@ describe("session guard", () => {
     expect(await screen.findByText("idle|AFK / Tulog")).toBeInTheDocument();
     expect(signOut).not.toHaveBeenCalled();
   });
+
+  it("a stale tab adopts Invisible chosen in another tab from the heartbeat, and stops publishing presence", async () => {
+    rpc.mockImplementation(async () => ({ data: { signOut: false, invisible: true, invisibleAt: new Date(Date.now() + 1000).toISOString(), status: "online" }, error: null }));
+    renderGuard();
+    expect(await screen.findByText("invisible|")).toBeInTheDocument();
+  });
+
+  it("ignores Invisible news older than this tab's own status choice", async () => {
+    rpc.mockImplementation(async () => ({ data: { signOut: false, invisible: true, invisibleAt: new Date(Date.now() - 60_000).toISOString(), status: "online" }, error: null }));
+    renderGuard();
+    await waitFor(() => expect(rpc).toHaveBeenCalledWith("heartbeat_device", expect.anything()));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.getByTestId("my-status")).toHaveTextContent("online|");
+  });
 });
 
 describe("callout boxes in chat Markdown", () => {
