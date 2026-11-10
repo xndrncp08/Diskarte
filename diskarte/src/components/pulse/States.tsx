@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "./Button";
 
 /**
- * Nothing here yet: an optional icon in an accent-tinted tile, a title (h3 by default; `headingLevel`
+ * Nothing here yet: an optional icon in a raised neutral tile, a title (h3 by default; `headingLevel`
  * to fit the page outline), one or two sentences saying what will appear and how, and an optional action.
  */
 export function EmptyState({ title, children, icon, action, headingLevel = 3, className }: { title: string; children: ReactNode; icon?: ReactNode; action?: ReactNode; headingLevel?: 2 | 3 | 4; className?: string }) {
@@ -14,7 +14,7 @@ export function EmptyState({ title, children, icon, action, headingLevel = 3, cl
   return (
     <div className={cn("flex min-h-44 flex-col items-center justify-center gap-3 px-4 py-8 text-center", className)}>
       {icon && (
-        <span className="grid size-12 place-items-center rounded-pulse-item bg-pulse-selected text-pulse-accent-ink [&_svg]:size-5" aria-hidden>
+        <span className="grid size-12 place-items-center rounded-pulse-item bg-pulse-raised text-pulse-muted [&_svg]:size-5" aria-hidden>
           {icon}
         </span>
       )}
@@ -72,7 +72,7 @@ export function SkeletonRows({ rows = 3, label = "Loading" }: { rows?: number; l
 export function Loading({ label = "Loading…", className }: { label?: string; className?: string }) {
   return (
     <span role="status" className={cn("inline-flex items-center gap-2 font-pulse-text text-pulse-label text-pulse-muted", className)}>
-      <Loader2 className="size-4 animate-spin text-pulse-accent-ink" aria-hidden />
+      <Loader2 className="size-4 animate-spin text-pulse-muted" aria-hidden />
       {label}
     </span>
   );

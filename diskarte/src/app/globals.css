@@ -126,7 +126,8 @@ html[data-color-mode="light"] .chat-markdown .callout { background: color-mix(in
 html[data-color-mode="light"] .chat-markdown :not(pre) > code { color: #334155; background: #e2e8f0; border-color: #94a3b8; }
 html[data-color-mode="light"] .chat-markdown pre { color: #e2e8f0; }
 html[data-color-mode="light"][data-high-contrast] :is(.text-slate-400, .text-slate-500, .text-slate-600) { color: #334155; }
-html[data-color-mode="light"] :is(input, textarea, select) { background-color: #fff; border-color: #7b8799; color: #142138; }
+/* :where keeps the specificity; Pulse fields carry their own light colours (and an alert edge when invalid). */
+html[data-color-mode="light"]:where(:not([data-shell="pulse"])) :is(input, textarea, select) { background-color: #fff; border-color: #7b8799; color: #142138; }
 html[data-color-mode="light"] :is(.glass, .glass-strong, .float-card) { background: rgb(255 255 255 / 0.85); border-color: rgb(15 23 42 / 0.18); box-shadow: 0 12px 40px rgb(15 23 42 / 0.08); }
 html[data-color-mode="light"] :is([data-testid="voice-stage"], [data-testid="media-viewer"]) {
   color-scheme: dark;

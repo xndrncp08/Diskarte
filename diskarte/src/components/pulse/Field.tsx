@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 const CONTROL =
   "w-full rounded-pulse-control border border-pulse-input bg-pulse-surface px-3 font-pulse-text text-pulse-body text-pulse-text placeholder:text-pulse-muted " +
-  "transition-colors hover:border-pulse-line-strong focus-visible:border-pulse-focus disabled:cursor-not-allowed disabled:border-pulse-line disabled:bg-pulse-raised disabled:text-pulse-disabled" +
+  "transition-colors hover:border-pulse-line-strong focus-visible:border-pulse-focus disabled:cursor-not-allowed disabled:border-pulse-line disabled:bg-pulse-raised disabled:text-pulse-disabled " +
   "aria-[invalid=true]:border-pulse-alert";
 
 /** Pulse look for the shared fields: input-border edges (3:1), muted placeholder, alert edge and text when invalid. */

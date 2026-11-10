@@ -45,6 +45,7 @@
   --radius-pulse-item: var(--pulse-radius-item);
   --radius-pulse-card: var(--pulse-radius-card);
   --radius-pulse-sheet: var(--pulse-radius-sheet);
+  --radius-pulse-monogram: var(--pulse-radius-monogram);
 
   --shadow-pulse-1: var(--pulse-elevation-1);
   --shadow-pulse-2: var(--pulse-elevation-2);
@@ -165,6 +166,7 @@ html[data-shell="pulse"] {
   --pulse-radius-item: 10px;
   --pulse-radius-card: 16px;
   --pulse-radius-sheet: 24px;
+  --pulse-radius-monogram: 7px; /* Space tiles: squarer than an item, never a circle */
 
   --pulse-dur-press: 120ms;
   --pulse-dur-ui: 200ms;

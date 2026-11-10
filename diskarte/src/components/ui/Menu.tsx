@@ -82,7 +82,7 @@ export function Menu({
   const root = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const visible = items.filter((i) => !i.hidden);
-  const { style, side: resolvedSide } = useFloating(open, root, panel, { side, align, offset: 4 });
+  const { style, side: resolvedSide, ready } = useFloating(open, root, panel, { side, align, offset: 4 });
   const skin = useContext(MenuSkinContext);
 
   // Focus goes back to the trigger synchronously, so a dialog opened by the selected item records
@@ -93,7 +93,7 @@ export function Menu({
   }, []);
 
   useMenuDismiss(open, [root, panel], () => close(false));
-  useMenuKeyboard(open, panel, () => close(true), () => close(false));
+  useMenuKeyboard(open, panel, () => close(true), () => close(false), ready);
 
   return (
     <div ref={root} className={cn("relative", className)}>
@@ -144,9 +144,10 @@ export function useMenuDismiss(open: boolean, inside: readonly RefObject<HTMLEle
 
 /**
  * Menu keyboard: arrows move, Home/End jump, Tab leaves, Escape closes. Focus lands on the checked
- * item (a status switcher opens on the current choice) or else the first one.
+ * item (a status switcher opens on the current choice) or else the first one, once `ready` (the panel is
+ * positioned and visible; a hidden row refuses focus).
  */
-export function useMenuKeyboard(open: boolean, panel: RefObject<HTMLElement | null>, onEscape: () => void, onTab: () => void = onEscape) {
+export function useMenuKeyboard(open: boolean, panel: RefObject<HTMLElement | null>, onEscape: () => void, onTab: () => void = onEscape, ready = true) {
   const escape = useEffectEvent(onEscape);
   const tab = useEffectEvent(onTab);
   useEffect(() => {
@@ -172,21 +173,25 @@ export function useMenuKeyboard(open: boolean, panel: RefObject<HTMLElement | nu
       }
     };
     document.addEventListener("keydown", onKey);
-    let tries = 0;
-    const focusFirst = () => {
-      // A menu that starts with choices (the status switcher) opens on the current one; a menu that
-      // starts with actions (the server menu) opens on its first row.
-      const item = panel.current?.querySelector(ITEM_SELECTOR)?.getAttribute("role") === "menuitemradio" ? (panel.current.querySelector<HTMLElement>("[aria-checked=true]") ?? panel.current.querySelector<HTMLElement>(ITEM_SELECTOR)) : panel.current?.querySelector<HTMLElement>(ITEM_SELECTOR);
-      item?.focus();
-      // A first open keeps the panel visibility:hidden until useFloating has measured it (a frame later), and hidden rows refuse focus.
-      if (item && document.activeElement !== item && tries++ < 5) frame = requestAnimationFrame(focusFirst);
-    };
-    let frame = requestAnimationFrame(focusFirst);
-    return () => {
-      cancelAnimationFrame(frame);
-      document.removeEventListener("keydown", onKey);
-    };
+    return () => document.removeEventListener("keydown", onKey);
   }, [open, panel]);
+  useEffect(() => {
+    const el = panel.current;
+    if (!open || !ready || !el) return;
+    // A menu that starts with choices (the status switcher) opens on the current one; a menu that
+    // starts with actions (the server menu) opens on its first row.
+    const focusFirst = () => {
+      const item = el.querySelector(ITEM_SELECTOR)?.getAttribute("role") === "menuitemradio" ? (el.querySelector<HTMLElement>("[aria-checked=true]") ?? el.querySelector<HTMLElement>(ITEM_SELECTOR)) : el.querySelector<HTMLElement>(ITEM_SELECTOR);
+      // Reduced motion makes every transition 0.01 ms, visibility included, so rows of a just-positioned panel can stay
+      // hidden (and refuse focus) until their transitions end; transitionend bubbles up to the panel.
+      if (!item || getComputedStyle(item).visibility === "hidden") return;
+      item.focus();
+      el.removeEventListener("transitionend", focusFirst);
+    };
+    el.addEventListener("transitionend", focusFirst);
+    focusFirst();
+    return () => el.removeEventListener("transitionend", focusFirst);
+  }, [open, ready, panel]);
 }
 
 /** The rows of a menu panel, split into labelled sections; shared by <Menu> and <ContextMenu>. */

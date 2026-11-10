@@ -27,12 +27,21 @@ for (const mode of ["dark", "light"] as const) {
       await expect(page.locator("html")).toHaveAttribute("data-color-mode", mode);
       await expectNoAxeViolations(page);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      // An invalid field's edge is the alert colour (the aria-[invalid=true] class is a class of its own).
+      const edge = await page.getByRole("textbox", { name: "Email" }).evaluate((input) => {
+        const probe = document.body.appendChild(document.createElement("span"));
+        probe.style.color = "var(--pulse-alert)";
+        const alert = getComputedStyle(probe).color;
+        probe.remove();
+        return { border: getComputedStyle(input).borderTopColor, alert };
+      });
+      expect(edge.border).toBe(edge.alert);
       await page.screenshot({ path: shot(""), fullPage: true });
 
       await page.getByRole("button", { name: "Open dialog" }).click();
       const dialog = page.getByRole("dialog", { name: "Leave Bayanihan Crew?" });
       await expect(dialog).toBeVisible();
-      await expect(dialog.getByRole("button", { name: "Close" })).toBeFocused();
+      await expect(dialog.getByRole("textbox", { name: "Type the Space name to confirm" })).toBeFocused(); // data-autofocus
       await expectNoAxeViolations(page);
       await page.screenshot({ path: shot("-dialog") });
       await page.keyboard.press("Escape");
@@ -95,6 +104,8 @@ test("Pulse gallery Tab order follows the page and every stop shows focus", asyn
   expect(stops[0].role).toBe("switch");
   // One stop for the whole tablist (roving focus), and the walk reached the overlay triggers at the end.
   expect(stops.filter((s) => s.role === "tab")).toHaveLength(1);
+  expect(stops.filter((s) => s.role === "radio")).toHaveLength(1);
+  expect(stops.filter((s) => ["Bold", "Italic", "Mention someone"].includes(s.name))).toHaveLength(1);
   expect(stops.map((s) => s.name)).toContain("Show toast");
   for (const s of stops) expect(s.outline, s.name).not.toMatch(/^none/);
 });

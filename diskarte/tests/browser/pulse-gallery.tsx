@@ -1,14 +1,16 @@
 import { MotionConfig } from "framer-motion";
-import { Bell, Copy, Hash, Inbox, MoreHorizontal, Pencil, Phone, Plus, Settings, Trash2 } from "lucide-react";
+import { Bell, Bold, Compass, Copy, Hash, Home, Inbox, Italic, Link2, MessageCircle, MoreHorizontal, Pencil, Phone, Plus, Settings, Trash2, User, Volume2 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AppToaster } from "@/components/AppToaster";
-import { Avatar, Monogram, PresenceDot, type PresenceStatus } from "@/components/pulse/Avatar";
+import { Avatar, AvatarStack, Monogram, PresenceDot, type PresenceStatus } from "@/components/pulse/Avatar";
 import { Button, IconButton, type ButtonVariant } from "@/components/pulse/Button";
 import { BentoGrid, BentoTile, Card } from "@/components/pulse/Card";
 import { Chip, CountBadge, StatusBadge } from "@/components/pulse/Chip";
+import { Kbd, SegmentedControl, Toolbar } from "@/components/pulse/Controls";
 import { Dialog, Sheet } from "@/components/pulse/Dialog";
 import { Input, Select, Textarea } from "@/components/pulse/Field";
+import { BottomTabBar, NavItem } from "@/components/pulse/Nav";
 import { ContextMenu, ContextMenuItems, Menu, useContextMenu, type MenuItem } from "@/components/pulse/Menu";
 import { LiveIndicator, PulseLine } from "@/components/pulse/PulseLine";
 import { EmptyState, ErrorState, Loading, SkeletonRows } from "@/components/pulse/States";
@@ -49,6 +51,7 @@ export function PulseGallery() {
   const [sheet, setSheet] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [notify, setNotify] = useState("all");
+  const [inbox, setInbox] = useState<"all" | "unread" | "mentions">("all");
   const context = useContextMenu();
   const items: MenuItem[] = [
     { label: "Edit", icon: <Pencil />, onSelect: () => {} },
@@ -123,9 +126,10 @@ export function PulseGallery() {
             ))}
           </Row>
           <Row>
-            <CountBadge count={3} label="unread mentions" />
+            <CountBadge count={3} label="unread mentions" tone="alert" />
             <CountBadge count={12} label="new messages" tone="accent" />
-            <CountBadge count={240} label="unread mentions" />
+            <CountBadge count={240} label="unread mentions" tone="alert" />
+            <CountBadge count={8} label="members online" />
             <StatusBadge tone="live">Live</StatusBadge>
             <StatusBadge tone="alert">Muted</StatusBadge>
             <StatusBadge tone="people">Admin</StatusBadge>
@@ -171,6 +175,49 @@ export function PulseGallery() {
           >
             <p className="text-pulse-muted">{`The ${tab} panel.`}</p>
           </Tabs>
+        </Section>
+
+        <Section title="Navigation">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <nav aria-label="Spaces">
+                <ul className="space-y-0.5">
+                  <li><NavItem href="#tambayan" label="Tambayan" secondary="Weekend plans" leading={<Monogram name="Tambayan" size={32} />} current /></li>
+                  <li><NavItem href="#bayanihan" label="Bayanihan Crew" leading={<Monogram name="Bayanihan Crew" size={32} />} unread /></li>
+                  <li><NavItem href="#lakbay" label="Lakbay" secondary="3 in General voice" leading={<Monogram name="Lakbay" size={32} />} count={2} countLabel="mentions" live /></li>
+                  <li><NavItem href="#general" label="general" leading={<Hash />} count={14} countLabel="new messages" countTone="neutral" /></li>
+                  <li><NavItem href="#lounge" label="Lounge" leading={<Volume2 />} live="3 in voice" /></li>
+                  <li><NavItem href="#maria" label="Maria Clara" secondary="Muted" leading={<Avatar profile={people[1]} size={32} />} dimmed /></li>
+                </ul>
+              </nav>
+            </Card>
+            <div className="space-y-4">
+              <SegmentedControl label="Inbox filter" value={inbox} onChange={setInbox} options={[{ value: "all", label: "All" }, { value: "unread", label: "Unread" }, { value: "mentions", label: "Mentions" }]} />
+              <Toolbar label="Formatting">
+                <IconButton label="Bold" icon={<Bold />} size="sm" />
+                <IconButton label="Italic" icon={<Italic />} size="sm" />
+                <IconButton label="Insert link" icon={<Link2 />} size="sm" disabled />
+                <IconButton label="Mention someone" icon={<User />} size="sm" />
+              </Toolbar>
+              <p className="text-pulse-label text-pulse-muted">
+                Search <Kbd>Ctrl</Kbd>+<Kbd>K</Kbd>, send <Kbd label="Enter">↵</Kbd>, close <Kbd>Esc</Kbd>
+              </p>
+              <Row>
+                <AvatarStack people={people.map((p, i) => ({ ...p, speaking: i === 1 }))} />
+                <AvatarStack people={[...people, ...people].map((p, i) => ({ ...p, display_name: `${p.display_name} ${i + 1}` }))} size={36} />
+              </Row>
+            </div>
+          </div>
+          <BottomTabBar
+            label="Main"
+            className="rounded-pulse-card border"
+            items={[
+              { href: "#home", label: "Home", icon: <Home />, current: true },
+              { href: "#messages", label: "Messages", icon: <MessageCircle />, count: 3, countLabel: "unread messages" },
+              { href: "#explore", label: "Explore", icon: <Compass /> },
+              { href: "#you", label: "You", icon: <User /> },
+            ]}
+          />
         </Section>
 
         <Section title="Cards">
@@ -284,7 +331,7 @@ export function PulseGallery() {
             </>
           }
         >
-          <Input label="Type the Space name to confirm" placeholder="Bayanihan Crew" />
+          <Input label="Type the Space name to confirm" placeholder="Bayanihan Crew" data-autofocus />
         </Dialog>
         <Sheet open={sheet} onClose={() => setSheet(false)} title="Context" description="People, pins and files for #general." footer={<Button variant="primary" onClick={() => setSheet(false)}>Done</Button>}>
           <div className="space-y-3">

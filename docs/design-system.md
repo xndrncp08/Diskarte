@@ -253,7 +253,7 @@ mention badge with a count, the selected bar. Colour only reinforces.
 | --- | --- |
 | Fonts | `font-pulse-display` Bricolage Grotesque, variable weight with the optical-size axis for the 32/44 px sizes (`--pulse-font-display`); `font-pulse-text` Figtree, variable weight with italics (`--pulse-font-text`, the Pulse body font) |
 | Type scale | `text-pulse-caption` 12/16, `-label` 13/18, `-body` 15/22, `-lead` 17/24, `-title` 20/26, `-heading` 24/30, `-display` 32/38, `-hero` 44/48 (`--pulse-size-N` / `--pulse-leading-N`) |
-| Radius | `rounded-pulse-control` 6 px, `-item` 10 px, `-card` 16 px, `-sheet` 24 px |
+| Radius | `rounded-pulse-control` 6 px, `-item` 10 px, `-card` 16 px, `-sheet` 24 px, `-monogram` 7 px (Space tiles) |
 | Elevation | `shadow-pulse-1`, `-2`, `-3` (`--pulse-elevation-N`, softer in light mode) |
 | Motion | `--pulse-dur-press` 120 ms, `--pulse-dur-ui` 200 ms, `--pulse-dur-sheet` 320 ms, `--pulse-dur-loop` 1.6 s (live pulse), `--pulse-ease` out-quint |
 | Spacing | 4 px grid: Tailwind's spacing already matches; `--pulse-space-1…16` for raw CSS |

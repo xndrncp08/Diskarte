@@ -51,7 +51,7 @@ export function Chip({
     </>
   );
   const shell = cn(
-    "inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border border-transparent font-pulse-text text-pulse-label font-medium text-pulse-text pointer-coarse:min-h-11",
+    "inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-pulse-control border border-transparent font-pulse-text text-pulse-label font-medium text-pulse-text pointer-coarse:min-h-11",
     selected ? "border-pulse-accent-mark bg-pulse-selected" : TINT[tone],
     className,
   );
@@ -69,7 +69,7 @@ export function Chip({
           type="button"
           onClick={onRemove}
           aria-label={removeLabel ?? `Remove ${typeof children === "string" ? children : "tag"}`}
-          className="inline-flex size-6 shrink-0 items-center justify-center rounded-full text-pulse-muted transition-colors hover:bg-pulse-hover hover:text-pulse-text pointer-coarse:size-11"
+          className="inline-flex size-6 shrink-0 items-center justify-center rounded-pulse-control text-pulse-muted transition-colors hover:bg-pulse-hover hover:text-pulse-text pointer-coarse:size-11"
         >
           <X className="size-3.5" aria-hidden />
         </button>
@@ -78,17 +78,20 @@ export function Chip({
   );
 }
 
+const COUNT_TONES = { neutral: "bg-pulse-pressed text-pulse-text", alert: "bg-pulse-alert text-pulse-on-alert", accent: "bg-pulse-accent text-pulse-on-accent" };
+
 /**
  * Unread / mention count. Shows up to `max` then "{max}+"; `label` completes the accessible text
- * ("3 unread mentions"), so the number is never announced on its own. Alert tone for mentions, accent otherwise.
+ * ("3 unread mentions"), so the number is never announced on its own. `neutral` (default) for plain counts,
+ * `alert` for mentions, `accent` only where the count means "new" or "selected" (gold stays rare).
  */
-export function CountBadge({ count, label, tone = "alert", max = 99, className }: { count: number; label: string; tone?: "alert" | "accent"; max?: number; className?: string }) {
+export function CountBadge({ count, label, tone = "neutral", max = 99, className }: { count: number; label: string; tone?: keyof typeof COUNT_TONES; max?: number; className?: string }) {
   if (count <= 0) return null;
   return (
     <span
       className={cn(
         "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 font-pulse-text text-pulse-caption font-bold tabular-nums",
-        tone === "alert" ? "bg-pulse-alert text-pulse-on-alert" : "bg-pulse-accent text-pulse-on-accent",
+        COUNT_TONES[tone],
         className,
       )}
     >

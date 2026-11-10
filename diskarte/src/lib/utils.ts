@@ -6,7 +6,7 @@ const twMerge = extendTailwindMerge({
   extend: {
     theme: {
       text: ["pulse-caption", "pulse-label", "pulse-body", "pulse-lead", "pulse-title", "pulse-heading", "pulse-display", "pulse-hero"],
-      radius: ["pulse-control", "pulse-item", "pulse-card", "pulse-sheet"],
+      radius: ["pulse-control", "pulse-item", "pulse-card", "pulse-sheet", "pulse-monogram"],
       shadow: ["pulse-1", "pulse-2", "pulse-3"],
       font: ["pulse-display", "pulse-text"],
     },
