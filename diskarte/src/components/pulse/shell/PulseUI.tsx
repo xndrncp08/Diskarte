@@ -24,6 +24,9 @@ interface PulseUIValue {
   /** Where the active Space's rooms render inside the navigator (null while the Spaces view is hidden). */
   roomsSlot: HTMLElement | null;
   setRoomsSlot: (el: HTMLElement | null) => void;
+  /** The open Space row's action area (its "…" menu and Invite), filled by the same portal owner as the rooms. */
+  spaceActionsSlot: HTMLElement | null;
+  setSpaceActionsSlot: (el: HTMLElement | null) => void;
 }
 
 const PulseUIContext = createContext<PulseUIValue | null>(null);
@@ -51,21 +54,22 @@ export function PulseUIProvider({ children }: { children: ReactNode }) {
   const [contextOpen, setContextOpen] = useState(false);
   const [contextTab, setContextTab] = useState("people");
   const [roomsSlot, setRoomsSlot] = useState<HTMLElement | null>(null);
+  const [spaceActionsSlot, setSpaceActionsSlot] = useState<HTMLElement | null>(null);
   const contextPinned = useSyncExternalStore(subscribePinned, readPinned, () => false);
   const wide = useSyncExternalStore(subscribeWide, () => window.matchMedia?.(WIDE).matches ?? false, () => false);
   const docked = contextPinned && wide;
   const value = useMemo<PulseUIValue>(
     () => ({
-      contextOpen, setContextOpen, contextPinned, setContextPinned: writePinned, docked, wide, contextTab, setContextTab, roomsSlot, setRoomsSlot,
+      contextOpen, setContextOpen, contextPinned, setContextPinned: writePinned, docked, wide, contextTab, setContextTab, roomsSlot, setRoomsSlot, spaceActionsSlot, setSpaceActionsSlot,
       openContext: (tab: string) => { setContextTab(tab); if (!docked) setContextOpen(true); },
     }),
-    [contextOpen, contextPinned, docked, wide, contextTab, roomsSlot],
+    [contextOpen, contextPinned, docked, wide, contextTab, roomsSlot, spaceActionsSlot],
   );
   return <PulseUIContext.Provider value={value}>{children}</PulseUIContext.Provider>;
 }
 
 const noop = () => {};
-const NOOP: PulseUIValue = { contextOpen: false, setContextOpen: noop, contextPinned: false, setContextPinned: noop, docked: false, wide: false, contextTab: "people", setContextTab: noop, openContext: noop, roomsSlot: null, setRoomsSlot: noop };
+const NOOP: PulseUIValue = { contextOpen: false, setContextOpen: noop, contextPinned: false, setContextPinned: noop, docked: false, wide: false, contextTab: "people", setContextTab: noop, openContext: noop, roomsSlot: null, setRoomsSlot: noop, spaceActionsSlot: null, setSpaceActionsSlot: noop };
 
 /** The Pulse shell's state; a closed, inert default outside it (isolated renders). */
 export function usePulseUI(): PulseUIValue {

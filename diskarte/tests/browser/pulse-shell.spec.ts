@@ -45,6 +45,8 @@ for (const mode of ["dark", "light"] as const) {
         await page.goto(`/tambayan/${SERVER_ID}/${channels[0].id}`);
         await page.getByRole("button", { name: "Open navigation" }).click();
         await expect(page.getByTestId("pulse-rooms")).toBeVisible();
+        // The drawer starts on where you are, not its first button (whose tooltip would cover the header).
+        await expect(page.getByTestId("pulse-rooms").getByRole("link", { name: channels[0].name })).toBeFocused();
         await expectNoAxeViolations(page);
         await page.screenshot({ path: `test-results/pulse-shell-${mode}-${width}-navigator.png` });
         await page.keyboard.press("Escape");
@@ -76,8 +78,8 @@ test("Pulse skip link, navigator keys and pinned Context", async ({ page }) => {
   await page.keyboard.press("Enter");
   await expect(page.locator("#main-content")).toBeFocused();
 
-  // Ctrl+1 opens the first Space; its rooms expand under it.
-  await page.keyboard.press("Control+1");
+  // Alt+1 opens the first Space (Ctrl/⌘+1 stays the browser's); its rooms expand under it.
+  await page.keyboard.press("Alt+Digit1");
   await expect(page).toHaveURL(new RegExp(`/tambayan/${SERVER_ID}`));
   const rooms = page.getByTestId("pulse-rooms");
   await expect(rooms.getByRole("link", { name: channels[0].name })).toBeVisible();

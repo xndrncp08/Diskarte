@@ -10,6 +10,12 @@ vi.mock("@/actions/profile", async () => (await import("../mocks/actions")).prof
 vi.mock("sonner", async () => (await import("../mocks/actions")).toastMock);
 // Counts mounts of one of ShellProviders' watchers: it must survive a shell switch.
 const watcher = vi.hoisted(() => ({ mounts: 0 }));
+// Presence rejoins after a status save leaves Invisible (release/privacy-hardening); the You menu must do it too.
+const presence = vi.hoisted(() => ({ rejoin: vi.fn() }));
+vi.mock("@/components/providers/PresenceProvider", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/providers/PresenceProvider")>()),
+  usePresenceRejoin: () => presence.rejoin,
+}));
 vi.mock("@/components/shell/DmNotifier", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/components/shell/DmNotifier")>()),
   DmNotifier: function DmNotifier() {
@@ -25,6 +31,7 @@ const { ShellUIProvider } = await import("@/components/shell/ShellUI");
 const { PulseShell } = await import("@/components/pulse/shell/PulseShell");
 const { PulseRooms } = await import("@/components/pulse/shell/Rooms");
 const { viewFor } = await import("@/components/pulse/shell/Navigator");
+const { usePulseUI } = await import("@/components/pulse/shell/PulseUI");
 const { AdminAccessProvider } = await import("@/components/admin/AdminAccess");
 const { RuntimeConfigProvider } = await import("@/components/providers/RuntimeConfig");
 const { PresenceProvider } = await import("@/components/providers/PresenceProvider");
@@ -127,7 +134,7 @@ describe("Spaces navigator", () => {
     render(<PulseApp />);
     const spaces = screen.getByTestId("space-list");
     // HQ first, then the rest.
-    expect(Array.from(spaces.querySelectorAll(":scope > li > a"), (l) => l.textContent)).toEqual([expect.stringContaining("Diskarte HQ"), expect.stringContaining("Barkada HQ"), expect.stringContaining("Lakbay Crew")]);
+    expect(Array.from(spaces.querySelectorAll(":scope > li > div > a"), (l) => l.textContent)).toEqual([expect.stringContaining("Diskarte HQ"), expect.stringContaining("Barkada HQ"), expect.stringContaining("Lakbay Crew")]);
     const rooms = screen.getByTestId("pulse-rooms");
     for (const c of CHANNELS) expect(within(rooms).getByRole("link", { name: new RegExp(c.name) })).toBeInTheDocument();
     expect(within(rooms).queryByText(HIDDEN.name)).toBeNull();
@@ -147,15 +154,19 @@ describe("Spaces navigator", () => {
     expect(screen.getByRole("link", { name: "Control Center" })).toHaveAttribute("href", "/tambayan/admin");
   });
 
-  it("Ctrl/⌘ 1–9 open Spaces in order; arrows move between rows; Escape returns to the canvas", () => {
+  it("Alt 1–9 open Spaces in order (not Ctrl/⌘, which browsers keep; not while typing); arrows move between rows; Escape returns to the canvas", () => {
     render(<PulseApp />);
-    fireEvent.keyDown(window, { key: "1", ctrlKey: true });
+    fireEvent.keyDown(window, { key: "1", code: "Digit1", ctrlKey: true }); // the browser's tab shortcut: ignored
+    expect(navigation.path).toBe(channelUrl(GENERAL.id));
+    fireEvent.keyDown(window, { key: "¡", code: "Digit1", altKey: true }); // Option + 1 on a Mac types ¡
     expect(navigation.path).toBe(`/tambayan/${HQ.id}`);
     act(() => navigation.set(channelUrl(GENERAL.id)));
-    fireEvent.keyDown(window, { key: "3", metaKey: true });
+    fireEvent.keyDown(window, { key: "£", code: "Digit3", altKey: true });
     expect(navigation.path).toBe(`/tambayan/${OTHER.id}`);
     act(() => navigation.set(channelUrl(GENERAL.id)));
-    fireEvent.keyDown(window, { key: "9", ctrlKey: true }); // no ninth Space: nothing happens
+    fireEvent.keyDown(screen.getByRole("searchbox"), { key: "£", code: "Digit3", altKey: true }); // typing a character
+    expect(navigation.path).toBe(channelUrl(GENERAL.id));
+    fireEvent.keyDown(window, { key: "ª", code: "Digit9", altKey: true }); // no ninth Space: nothing happens
     expect(navigation.path).toBe(channelUrl(GENERAL.id));
 
     const rooms = screen.getByTestId("pulse-rooms");
@@ -170,7 +181,35 @@ describe("Spaces navigator", () => {
   });
 });
 
+describe("You menu", () => {
+  it("going from Invisible back to Online rejoins presence once the save succeeds (not while going Invisible)", async () => {
+    const user = userEvent.setup();
+    presence.rejoin.mockClear();
+    render(<PulseApp />);
+    await user.click(screen.getByTestId("you-button"));
+    await user.click(await screen.findByRole("menuitemradio", { name: /^Invisible/ }));
+    await waitFor(() => expect(screen.getByTestId("you-button")).toHaveAccessibleName(/Invisible/));
+    expect(presence.rejoin).not.toHaveBeenCalled();
+    await user.click(screen.getByTestId("you-button"));
+    await user.click(await screen.findByRole("menuitemradio", { name: /^Online/ }));
+    await waitFor(() => expect(presence.rejoin).toHaveBeenCalledTimes(1));
+  });
+});
+
 describe("Context sheet", () => {
+  it("openContext('pinned') (ChatView's Pinned messages button in Pulse) opens the sheet on Pinned", async () => {
+    const user = userEvent.setup();
+    function PinsButton() {
+      const ui = usePulseUI();
+      return <button type="button" onClick={() => ui.openContext("pinned")}>Pinned messages</button>;
+    }
+    render(<PulseApp><PinsButton /></PulseApp>);
+    await user.click(screen.getByRole("button", { name: "Pinned messages" }));
+    const sheet = await screen.findByRole("dialog", { name: "Context" });
+    expect(within(sheet).getByRole("tab", { name: "Pinned" })).toHaveAttribute("aria-selected", "true");
+    expect(await within(sheet).findByText("Nothing pinned yet")).toBeInTheDocument();
+  });
+
   it("opens from the masthead with People, Pinned and About", async () => {
     const user = userEvent.setup();
     render(<PulseApp />);

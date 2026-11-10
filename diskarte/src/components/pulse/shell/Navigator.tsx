@@ -56,7 +56,7 @@ function pinItem(pin: string, pinned: boolean): MenuItem {
 }
 
 /** A Space: Monogram, unread and mention counts (muted channels ignored), "In call" while you're in its voice room. */
-function SpaceRow({ server, active, pinned, children }: { server: RailEntry; active: boolean; pinned: boolean; children?: ReactNode }) {
+function SpaceRow({ server, active, pinned, actions, children }: { server: RailEntry; active: boolean; pinned: boolean; actions?: (el: HTMLElement | null) => void; children?: ReactNode }) {
   const menu = useContextMenu();
   const href = useServerHref(server);
   const badge = useServerBadge(server.id);
@@ -64,7 +64,11 @@ function SpaceRow({ server, active, pinned, children }: { server: RailEntry; act
   const live = call.status !== "idle" && call.target?.serverId === server.id ? "In call" : undefined;
   return (
     <li {...menu.triggerProps}>
-      <NavItem label={server.name} leading={<Monogram name={server.name} src={server.icon_url} size={28} selected={active} />} href={href} current={active} unread={badge.unread} count={active ? 0 : badge.mentions} countLabel={badge.mentions === 1 ? "mention" : "mentions"} live={live} dimmed={badge.muted} />
+      <div className="flex items-center gap-1">
+        <NavItem label={server.name} leading={<Monogram name={server.name} src={server.icon_url} size={28} selected={active} />} href={href} current={active} unread={badge.unread} count={active ? 0 : badge.mentions} countLabel={badge.mentions === 1 ? "mention" : "mentions"} live={live} dimmed={badge.muted} className="min-w-0 flex-1" />
+        {/* The open Space's "…" menu and Invite portal in here from its layout (they need its ServerProvider). */}
+        {actions && <span ref={actions} className="flex shrink-0 items-center" />}
+      </div>
       {children}
       <ServerContextMenu menu={menu} server={server} before={[pinItem(`space:${server.id}`, pinned)]} />
     </li>
@@ -121,7 +125,7 @@ function YouMenu() {
  * from an RLS-scoped source: `servers` (getMyServers), useSocial() conversations, and for the open Space the rooms
  * that `[serverId]/layout.tsx` portals into the slot (useServer().channels).
  *
- * Keys: ⌘/Ctrl 1–9 open the first nine Spaces, ↑/↓ (Home/End) move between rows, Escape returns to the canvas.
+ * Keys: Alt (Option) 1–9 open the first nine Spaces (not while typing), ↑/↓ (Home/End) move between rows, Escape returns to the canvas.
  */
 export function Navigator({ servers }: { servers: RailEntry[] }) {
   const pathname = usePathname();
@@ -129,7 +133,7 @@ export function Navigator({ servers }: { servers: RailEntry[] }) {
   const activeId = useParams<{ serverId?: string }>().serverId;
   const { conversations, friends, profiles, attention } = useSocial();
   const role = usePlatformRole();
-  const { setRoomsSlot } = usePulseUI();
+  const { setRoomsSlot, setSpaceActionsSlot } = usePulseUI();
   const pins = useDisplayPrefs().pins ?? [];
   const goAnywhere = useGoAnywhere(servers);
   const spaces = useSpaces(servers);
@@ -141,8 +145,12 @@ export function Navigator({ servers }: { servers: RailEntry[] }) {
 
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
-      if (!(event.metaKey || event.ctrlKey) || event.shiftKey || event.altKey || !/^[1-9]$/.test(event.key) || document.querySelector('[role="dialog"]')) return;
-      const space = spaces[Number(event.key) - 1];
+      // Alt (Option) + digit: browsers keep ⌘/Ctrl + 1–9 for their tabs. Match the key position, since Option + digit types a symbol on macOS.
+      const digit = /^Digit([1-9])$/.exec(event.code)?.[1];
+      if (!event.altKey || event.metaKey || event.ctrlKey || event.shiftKey || !digit || document.querySelector('[role="dialog"]')) return;
+      // While typing, Option + digit is a character (¡, ™…): leave it to the field.
+      if ((event.target as HTMLElement | null)?.closest?.("input, textarea, [contenteditable=true]")) return;
+      const space = spaces[Number(digit) - 1];
       if (!space) return;
       event.preventDefault();
       router.push(serverHref(space, readLastChannels()));
@@ -164,7 +172,7 @@ export function Navigator({ servers }: { servers: RailEntry[] }) {
         return;
       }
       if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
-      const rows = Array.from(nav.querySelectorAll<HTMLElement>("li > a[href], li > button"));
+      const rows = Array.from(nav.querySelectorAll<HTMLElement>("a[href], button"));
       const index = rows.indexOf(event.target as HTMLElement);
       if (index < 0) return;
       event.preventDefault();
@@ -253,9 +261,9 @@ export function Navigator({ servers }: { servers: RailEntry[] }) {
             <h2 className={SECTION}>Spaces</h2>
             <ul data-testid="space-list">
               {spaces.map((s) => (
-                <SpaceRow key={s.id} server={s} active={activeId === s.id} pinned={pins.includes(`space:${s.id}`)}>
+                <SpaceRow key={s.id} server={s} active={activeId === s.id} pinned={pins.includes(`space:${s.id}`)} actions={activeId === s.id ? setSpaceActionsSlot : undefined}>
                   {/* The open Space's rooms (and its menu) portal in here from [serverId]/layout.tsx. */}
-                  {activeId === s.id && <div ref={setRoomsSlot} className="mb-2 ml-4 border-l border-pulse-line pl-2" />}
+                  {activeId === s.id && <div ref={setRoomsSlot} className="pb-2" />}
                 </SpaceRow>
               ))}
             </ul>
