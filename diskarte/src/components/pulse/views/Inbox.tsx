@@ -28,7 +28,7 @@ export function PulseInbox({ conversations, list, query, onQuery, unreadOnly, on
         <div className="mx-auto w-full max-w-3xl p-4 md:p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <Input label="Search conversations" type="search" value={query} onChange={(e) => onQuery(e.target.value)} placeholder="Name or group" wrapperClassName="sm:flex-1" />
-            <SegmentedControl label="Show" options={[{ value: "all", label: "All" }, { value: "unread", label: unread ? `Unread (${unread})` : "Unread" }]} value={unreadOnly ? "unread" : "all"} onChange={(v) => onUnreadOnly(v === "unread")} />
+            <SegmentedControl label="Show" options={[{ value: "all", label: "All" }, { value: "unread", label: unread ? `Unread (${unread})` : "Unread" }]} value={unreadOnly ? "unread" : "all"} onChange={(v) => onUnreadOnly(v === "unread")} className="self-start sm:self-auto" />
           </div>
           {conversations === null ? (
             <div role="status" aria-label="Loading conversations" className="mt-4 space-y-2">

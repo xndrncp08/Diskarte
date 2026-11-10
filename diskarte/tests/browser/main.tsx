@@ -21,6 +21,7 @@ import { MessagesView } from "@/components/social/MessagesView";
 import { FriendsView } from "@/components/social/FriendsView";
 import { SharedWorkspaceView } from "@/components/workspace/SharedWorkspaceView";
 import { WorkspacePanel } from "@/components/workspace/WorkspacePanel";
+import { CommunityLanding } from "@/components/pulse/community/CommunityLanding";
 import { ChannelSidebar } from "@/components/server/ChannelSidebar";
 import { ChatView } from "@/components/chat/ChatView";
 import { VoiceChannelView } from "@/components/voice/VoiceChannelView";
@@ -105,7 +106,9 @@ function Fixture() {
             <ChannelSidebar />
           </WorkspacePanel>
           <WorkspacePanel id="main" title={server.name}>
-            {path.endsWith("workspace") ? (
+            {path === `/tambayan/${SERVER_ID}` ? (
+              <CommunityLanding events={[{ id: "e1", name: "Weekend hangout", starts_at: "2099-11-01T12:00:00Z", ends_at: null }]} />
+            ) : path.endsWith("workspace") ? (
               <SharedWorkspaceView />
             ) : channel.type === "voice" ? (
               <VoiceChannelView channel={channel} />
@@ -198,7 +201,8 @@ createRoot(document.getElementById("root")!).render(
               <MediaViewerProvider>
                 <ServerContext.Provider
                   value={{
-                    server,
+                    // An accent (Pulse community identity) so the landing's accent band is checked; Classic ignores it.
+                    server: { ...server, accent_color: "#1e3a8a" },
                     channels,
                     members,
                     myRole: "admin",
