@@ -251,12 +251,11 @@ function ScreeningSetup({ questions: initial, approval: initialApproval }: { que
   );
 }
 
-/** Sidebar nudge for moderators when people are waiting to be let in (checked on load and on focus). */
-export function JoinRequestsNotice({ onOpen }: { onOpen: () => void }) {
+/** Pending join requests for this server (0 when approval is off), checked on load and on focus. Moderators only: RLS hides the rest. */
+export function useJoinRequestCount() {
   const supabase = useSupabase();
   const { server } = useServer();
   const [count, setCount] = useState(0);
-
   useEffect(() => {
     if (!server.join_approval) return;
     const load = () =>
@@ -270,8 +269,13 @@ export function JoinRequestsNotice({ onOpen }: { onOpen: () => void }) {
     window.addEventListener("focus", load);
     return () => window.removeEventListener("focus", load);
   }, [supabase, server.id, server.join_approval]);
+  return server.join_approval ? count : 0;
+}
 
-  if (!server.join_approval || count === 0) return null;
+/** Sidebar nudge for moderators when people are waiting to be let in. */
+export function JoinRequestsNotice({ onOpen }: { onOpen: () => void }) {
+  const count = useJoinRequestCount();
+  if (count === 0) return null;
   return (
     <button type="button" onClick={onOpen} className="mb-2 flex min-h-11 w-full items-center gap-2 rounded-lg border border-sun/30 bg-sun/10 px-2 text-left text-sm font-semibold text-sun hover:bg-sun/15">
       <UserPlus className="size-4" aria-hidden />
