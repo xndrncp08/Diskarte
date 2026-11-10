@@ -18,19 +18,10 @@ import { Button } from "@/components/ui/Button";
 import { WorkspacePanel } from "@/components/workspace/WorkspacePanel";
 import { SERVER_CATEGORIES, type Server } from "@/lib/servers";
 import { cn } from "@/lib/utils";
+import { PulseExplore, type Listing } from "@/components/pulse/views/Explore";
 import { ServerIcon } from "./ServerIcon";
+import { useShellKind } from "./ShellKind";
 import { useShellUI } from "./ShellUI";
-
-type Listing = {
-  id: string;
-  name: string;
-  description: string;
-  icon_url: string | null;
-  category: string;
-  member_count: number;
-  active_members: number;
-  is_member: boolean;
-};
 
 /** Explore: browse and search servers whose admins listed them, and join without an invite. */
 export function ExploreView({ servers }: { servers: Server[] }) {
@@ -49,6 +40,7 @@ export function ExploreView({ servers }: { servers: Server[] }) {
   const [more, setMore] = useState(false);
   const [loading, setLoading] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const pulse = useShellKind() === "pulse";
 
   useEffect(() => {
     let live = true;
@@ -94,6 +86,14 @@ export function ExploreView({ servers }: { servers: Server[] }) {
     };
   }, [supabase, query, category, offset, attempt]);
 
+  function search(value: string) {
+    setQuery(value);
+    setOffset(0);
+    setResults(null);
+    setFailed(false);
+    setMore(false);
+  }
+
   function chooseCategory(value: string | null) {
     setCategory(value);
     setOffset(0);
@@ -122,6 +122,9 @@ export function ExploreView({ servers }: { servers: Server[] }) {
     <>
       <HomeSidebar servers={servers} />
       <WorkspacePanel id="main" title="Explore">
+        {pulse ? (
+          <PulseExplore query={query} onQuery={search} category={category} onCategory={chooseCategory} results={results} failed={failed} loading={loading} more={more} onMore={() => setOffset((n) => n + 48)} onRetry={() => setAttempt((n) => n + 1)} joining={joining} onJoin={(listing) => void join(listing)} />
+        ) : (
         <section className="flex min-w-0 flex-1 flex-col">
           <header className="page-header">
             <button
@@ -152,13 +155,7 @@ export function ExploreView({ servers }: { servers: Server[] }) {
                 <input
                   type="search"
                   value={query}
-                  onChange={(e) => {
-                    setQuery(e.target.value);
-                    setOffset(0);
-                    setResults(null);
-                    setFailed(false);
-                    setMore(false);
-                  }}
+                  onChange={(e) => search(e.target.value)}
                   maxLength={500}
                   placeholder="Search servers"
                   className="h-11 w-full rounded-xl border border-white/10 bg-black/30 pl-9 pr-3 text-base text-white outline-none focus:border-sun/60"
@@ -321,6 +318,7 @@ export function ExploreView({ servers }: { servers: Server[] }) {
             </div>
           </div>
         </section>
+        )}
       </WorkspacePanel>
       <JoinScreeningDialog target={screening} onClose={() => setScreening(null)} onJoined={(serverId) => router.push(`/tambayan/${serverId}`)} />
     </>

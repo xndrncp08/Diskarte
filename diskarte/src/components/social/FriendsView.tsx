@@ -1,5 +1,7 @@
 "use client";
 
+import { Masthead } from "@/components/pulse/shell/Masthead";
+import { useShellKind } from "@/components/shell/ShellKind";
 import {
   Check,
   Menu as MenuIcon,
@@ -88,6 +90,7 @@ export function FriendsView({ servers }: { servers: Server[] }) {
   const { friends, blocked, profiles, reload, reloadConversations, favourites, setFavourite } =
     useSocial();
   const { setNavOpen } = useShellUI();
+  const pulse = useShellKind() === "pulse";
   const router = useRouter();
   const id = useId();
   const [query, setQuery] = useState("");
@@ -166,6 +169,7 @@ export function FriendsView({ servers }: { servers: Server[] }) {
       <HomeSidebar servers={servers} />
       <WorkspacePanel id="main" title="Friends">
         <section className="flex min-w-0 flex-1 flex-col md:overflow-hidden">
+          {pulse ? <Masthead eyebrow="People" title="Friends" icon={<Users />} description={incoming ? `${incoming} pending request${incoming === 1 ? "" : "s"}` : "Your people on Diskarte"} /> : (
           <header className="page-header">
             <button
               type="button"
@@ -178,6 +182,7 @@ export function FriendsView({ servers }: { servers: Server[] }) {
             <Users className="size-5 shrink-0 text-slate-400" aria-hidden />
             <h1 className="mr-2 font-bold text-white">Friends</h1>
           </header>
+          )}
           <div
             role="tablist"
             aria-label="Friends"

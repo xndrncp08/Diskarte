@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/Button";
 import { Timestamp } from "@/components/chat/Timestamp";
 import type { Database } from "@/lib/supabase/database.types";
 import type { Server } from "@/lib/servers";
+import { Masthead } from "@/components/pulse/shell/Masthead";
+import { useShellKind } from "./ShellKind";
 import { useShellUI } from "./ShellUI";
 
 type Hit = Database["public"]["Functions"]["search_all_messages"]["Returns"][number];
@@ -17,6 +19,7 @@ type Hit = Database["public"]["Functions"]["search_all_messages"]["Returns"][num
 export function GlobalSearchView({ servers }: { servers: Server[] }) {
   const supabase = useSupabase();
   const { setNavOpen } = useShellUI();
+  const pulse = useShellKind() === "pulse";
   const [query, setQuery] = useState("");
   const [server, setServer] = useState("");
   const [sender, setSender] = useState("");
@@ -62,7 +65,7 @@ export function GlobalSearchView({ servers }: { servers: Server[] }) {
   const field = "min-h-11 min-w-0 rounded-lg border border-white/15 bg-midnight px-3 text-base text-slate-100 outline-none focus:border-sun";
   return <><HomeSidebar servers={servers} /><WorkspacePanel id="main" title="Search">
     <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <header className="page-header"><button type="button" aria-label="Open navigation" onClick={() => setNavOpen(true)} className="flex size-11 items-center justify-center md:hidden"><Menu className="size-5" /></button><Search className="size-5 text-sun" aria-hidden /><h1 className="font-semibold">Search</h1></header>
+      {pulse ? <Masthead eyebrow="Everywhere you belong" title="Search" icon={<Search />} description="Messages across your Spaces and DMs" /> : <header className="page-header"><button type="button" aria-label="Open navigation" onClick={() => setNavOpen(true)} className="flex size-11 items-center justify-center md:hidden"><Menu className="size-5" /></button><Search className="size-5 text-sun" aria-hidden /><h1 className="font-semibold">Search</h1></header>}
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         <form onSubmit={(event) => void submit(event)} className="mx-auto max-w-3xl space-y-3" role="search">
           <label className="block text-sm">Messages across your conversations<input autoFocus type="search" value={query} onChange={(e) => setQuery(e.target.value)} maxLength={500} className={`${field} mt-1 w-full`} placeholder="Search words…" /></label>
