@@ -40,7 +40,7 @@ export function NavItem({ label, secondary, leading, href, onClick, current = fa
   const body = (
     <>
       {leading && (
-        <span className="inline-flex shrink-0 text-pulse-muted [&_svg]:size-5" aria-hidden>
+        <span className="inline-flex shrink-0 items-center text-pulse-muted [&>svg]:size-5" aria-hidden>
           {leading}
         </span>
       )}

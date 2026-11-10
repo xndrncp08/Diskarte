@@ -24,7 +24,6 @@ export function ChannelHeader({ channel, actions }: { channel: Channel; actions?
         title={channel.name}
         titleTestId="channel-title"
         description={[channel.topic, count].filter(Boolean).join(" · ") || undefined}
-        icon={<Icon />}
         actions={<>{actions}<SearchBox /></>}
         context
       />

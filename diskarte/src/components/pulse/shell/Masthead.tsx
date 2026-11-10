@@ -22,7 +22,7 @@ export function Masthead({ title, eyebrow, description, icon, actions, context =
       {icon && <span className="hidden size-9 shrink-0 items-center justify-center rounded-pulse-control bg-pulse-raised text-pulse-muted sm:inline-flex [&_svg]:size-4" aria-hidden>{icon}</span>}
       <div className="min-w-0 flex-1">
         {eyebrow && <p className="truncate text-pulse-caption text-pulse-muted">{eyebrow}</p>}
-        <h1 className="truncate font-pulse-display text-pulse-title font-semibold" data-testid={titleTestId}>{title}</h1>
+        <h1 className="truncate font-pulse-display text-pulse-title font-semibold md:text-pulse-display" data-testid={titleTestId}>{title}</h1>
         {description && <p className="truncate text-pulse-label text-pulse-muted">{description}</p>}
       </div>
       <div className="flex shrink-0 items-center gap-1">

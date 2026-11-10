@@ -26,8 +26,8 @@ export function CallStrip() {
         {call.target.channelName} <span className="text-pulse-muted">· {call.target.serverName}</span>
       </Link>
       <span className="ml-auto flex shrink-0 items-center gap-1">
-        <IconButton size="sm" tooltip label={call.muted ? "Unmute" : "Mute"} aria-pressed={call.muted} icon={call.muted ? <MicOff /> : <Mic />} onClick={() => void call.toggleMute()} />
-        <IconButton size="sm" tooltip label={call.deafened ? "Undeafen" : "Deafen"} aria-pressed={call.deafened} icon={call.deafened ? <HeadphoneOff /> : <Headphones />} onClick={() => void call.toggleDeafen()} />
+        <IconButton size="sm" tooltip label="Mute" aria-pressed={call.muted} icon={call.muted ? <MicOff /> : <Mic />} onClick={() => void call.toggleMute()} />
+        <IconButton size="sm" tooltip label="Deafen" aria-pressed={call.deafened} icon={call.deafened ? <HeadphoneOff /> : <Headphones />} onClick={() => void call.toggleDeafen()} />
         <MixerButton size="sm" />
         <IconButton size="sm" variant="danger" tooltip label="Disconnect" icon={<PhoneOff />} onClick={call.leave} />
       </span>
