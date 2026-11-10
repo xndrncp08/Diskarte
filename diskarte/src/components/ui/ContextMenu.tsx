@@ -5,7 +5,8 @@ import { createContext, useCallback, useContext, useEffect, useEffectEvent, useL
 import { toast } from "sonner";
 import { FloatingPortal, visibleViewport } from "./floating";
 import { InertWhenExiting } from "./InertWhenExiting";
-import { MenuItems, useMenuDismiss, useMenuKeyboard, type MenuItem } from "./Menu";
+import { cn } from "@/lib/utils";
+import { MenuItems, MenuSkinContext, useMenuDismiss, useMenuKeyboard, type MenuItem } from "./Menu";
 
 export interface Point {
   x: number;
@@ -193,6 +194,7 @@ export function ContextMenu({ menu, label, children }: { menu: ContextMenuState;
   const panel = useRef<HTMLDivElement>(null);
   const { point, close } = menu;
   const open = point !== null;
+  const skin = useContext(MenuSkinContext);
   // Lists render one of these per row (every chat message): skip the portal until first opened.
   const [used, setUsed] = useState(false);
   if (open && !used) setUsed(true);
@@ -250,7 +252,7 @@ export function ContextMenu({ menu, label, children }: { menu: ContextMenuState;
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.97 }}
             transition={{ duration: 0.1 }}
-            className="glass-strong scrollbar-thin z-[70] max-h-[calc(100dvh-1rem)] min-w-52 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-xl bg-slate-950! p-1.5 shadow-xl shadow-black/50"
+            className={cn("scrollbar-thin z-[70] max-h-[calc(100dvh-1rem)] min-w-52 max-w-[calc(100vw-1rem)] overflow-y-auto", skin.panel)}
           >
             <PickContext.Provider value={() => close(true)}>{children}</PickContext.Provider>
           </InertWhenExiting>

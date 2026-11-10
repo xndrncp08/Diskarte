@@ -28,6 +28,7 @@ import { channels, SERVER_ID, server } from "../fixtures/server";
 import { usePathname } from "./navigation";
 import { people, members } from "./database";
 import "@/app/globals.css";
+import { PulseGallery } from "./pulse-gallery";
 
 const social: SocialValue = {
   friends: [
@@ -159,8 +160,15 @@ function Fixture() {
   );
 }
 
+// /pulse-gallery renders the Pulse component gallery on its own (?mode=light for paper).
+if (location.pathname === "/pulse-gallery") {
+  document.documentElement.dataset.shell = "pulse";
+  document.documentElement.dataset.colorMode = new URLSearchParams(location.search).get("mode") === "light" ? "light" : "dark";
+}
+
 // Fixture data and disabled server boundaries stay outside Next's production source tree.
 createRoot(document.getElementById("root")!).render(
+  location.pathname === "/pulse-gallery" ? <PulseGallery /> :
   <RuntimeConfigProvider
     value={{
       supabaseUrl: "https://fixture.invalid",

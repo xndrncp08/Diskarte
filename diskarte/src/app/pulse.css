@@ -71,6 +71,28 @@
   --text-pulse-hero--line-height: var(--pulse-leading-44);
 }
 
+/* Ambient Pulse motion (the pulse line's travelling glint, the live ripple, the pressed scale) runs only when neither the OS
+   nor Settings → Accessibility asks for reduced motion. Components write `pulse-motion:animate-…`. */
+@custom-variant pulse-motion {
+  @media (prefers-reduced-motion: no-preference) {
+    html:not([data-reduce-motion]) & {
+      @slot;
+    }
+  }
+}
+@theme inline {
+  --animate-pulse-travel: pulse-travel 2.8s var(--pulse-ease) infinite;
+  --animate-pulse-ripple: pulse-ripple var(--pulse-dur-loop) var(--pulse-ease) infinite;
+  @keyframes pulse-travel {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(500%); }
+  }
+  @keyframes pulse-ripple {
+    from { transform: scale(1); opacity: 0.7; }
+    to { transform: scale(2.8); opacity: 0; }
+  }
+}
+
 /* Pulse layout breakpoints, the one global addition: they only add new variants (pulse-sheet:, pulse-wide:)
    and leave Tailwind's sm/md/lg/xl/2xl untouched. Phones are below md (48rem), as in Classic. */
 @theme {

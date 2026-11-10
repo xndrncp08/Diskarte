@@ -14,6 +14,7 @@ export function Tooltip({
   children,
   className,
   disabled = false,
+  tipClassName = "rounded-md bg-black/90 px-2.5 py-1 text-xs font-semibold text-white shadow-lg",
 }: {
   label: string;
   side?: Side;
@@ -21,6 +22,8 @@ export function Tooltip({
   className?: string;
   /** Suppress while the trigger's own popover is open (they'd overlap). */
   disabled?: boolean;
+  /** The bubble's look (the Pulse Tooltip replaces it); placement and behaviour stay the same. */
+  tipClassName?: string;
 }) {
   const [hovered, setOpen] = useState(false);
   const open = hovered && !disabled;
@@ -47,7 +50,7 @@ export function Tooltip({
             data-floating="tooltip"
             data-side={resolved}
             style={style}
-            className="pointer-events-none z-50 whitespace-nowrap rounded-md bg-black/90 px-2.5 py-1 text-xs font-semibold text-white shadow-lg"
+            className={cn("pointer-events-none z-50 whitespace-nowrap", tipClassName)}
           >
             {label}
           </span>

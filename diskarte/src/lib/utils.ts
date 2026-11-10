@@ -1,5 +1,17 @@
 import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+// Pulse's named sizes, radii, shadows and fonts (pulse.css): without them `text-pulse-body text-pulse-text` reads as two colours and loses the size.
+const twMerge = extendTailwindMerge({
+  extend: {
+    theme: {
+      text: ["pulse-caption", "pulse-label", "pulse-body", "pulse-lead", "pulse-title", "pulse-heading", "pulse-display", "pulse-hero"],
+      radius: ["pulse-control", "pulse-item", "pulse-card", "pulse-sheet"],
+      shadow: ["pulse-1", "pulse-2", "pulse-3"],
+      font: ["pulse-display", "pulse-text"],
+    },
+  },
+});
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

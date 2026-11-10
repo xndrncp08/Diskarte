@@ -2,7 +2,7 @@
 
 import { AnimatePresence } from "framer-motion";
 import { Check } from "lucide-react";
-import { useCallback, useEffect, useEffectEvent, useId, useRef, useState, type ReactNode, type RefObject } from "react";
+import { createContext, useCallback, useContext, useEffect, useEffectEvent, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 import { cn } from "@/lib/utils";
 import { FloatingPortal, useFloating, type Side } from "./floating";
 import { InertWhenExiting } from "./InertWhenExiting";
@@ -24,6 +24,35 @@ export interface MenuItem {
   /** An inline control (e.g. a volume slider) instead of a clickable row; `onSelect` is unused. */
   control?: ReactNode;
 }
+
+/** The look of a menu panel and its rows; behaviour (keys, dismissal, placement) never changes with it. */
+export interface MenuSkin {
+  panel: string;
+  section: string;
+  groupLabel: string;
+  control: string;
+  row: string;
+  plain: string;
+  danger: string;
+  checked: string;
+  check: string;
+}
+
+export const CLASSIC_MENU: MenuSkin = {
+  panel: "glass-strong rounded-xl bg-slate-950! p-1.5 shadow-xl shadow-black/50",
+  section: "mt-1 border-t border-white/10 pt-1",
+  groupLabel: "px-2.5 pb-0.5 pt-1 font-silk text-[10px] uppercase tracking-wider text-slate-500",
+  control: "px-2.5 py-1.5 text-sm text-slate-200",
+  row: "ui-menu-row flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm outline-none transition-colors pointer-coarse:py-3",
+  // Gold is the *keyboard* highlight only, so a mouse-opened menu never looks like row one is picked.
+  plain: "text-slate-200 hover:bg-white/10 hover:text-white focus-visible:bg-sun/90 focus-visible:text-abyss",
+  danger: "text-red-300 hover:bg-red-500/20 focus-visible:bg-red-500/20",
+  checked: "bg-white/10 font-semibold text-white",
+  check: "size-4 shrink-0 text-sun",
+};
+
+/** Menus and context menus rendered inside this provider use its skin (the Pulse Menu sets it). */
+export const MenuSkinContext = createContext<MenuSkin>(CLASSIC_MENU);
 
 export const ITEM_SELECTOR = "[role=menuitem],[role=menuitemradio],[role=menuitemcheckbox]";
 
@@ -54,6 +83,7 @@ export function Menu({
   const panel = useRef<HTMLDivElement>(null);
   const visible = items.filter((i) => !i.hidden);
   const { style, side: resolvedSide } = useFloating(open, root, panel, { side, align, offset: 4 });
+  const skin = useContext(MenuSkinContext);
 
   // Focus goes back to the trigger synchronously, so a dialog opened by the selected item records
   // the trigger as the element to restore focus to when it closes.
@@ -83,7 +113,7 @@ export function Menu({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98 }}
               transition={{ duration: 0.12 }}
-              className="glass-strong z-50 min-w-52 max-w-[calc(100vw-1rem)] rounded-xl bg-slate-950! p-1.5 shadow-xl shadow-black/50"
+              className={cn("z-50 min-w-52 max-w-[calc(100vw-1rem)]", skin.panel)}
             >
               <MenuItems items={visible} onPick={() => close(true)} />
             </InertWhenExiting>
@@ -142,11 +172,16 @@ export function useMenuKeyboard(open: boolean, panel: RefObject<HTMLElement | nu
       }
     };
     document.addEventListener("keydown", onKey);
-    const frame = requestAnimationFrame(() =>
+    let tries = 0;
+    const focusFirst = () => {
       // A menu that starts with choices (the status switcher) opens on the current one; a menu that
       // starts with actions (the server menu) opens on its first row.
-      (panel.current?.querySelector(ITEM_SELECTOR)?.getAttribute("role") === "menuitemradio" ? (panel.current.querySelector<HTMLElement>("[aria-checked=true]") ?? panel.current.querySelector<HTMLElement>(ITEM_SELECTOR)) : panel.current?.querySelector<HTMLElement>(ITEM_SELECTOR))?.focus(),
-    );
+      const item = panel.current?.querySelector(ITEM_SELECTOR)?.getAttribute("role") === "menuitemradio" ? (panel.current.querySelector<HTMLElement>("[aria-checked=true]") ?? panel.current.querySelector<HTMLElement>(ITEM_SELECTOR)) : panel.current?.querySelector<HTMLElement>(ITEM_SELECTOR);
+      item?.focus();
+      // A first open keeps the panel visibility:hidden until useFloating has measured it (a frame later), and hidden rows refuse focus.
+      if (item && document.activeElement !== item && tries++ < 5) frame = requestAnimationFrame(focusFirst);
+    };
+    let frame = requestAnimationFrame(focusFirst);
     return () => {
       cancelAnimationFrame(frame);
       document.removeEventListener("keydown", onKey);
@@ -156,10 +191,11 @@ export function useMenuKeyboard(open: boolean, panel: RefObject<HTMLElement | nu
 
 /** The rows of a menu panel, split into labelled sections; shared by <Menu> and <ContextMenu>. */
 export function MenuItems({ items, onPick }: { items: MenuItem[]; onPick: () => void }) {
+  const skin = useContext(MenuSkinContext);
   return sections(items.filter((i) => !i.hidden)).map((section, i) =>
     section.group ? (
-      <div key={section.group} role="group" aria-label={section.group} className={cn(i > 0 && "mt-1 border-t border-white/10 pt-1")}>
-        <p className="px-2.5 pb-0.5 pt-1 font-silk text-[10px] uppercase tracking-wider text-slate-500" aria-hidden>
+      <div key={section.group} role="group" aria-label={section.group} className={cn(i > 0 && skin.section)}>
+        <p className={skin.groupLabel} aria-hidden>
           {section.group}
         </p>
         {section.items.map((item) => (
@@ -167,7 +203,7 @@ export function MenuItems({ items, onPick }: { items: MenuItem[]; onPick: () => 
         ))}
       </div>
     ) : (
-      <div key={`plain-${i}`} className={cn(i > 0 && "mt-1 border-t border-white/10 pt-1")}>
+      <div key={`plain-${i}`} className={cn(i > 0 && skin.section)}>
         {section.items.map((item) => (
           <MenuRow key={item.label} item={item} onPick={onPick} />
         ))}
@@ -188,9 +224,10 @@ function sections(items: MenuItem[]) {
 }
 
 function MenuRow({ item, onPick }: { item: MenuItem; onPick: () => void }) {
+  const skin = useContext(MenuSkinContext);
   if (item.control) {
     return (
-      <div className="px-2.5 py-1.5 text-sm text-slate-200">
+      <div className={skin.control}>
         <p className="mb-1">{item.label}</p>
         {item.control}
       </div>
@@ -205,21 +242,14 @@ function MenuRow({ item, onPick }: { item: MenuItem; onPick: () => void }) {
         onPick();
         item.onSelect();
       }}
-      className={cn(
-        "ui-menu-row flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm outline-none transition-colors pointer-coarse:py-3",
-        // Gold is the *keyboard* highlight only, so a mouse-opened menu never looks like row one is picked.
-        item.danger
-          ? "text-red-300 hover:bg-red-500/20 focus-visible:bg-red-500/20"
-          : "text-slate-200 hover:bg-white/10 hover:text-white focus-visible:bg-sun/90 focus-visible:text-abyss",
-        item.checked && "bg-white/10 font-semibold text-white",
-      )}
+      className={cn(skin.row, item.danger ? skin.danger : skin.plain, item.checked && skin.checked)}
     >
       {item.icon}
       <span className="min-w-0 flex-1">
         <span className="block truncate">{item.label}</span>
         {item.hint && <span className="block truncate text-[11px] font-normal opacity-70">{item.hint}</span>}
       </span>
-      {item.checked && <Check className="size-4 shrink-0 text-sun" aria-hidden />}
+      {item.checked && <Check className={skin.check} aria-hidden />}
     </button>
   );
 }

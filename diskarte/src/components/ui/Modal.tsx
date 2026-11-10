@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-import { useEffect, useEffectEvent, useId, useRef, type ReactNode } from "react";
+import { useEffect, useEffectEvent, useId, useRef, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { InertWhenExiting } from "./InertWhenExiting";
@@ -21,11 +21,12 @@ export interface ModalProps {
   hideTitle?: boolean;
 }
 
-/** Accessible glass dialog: portal, focus trap, Escape / backdrop to close, focus restore. */
-export function Modal({ open, onClose, title, description, children, className, hideTitle = false }: ModalProps) {
-  const titleId = useId();
-  const descId = useId();
-  const panel = useRef<HTMLDivElement>(null);
+/**
+ * The modal behaviour shared by <Modal> and the Pulse Dialog and Sheet: joins the overlay stack, focuses
+ * the first [data-autofocus] or focusable element, traps Tab, closes on Escape (topmost overlay only),
+ * locks body scroll and restores focus on close.
+ */
+export function useModalBehaviour(open: boolean, panel: RefObject<HTMLElement | null>, onClose: () => void) {
   const requestClose = useEffectEvent(() => onClose());
 
   useEffect(() => {
@@ -67,7 +68,15 @@ export function Modal({ open, onClose, title, description, children, className, 
       document.body.style.overflow = overflow;
       previouslyFocused?.focus?.();
     };
-  }, [open]);
+  }, [open, panel]);
+}
+
+/** Accessible glass dialog: portal, focus trap, Escape / backdrop to close, focus restore. */
+export function Modal({ open, onClose, title, description, children, className, hideTitle = false }: ModalProps) {
+  const titleId = useId();
+  const descId = useId();
+  const panel = useRef<HTMLDivElement>(null);
+  useModalBehaviour(open, panel, onClose);
 
   if (typeof document === "undefined") return null;
 
