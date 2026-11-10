@@ -153,6 +153,7 @@ URLs from Supabase's origin so uploaded content never runs on Diskarte's origin.
 | Push previews | Off by default (generic lock-screen text) |
 | Diagnostics | Session-only, no content/ids/tokens; no third-party error reporting is configured |
 | Analytics | Vercel Analytics page views; first-party visit count stores a random browser id, no IP or user id |
+| Storage listing | The public `avatars` bucket serves images by URL only; `storage.objects` rows (and so `list()`) are visible just to the uploader's own folder or a server admin's `servers/<server>/` folder, so user and private-server ids can't be enumerated (`20261109020000_avatar_listing.sql`) |
 
 ## Privacy hardening (2026-11-09)
 

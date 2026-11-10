@@ -4,7 +4,7 @@
 > `supabase/migrations/`. The Vitest suite fails when this file is stale. Descriptions come from the SQL
 > comment directly above each `create table` / `create function`, so document objects there.
 
-Built by applying all 57 migrations to PGlite with the Supabase stand-ins in
+Built by applying all 58 migrations to PGlite with the Supabase stand-ins in
 `diskarte/tests/db/supabase-shim.sql`. Supabase-managed schemas (`auth`, `storage`, `realtime`) are only
 shown where Diskarte adds policies or rows. Table grants reflect Supabase's default privileges (mirrored by
 the shim) minus the migrations' revokes; RLS policies, not grants, decide which rows a role sees.
@@ -2747,7 +2747,6 @@ Tables whose row changes Supabase Realtime streams (`postgres_changes`). Clients
 | admins upload server emoji | INSERT | authenticated |  | `((bucket_id = 'emoji'::text) AND has_server_role(try_uuid((storage.foldername(name))[1]), 'admin'::member_role) AND (name ~ '^[0-9a-f-]{36}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(png\|gif\|webp)$'::text))` |
 | admins upload soundboard clips | INSERT | authenticated |  | `((bucket_id = 'soundboard'::text) AND has_server_role(try_uuid((storage.foldername(name))[1]), 'admin'::member_role) AND (name ~ '^[0-9a-f-]{36}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.mp3$'::text))` |
 | authors delete their moment photos | DELETE | authenticated | `((bucket_id = 'moments'::text) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text))` |  |
-| avatar images are publicly readable | SELECT | public | `(bucket_id = 'avatars'::text)` |  |
 | members play soundboard clips | SELECT | authenticated | `((bucket_id = 'soundboard'::text) AND is_server_member(try_uuid((storage.foldername(name))[1])))` |  |
 | members read server attachments | SELECT | authenticated | `((bucket_id = 'attachments'::text) AND is_server_member(try_uuid((storage.foldername(name))[1])))` |  |
 | members upload attachments to their own folder | INSERT | authenticated |  | `((bucket_id = 'attachments'::text) AND is_server_member(try_uuid((storage.foldername(name))[1])) AND (channel_server_id(try_uuid((storage.foldername(name))[2])) = try_uuid((storage.foldername(name))[1])) AND ((storage.foldername(name))[3] = (( SELECT auth.uid() AS uid))::text) AND (name ~ '^[0-9a-f-]{36}/[0-9a-f-]{36}/[0-9a-f-]{36}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg\|png\|webp\|gif\|mp3\|mp4\|webm\|ogg\|m4a)$'::text))` |
@@ -2757,6 +2756,7 @@ Tables whose row changes Supabase Realtime streams (`postgres_changes`). Clients
 | two-factor sessions only (storage) *(restrictive)* | ALL | authenticated | `( SELECT mfa_ok() AS mfa_ok)` | `( SELECT mfa_ok() AS mfa_ok)` |
 | uploaders and moderators delete attachments | DELETE | authenticated | `((bucket_id = 'attachments'::text) AND (((storage.foldername(name))[3] = (( SELECT auth.uid() AS uid))::text) OR has_server_role(try_uuid((storage.foldername(name))[1]), 'moderator'::member_role)))` |  |
 | uploaders remove DM attachments | DELETE | authenticated | `((bucket_id = 'attachments'::text) AND ((storage.foldername(name))[1] = 'dm'::text) AND ((storage.foldername(name))[3] = (( SELECT auth.uid() AS uid))::text) AND (NOT is_platform_banned()))` |  |
+| uploaders see their own avatar folders | SELECT | authenticated | `((bucket_id = 'avatars'::text) AND (((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text) OR (((storage.foldername(name))[1] = 'servers'::text) AND has_server_role(try_uuid((storage.foldername(name))[2]), 'admin'::member_role))))` |  |
 | users delete their own avatar and banner | DELETE | authenticated | `((bucket_id = 'avatars'::text) AND (((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text) OR (((storage.foldername(name))[1] = 'servers'::text) AND has_server_role(try_uuid((storage.foldername(name))[2]), 'admin'::member_role))))` |  |
 | users replace their own avatar and banner | UPDATE | authenticated | `((bucket_id = 'avatars'::text) AND (((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text) OR (((storage.foldername(name))[1] = 'servers'::text) AND has_server_role(try_uuid((storage.foldername(name))[2]), 'admin'::member_role))))` |  |
 | users upload their own avatar and banner | INSERT | authenticated |  | `((bucket_id = 'avatars'::text) AND ((((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text) AND (name ~ '^[0-9a-f-]{36}/(avatar\|banner)-[0-9a-f-]{36}\.(png\|jpg\|webp\|gif)$'::text)) OR (((storage.foldername(name))[1] = 'servers'::text) AND has_server_role(try_uuid((storage.foldername(name))[2]), 'admin'::member_role) AND (name ~ '^servers/[0-9a-f-]{36}/icon-[0-9a-f-]{36}\.(png\|jpg\|webp\|gif)$'::text))))` |
@@ -2967,3 +2967,4 @@ Applied in filename order. The first descriptive comment line of each file:
 | [`20261108020000_forum_tags_suggestions.sql`](../../supabase/migrations/20261108020000_forum_tags_suggestions.sql) | Forum tags, solved posts and suggestion boards. |
 | [`20261108030000_message_reminders.sql`](../../supabase/migrations/20261108030000_message_reminders.sql) | Message reminders: "Remind me" on a message saves it with a time (saved_messages.remind_at). |
 | [`20261109000000_privacy_hardening.sql`](../../supabase/migrations/20261109000000_privacy_hardening.sql) | Privacy hardening: three leaks found in a security review. |
+| [`20261109020000_avatar_listing.sql`](../../supabase/migrations/20261109020000_avatar_listing.sql) | Avatar listing: stop anyone from enumerating the avatars bucket. |
