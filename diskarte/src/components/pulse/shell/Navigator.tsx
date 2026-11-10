@@ -263,7 +263,7 @@ export function Navigator({ servers }: { servers: RailEntry[] }) {
               {spaces.map((s) => (
                 <SpaceRow key={s.id} server={s} active={activeId === s.id} pinned={pins.includes(`space:${s.id}`)} actions={activeId === s.id ? setSpaceActionsSlot : undefined}>
                   {/* The open Space's rooms (and its menu) portal in here from [serverId]/layout.tsx. */}
-                  {activeId === s.id && <div ref={setRoomsSlot} className="pb-2" />}
+                  {activeId === s.id && <div ref={setRoomsSlot} className="pb-2 pl-3" />}
                 </SpaceRow>
               ))}
             </ul>

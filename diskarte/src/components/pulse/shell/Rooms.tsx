@@ -43,7 +43,8 @@ function RoomRow({ channel, active, canManage, muted, onDialog, place }: { chann
     <li {...warm} {...menu.triggerProps}>
       <NavItem
         label={channel.name}
-        leading={channel.type === "voice" ? <Volume2 /> : channel.type === "forum" ? <MessagesSquare /> : undefined}
+        // Text rooms have no # icon; an empty slot keeps every room name on one line with LFG and the voice rooms.
+        leading={channel.type === "voice" ? <Volume2 /> : channel.type === "forum" ? <MessagesSquare /> : <span className="block size-5" />}
         href={`/tambayan/${server.id}/${channel.id}`}
         current={active}
         unread={unread && !active && !muted}
