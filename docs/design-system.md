@@ -170,7 +170,8 @@ device testing has not been done.
 Pulse is the redesign (Direction A, "Canvas": Spaces navigator, Conversation Canvas, Context sheet)
 in warm ink (dark) or paper (light) with a solar gold signature. It is built alongside Classic and
 reached per browser through the shell preference ([ADR 016](architecture/decisions.md#016-pulse-ships-behind-a-per-browser-shell-preference)).
-This section covers the groundwork: tokens, fonts and the lint guard. No Pulse screen exists yet.
+This section covers the groundwork: tokens, fonts and the lint guard. The shared components (Button, Tabs, Sheet, Avatar…)
+and their contracts are in [Pulse components](design/pulse-components.md). No Pulse screen exists yet.
 
 ### Scoping: Classic is untouched
 
@@ -182,7 +183,8 @@ This section covers the groundwork: tokens, fonts and the lint guard. No Pulse s
 - Pulse also repaints the page behind the app (`html` and `body` take `--pulse-bg` and `--pulse-text`, so
   overscroll, safe areas and the keyboard gap match), text selection (accent 35 %) and the focus outline
   (`--pulse-focus-ring`; Classic's sun outline is 1.6:1 on paper). High contrast keeps its own outline.
-- The only global addition is two breakpoints (see below); they add variants and change no existing ones.
+- The only global additions are two breakpoints (see below) and the `pulse-motion:` variant (ambient motion only when
+  neither the OS nor Settings asks for reduced motion); they add variants and change no existing ones.
 - `setShell(shell, router)` flips the attribute, saves the cookie and calls `router.refresh()`; no
   reload, so a live call, open chats and drafts survive the switch. There is no visible toggle yet.
 

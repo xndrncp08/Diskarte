@@ -70,6 +70,7 @@
         { "source": "docs/reference/environment.md", "slug": "developers/environment" },
         { "source": "docs/testing.md", "slug": "developers/testing" },
         { "source": "docs/design-system.md", "slug": "developers/design-system" },
+        { "source": "docs/design/pulse-components.md", "slug": "developers/pulse-components", "title": "Pulse components" },
         { "source": "docs/architecture/decisions.md", "slug": "developers/decisions" },
         { "source": "docs/contributing/README.md", "slug": "developers/contributing", "title": "Contributing" },
         { "source": "docs/contributing/database-migrations.md", "slug": "developers/database-migrations" }
