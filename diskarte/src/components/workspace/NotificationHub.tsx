@@ -23,10 +23,13 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { conversationTitle, isUnread } from "@/lib/social";
 import type { Server } from "@/lib/servers";
 import { cn } from "@/lib/utils";
+import { useShellKind } from "@/components/shell/ShellKind";
 
 const TABS = ["inbox", "mentions", "saved"] as const;
 
 export function NotificationHub({ servers = [] }: { servers?: Server[] }) {
+  // Pulse: it sits in the navigator header, so it opens downwards rather than across the canvas.
+  const pulse = useShellKind() === "pulse";
   const social = useOptionalSocial();
   const requests = (social?.friends ?? []).filter(
     (friend) => friend.status === "incoming",
@@ -58,12 +61,12 @@ export function NotificationHub({ servers = [] }: { servers?: Server[] }) {
   return (
     <Popover
       label="Notifications"
-      side="right"
+      side={pulse ? "bottom" : "right"}
       align="end"
       testId="notification-hub"
       className="w-[23rem]"
       trigger={({ toggle, ref, open, ...aria }) => (
-        <Tooltip label="Notifications" side="right">
+        <Tooltip label="Notifications" side={pulse ? "bottom" : "right"}>
           <button
             ref={ref}
             type="button"

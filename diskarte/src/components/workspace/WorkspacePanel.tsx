@@ -36,7 +36,7 @@ export function WorkspacePanel({ id, title, children, className }: WorkspacePane
   if (shell === "pulse") {
     if (id === "nav") return null;
     return (
-      <main id="main-content" tabIndex={-1} inert={navOpen && !desktop} aria-label={title} data-panel="main" className={cn("relative flex min-h-0 min-w-0 flex-1 flex-col bg-pulse-surface text-pulse-text outline-none md:my-2 md:mr-2 md:overflow-hidden md:rounded-pulse-card md:border md:border-pulse-line md:shadow-pulse-1", className)}>
+      <main id="main-content" tabIndex={-1} inert={navOpen && !desktop} aria-label={title} data-panel="main" className={cn("relative flex min-h-0 min-w-0 flex-1 flex-col bg-pulse-surface text-pulse-text outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] md:my-2 md:mr-2 md:overflow-hidden md:rounded-pulse-card md:border md:border-pulse-line md:shadow-pulse-1", className)}>
         {content}
       </main>
     );
@@ -44,7 +44,7 @@ export function WorkspacePanel({ id, title, children, className }: WorkspacePane
 
   if (id === "main") {
     return (
-      <main ref={ref} style={panel.style} onPointerDownCapture={panel.raise} onFocusCapture={panel.raise} data-floating-panel={panel.floating ? "" : undefined} id="main-content" tabIndex={-1} inert={navOpen && !desktop} aria-label={title} data-panel="main" className={cn("workspace-main relative flex min-h-0 min-w-0 flex-1 flex-col outline-none md:bg-abyss/40", panel.floating && "glass overflow-hidden rounded-2xl shadow-2xl", className)}>
+      <main ref={ref} style={panel.style} onPointerDownCapture={panel.raise} onFocusCapture={panel.raise} data-floating-panel={panel.floating ? "" : undefined} id="main-content" tabIndex={-1} inert={navOpen && !desktop} aria-label={title} data-panel="main" className={cn("workspace-main relative flex min-h-0 min-w-0 flex-1 flex-col outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] md:bg-abyss/40", panel.floating && "glass overflow-hidden rounded-2xl shadow-2xl", className)}>
         {controls}{content}
       </main>
     );

@@ -50,7 +50,9 @@ export function useNavDrawer(frame: RefObject<HTMLElement | null>, navOpen: bool
     if (!navOpen || desktop) return;
     const previous = document.activeElement as HTMLElement | null;
     const controls = () => Array.from(frame.current?.querySelectorAll<HTMLElement>("[data-mobile-navigation] a[href], [data-mobile-navigation] button:not([disabled]), [data-mobile-navigation] input") ?? []).filter((el) => el.getClientRects().length > 0);
-    controls()[0]?.focus();
+    // Start on where you are (the innermost current link: the channel, not its server), else the first control.
+    const first = controls();
+    (first.filter((el) => el.getAttribute("aria-current") === "page").at(-1) ?? first[0])?.focus();
     const key = (event: KeyboardEvent) => {
       if (event.key === "Escape") { event.preventDefault(); setNavOpen(false); }
       if (event.key !== "Tab" || document.querySelector('[role="dialog"]')) return;
