@@ -10,8 +10,12 @@ Built from the [Pulse components](pulse-components.md); the decision is
 
 - The `diskarte-shell` cookie picks the shell: `pulse`, or anything else (absent, `classic`, tampered) for Classic.
   Classic is the default and renders exactly as before.
-- Super admins get **Settings → Appearance → Try the new Diskarte** (shown only when the server-provided
-  platform role is `super_admin`). Anyone can still set the cookie by hand. The public opt-in comes later.
+- **Server gate (preview):** the cookie counts only for super admins. `previewShell(cookie, platformRole)`
+  ([`lib/shell.ts`](../../diskarte/src/lib/shell.ts)) is used by the tambayan layout and by the root layout's
+  `data-shell` (which looks the role up only when the cookie asks for Pulse, and falls back to Classic on any
+  error), so anyone else who sets the cookie by hand still gets Classic. The public opt-in comes in Step 7.
+- Super admins switch in **Settings → Appearance → Try the new Diskarte** (shown only for the server-provided
+  `super_admin` role).
 - Pulse's "You" menu has **Back to Classic**.
 - Switching calls `setShell` ([`lib/shell.ts`](../../diskarte/src/lib/shell.ts)): it flips `<html data-shell>`,
   writes the cookie and runs `router.refresh()`. No reload, so a call stays connected.
@@ -41,7 +45,8 @@ Pages were not rewritten. The components they already use read `useShellKind()`
 | --- | --- | --- |
 | `WorkspacePanel id="nav"` (HomeSidebar, ChannelSidebar) | Resizable column / phone drawer | Renders nothing: the navigator owns navigation |
 | `WorkspacePanel id="main"` | `<main id="main-content">` column | The canvas: the same landmark on a Pulse surface card |
-| `ChannelHeader`, `PageHeader` | `.page-header` | `Masthead`: the page's one h1 in Bricolage, the Space name, topic and member count, the page's actions, the Context toggle |
+| `ChannelHeader`, `PageHeader` | `.page-header` | `Masthead`: the page's one h1 in Bricolage (display size from tablets up), the Space name, topic and member count, the page's actions (a Pulse search field), the Context toggle. The channel welcome under it shrinks to a small heading |
+| ChatView's Pinned messages button | Pins drawer | Opens Context on the Pinned tab |
 | `RosterDrawer` | Member column | `ContextPanel`: a Sheet, or a column when pinned at ≥ 1200 px |
 | `MemberList` | Everyone, offline dimmed | 100 rows at a time with "Show more", offline at full contrast |
 | `[serverId]/layout.tsx` | — | Renders `<PulseRooms>`, portalled into the navigator under the open Space |
@@ -70,12 +75,15 @@ themes own them).
 - **Home:** Home, Friends (request count), Messages (unread count), Explore, Search, Control Center.
 - **People:** Start a Hangout, a new group DM, Friends, then every conversation (hangout timers, unread dots).
 - **Spaces:** Diskarte HQ, then your Spaces in the order saved on the Classic rail, each a Monogram with mention
-  count, unread dot, "In call" while you're in its voice room and the Classic server menu (plus Pin). The open
-  Space expands to its **rooms**: the Space menu (Classic's server menu: invite, settings, Bantay-Bayan,
-  notifications, create channel, leave), Invite, LFG Board, Shared workspace and the channels by category, each
-  with unread, mentions, "N in voice" and the Classic channel menu (copy link, mute, edit, delete).
+  count, unread dot, "In call" while you're in its voice room and the Classic server menu (plus Pin) on
+  right-click. The open Space's row gets a "…" button (Classic's server menu: invite, settings, Bantay-Bayan,
+  notifications, create channel, leave) and Invite, and the Space expands to its **rooms** as plain rows (no tree
+  lines, no # icons): LFG Board, Shared workspace, **Live** (voice rooms with people in them, "N in voice"), then
+  the rest. The default "Text Channels"/"Voice Channels" labels are hidden; custom categories keep theirs. Each
+  room shows unread and mentions and has the Classic channel menu (copy link, mute, edit, delete).
 - The navigator is ≥ 280 px, resizable with the same saved width as Classic's channel column. On phones it is a
-  full-height drawer (the menu button in the masthead, swipe, scrim, Escape or Back to close).
+  full-height drawer (the menu button in the masthead, swipe, scrim, Escape or Back to close) that opens with
+  focus on the current room or page.
 
 ## Canvas and Context
 
@@ -84,7 +92,9 @@ themes own them).
 - **Masthead:** see the seams table. The Context toggle is on channel pages.
 - **Context sheet:** People (the member list), Pinned (the channel's pinned messages, same query as the Pins
   drawer, fetched while the tab shows) and About (channel topic, Space description, rules). "Keep open beside the
-  conversation" (≥ 1200 px) pins it as a column, remembered per browser (`diskarte:pulse:context-pinned`).
+  conversation" (≥ 1200 px) pins it as a column, remembered per browser (`diskarte:pulse:context-pinned`); in the
+  column, Unpin turns it back into the open sheet and Close puts it away. The Pinned tab is keyed by channel, so
+  another channel's pins never show while loading.
 
 ## Data sources and privacy
 
@@ -108,19 +118,22 @@ themes own them).
 | --- | --- | --- |
 | ⌘/Ctrl K | Anywhere | Jump to… (Go anywhere) |
 | ⌘/Ctrl ⇧ H, ⌘/Ctrl ⇧ M | Anywhere | Home, Messages |
-| ⌘/Ctrl 1–9 | Anywhere (no dialog open) | Open the 1st–9th Space (HQ first, then your order) on its last room |
-| ↑ / ↓, Home / End | Navigator lists | Move between rows (rooms included) |
+| Alt (Option) 1–9 | Anywhere but a text field, no dialog open | Open the 1st–9th Space (HQ first, then your order) on its last room. Not ⌘/Ctrl: browsers keep those for tabs. Matched on the key position (`Digit1`…), since Option + digit types a symbol on macOS. Listed in Settings → Keybinds for super admins |
+| ↑ / ↓, Home / End | Navigator lists | Move between rows and their buttons (rooms included) |
 | Escape | Navigator | Back to the canvas (`#main-content`); on phones it closes the drawer |
 | ← / → | Home · People · Spaces, Context tabs | Move and select |
 | Shift F10, right-click, long-press | Spaces, rooms, conversations | Their menus |
 
-The skip link ("Skip to content") is the first Tab stop and lands on the canvas.
+The skip link ("Skip to content") is the first Tab stop and lands on the canvas, which then shows a focus outline
+(keyboard focus only, in both shells). Tooltips open on hover and keyboard focus, not when a tap focuses a button.
 
 ## Tests
 
 - `tests/ui/pulse-shell.test.tsx`: a shell switch keeps the call and ShellProviders mounted, WorkspacePanel's two
   paths, RLS-scoped navigator data (no hidden rooms or their occupants, Control Center only for super admins),
-  ⌘/Ctrl 1–9, arrows and Escape, the Context tabs and pin storage.
+  Alt 1–9 (and not Ctrl/⌘ or while typing), arrows and Escape, the Context tabs, `openContext("pinned")`, the
+  You menu rejoining presence after Invisible, and pin storage. `tests/ui/pulse-gate.test.tsx`: only super admins
+  get Pulse from the cookie.
 - `tests/browser/pulse-shell.spec.ts`: axe (WCAG 2.2 AA) in dark and light at 390, 768, 1280 and 1440 px on six
   routes, the phone navigator and the Context sheet; no horizontal overflow; an h1 in `#main-content`; the skip
   link; the pinned Context column. Screenshots: `test-results/pulse-shell-*.png`.
@@ -132,6 +145,7 @@ cd diskarte && CI=1 npx playwright test --config playwright.experience.config.ts
 ## Not yet
 
 - Messages, composer, DM and page bodies keep their Classic look in the canvas (Step 5).
+- Messages, Friends, DM and Shared workspace pages still render their own headers instead of the Masthead (Step 5).
 - No Media tab in the Context sheet: recent attachments need a new query (Step 5).
 - Phones: the navigator is a drawer and MobileNavigation's tabs stay; the Pulse phone design is Step 6, as is
   the voice redesign (the CallStrip is the Classic dock, re-laid-out).
