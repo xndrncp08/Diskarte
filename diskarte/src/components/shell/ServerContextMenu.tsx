@@ -8,12 +8,13 @@ import { useMe } from "@/components/providers/MeProvider";
 import { useOptionalRuntimeConfig } from "@/components/providers/RuntimeConfig";
 import { confirmAction } from "@/components/ui/ConfirmHost";
 import { ContextMenu, ContextMenuItems, copyText, type ContextMenuState } from "@/components/ui/ContextMenu";
+import type { MenuItem } from "@/components/ui/Menu";
 import { inviteUrl, type Server } from "@/lib/servers";
 
 const icon = "size-4";
 
 /** Right-click on a server (the rail, Home's server list): open it, copy its invite, leave it. */
-function ServerMenuItems({ server, onPreview }: { server: Server; onPreview?: () => void }) {
+function ServerMenuItems({ server, onPreview, before = [] }: { server: Server; onPreview?: () => void; before?: MenuItem[] }) {
   const { me } = useMe();
   const router = useRouter();
   const active = useParams<{ serverId?: string }>().serverId === server.id;
@@ -22,6 +23,7 @@ function ServerMenuItems({ server, onPreview }: { server: Server; onPreview?: ()
   return (
     <ContextMenuItems
       items={[
+        ...before,
         { label: "Voice activity", icon: <Volume2 className={icon} aria-hidden />, onSelect: () => onPreview?.(), hidden: !onPreview },
         { label: "Open server", icon: <ArrowRight className={icon} aria-hidden />, onSelect: () => router.push(`/tambayan/${server.id}`), hidden: active },
         {
@@ -59,10 +61,10 @@ function ServerMenuItems({ server, onPreview }: { server: Server; onPreview?: ()
   );
 }
 
-export function ServerContextMenu({ menu, server, onPreview }: { menu: ContextMenuState; server: Server; onPreview?: () => void }) {
+export function ServerContextMenu({ menu, server, onPreview, before }: { menu: ContextMenuState; server: Server; onPreview?: () => void; before?: MenuItem[] }) {
   return (
     <ContextMenu menu={menu} label={`${server.name} options`}>
-      <ServerMenuItems server={server} onPreview={onPreview} />
+      <ServerMenuItems server={server} onPreview={onPreview} before={before} />
     </ContextMenu>
   );
 }

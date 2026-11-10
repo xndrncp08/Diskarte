@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, type ReactNode, type RefObject } from "react";
 import { useAppViewport } from "@/hooks/useAppViewport";
 import { MobileNavigation } from "./MobileNavigation";
 import { useSwipeDrawer } from "@/hooks/useSwipeDrawer";
@@ -21,6 +21,8 @@ import { AppBadge, DmNotifier } from "./DmNotifier";
 import { ReminderWatcher } from "@/components/chat/Reminders";
 import { PushBadge } from "@/components/notifications/PushBadge";
 import { ServerRail } from "./ServerRail";
+import type { Shell } from "@/lib/shell";
+import { ShellKindContext } from "./ShellKind";
 import { ShellUIProvider, useShellUI } from "./ShellUI";
 
 /** Refreshes the server list when this user joins/leaves/is kicked from any Tambayan (e.g. in another tab). */
@@ -39,12 +41,11 @@ function MembershipWatcher({ userId }: { userId: string }) {
   return null;
 }
 
-function Frame({ servers, children }: { servers: Server[]; children: ReactNode }) {
-  const { navOpen, setNavOpen } = useShellUI();
-  const swipe = useSwipeDrawer(navOpen, setNavOpen);
-  const desktop = useIsCanvas();
-  const frame = useRef<HTMLDivElement>(null);
-  useAppViewport(frame);
+/**
+ * The phone drawer's keyboard contract, shared by both shells: focus its first control on open, trap Tab inside it,
+ * Escape or Back closes it, and focus returns where it was.
+ */
+export function useNavDrawer(frame: RefObject<HTMLElement | null>, navOpen: boolean, desktop: boolean, setNavOpen: (open: boolean) => void) {
   useEffect(() => {
     if (!navOpen || desktop) return;
     const previous = document.activeElement as HTMLElement | null;
@@ -62,7 +63,17 @@ function Frame({ servers, children }: { servers: Server[]; children: ReactNode }
     window.addEventListener("keydown", key);
     window.addEventListener("popstate", back);
     return () => { window.removeEventListener("keydown", key); window.removeEventListener("popstate", back); previous?.focus({ preventScroll: true }); };
-  }, [navOpen, desktop, setNavOpen]);
+  }, [frame, navOpen, desktop, setNavOpen]);
+}
+
+/** Classic's frame: the server rail, then the columns (channels · main · members) that the pages render. */
+export function ClassicFrame({ servers, children }: { servers: Server[]; children: ReactNode }) {
+  const { navOpen, setNavOpen } = useShellUI();
+  const swipe = useSwipeDrawer(navOpen, setNavOpen);
+  const desktop = useIsCanvas();
+  const frame = useRef<HTMLDivElement>(null);
+  useAppViewport(frame);
+  useNavDrawer(frame, navOpen, desktop, setNavOpen);
   return (
     <div ref={frame} className="diskarte-backdrop app-viewport relative flex h-dvh overflow-hidden" data-testid="shell" {...swipe}>
       <PushBadge />
@@ -118,26 +129,39 @@ export function ShellUIBridge({ children }: { children: ReactNode }) {
 }
 
 /**
- * The signed-in app frame: the server rail and the columns (channels · main · members). Session state
- * (the call, presence, friends) lives above it in <SessionProviders>; column widths in <WorkspaceProvider>.
+ * Everything both shells share and that must survive switching between them (the tambayan layout keeps this
+ * mounted and swaps only the frame inside it): admin access, column layout, unreads, the shell toggles, the
+ * membership/DM/reminder watchers and the confirm host. Session state (the call, presence, friends) lives
+ * above it in <SessionProviders>.
  */
-export function AppShell({ servers, platformRole = "member", children }: { servers: Server[]; platformRole?: PlatformRole; children: ReactNode }) {
+export function ShellProviders({ platformRole = "member", shell = "classic", children }: { platformRole?: PlatformRole; shell?: Shell; children: ReactNode }) {
   const { me } = useMe();
   return (
     <AdminAccessProvider role={platformRole}>
-      <WorkspaceProvider>
-        <UnreadsProvider>
-          <ShellUIBridge>
-            <MembershipWatcher userId={me.id} />
-            <DmNotifier />
-            <ReminderWatcher />
-            <AppBadge />
-            <Frame servers={servers}>{children}</Frame>
-            <ConfirmHost />
-          </ShellUIBridge>
-        </UnreadsProvider>
-      </WorkspaceProvider>
+      <ShellKindContext.Provider value={shell}>
+        <WorkspaceProvider>
+          <UnreadsProvider>
+            <ShellUIBridge>
+              <MembershipWatcher userId={me.id} />
+              <DmNotifier />
+              <ReminderWatcher />
+              <AppBadge />
+              {children}
+              <ConfirmHost />
+            </ShellUIBridge>
+          </UnreadsProvider>
+        </WorkspaceProvider>
+      </ShellKindContext.Provider>
     </AdminAccessProvider>
+  );
+}
+
+/** The Classic app (shared providers and the Classic frame) in one piece, for standalone renders and tests. */
+export function AppShell({ servers, platformRole = "member", children }: { servers: Server[]; platformRole?: PlatformRole; children: ReactNode }) {
+  return (
+    <ShellProviders platformRole={platformRole}>
+      <ClassicFrame servers={servers}>{children}</ClassicFrame>
+    </ShellProviders>
   );
 }
 

@@ -53,7 +53,7 @@ function MentionBadge({ count, top = false }: { count: number; top?: boolean }) 
 }
 
 /** Unread state for a rail node, ignoring channels you muted. */
-function useServerBadge(serverId: string) {
+export function useServerBadge(serverId: string) {
   const unreads = useOptionalUnreads();
   const mutes = serverMutes(useSyncExternalStore(subscribeChannelMutes, readChannelMutes, () => "{}"), serverId);
   const muted = serverNotify(useSyncExternalStore(subscribeNotifyPrefs, readNotifyPrefs, () => DEFAULT_NOTIFY_PREFS), serverId).muted;
@@ -62,17 +62,26 @@ function useServerBadge(serverId: string) {
   return { ...badge, unread: badge.unread && !muted, muted };
 }
 
-type RailEntry = Server & { entryChannelId?: string | null };
+export type RailEntry = Server & { entryChannelId?: string | null };
+
+/**
+ * Straight to the channel you last had open (else the first one): no redirect hop, and the link can prefetch the
+ * server's whole shell ahead of the click.
+ */
+export function serverHref(server: RailEntry, last: string) {
+  const channelId = lastChannelIn(last, server.id) ?? server.entryChannelId;
+  return channelId ? `/tambayan/${server.id}/${channelId}` : `/tambayan/${server.id}`;
+}
+
+export function useServerHref(server: RailEntry) {
+  return serverHref(server, useSyncExternalStore(subscribeLastChannels, readLastChannels, () => "{}"));
+}
 
 /** A server node on the rail; right-click for its menu (copy invite, leave…). */
 function RailServer({ server, active, official = false }: { server: RailEntry; active: boolean; official?: boolean }) {
   const menu = useContextMenu();
   const preview = useVoiceActivityPreview();
-  // Straight to the channel you last had open (else the first one): no redirect hop, and the link can
-  // prefetch the server's whole shell ahead of the click.
-  const last = useSyncExternalStore(subscribeLastChannels, readLastChannels, () => "{}");
-  const channelId = lastChannelIn(last, server.id) ?? server.entryChannelId;
-  const href = channelId ? `/tambayan/${server.id}/${channelId}` : `/tambayan/${server.id}`;
+  const href = useServerHref(server);
   const badge = useServerBadge(server.id);
   const label = `${server.name}${badge.mentions ? `, ${badge.mentions} mention${badge.mentions === 1 ? "" : "s"}` : badge.unread ? ", unread messages" : ""}`;
   return (
@@ -118,7 +127,7 @@ const ORDER_KEY = "diskarte:server-order";
 const orderListeners = new Set<() => void>();
 let memoryOrder: string | null = null;
 
-function readOrder() {
+export function readOrder() {
   try {
     return localStorage.getItem(ORDER_KEY) ?? "";
   } catch {
@@ -136,7 +145,7 @@ function saveOrder(ids: string[]) {
   orderListeners.forEach((l) => l());
 }
 
-function subscribeOrder(listener: () => void) {
+export function subscribeOrder(listener: () => void) {
   orderListeners.add(listener);
   return () => {
     orderListeners.delete(listener);

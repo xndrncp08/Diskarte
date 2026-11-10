@@ -20,10 +20,12 @@ import { statusTone } from "@/lib/presence";
 import { cn } from "@/lib/utils";
 import { CallContext } from "@/components/voice/CallProvider";
 
-/** Bottom-left identity panel with the quick status switcher; `controls` slot hosts voice buttons. */
-export function UserPanel({ controls }: { controls?: ReactNode }) {
+/**
+ * The quick status switcher: presence, custom-status triggers, clear and clear-after, applied optimistically and
+ * rolled back with a toast if the save fails. Shared by the Classic user panel and Pulse's "You" menu.
+ */
+export function useStatusMenu() {
   const { me, setMe } = useMe();
-  const settings = useSettingsDialog();
   const router = useRouter();
   const [, startTransition] = useTransition();
 
@@ -80,6 +82,14 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
       hidden: !me.custom_status && !me.custom_status_emoji,
     })),
   ];
+  return { items, shown, label };
+}
+
+/** Bottom-left identity panel with the quick status switcher; `controls` slot hosts voice buttons. */
+export function UserPanel({ controls }: { controls?: ReactNode }) {
+  const { me } = useMe();
+  const settings = useSettingsDialog();
+  const { items, shown, label } = useStatusMenu();
 
   return (
     <div
