@@ -34,3 +34,7 @@ it("reads live participants even when a just-created room's summary count still 
  rooms.listRooms.mockResolvedValue([{name:`voice:${visible.id}`,numParticipants:0}]);
  expect((await getVoicePreview(fake.client as never,SERVER_ID)).channels[0].count).toBe(1);
 });
+it("never shows another participant as invisible",async()=>{
+ tables.profiles=[{...makeProfile(OWNER_ID,"Kapitan"),status:"invisible"}];
+ expect((await getVoicePreview(fake.client as never,SERVER_ID)).channels[0].participants[0].profile.status).toBe("offline");
+});

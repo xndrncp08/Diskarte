@@ -274,7 +274,7 @@ export interface Database {
         ];
       };
       audit_logs: TableDef<
-        { id: number; server_id: string; actor_id: string | null; action: string; target_type: string | null; target_id: string | null; metadata: Json; created_at: string },
+        { id: number; server_id: string; actor_id: string | null; action: string; target_type: string | null; target_id: string | null; metadata: Json; created_at: string; /** Absent before migration 20261109000000. */ channel_id?: string | null; channel_private?: boolean },
         never
       >;
       server_bans: TableDef<{ server_id: string; user_id: string; banned_by: string | null; reason: string; created_at: string }, never>;
@@ -321,8 +321,8 @@ export interface Database {
       message_edits: TableDef<{ id: number; message_id: string; server_id: string; author_id: string | null; content: string; replaced_at: string }, never>;
       member_warnings: TableDef<{ id: string; server_id: string; user_id: string; moderator_id: string | null; reason: string; acknowledged_at: string | null; created_at: string }, never>;
       privacy_settings: TableDef<
-        { user_id: string; friend_requests_from: string; share_activity: boolean; updated_at: string },
-        { user_id?: string; friend_requests_from?: string; share_activity?: boolean; updated_at?: string }
+        { user_id: string; friend_requests_from: string; share_activity: boolean; updated_at: string; /** Absent before migration 20261109000000. */ invisible?: boolean },
+        { user_id?: string; friend_requests_from?: string; share_activity?: boolean; updated_at?: string; invisible?: boolean }
       >;
       server_invites: TableDef<{ code: string; server_id: string; created_by: string | null; max_uses: number | null; uses: number; expires_at: string | null; created_at: string }, never>;
       server_events: TableDef<

@@ -154,6 +154,55 @@ URLs from Supabase's origin so uploaded content never runs on Diskarte's origin.
 | Diagnostics | Session-only, no content/ids/tokens; no third-party error reporting is configured |
 | Analytics | Vercel Analytics page views; first-party visit count stores a random browser id, no IP or user id |
 
+## Privacy hardening (2026-11-09)
+
+A security review found four ways private information could reach people who shouldn't see it.
+Migration `20261109000000_privacy_hardening.sql` closes them in the database, with client changes to
+match. Production needs the migration applied by hand (rollback SQL is at the bottom of the file).
+
+**Deploy order: deploy the app first, then apply the migration.** The new app works against the old
+schema: a missing `privacy_settings.invisible` reads as "not invisible", and until the migration
+`voice:<id>` topics are refused, so a private channel's occupants briefly don't show (they're never
+announced server-wide). Applying the migration first would leave the old app unaware of Invisible:
+it would read your last visible status back and show you as online in your own interface.
+
+| Leak | Fix | Enforced by |
+| --- | --- | --- |
+| Anyone signed in could see who chose **Invisible** (`profiles.status` is public), and invisible users' apps still announced them on server presence | The choice moves to the owner-only `privacy_settings.invisible`; a trigger keeps `'invisible'` out of `profiles.status` (others see the last visible status), and a check constraint backs it up. A restrictive Realtime policy refuses presence from invisible users, and the app stops tracking. Voice previews show invisible people as offline | `profiles_hide_invisible` trigger, `privacy_settings` RLS, `"invisible users publish no presence"` on `realtime.messages` |
+| **Private voice channels** were announced server-wide: every member received their ids and who was inside | Occupancy of a private voice channel is published only on its own `voice:<channel id>` topic, which requires `can_view_channel`; the server-wide topic carries public channels only | `can_access_realtime_topic` (`voice` kind) |
+| Moderators without access to a **private channel** could read its name and message excerpts in the **audit log** | Every audit row is tagged with its channel (`audit_logs.channel_id`, `channel_private`); moderators read a channel's rows only if they can view the channel (its current access, so a channel made private later is covered too). Admins see everything; bans, timeouts, warnings and other server-level rows are unchanged. Rows about deleted channels count as private | `audit_logs` select policy via `can_read_audit_channel` (answers only for the server's moderators) |
+| Moderators could read the full **edit history** of messages in private channels they can't open | Moderators only read earlier versions of messages they can see; authors keep their own history; admins see everything | `"authors and moderators read edit history"` on `message_edits` (checks the message under `messages` RLS) |
+
+Also hardened: **friends around** (`friends_activity`) checks the private invisible flag, so a stale
+tab still reporting "online" can't make an invisible friend show up; the **heartbeat** returns your
+real status so a stale tab adopts Invisible (or leaves it) within one beat; choosing Invisible no
+longer writes the public profile row at all (not even `updated_at`); the app only rejoins presence
+after the server has cleared Invisible, never re-sends an unchanged presence payload (which would
+time a private call), and LiveKit's "voice changed" signal for a private channel goes to its own
+`voice:<id>` topic instead of the whole server.
+
+**Residual risks.**
+
+- A voice channel made private while someone is already in its call keeps that person listed on the
+  server-wide presence until they rejoin the call.
+- Realtime checks topic authorisation when a client joins (and when its token refreshes), so a
+  client that was already subscribed when it went invisible or lost a channel grant keeps its
+  subscription until it rejoins. The app untracks the moment you choose Invisible and rejoins once
+  the server confirms you left it.
+- Tabs running a bundle from before the deploy keep the old behaviour (private voice on the server
+  topic) until they reload; the database refuses their presence while you're invisible, but not the
+  private-channel payload, which only the new client keeps off `server:<id>`.
+- Keeping a private voice channel's occupancy off the server-wide topic is client-enforced: any
+  member can publish whatever presence payload they like on `server:<id>`, so a modified client
+  could still announce its own private call. It can't reveal anyone else's.
+- The heartbeat compares server time to the tab's clock when adopting Invisible from another tab;
+  a badly skewed clock can delay that until the next reload.
+
+Tests: `tests/db/privacy-hardening.test.ts`, `tests/ui/PresencePrivacy.test.tsx`,
+`tests/ui/StatusHighlight.test.tsx`, `tests/ui/voice-preview.test.tsx`,
+`tests/admin/live-session.test.tsx`, `src/app/api/livekit/webhook/__tests__/route.test.ts`,
+`src/lib/__tests__/auth-profile.test.ts`, `src/lib/__tests__/voice-preview-server.test.ts`.
+
 ## Security testing
 
 The security-relevant suites are listed in [SECURITY.md → Security testing](../SECURITY.md#security-testing)

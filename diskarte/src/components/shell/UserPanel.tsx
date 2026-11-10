@@ -7,6 +7,7 @@ import { useContext, useTransition, type ReactNode } from "react";
 import { toast } from "sonner";
 import { setStatusAction } from "@/actions/profile";
 import { useMe } from "@/components/providers/MeProvider";
+import { usePresenceRejoin } from "@/components/providers/PresenceProvider";
 import { useSettingsDialog } from "@/components/profile/SettingsDialog";
 import { SoundSettingsPopover } from "@/components/profile/SoundSettingsPopover";
 import { UserAvatar } from "@/components/profile/UserAvatar";
@@ -23,6 +24,7 @@ import { CallContext } from "@/components/voice/CallProvider";
 /** Bottom-left identity panel with the quick status switcher; `controls` slot hosts voice buttons. */
 export function UserPanel({ controls }: { controls?: ReactNode }) {
   const { me, setMe } = useMe();
+  const rejoinPresence = usePresenceRejoin();
   const settings = useSettingsDialog();
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -42,6 +44,8 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
         setMe(() => previous);
         toast.error(result.error ?? "Couldn't update your status.");
       } else {
+        // Only now is Invisible cleared server-side, so only now may presence rejoin.
+        if (status !== "invisible") rejoinPresence();
         router.refresh();
       }
     });

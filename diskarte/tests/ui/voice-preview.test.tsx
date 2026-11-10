@@ -74,3 +74,18 @@ it("uses a safe-area sheet for touch and reports failures without stale particip
  expect(await screen.findByRole("alert")).toHaveTextContent("Access to this server changed");
  expect(screen.getByRole("dialog")).toHaveClass("bottom-0");expect(screen.queryByLabelText("13 connected participants")).toBeNull();
 });
+it("refreshes a private channel's activity from its own voice topic, not the server-wide one",async()=>{
+ const secret="20000000-0000-4000-8000-0000000000aa";
+ request.mockImplementation(async()=>Response.json({channels:[],limited:false,privateChannelIds:[secret]}));
+ render(<View/>);await userEvent.setup().click(screen.getByRole("button",{name:`Preview ${server.name}`}));
+ expect(await screen.findByText(/No active voice channels/)).toBeInTheDocument();
+ await waitFor(()=>expect(fake.channels.some((c)=>c.name===`voice:${secret}`&&c.subscribed)).toBe(true));
+ // Joining the topic itself triggers one refetch; let it settle so only the broadcast can explain the next.
+ await waitFor(()=>expect(request).toHaveBeenCalledTimes(2),{timeout:3000});
+ await new Promise((r)=>setTimeout(r,50));
+ const before=request.mock.calls.length;
+ request.mockImplementation(async()=>Response.json({...response(),privateChannelIds:[secret]}));
+ act(()=>fake.emitBroadcast(`voice:${secret}`,"voice_changed",{}));
+ expect(await screen.findByLabelText("13 connected participants",{},{timeout:3000})).toBeInTheDocument();
+ expect(request.mock.calls.length).toBeGreaterThan(before);
+});
