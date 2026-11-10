@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 import { Monogram } from "../Avatar";
 import { Button } from "../Button";
 import { Chip } from "../Chip";
-import { SegmentedControl } from "../Controls";
 import { Input } from "../Field";
 import { PulseSurface } from "../PulseSurface";
 import { EmptyState, ErrorState, Skeleton } from "../States";
@@ -34,11 +33,15 @@ export function PulseExplore({ query, onQuery, category, onCategory, results, fa
       <Masthead eyebrow="Discover" title="Explore" icon={<Compass />} description="Communities that chose to be listed" />
       <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-6xl p-4 md:p-6">
-          <p className="max-w-2xl font-pulse-display text-pulse-display font-semibold md:text-pulse-hero">Find your tambayan</p>
-          <p className="mt-2 max-w-xl text-pulse-lead text-pulse-muted">Gaming crews, study groups, creators and more. Join one, no invite needed.</p>
-          <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:items-end">
-            <Input label="Search communities" type="search" value={query} onChange={(e) => onQuery(e.target.value)} maxLength={500} placeholder="Name or topic" wrapperClassName="lg:w-80" />
-            <SegmentedControl label="Category" options={CATEGORIES} value={category ?? "all"} onChange={(v) => onCategory(v === "all" ? null : v)} />
+          {/* Phones already have the masthead; the editorial headline would push the communities below the fold. */}
+          <p className="max-w-2xl font-pulse-display text-pulse-hero font-semibold max-md:hidden">Find your tambayan</p>
+          <p className="mt-2 max-w-xl text-pulse-lead text-pulse-muted max-md:hidden">Gaming crews, study groups, creators and more. Join one, no invite needed.</p>
+          <div className="flex flex-col gap-3 md:mt-5">
+            <Input label="Search communities" type="search" value={query} onChange={(e) => onQuery(e.target.value)} maxLength={500} placeholder="Name or topic" wrapperClassName="md:max-w-md" />
+            {/* Single-select toggle chips that wrap, so no category is cut off. */}
+            <div role="group" aria-label="Category" className="flex flex-wrap gap-1.5">
+              {CATEGORIES.map((c) => <Chip key={c.value} selected={(category ?? "all") === c.value} onClick={() => onCategory(c.value === "all" ? null : c.value)}>{c.label}</Chip>)}
+            </div>
           </div>
           {failed && <ErrorState title="Explore couldn't load" onRetry={onRetry} retrying={loading} className="mt-6">Check your connection and try again.</ErrorState>}
           {results === null && !failed ? (

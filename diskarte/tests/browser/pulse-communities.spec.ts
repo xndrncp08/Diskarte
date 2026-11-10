@@ -49,6 +49,8 @@ test("Pulse inbox filters to unread and Explore filters by category", async ({ p
   await page.getByRole("searchbox", { name: "Search conversations" }).fill("zzz");
   await expect(page.getByRole("heading", { name: "No conversations match" })).toBeVisible();
   await page.goto(ROUTES.explore);
-  await page.getByRole("radiogroup", { name: "Category" }).getByRole("radio", { name: "Study" }).click();
-  await expect(page.getByRole("radio", { name: "Study" })).toHaveAttribute("aria-checked", "true");
+  const categories = page.getByRole("group", { name: "Category" });
+  await categories.getByRole("button", { name: "Study" }).click();
+  await expect(categories.getByRole("button", { name: "Study" })).toHaveAttribute("aria-pressed", "true");
+  await expect(categories.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "false");
 });
