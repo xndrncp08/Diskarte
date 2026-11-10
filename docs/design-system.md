@@ -171,7 +171,8 @@ Pulse is the redesign (Direction A, "Canvas": Spaces navigator, Conversation Can
 in warm ink (dark) or paper (light) with a solar gold signature. It is built alongside Classic and
 reached per browser through the shell preference ([ADR 016](architecture/decisions.md#016-pulse-ships-behind-a-per-browser-shell-preference)).
 This section covers the groundwork: tokens, fonts and the lint guard. The shared components (Button, Tabs, Sheet, Avatar…)
-and their contracts are in [Pulse components](design/pulse-components.md). No Pulse screen exists yet.
+and their contracts are in [Pulse components](design/pulse-components.md). The app frame (Spaces navigator,
+canvas masthead, Context sheet, keyboard map, data sources) is in [Pulse shell](design/pulse-shell.md).
 
 ### Scoping: Classic is untouched
 
@@ -186,7 +187,9 @@ and their contracts are in [Pulse components](design/pulse-components.md). No Pu
 - The only global additions are two breakpoints (see below) and the `pulse-motion:` variant (ambient motion only when
   neither the OS nor Settings asks for reduced motion); they add variants and change no existing ones.
 - `setShell(shell, router)` flips the attribute, saves the cookie and calls `router.refresh()`; no
-  reload, so a live call, open chats and drafts survive the switch. There is no visible toggle yet.
+  reload, so a live call, open chats and drafts survive the switch. Super admins switch it in Settings →
+  Appearance ("Try the new Diskarte"); inside Pulse, Classic tokens map to Pulse ones (the Classic bridge,
+  see [Pulse shell](design/pulse-shell.md#the-classic-bridge)) so reused Classic pages stay readable.
 
 ### Colour tokens
 

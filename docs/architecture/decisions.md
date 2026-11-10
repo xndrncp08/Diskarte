@@ -22,6 +22,7 @@ comments and release notes; the date is when the decision shows up in history. N
 | [014](#014-release-announcements-published-by-the-deployment-itself) | Release announcements published by the deployment itself | Accepted |
 | [015](#015-hangouts-are-temporary-group-conversations) | Hangouts are temporary group conversations | Accepted |
 | [016](#016-pulse-ships-behind-a-per-browser-shell-preference) | Pulse ships behind a per-browser shell preference | Accepted |
+| [017](#017-one-frame-mount-shell-aware-seams) | One frame mount, shell-aware seams | Accepted |
 
 ## 001. Authorization lives in Postgres
 
@@ -196,3 +197,25 @@ first paint would flash the wrong shell).
 **Consequences.** Classic needs no changes and its tests prove it is untouched. Pulse fonts load only
 when Pulse styles use them. Until there is a visible switch, Pulse is reached by setting the cookie.
 The preference is per browser, like the theme; syncing it across devices would be a later decision.
+
+## 017. One frame mount, shell-aware seams
+
+**Status.** Accepted — *2026-11-10*
+
+**Context.** The Pulse shell (Spaces navigator, canvas, Context sheet) has to wrap every existing page
+(Home, Explore, Search, Messages, Friends, DMs, channels, the Control Center) without duplicating their data
+loading, actions or permission checks, and switching shells must not drop a call or the unread state.
+**Decision.** `app/(app)/tambayan/layout.tsx` is the only place a frame is chosen: it reads the
+`diskarte-shell` cookie and renders `<PulseShell>` or `<ClassicFrame>` inside one shared `<ShellProviders>`
+(admin access, layout, unreads, shell toggles, watchers, confirm host), so a switch swaps only the frame.
+Pages stay as they are. The seams they already use read a `ShellKindContext`: `WorkspacePanel` (nav renders
+nothing in Pulse, main is the canvas), `ChannelHeader` and `PageHeader` (the masthead), `RosterDrawer` (the
+Context sheet) and `MemberList` (paged). The open Space's rooms are rendered by `[serverId]/layout.tsx`, after
+its membership guard and inside its `ServerProvider`, and portalled into a slot in the navigator. Classic
+content inside Pulse reads Classic tokens, which `pulse.css` maps to Pulse ones (the Classic bridge).
+**Alternatives considered.** A parallel `(pulse)` route tree (every page and loader twice); having each page
+branch on the shell (dozens of edits, easy to miss one); the navigator fetching the Space's rooms itself (a
+second, client-side data path beside the RLS-scoped server bundle).
+**Consequences.** Classic renders exactly as before and its tests are unchanged. Pulse inherits every page,
+action and permission check, and shows only data the server layouts already loaded. Pages keep their Classic
+look inside the canvas until Steps 5 and 6 restyle them. Rolling back is clearing the cookie.
