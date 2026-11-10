@@ -376,12 +376,14 @@ function MemberProfileWindows() {
   });
 }
 
-// Pulse's Context sheet renders the roster a page at a time (HQ has everyone); Classic renders all of it.
+// Pulse's Context sheet renders the roster a page at a time (HQ has everyone) and keeps offline members at full
+// contrast (the "Offline" heading groups them); Classic renders all of it and dims them.
 const PULSE_PAGE = 100;
 
 export function MemberList() {
   const { members, presence, server } = useServer();
-  const pageSize = useShellKind() === "pulse" ? PULSE_PAGE : undefined;
+  const pulse = useShellKind() === "pulse";
+  const pageSize = pulse ? PULSE_PAGE : undefined;
   const [limit, setLimit] = useState(pageSize ?? Infinity);
 
   const sorted = [...members].sort(
@@ -413,7 +415,7 @@ export function MemberList() {
           <h3 className="mb-1 px-2 font-silk text-[11px] uppercase tracking-wider text-slate-400">{group.label}</h3>
           <ul className="space-y-0.5">
             {group.list.map((m) => (
-              <MemberRow key={m.user_id} member={m} presence={presence.get(m.user_id)} dim={group.dim} />
+              <MemberRow key={m.user_id} member={m} presence={presence.get(m.user_id)} dim={group.dim && !pulse} />
             ))}
           </ul>
         </section>

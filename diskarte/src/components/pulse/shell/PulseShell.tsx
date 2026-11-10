@@ -15,6 +15,7 @@ import { useAppViewport } from "@/hooks/useAppViewport";
 import { useSwipeDrawer } from "@/hooks/useSwipeDrawer";
 import { cn } from "@/lib/utils";
 import { PulseMenuSkin } from "../Menu";
+import { PulseTooltipSkin } from "../Tooltip";
 import { CallStrip } from "./CallStrip";
 import { Navigator } from "./Navigator";
 import { PulseUIProvider } from "./PulseUI";
@@ -44,6 +45,7 @@ export function PulseShell({ servers, children }: { servers: RailEntry[]; childr
   return (
     <PulseUIProvider>
       <PulseMenuSkin>
+      <PulseTooltipSkin>
         <div ref={frame} className="app-viewport relative flex h-dvh overflow-hidden bg-pulse-bg font-pulse-text text-pulse-text" data-testid="shell" data-pulse-shell="" {...swipe}>
           <PushBadge />
           <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-(--pulse-z-overlay) focus:rounded-pulse-control focus:bg-pulse-accent focus:px-4 focus:py-2 focus:font-semibold focus:text-pulse-on-accent">
@@ -84,6 +86,7 @@ export function PulseShell({ servers, children }: { servers: RailEntry[]; childr
             <MobileNavigation />
           </div>
         </div>
+      </PulseTooltipSkin>
       </PulseMenuSkin>
     </PulseUIProvider>
   );

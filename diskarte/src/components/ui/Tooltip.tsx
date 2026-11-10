@@ -1,8 +1,13 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { FloatingPortal, useFloating, type Side } from "./floating";
+
+const CLASSIC_TIP = "rounded-md bg-black/90 px-2.5 py-1 text-xs font-semibold text-white shadow-lg";
+
+/** The bubble look for every Tooltip below it that doesn't pass its own (the Pulse shell gives Classic tooltips the Pulse look). */
+export const TooltipSkinContext = createContext<string | null>(null);
 
 /**
  * Hover/focus tooltip rendered in a <body> portal so scrollable rails and sidebars can't clip it.
@@ -14,7 +19,7 @@ export function Tooltip({
   children,
   className,
   disabled = false,
-  tipClassName = "rounded-md bg-black/90 px-2.5 py-1 text-xs font-semibold text-white shadow-lg",
+  tipClassName,
 }: {
   label: string;
   side?: Side;
@@ -25,6 +30,7 @@ export function Tooltip({
   /** The bubble's look (the Pulse Tooltip replaces it); placement and behaviour stay the same. */
   tipClassName?: string;
 }) {
+  const skin = useContext(TooltipSkinContext);
   const [hovered, setOpen] = useState(false);
   const open = hovered && !disabled;
   const anchor = useRef<HTMLSpanElement>(null);
@@ -50,7 +56,7 @@ export function Tooltip({
             data-floating="tooltip"
             data-side={resolved}
             style={style}
-            className={cn("pointer-events-none z-50 whitespace-nowrap", tipClassName)}
+            className={cn("pointer-events-none z-50 whitespace-nowrap", tipClassName ?? skin ?? CLASSIC_TIP)}
           >
             {label}
           </span>

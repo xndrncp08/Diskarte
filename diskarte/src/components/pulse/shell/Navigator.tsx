@@ -2,7 +2,7 @@
 
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { Compass, Home, Inbox, MessageCircle, Pin, PinOff, Plus, Search, Settings, ShieldCheck, Sparkles, Undo2, Users } from "lucide-react";
-import { useEffect, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { usePlatformRole } from "@/components/admin/AdminAccess";
 import { useMe } from "@/components/providers/MeProvider";
 import { useSettingsDialog } from "@/components/profile/SettingsDialog";
@@ -140,7 +140,7 @@ export function Navigator({ servers }: { servers: RailEntry[] }) {
   const incoming = friends?.filter((f) => f.status === "incoming").length ?? 0;
 
   useEffect(() => {
-    const key = (event: globalThis.KeyboardEvent) => {
+    const key = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || event.shiftKey || event.altKey || !/^[1-9]$/.test(event.key) || document.querySelector('[role="dialog"]')) return;
       const space = spaces[Number(event.key) - 1];
       if (!space) return;
@@ -151,22 +151,29 @@ export function Navigator({ servers }: { servers: RailEntry[] }) {
     return () => window.removeEventListener("keydown", key);
   }, [spaces, router]);
 
-  function onKeyDown(event: KeyboardEvent<HTMLElement>) {
-    // Menus portal out of this DOM subtree (React still bubbles their keys here): leave their keys alone.
-    if (!event.currentTarget.contains(event.target as Node)) return;
-    if (event.key === "Escape") {
+  // A DOM listener, not onKeyDown: the rooms are portalled in from another React tree (the server layout), so only
+  // DOM bubbling reaches here from them; menus portal out to <body>, so their keys never do.
+  const [nav, setNav] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!nav) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        document.getElementById("main-content")?.focus();
+        return;
+      }
+      if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+      const rows = Array.from(nav.querySelectorAll<HTMLElement>("li > a[href], li > button"));
+      const index = rows.indexOf(event.target as HTMLElement);
+      if (index < 0) return;
       event.preventDefault();
-      document.getElementById("main-content")?.focus();
-      return;
-    }
-    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
-    const rows = Array.from(event.currentTarget.querySelectorAll<HTMLElement>("li > a[href], li > button"));
-    const index = rows.indexOf(event.target as HTMLElement);
-    if (index < 0) return;
-    event.preventDefault();
-    const next = event.key === "Home" ? 0 : event.key === "End" ? rows.length - 1 : Math.min(rows.length - 1, Math.max(0, index + (event.key === "ArrowDown" ? 1 : -1)));
-    rows[next]?.focus();
-  }
+      const next = event.key === "Home" ? 0 : event.key === "End" ? rows.length - 1 : Math.min(rows.length - 1, Math.max(0, index + (event.key === "ArrowDown" ? 1 : -1)));
+      rows[next]?.focus();
+    };
+    nav.addEventListener("keydown", onKeyDown);
+    return () => nav.removeEventListener("keydown", onKeyDown);
+  }, [nav]);
 
   const pinnedSpaces = pins.flatMap((p) => (p.startsWith("space:") ? (spaces.find((s) => `space:${s.id}` === p) ?? []) : []));
   const pinnedConversations = pins.flatMap((p) => (p.startsWith("dm:") ? ((conversations ?? []).find((c) => `dm:${c.id}` === p) ?? []) : []));
@@ -186,9 +193,9 @@ export function Navigator({ servers }: { servers: RailEntry[] }) {
           onChange={(next) => setChosen({ view: next, path: pathname })}
           className="flex w-full [&>button]:flex-1 [&>button]:justify-center"
           options={[
-            { value: "home", label: "Home", icon: <Home /> },
-            { value: "people", label: "People", icon: <Users /> },
-            { value: "spaces", label: "Spaces", icon: <Compass /> },
+            { value: "home", label: "Home" },
+            { value: "people", label: "People" },
+            { value: "spaces", label: "Spaces" },
           ]}
         />
         <Button variant="secondary" icon={<Search />} onClick={goAnywhere.open} aria-keyshortcuts="Control+k Meta+k" className="w-full justify-start text-pulse-muted">
@@ -197,7 +204,7 @@ export function Navigator({ servers }: { servers: RailEntry[] }) {
         </Button>
       </div>
 
-      <nav aria-label={`${view === "home" ? "Home" : view === "people" ? "People" : "Spaces"} navigation`} onKeyDown={onKeyDown} className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-2 pb-4" data-testid="pulse-navigator">
+      <nav aria-label={`${view === "home" ? "Home" : view === "people" ? "People" : "Spaces"} navigation`} ref={setNav} className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-2 pb-4" data-testid="pulse-navigator">
         {pinnedSpaces.length + pinnedConversations.length > 0 && (
           <section aria-labelledby="pulse-pinned">
             <h2 id="pulse-pinned" className={SECTION}>Pinned</h2>

@@ -247,3 +247,27 @@ html[data-shell="pulse"] ::selection {
 html[data-shell="pulse"]:not([data-high-contrast]) :focus-visible {
   outline-color: var(--pulse-focus-ring);
 }
+
+/* The Classic bridge. The Pulse shell reuses Classic pages and dialogs (messages, composer, settings) until Steps 5–6
+   restyle them; they read Classic's surface and text tokens, so inside Pulse those resolve to Pulse ones and stay
+   readable on Pulse surfaces in both modes (Classic's own light remap does the same on its surfaces). :root outranks
+   the light-mode rule in globals.css. Accent tokens (--color-sun…) are left alone: the themes own them. */
+:root[data-shell="pulse"] {
+  --color-midnight: var(--pulse-surface);
+  --color-abyss: var(--pulse-bg);
+  --color-onyx: var(--pulse-raised);
+  --color-panel: var(--pulse-raised);
+  --color-white: var(--pulse-text);
+  --color-slate-100: var(--pulse-text);
+  --color-slate-200: var(--pulse-text);
+  --color-slate-300: var(--pulse-text-muted);
+  --color-slate-400: var(--pulse-text-muted);
+  --color-slate-500: var(--pulse-text-muted);
+}
+/* Moderator names (sky-200) on paper; the phone tab bar's current tab in accent ink rather than raw gold. */
+:root[data-shell="pulse"][data-color-mode="light"] {
+  --color-sky-200: #0369a1;
+}
+:root[data-shell="pulse"] .mobile-navigation [aria-current="page"] {
+  color: var(--pulse-accent-ink);
+}

@@ -11,7 +11,10 @@ import { ServerContext } from "@/components/providers/ServerProvider";
 import { CallProvider } from "@/components/voice/CallProvider";
 import { SettingsDialogProvider } from "@/components/profile/SettingsDialog";
 import { MediaViewerProvider } from "@/components/chat/MediaViewer";
-import { AppShell } from "@/components/shell/AppShell";
+import { ClassicFrame, ShellProviders } from "@/components/shell/AppShell";
+import { PulseShell } from "@/components/pulse/shell/PulseShell";
+import { PulseRooms } from "@/components/pulse/shell/Rooms";
+import { parseShell } from "@/lib/shell";
 import { HomeView } from "@/components/shell/HomeView";
 import { ExploreView } from "@/components/shell/ExploreView";
 import { MessagesView } from "@/components/social/MessagesView";
@@ -58,6 +61,11 @@ const social: SocialValue = {
   setFavourite: async () => false,
 };
 
+// The diskarte-shell cookie picks the frame, as in app/(app)/tambayan/layout.tsx (the root layout sets data-shell).
+const shell = parseShell(document.cookie.match(/(?:^|; )diskarte-shell=([^;]*)/)?.[1]);
+document.documentElement.dataset.shell = shell;
+const Frame = shell === "pulse" ? PulseShell : ClassicFrame;
+
 function Fixture() {
   const path = usePathname();
   const prefs = useDisplayPrefs();
@@ -72,7 +80,8 @@ function Fixture() {
   const channel =
     channels.find((item) => path.endsWith(item.id)) ?? channels[0];
   return (
-    <AppShell servers={[server]}>
+    <ShellProviders shell={shell}>
+    <Frame servers={[server]}>
       {path === "/tambayan" ? (
         <HomeView
           servers={[server]}
@@ -151,12 +160,14 @@ function Fixture() {
               />
             )}
           </WorkspacePanel>
+          <PulseRooms />
           <RosterDrawer count={members.length}>
             <MemberList />
           </RosterDrawer>
         </>
       )}
-    </AppShell>
+    </Frame>
+    </ShellProviders>
   );
 }
 
