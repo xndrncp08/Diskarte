@@ -2,7 +2,7 @@
 
 import { Inbox as InboxIcon, MessageCircle } from "lucide-react";
 import Link from "next/link";
-import { Timestamp } from "@/components/chat/Timestamp";
+import { RelativeTime } from "../RelativeTime";
 import { ConversationAvatar } from "@/components/social/HomeSidebar";
 import { useNow } from "@/components/social/Hangouts";
 import { hangoutTimeLeft, topicLabel } from "@/lib/hangouts";
@@ -48,7 +48,7 @@ export function PulseInbox({ conversations, list, query, onQuery, unreadOnly, on
                     label={conversationTitle(c)}
                     leading={<ConversationAvatar conversation={c} size={40} />}
                     unread={isUnread(c)}
-                    secondary={c.hangoutUntil ? `${topicLabel(c.hangoutTopic)} · ${hangoutTimeLeft(c.hangoutUntil, now)}` : <>{c.kind === "group" ? `${c.others.length + 1} members · ` : ""}<Timestamp iso={c.lastMessageAt} /></>}
+                    secondary={c.hangoutUntil ? `${topicLabel(c.hangoutTopic)} · ${hangoutTimeLeft(c.hangoutUntil, now)}` : <>{c.kind === "group" ? `${c.others.length + 1} members · ` : ""}<RelativeTime iso={c.lastMessageAt} /></>}
                     className="min-h-14"
                   />
                 </li>

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { ArrowRight, AtSign, CalendarDays, Compass, Headphones, Home as HomeIcon, MessageSquare, Plus, RefreshCw, Sparkles, UserPlus, Users, Volume2 } from "lucide-react";
 import type { ReactNode } from "react";
-import { Timestamp } from "@/components/chat/Timestamp";
 import { useMe } from "@/components/providers/MeProvider";
 import { useOptionalSocial } from "@/components/providers/SocialProvider";
 import { GettingStarted, WhatsNew } from "@/components/shell/GettingStarted";
@@ -21,6 +20,7 @@ import { Avatar, Monogram } from "../Avatar";
 import { Button, IconButton } from "../Button";
 import { BentoGrid, BentoTile } from "../Card";
 import { NavItem } from "../Nav";
+import { RelativeTime } from "../RelativeTime";
 import { Masthead } from "../shell/Masthead";
 
 type HomeEvent = Pick<ServerEvent, "id" | "server_id" | "name" | "starts_at" | "ends_at">;
@@ -72,6 +72,7 @@ export function PulseHome({ servers, events, eventsUnavailable, fresh, conversat
   const social = useOptionalSocial();
   const call = useCall();
   const serverName = (id: string) => servers.find((s) => s.id === id)?.name ?? "Your Space";
+  const started = <GettingStarted servers={servers} onCreate={() => onDialog("create")} />;
   const people = friends.slice(0, 5).flatMap(({ userId }) => {
     const profile = social?.profiles.get(userId);
     return profile ? [{ userId, profile, live: activity?.get(userId) }] : [];
@@ -88,10 +89,9 @@ export function PulseHome({ servers, events, eventsUnavailable, fresh, conversat
       />
       <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-6xl space-y-4 p-4 md:p-6" data-pulse-home="">
-          <WhatsNew />
-          <GettingStarted servers={servers} onCreate={() => onDialog("create")} />
-          <MomentsStrip />
           <h2 className="font-pulse-display text-pulse-heading font-semibold">Where should I go next?</h2>
+          {/* "Where should I go next?" stays above the fold on phones: Getting started leads only for new accounts. */}
+          {fresh && started}
           <BentoGrid>
             <BentoTile span="wide" eyebrow="Messages" title="Pick up the conversation" data-testid="home-conversations">
               {conversations == null ? (
@@ -99,7 +99,7 @@ export function PulseHome({ servers, events, eventsUnavailable, fresh, conversat
               ) : conversations.length ? (
                 <ul>
                   {conversations.slice(0, 4).map((c) => (
-                    <li key={c.id}><NavItem href={`/tambayan/dm/${c.id}`} label={conversationTitle(c)} leading={<ConversationAvatar conversation={c} size={32} />} unread={isUnread(c)} secondary={<Timestamp iso={c.lastMessageAt} />} className={ROW} /></li>
+                    <li key={c.id}><NavItem href={`/tambayan/dm/${c.id}`} label={conversationTitle(c)} leading={<ConversationAvatar conversation={c} size={32} />} unread={isUnread(c)} secondary={<RelativeTime iso={c.lastMessageAt} />} className={ROW} /></li>
                   ))}
                 </ul>
               ) : (
@@ -167,7 +167,7 @@ export function PulseHome({ servers, events, eventsUnavailable, fresh, conversat
               ) : events.length ? (
                 <ul>
                   {events.map((e) => (
-                    <li key={e.id}><NavItem href={`/tambayan/${e.server_id}?event=${e.id}`} leading={<CalendarDays />} label={e.name} secondary={eventStatus(e) === "live" ? `Happening now · ${serverName(e.server_id)}` : <><Timestamp iso={e.starts_at} /> · {serverName(e.server_id)}</>} live={eventStatus(e) === "live"} className={ROW} /></li>
+                    <li key={e.id}><NavItem href={`/tambayan/${e.server_id}?event=${e.id}`} leading={<CalendarDays />} label={e.name} secondary={eventStatus(e) === "live" ? `Happening now · ${serverName(e.server_id)}` : <><RelativeTime iso={e.starts_at} /> · {serverName(e.server_id)}</>} live={eventStatus(e) === "live"} className={ROW} /></li>
                   ))}
                 </ul>
               ) : (
@@ -196,6 +196,10 @@ export function PulseHome({ servers, events, eventsUnavailable, fresh, conversat
               </div>
             </BentoTile>
           </BentoGrid>
+          <h2 className="sr-only">Updates and Moments</h2>
+          {!fresh && started}
+          <WhatsNew />
+          <MomentsStrip />
         </div>
       </div>
     </section>
