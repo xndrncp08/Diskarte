@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, type ReactNode } from "react";
+import { useShellKind } from "@/components/shell/ShellKind";
 import { useShellUI } from "@/components/shell/ShellUI";
 import { cn } from "@/lib/utils";
 import { ResizeHandle } from "./ResizeHandle";
@@ -22,6 +23,7 @@ export interface WorkspacePanelProps {
  * the remaining width.
  */
 export function WorkspacePanel({ id, title, children, className }: WorkspacePanelProps) {
+  const shell = useShellKind();
   const { navOpen } = useShellUI();
   const [layout, setLayout] = useLayout();
   const desktop = useIsCanvas();
@@ -29,6 +31,16 @@ export function WorkspacePanel({ id, title, children, className }: WorkspacePane
   const panel = useFloatingPanel(id, ref);
   const controls = panel.floating && <FloatingPanelControls title={title} panel={panel} />;
   const content = <div className="flex min-h-0 min-w-0 flex-1">{children}</div>;
+
+  // Pulse: the shell's Spaces navigator owns navigation, so a page's nav column renders nothing; main is the canvas.
+  if (shell === "pulse") {
+    if (id === "nav") return null;
+    return (
+      <main id="main-content" tabIndex={-1} inert={navOpen && !desktop} aria-label={title} data-panel="main" className={cn("relative flex min-h-0 min-w-0 flex-1 flex-col bg-pulse-surface text-pulse-text outline-none md:my-2 md:mr-2 md:overflow-hidden md:rounded-pulse-card md:border md:border-pulse-line md:shadow-pulse-1", className)}>
+        {content}
+      </main>
+    );
+  }
 
   if (id === "main") {
     return (

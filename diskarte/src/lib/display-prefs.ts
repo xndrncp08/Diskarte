@@ -23,6 +23,23 @@ export interface DisplayPrefs {
   colorMode: "dark" | "light" | "system";
   language: "en" | "fil";
   timeZone: string;
+  /** Pulse navigator pins ("space:<id>", "dm:<id>"). Absent until something is pinned, so Classic prefs never change shape. */
+  pins?: string[];
+}
+
+export const MAX_PINS = 20;
+const PIN = /^(space|dm):[0-9a-f-]{36}$/;
+
+/** Valid, de-duplicated pins (at most MAX_PINS); nothing at all when there are none. */
+function parsePins(value: unknown): { pins?: string[] } {
+  const pins = Array.isArray(value) ? [...new Set(value.filter((p): p is string => typeof p === "string" && PIN.test(p)))].slice(0, MAX_PINS) : [];
+  return pins.length ? { pins } : {};
+}
+
+/** Pins or unpins a Space or conversation in the Pulse navigator (saved with the display prefs, so it syncs across devices). */
+export function togglePin(pin: string) {
+  const pins = readDisplayPrefs().pins ?? [];
+  setDisplayPrefs({ pins: pins.includes(pin) ? pins.filter((p) => p !== pin) : [...pins, pin].slice(-MAX_PINS) });
 }
 
 export const FONT_SIZES = [12, 14, 15, 16, 18, 20] as const;
@@ -71,6 +88,7 @@ export function parseDisplayPrefs(raw: string | null): DisplayPrefs {
       colorMode: v.colorMode === "light" || v.colorMode === "system" ? v.colorMode : "dark",
       language: v.language === "fil" ? "fil" : "en",
       timeZone: validTimeZone(v.timeZone) ? v.timeZone : "system",
+      ...parsePins(v.pins),
     };
   } catch {
     return DEFAULT_DISPLAY_PREFS;

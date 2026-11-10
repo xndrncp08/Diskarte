@@ -3,6 +3,7 @@
 import { AnimatePresence } from "framer-motion";
 import { Ban, BellRing, Clock, Crown, PictureInPicture2, Shield, ShieldCheck, UserMinus, UserRound } from "lucide-react";
 import { useEffect, useRef, useState, useTransition, type ReactNode, type RefObject } from "react";
+import { useShellKind } from "@/components/shell/ShellKind";
 import { toast } from "sonner";
 import { banMemberAction, setBadgeAction } from "@/actions/moderation";
 import { kickMemberAction, setMemberRoleAction } from "@/actions/servers";
@@ -375,8 +376,13 @@ function MemberProfileWindows() {
   });
 }
 
+// Pulse's Context sheet renders the roster a page at a time (HQ has everyone); Classic renders all of it.
+const PULSE_PAGE = 100;
+
 export function MemberList() {
   const { members, presence, server } = useServer();
+  const pageSize = useShellKind() === "pulse" ? PULSE_PAGE : undefined;
+  const [limit, setLimit] = useState(pageSize ?? Infinity);
 
   const sorted = [...members].sort(
     (a, b) =>
@@ -392,10 +398,17 @@ export function MemberList() {
     if (list.length) groups.push({ label: `${ROLE_LABEL[role]}s — ${list.length}`, list, dim: false });
   }
   if (offline.length) groups.push({ label: `Offline — ${offline.length}`, list: offline, dim: true });
+  // Rows left to render after each group (Infinity in Classic, so nothing is cut).
+  let budget = limit;
+  const shown = groups.map((group) => {
+    const list = group.list.slice(0, Math.max(0, budget));
+    budget -= list.length;
+    return { ...group, list };
+  });
 
   return (
     <aside aria-label="Members" className="scrollbar-thin h-full w-full overflow-y-auto px-2 py-4" data-testid="member-list">
-      {groups.map((group) => (
+      {shown.map((group) => group.list.length > 0 && (
         <section key={group.label} className="mb-4">
           <h3 className="mb-1 px-2 font-silk text-[11px] uppercase tracking-wider text-slate-400">{group.label}</h3>
           <ul className="space-y-0.5">
@@ -405,6 +418,11 @@ export function MemberList() {
           </ul>
         </section>
       ))}
+      {pageSize && members.length > limit && (
+        <button type="button" onClick={() => setLimit((n) => n + pageSize)} className="mx-2 min-h-11 rounded-md px-3 text-sm font-semibold underline underline-offset-4">
+          Show more members ({members.length - limit} more)
+        </button>
+      )}
       <MemberProfileWindows />
     </aside>
   );

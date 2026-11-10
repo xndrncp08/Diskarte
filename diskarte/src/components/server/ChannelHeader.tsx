@@ -3,6 +3,9 @@
 import { Hash, Menu as MenuIcon, MessagesSquare, Users, Volume2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { SearchBox } from "@/components/chat/SearchBox";
+import { useOptionalServer } from "@/components/providers/ServerProvider";
+import { Masthead } from "@/components/pulse/shell/Masthead";
+import { useShellKind } from "@/components/shell/ShellKind";
 import { useShellUI } from "@/components/shell/ShellUI";
 import { Tooltip } from "@/components/ui/Tooltip";
 import type { Channel } from "@/lib/servers";
@@ -10,7 +13,23 @@ import { cn } from "@/lib/utils";
 
 export function ChannelHeader({ channel, actions }: { channel: Channel; actions?: ReactNode }) {
   const { setNavOpen, membersOpen, setMembersOpen } = useShellUI();
+  const shell = useShellKind();
+  const space = useOptionalServer();
   const Icon = channel.type === "voice" ? Volume2 : channel.type === "forum" ? MessagesSquare : Hash;
+  if (shell === "pulse") {
+    const count = space ? `${space.members.length} member${space.members.length === 1 ? "" : "s"}` : null;
+    return (
+      <Masthead
+        eyebrow={space?.server.name}
+        title={channel.name}
+        titleTestId="channel-title"
+        description={[channel.topic, count].filter(Boolean).join(" · ") || undefined}
+        icon={<Icon />}
+        actions={<>{actions}<SearchBox /></>}
+        context
+      />
+    );
+  }
   return (
     <header className="page-header">
       <button type="button" onClick={() => setNavOpen(true)} aria-label="Open navigation" className="touch-target relative rounded-md p-1.5 text-slate-300 hover:bg-white/10 md:hidden">

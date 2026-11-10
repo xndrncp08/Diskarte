@@ -38,6 +38,7 @@ import {
 import { PrivacySettings } from "@/components/profile/PrivacySettings";
 import { SoundSettings } from "@/components/profile/SoundSettings";
 import { ThemePicker } from "@/components/profile/ThemePicker";
+import { ShellPreviewToggle } from "@/components/profile/ShellPreviewToggle";
 import { PwaSettings } from "@/components/profile/PwaSettings";
 import { ConnectionDiagnostics } from "@/components/profile/ConnectionDiagnostics";
 import { AccountSyncStatus } from "@/components/profile/AccountPreferencesSync";
@@ -226,6 +227,7 @@ export function SettingsPanels({
               <h3 className="text-sm font-semibold text-white">Theme</h3>
               <ThemePicker className="max-w-md" />
             </section>
+            <ShellPreviewToggle />
           </>
         ) : tab === "chat" ? (
           <>
