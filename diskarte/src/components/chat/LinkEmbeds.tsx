@@ -33,7 +33,7 @@ function Embed({ url }: { url: string }) {
   if (!preview) return null;
   const imageOnly = !preview.title && !preview.description;
   return (
-    <article className="mt-1.5 max-w-md overflow-hidden rounded-lg border-l-4 border-white/20 bg-black/30 p-3" style={preview.color ? { borderLeftColor: preview.color } : undefined} data-testid="link-embed">
+    <article className="chat-card mt-1.5 max-w-md overflow-hidden rounded-lg border-l-4 border-white/20 bg-black/30 p-3" style={preview.color ? { borderLeftColor: preview.color } : undefined} data-testid="link-embed">
       {!imageOnly && (
         <>
           {preview.siteName && <p className="mb-0.5 truncate text-xs text-slate-400">{preview.siteName}</p>}

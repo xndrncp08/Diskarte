@@ -10,6 +10,21 @@ export function isGroupedWithPrevious(prev: MessageWithAuthor | undefined, curre
   return gap >= 0 && gap < GROUP_WINDOW_MS && sameDay(prev.created_at, current.created_at);
 }
 
+/**
+ * Pulse transcript: the first message after your read position that someone else sent (where the "New" line goes),
+ * or -1. Your own and unsent messages never start it.
+ */
+export function firstUnreadIndex(messages: readonly { author_id: string | null; created_at: string; pending?: boolean }[], readAt: string | null | undefined, meId: string): number {
+  if (!readAt) return -1;
+  const read = Date.parse(readAt);
+  return messages.findIndex((m) => m.author_id !== meId && !m.pending && Date.parse(m.created_at) > read);
+}
+
+/** Pulse margin grouping: a row shares the previous row's margin (no repeated name and time) unless the "New" line sits between them. */
+export function sharesMargin(messages: readonly MessageWithAuthor[], index: number, unreadIndex: number) {
+  return index !== unreadIndex && isGroupedWithPrevious(messages[index - 1], messages[index]);
+}
+
 /** Same calendar day in Philippine time (stable between server and client renders). */
 export function sameDay(a: string, b: string) {
   return dayKey(new Date(a), SERVER_TIME_ZONE) === dayKey(new Date(b), SERVER_TIME_ZONE);

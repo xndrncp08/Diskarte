@@ -19,7 +19,8 @@ import { mentionsUser, useChannelChat, type ChatMessage } from "@/hooks/useChann
 import { useConversationScroll } from "@/hooks/useConversationScroll";
 import { useTimedOut } from "@/hooks/useTimedOut";
 import { useTyping } from "@/hooks/useTyping";
-import { isGroupedWithPrevious, sameDay } from "@/lib/chat-format";
+import { useMessageRoving } from "@/hooks/useMessageRoving";
+import { firstUnreadIndex, sameDay, sharesMargin } from "@/lib/chat-format";
 import { READ_ONLY_NOTICE, VERIFY_NOTICE, type MessageWithAuthor, type Reaction } from "@/lib/messages";
 import { hasRole, type Channel } from "@/lib/servers";
 import { cn } from "@/lib/utils";
@@ -35,7 +36,7 @@ import { ReminderDialog } from "./Reminders";
 import { ScheduledBar } from "./ScheduledMessages";
 import { RulesGate } from "@/components/server/RulesGate";
 import { ThreadPanel } from "./ThreadPanel";
-import { Timestamp } from "./Timestamp";
+import { DaySeparator, UnreadLine, useReadPosition } from "./Transcript";
 const MessageContext = dynamic(() => import("./MessageContext").then((m) => m.MessageContext), { ssr: false });
 
 const NO_REACTIONS: Reaction[] = [];
@@ -148,6 +149,11 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
   );
   const markUnread = unreads?.markUnread;
 
+  // Pulse: the "New" line above the first message that was unread when you opened the channel, and the log's roving focus.
+  const readAt = useReadPosition(channel.id, unreads?.channels.get(channel.id)?.readAt, chat.messages.at(-1)?.created_at);
+  const unreadAt = pulse ? firstUnreadIndex(chat.messages, readAt, me.id) : -1;
+  const roving = useMessageRoving(messageKeys, (key) => listRef.current?.scrollToKey(key));
+
   const actions = useMemo<MessageActions>(
     () => ({
       onReply: (m) => setReplyTo(m),
@@ -224,6 +230,7 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
           ref={listRef}
           onScroll={onScroll}
           keys={messageKeys}
+          roving={pulse ? roving : undefined}
           header={
             chat.hasMore ? (
               <div className="flex justify-center py-4 text-slate-500">
@@ -234,14 +241,14 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
                 )}
               </div>
             ) : (
-              <div className="px-4 pb-2 pt-10">
+              <div className={pulse ? "px-3 pb-2 pt-8 md:px-5" : "px-4 pb-2 pt-10"}>
                 {/* Pulse: the masthead leads; the welcome is a quiet note under it. */}
                 {!pulse && (
                   <span className="mb-3 flex size-16 items-center justify-center rounded-full bg-white/10">
                     <Hash className="size-9 text-white" aria-hidden />
                   </span>
                 )}
-                <h2 className={pulse ? "text-lg font-semibold text-white" : "text-3xl font-extrabold text-white"}>Welcome to #{channel.name}!</h2>
+                <h2 className={pulse ? "font-pulse-display text-pulse-title font-semibold text-pulse-text" : "text-3xl font-extrabold text-white"}>Welcome to #{channel.name}!</h2>
                 <p className="text-slate-400">{channel.topic || "This is the start of the channel."}</p>
               </div>
             )
@@ -252,16 +259,11 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
             const newDay = !prev || !sameDay(prev.created_at, m.created_at);
             return (
               <>
-                {newDay && (
-                  <div className="mx-4 my-4 flex items-center gap-2" role="separator">
-                    <span className="h-px flex-1 bg-white/10" />
-                    <Timestamp iso={m.created_at} variant="day" className="font-silk text-[10px] uppercase tracking-wider text-slate-500" />
-                    <span className="h-px flex-1 bg-white/10" />
-                  </div>
-                )}
+                {newDay && <DaySeparator iso={m.created_at} />}
+                {i === unreadAt && <UnreadLine iso={m.created_at} />}
                 <MessageItem
                   message={m}
-                  grouped={!newDay && isGroupedWithPrevious(prev, m)}
+                  grouped={!newDay && sharesMargin(chat.messages, i, unreadAt)}
                   replyTo={m.reply_to_id ? (byId.get(m.reply_to_id) ?? null) : undefined}
                   reactions={chat.reactions.get(m.id) ?? NO_REACTIONS}
                   meId={me.id}
@@ -272,6 +274,7 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
                   active={activeId === m.id}
                   onActivate={setActiveId}
                   actions={actions}
+                  tabStop={pulse && roving.tabStop === m.id}
                 />
               </>
             );
@@ -282,7 +285,10 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
           <button
             type="button"
             onClick={scrollToBottom}
-            className="absolute bottom-24 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-sun px-3 py-1.5 text-xs font-bold text-abyss shadow-lg"
+            className={cn(
+              "absolute bottom-24 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold",
+              pulse ? "min-h-9 bg-pulse-accent font-pulse-text text-pulse-on-accent shadow-pulse-2 pointer-coarse:min-h-11 md:bottom-32" : "bg-sun text-abyss shadow-lg",
+            )}
           >
             <ArrowDown className="size-3.5" aria-hidden />
             {unseen > 0 ? `${unseen} new message${unseen === 1 ? "" : "s"}` : "Jump to present"}

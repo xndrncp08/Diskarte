@@ -271,3 +271,75 @@ html[data-shell="pulse"]:not([data-high-contrast]) :focus-visible {
 :root[data-shell="pulse"] .mobile-navigation [aria-current="page"] {
   color: var(--pulse-accent-ink);
 }
+
+/* ---------- Messaging (docs/design/pulse-messaging.md) ---------- */
+
+/* The inline action row under a message: hidden at rest; shown on keyboard focus straight away, while one of its
+   popups is open, and on hover once the pointer rests (180 ms) so sweeping past messages doesn't reflow the log. */
+:root[data-shell="pulse"] .pulse-msg-actions {
+  display: none;
+}
+@media (hover: hover) {
+  :root[data-shell="pulse"] .pulse-msg:hover .pulse-msg-actions {
+    display: flex;
+    transition: display 0s 180ms allow-discrete;
+  }
+}
+:root[data-shell="pulse"] .pulse-msg:is(:focus-visible, :has(:focus-visible), :has([aria-expanded="true"])) .pulse-msg-actions {
+  display: flex;
+  transition: none;
+}
+
+/* Message text: Figtree at the reading size with a comfortable line height, Pulse ink for emphasis and links. */
+:root[data-shell="pulse"] .chat-markdown {
+  line-height: 1.55;
+}
+:root[data-shell="pulse"] .chat-markdown :is(strong, h1, h2, h3) {
+  color: var(--pulse-text);
+}
+:root[data-shell="pulse"] .chat-markdown :is(h1, h2, h3) {
+  font-family: var(--pulse-font-display);
+}
+:root[data-shell="pulse"] :is(.chat-markdown a, .chat-card a, a.chat-card) {
+  color: var(--pulse-accent-ink);
+}
+:root[data-shell="pulse"] .chat-markdown blockquote {
+  color: var(--pulse-text-muted);
+  border-color: var(--pulse-line-strong);
+}
+:root[data-shell="pulse"] .chat-markdown :is(th, td) {
+  border-color: var(--pulse-line);
+}
+:root[data-shell="pulse"] .chat-markdown .callout {
+  background: color-mix(in srgb, var(--callout) 10%, var(--pulse-raised));
+  backdrop-filter: none;
+  box-shadow: none;
+}
+/* Code: the code surface token, mono, readable in both modes. */
+:root[data-shell="pulse"] .chat-markdown :not(pre) > code {
+  color: var(--pulse-text);
+  background: var(--pulse-code);
+  border-color: var(--pulse-line);
+}
+:root[data-shell="pulse"] .chat-markdown pre {
+  color: var(--pulse-text);
+  background: var(--pulse-code);
+  border-color: var(--pulse-line);
+  border-left-color: var(--pulse-accent-mark);
+  border-radius: var(--pulse-radius-item);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+/* Paper: the dark-ground highlight colours are too light on the raised code surface (each is at least 4.5:1 on #efede7). */
+:root[data-shell="pulse"][data-color-mode="light"] .chat-markdown pre :is(.hljs-comment, .hljs-quote) { color: #5f596a; }
+:root[data-shell="pulse"][data-color-mode="light"] .chat-markdown pre :is(.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-section, .hljs-link) { color: #7a4f00; }
+:root[data-shell="pulse"][data-color-mode="light"] .chat-markdown pre :is(.hljs-string, .hljs-title, .hljs-name, .hljs-type, .hljs-attribute, .hljs-symbol, .hljs-bullet, .hljs-addition, .hljs-variable, .hljs-template-tag, .hljs-template-variable) { color: #1d6b3c; }
+:root[data-shell="pulse"][data-color-mode="light"] .chat-markdown pre :is(.hljs-number, .hljs-meta, .hljs-built_in, .hljs-params) { color: #0b5a87; }
+:root[data-shell="pulse"][data-color-mode="light"] .chat-markdown pre .hljs-deletion { color: #b42d24; }
+
+/* Attachments, voice notes and link previews: raised cards on the line token instead of Classic's dark glass. */
+:root[data-shell="pulse"] .chat-card {
+  background: var(--pulse-raised);
+  border-color: var(--pulse-line);
+  border-radius: var(--pulse-radius-item);
+}

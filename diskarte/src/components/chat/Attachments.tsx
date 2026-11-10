@@ -47,7 +47,7 @@ export function Attachments({ attachments }: { attachments: Attachment[] }) {
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => open(a.path, e)}
-            className="flex w-fit max-w-sm items-center gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-sky-300 hover:underline"
+            className="chat-card flex w-fit max-w-sm items-center gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-sky-300 hover:underline"
           >
             {isVideoAttachment(a) ? <Film className="size-4 shrink-0" aria-hidden /> : <ImageIcon className="size-4 shrink-0" aria-hidden />}
             <span className="min-w-0 truncate">{a.name}</span>
@@ -114,7 +114,7 @@ export function Attachments({ attachments }: { attachments: Attachment[] }) {
         </div>
       ))}
       {audio.map((a) => (
-        <div key={a.path} className="flex max-w-sm flex-col gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2">
+        <div key={a.path} className="chat-card flex max-w-sm flex-col gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2">
           <div className="flex items-center gap-2">
             {a.voice ? <Mic className="size-5 shrink-0 text-sun" aria-hidden /> : <Music className="size-5 shrink-0 text-sun" aria-hidden />}
             <p className="min-w-0 flex-1 truncate text-sm font-medium text-slate-200">{a.voice ? "Voice message" : a.name}</p>

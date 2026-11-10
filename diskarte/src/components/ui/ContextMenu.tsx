@@ -65,6 +65,8 @@ export interface ContextMenuState {
   /** The element the menu was opened from: an anchor for windows its items open. */
   target: HTMLElement | null;
   close: (restoreFocus?: boolean) => void;
+  /** Opens the menu under an element (a "More…" button); focus returns to it on close. */
+  openFrom: (el: HTMLElement) => void;
   /** Spread onto the element people right-click / long-press / Shift+F10 on. */
   triggerProps: {
     "data-context-menu": "";
@@ -181,10 +183,18 @@ export function useContextMenu({ disabled = false }: { disabled?: boolean } = {}
     },
   };
 
-  return { point: open?.point ?? null, target: open?.target ?? null, close, triggerProps };
+  const openFrom = (el: HTMLElement) => {
+    if (disabled) return;
+    const rect = el.getBoundingClientRect();
+    openAt(rect.left, rect.bottom, el, true);
+  };
+
+  return { point: open?.point ?? null, target: open?.target ?? null, close, openFrom, triggerProps };
 }
 
 const PickContext = createContext<() => void>(() => undefined);
+/** Provide it around menu rows rendered outside <ContextMenu> (the Pulse touch sheet) so picking a row closes that container. */
+export const ContextMenuPickContext = PickContext;
 
 /**
  * The menu panel, portalled to <body> at the pointer. `children` (usually <ContextMenuItems>, or a

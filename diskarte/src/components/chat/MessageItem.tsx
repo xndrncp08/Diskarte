@@ -1,11 +1,15 @@
 "use client";
 
 import { HQ_SERVER_ID, UPDATES_NAME } from "@/lib/admin";
-import { AlarmClock, Bookmark, BookmarkX, Clock, Copy, CornerUpLeft, Forward, MailOpen, MessagesSquare, Pencil, Pin, PinOff, RotateCw, Trash2, Webhook, X } from "lucide-react";
+import { AlarmClock, Bookmark, BookmarkX, Clock, Copy, CornerUpLeft, Forward, MailOpen, MessagesSquare, MoreHorizontal, Pencil, Pin, PinOff, RotateCw, Trash2, Webhook, X } from "lucide-react";
 import { memo, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { PersonContextMenu } from "@/components/social/PersonMenu";
-import { ContextMenu, ContextMenuItems, copyText, useContextMenu, useContextMenuPick } from "@/components/ui/ContextMenu";
+import { Button as PulseButton } from "@/components/pulse/Button";
+import { Toolbar } from "@/components/pulse/Controls";
+import { Sheet } from "@/components/pulse/Dialog";
+import { useShellKind } from "@/components/shell/ShellKind";
+import { ContextMenu, ContextMenuItems, ContextMenuPickContext, copyText, useContextMenu, useContextMenuPick } from "@/components/ui/ContextMenu";
 import { Glyph } from "@/components/ui/Glyph";
 import type { MenuItem } from "@/components/ui/Menu";
 import type { ChatMessage } from "@/hooks/useChannelChat";
@@ -66,7 +70,10 @@ function ToolbarButton({ label, onClick, children, danger = false }: { label: st
   );
 }
 
-function EditBox({ initial, onSave, onCancel }: { initial: string; onSave: (value: string) => void; onCancel: () => void }) {
+/** The React picker's trigger, dressed as a Pulse quiet small button to match the rest of the action row. */
+const PULSE_ACTION = "inline-flex h-8 items-center gap-1.5 rounded-pulse-control px-3 font-pulse-text text-pulse-label font-semibold text-pulse-muted hover:bg-pulse-hover hover:text-pulse-text pointer-coarse:min-h-11";
+
+function EditBox({ initial, onSave, onCancel, pulse = false }: { initial: string; onSave: (value: string) => void; onCancel: () => void; pulse?: boolean }) {
   const [value, setValue] = useState(initial);
   const ref = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
@@ -81,6 +88,29 @@ function EditBox({ initial, onSave, onCancel }: { initial: string; onSave: (valu
       e.preventDefault();
       onSave(value);
     }
+  }
+  if (pulse) {
+    // Ticket stub, like the reply above the composer: "Editing" on a tab with a dashed top edge, the field under it.
+    return (
+      <div className="mt-1 rounded-pulse-item border border-t-2 border-pulse-line border-t-pulse-line-strong border-dashed bg-pulse-raised p-2 font-pulse-text">
+        <p className="mb-1 flex items-center gap-1.5 text-pulse-caption font-semibold text-pulse-muted">
+          <Pencil className="size-3" aria-hidden /> Editing
+        </p>
+        <textarea
+          ref={ref}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={onKeyDown}
+          aria-label="Edit message"
+          rows={Math.min(8, value.split("\n").length + 1)}
+          className="w-full resize-none rounded-pulse-control border border-pulse-input bg-pulse-surface px-3 py-2 text-base text-pulse-text outline-none focus-visible:outline-2 md:text-pulse-body"
+        />
+        <p className="mt-1 flex flex-wrap items-center gap-x-1 text-pulse-caption text-pulse-muted">
+          Escape to <button type="button" className="font-semibold text-pulse-accent-ink hover:underline pointer-coarse:min-h-11" onClick={onCancel}>cancel</button> · Enter to
+          <button type="button" className="font-semibold text-pulse-accent-ink hover:underline pointer-coarse:min-h-11" onClick={() => onSave(value)}>save</button>
+        </p>
+      </div>
+    );
   }
   return (
     <div className="mt-1">
@@ -223,6 +253,7 @@ export const MessageItem = memo(function MessageItem({
   setEditing,
   actions,
   interactive = true,
+  tabStop = false,
 }: {
   message: ChatMessage;
   grouped: boolean;
@@ -239,7 +270,10 @@ export const MessageItem = memo(function MessageItem({
   actions: MessageActions;
   /** False for a read-only preview (a thread's root message): no right-click menu. */
   interactive?: boolean;
+  /** Pulse: this message is the log's single Tab stop (useMessageRoving). */
+  tabStop?: boolean;
 }) {
+  const pulse = useShellKind() === "pulse";
   const mine = message.author_id === meId;
   const { reactions: showReactions, embeds } = useDisplayPrefs();
   // A message that's only a GIF link shows the GIF alone (the link stays visible if previews are off).
@@ -250,6 +284,172 @@ export const MessageItem = memo(function MessageItem({
   const name = message.author?.display_name ?? message.webhook_name ?? "Deleted user";
   // Only the release publisher posts as Diskarte Updates in Diskarte HQ (members can't set webhook names there).
   const official = !message.author && message.webhook_name === UPDATES_NAME && message.server_id === HQ_SERVER_ID;
+
+  const settled = !message.pending && !message.failed && !message.queued;
+  if (pulse) {
+    // A long-press on a touch screen opens the actions in a bottom sheet instead of a floating menu.
+    const sheet = menu.point !== null && Boolean(window.matchMedia?.("(pointer: coarse)").matches);
+    const menuItems = <MessageMenuItems message={message} mine={mine} canModerate={canModerate} actions={actions} setEditing={setEditing} />;
+    const marginTime = <Timestamp iso={message.created_at} variant="time" className="block text-pulse-caption text-pulse-muted" />;
+    return (
+      <article
+        id={`message-${message.id}`}
+        aria-label={`${name}${mentioned ? " (mentions you)" : ""}: ${message.content.slice(0, 80)}`}
+        data-testid="message"
+        data-message-id={message.id}
+        data-grouped={String(grouped)}
+        tabIndex={interactive ? (tabStop ? 0 : -1) : undefined}
+        {...menu.triggerProps}
+        onPointerDown={(e) => { menu.triggerProps.onPointerDown(e); swipe.onPointerDown(e); }}
+        onPointerMove={(e) => { menu.triggerProps.onPointerMove(e); swipe.onPointerMove(e); }}
+        onPointerUp={(e) => { menu.triggerProps.onPointerUp(); swipe.onPointerUp(e); }}
+        onPointerCancel={(e) => { menu.triggerProps.onPointerCancel(); swipe.onPointerCancel(e); }}
+        className={cn(
+          // Margin transcript: author and time in a right-aligned margin, the message in the column beside it.
+          "pulse-msg group relative grid touch-pan-y grid-cols-[4.5rem_minmax(0,1fr)] gap-x-3 rounded-pulse-control px-3 font-pulse-text text-pulse-text -outline-offset-2 md:grid-cols-[6.5rem_minmax(0,1fr)] md:gap-x-4 md:px-5",
+          grouped ? "py-0.5" : "mt-2 pb-0.5 pt-1.5",
+          // Mentions: the alert tint plus an edge bar (shape) and "mentions you" for screen readers, never colour alone.
+          mentioned ? "bg-pulse-mention shadow-[inset_3px_0_0_var(--pulse-alert)]" : "hover:bg-pulse-hover",
+          (message.pending || message.queued) && "opacity-60",
+        )}
+      >
+        <div className="min-w-0 pt-px text-right" data-message-margin="">
+          {grouped ? (
+            <span className="invisible group-hover:visible group-focus-within:visible">{marginTime}</span>
+          ) : (
+            <>
+              <Author message={message} actions={actions} className="block w-full truncate text-right text-pulse-label font-semibold text-pulse-text">
+                {name}
+              </Author>
+              {marginTime}
+              {!message.author && message.webhook_name && <span className="mt-0.5 inline-block rounded-pulse-control border border-pulse-line px-1 text-pulse-caption text-pulse-muted">{official ? "Official" : "Webhook"}</span>}
+            </>
+          )}
+        </div>
+
+        <div className="min-w-0">
+          {replyTo !== undefined && message.reply_to_id && (
+            <button
+              type="button"
+              onClick={() => replyTo && actions.onJump(replyTo.id)}
+              // Ticket stub: the quoted message sits on a raised tab with a dashed (torn) top edge.
+              className="mb-1 flex max-w-full items-center gap-1.5 rounded-b-pulse-control border-t-2 border-dashed border-pulse-line-strong bg-pulse-raised px-2 py-0.5 text-left text-pulse-label text-pulse-muted hover:text-pulse-text pointer-coarse:min-h-11"
+              data-reply-stub=""
+            >
+              <CornerUpLeft className="size-3.5 shrink-0" aria-hidden />
+              {replyTo ? (
+                <>
+                  <span className="shrink-0 whitespace-nowrap font-semibold text-pulse-text">{replyTo.author?.display_name ?? replyTo.webhook_name ?? "Deleted user"}</span>
+                  <span className="truncate">{previewText(replyTo.content) || (replyTo.sticker ? "Sticker" : "Attachment")}</span>
+                </>
+              ) : (
+                <span className="italic">Original message unavailable</span>
+              )}
+            </button>
+          )}
+          {message.sticker && <Sticker id={message.sticker} size={144} className="mt-1" />}
+          {editing ? (
+            <EditBox
+              pulse
+              initial={message.content}
+              onCancel={() => setEditing(null)}
+              onSave={async (value) => {
+                if (value.trim() === message.content.trim()) return setEditing(null);
+                if (!value.trim() && attachments.length === 0) {
+                  setEditing(null);
+                  return actions.onDelete(message, false);
+                }
+                if (await actions.onEdit(message.id, value)) setEditing(null);
+              }}
+            />
+          ) : (
+            (message.content || message.pinned) && (
+              <div className="flex flex-wrap items-end gap-x-2 gap-y-0.5">
+                {message.content && !gifOnly && <MessageMarkdown content={message.content} />}
+                {message.edited_at && <EditedMark pulse messageId={message.id} current={message.content} editedAt={message.edited_at} canView={(mine || canModerate) && "channel_id" in message} />}
+                {message.pinned && (
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-pulse-control border border-pulse-line px-1 text-pulse-caption text-pulse-muted">
+                    <Pin className="size-3 text-pulse-accent-ink" aria-hidden /> Pinned
+                  </span>
+                )}
+              </div>
+            )
+          )}
+          <Attachments attachments={attachments} />
+          {!editing && message.content && <LinkEmbeds content={message.content} />}
+          {"has_poll" in message && message.has_poll && "channel_id" in message && <PollCard messageId={message.id} channelId={message.channel_id} />}
+          {actions.onReact && showReactions && <ReactionBar reactions={reactions} meId={meId} onToggle={(emoji) => actions.onReact?.(message.id, emoji)} names={actions.nameOf} />}
+          {actions.onOpenThread && message.thread_reply_count > 0 && (
+            <button
+              type="button"
+              onClick={() => actions.onOpenThread?.(message)}
+              className="mt-1 inline-flex min-h-8 items-center gap-1.5 rounded-pulse-control border border-pulse-line px-2 text-pulse-label font-semibold text-pulse-text transition-colors hover:bg-pulse-hover pointer-coarse:min-h-11"
+              data-testid="thread-chip"
+            >
+              <MessagesSquare className="size-3.5 text-pulse-accent-ink" aria-hidden />
+              {message.thread_reply_count} {message.thread_reply_count === 1 ? "reply" : "replies"}
+              {message.thread_last_reply_at && (
+                <span className="font-normal text-pulse-muted">
+                  · <Timestamp iso={message.thread_last_reply_at} variant="time" />
+                </span>
+              )}
+            </button>
+          )}
+          {message.queued && (
+            <p className="mt-1 flex items-center gap-1.5 text-pulse-caption text-pulse-muted" role="status">
+              <Clock className="size-3" aria-hidden /> Queued. It sends when your signal is back.
+              <button type="button" onClick={() => actions.onDiscard(message.id)} className="ml-1 font-semibold text-pulse-text underline-offset-2 hover:underline pointer-coarse:min-h-11">
+                Cancel
+              </button>
+            </p>
+          )}
+          {message.failed && (
+            <p className="mt-1 flex items-center gap-2 text-pulse-label text-pulse-alert" role="alert">
+              Couldn&apos;t send.
+              <button type="button" onClick={() => actions.onRetry(message)} className="inline-flex items-center gap-1 font-semibold hover:underline pointer-coarse:min-h-11">
+                <RotateCw className="size-3" aria-hidden /> Retry
+              </button>
+              <button type="button" onClick={() => actions.onDiscard(message.id)} className="inline-flex items-center gap-1 hover:underline pointer-coarse:min-h-11">
+                <X className="size-3" aria-hidden /> Discard
+              </button>
+            </p>
+          )}
+          {settled && !editing && interactive && (
+            // Inline action row under the message: shown on hover (after a short rest) and on keyboard focus (pulse.css).
+            <Toolbar label="Message actions" className="pulse-msg-actions mt-1 flex-wrap gap-0.5">
+              <PulseButton variant="quiet" size="sm" icon={<CornerUpLeft />} onClick={() => actions.onReply(message)}>
+                Reply
+              </PulseButton>
+              {actions.onReact && (
+                <EmojiPicker onPick={(emoji) => actions.onReact?.(message.id, emoji)} placement="bottom" align="start" label="React" triggerClassName={PULSE_ACTION}>
+                  React
+                </EmojiPicker>
+              )}
+              {actions.onOpenThread && !message.thread_id && (
+                <PulseButton variant="quiet" size="sm" icon={<MessagesSquare />} onClick={() => actions.onOpenThread?.(message)}>
+                  Thread
+                </PulseButton>
+              )}
+              <PulseButton variant="quiet" size="sm" icon={<MoreHorizontal />} aria-haspopup="menu" aria-expanded={menu.point !== null} onClick={(e) => menu.openFrom(e.currentTarget)}>
+                More…
+              </PulseButton>
+            </Toolbar>
+          )}
+        </div>
+        {sheet ? (
+          <Sheet open onClose={() => menu.close()} title="Message actions">
+            <div role="menu" aria-label="Message options" className="-mx-2">
+              <ContextMenuPickContext.Provider value={() => menu.close()}>{menuItems}</ContextMenuPickContext.Provider>
+            </div>
+          </Sheet>
+        ) : (
+          <ContextMenu menu={menu} label="Message options">
+            {menuItems}
+          </ContextMenu>
+        )}
+      </article>
+    );
+  }
 
   return (
     <article

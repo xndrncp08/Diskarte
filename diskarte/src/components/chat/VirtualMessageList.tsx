@@ -1,7 +1,7 @@
 "use client";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState, type ReactNode, type UIEvent } from "react";
+import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState, type FocusEvent, type KeyboardEvent, type ReactNode, type UIEvent } from "react";
 
 export interface VirtualMessageListHandle {
   element: HTMLDivElement | null;
@@ -30,6 +30,8 @@ interface Props {
   renderItem: (index: number) => ReactNode;
   onScroll?: (event: UIEvent<HTMLDivElement>) => void;
   estimateSize?: number;
+  /** Pulse: the log's keyboard model (useMessageRoving). */
+  roving?: { tabStop: string | null; onKeyDown: (e: KeyboardEvent<HTMLElement>) => void; onFocus: (e: FocusEvent<HTMLElement>) => void };
 }
 
 /**
@@ -38,7 +40,7 @@ interface Props {
  * render (variable heights: markdown, attachments, reactions) and size changes above the viewport
  * are compensated so reading position never jumps.
  */
-export const VirtualMessageList = forwardRef<VirtualMessageListHandle, Props>(function VirtualMessageList({ keys, header, renderItem, onScroll, estimateSize = 64 }, ref) {
+export const VirtualMessageList = forwardRef<VirtualMessageListHandle, Props>(function VirtualMessageList({ keys, header, renderItem, onScroll, estimateSize = 64, roving }, ref) {
   const scroller = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLDivElement>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
@@ -116,7 +118,19 @@ export const VirtualMessageList = forwardRef<VirtualMessageListHandle, Props>(fu
   const items = virtualizer.getVirtualItems();
 
   return (
-    <div ref={scroller} onScroll={onScroll} className="scrollbar-thin flex-1 overflow-y-auto overscroll-contain" role="log" aria-live="polite" aria-relevant="additions" data-testid="message-list">
+    <div
+      ref={scroller}
+      onScroll={onScroll}
+      className="scrollbar-thin flex-1 overflow-y-auto overscroll-contain"
+      role="log"
+      aria-live="polite"
+      aria-relevant="additions"
+      data-testid="message-list"
+      // Roving focus: the log itself takes Tab only while its tab-stop message is scrolled out of the DOM.
+      tabIndex={roving && roving.tabStop !== null && !items.some((item) => keys[item.index] === roving.tabStop) ? 0 : undefined}
+      onKeyDown={roving?.onKeyDown}
+      onFocus={roving?.onFocus}
+    >
       <div>{header}</div>
       <div ref={list} className="relative w-full" style={{ height: virtualizer.getTotalSize() }} data-testid="message-rows" data-rendered={items.length}>
         {items.map((item) => (
