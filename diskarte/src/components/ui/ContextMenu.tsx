@@ -166,7 +166,11 @@ export function useContextMenu({ disabled = false }: { disabled?: boolean } = {}
           // The finger lifting after a long-press must not also "tap" the row underneath.
           swallowClick.current = true;
           // …nor whatever now covers it (a touch sheet's scrim, a menu row): drop the click that follows the finger lifting.
-          const swallow = (ev: Event) => { ev.preventDefault(); ev.stopPropagation(); };
+          // Only the next click, and only where the finger was (a tap elsewhere is a real tap).
+          const swallow = (ev: MouseEvent) => {
+            window.removeEventListener("click", swallow, true);
+            if (Math.hypot(ev.clientX - x, ev.clientY - y) <= LONG_PRESS_SLOP) { ev.preventDefault(); ev.stopPropagation(); }
+          };
           window.addEventListener("click", swallow, true);
           window.addEventListener("pointerup", () => setTimeout(() => window.removeEventListener("click", swallow, true)), { capture: true, once: true });
           navigator.vibrate?.(10);
