@@ -10,12 +10,13 @@ Built from the [Pulse components](pulse-components.md); the decision is
 
 - The `diskarte-shell` cookie picks the shell: `pulse`, or anything else (absent, `classic`, tampered) for Classic.
   Classic is the default and renders exactly as before.
-- **Server gate (preview):** the cookie counts only for super admins. `previewShell(cookie, platformRole)`
+- **Server gate:** `resolveShell(cookie, platformRole, publicOptIn)`
   ([`lib/shell.ts`](../../diskarte/src/lib/shell.ts)) is used by the tambayan layout and by the root layout's
-  `data-shell` (which looks the role up only when the cookie asks for Pulse, and falls back to Classic on any
-  error), so anyone else who sets the cookie by hand still gets Classic. The public opt-in comes in Step 7.
-- Super admins switch in **Settings → Appearance → Try the new Diskarte** (shown only for the server-provided
-  `super_admin` role).
+  `data-shell`. Public opt-in requires `DISKARTE_PULSE_ROLLOUT=opt-in`; without it only super admins can use the
+  preview, and a member who sets the cookie by hand still gets Classic. Missing or invalid cookies always select
+  Classic. The cookie chooses presentation; data requests retain their authorization checks.
+- Eligible users switch in **Settings → Appearance → Try the new Diskarte**. The server supplies rollout
+  availability; the browser does not decide it. See the [rollout gate](pulse-rollout.md).
 - Pulse's "You" menu has **Back to Classic**.
 - Switching calls `setShell` ([`lib/shell.ts`](../../diskarte/src/lib/shell.ts)): it flips `<html data-shell>`,
   writes the cookie and runs `router.refresh()`. No reload, so a call stays connected.
@@ -27,14 +28,21 @@ Built from the [Pulse components](pulse-components.md); the decision is
 app/(app)/layout.tsx           AdminAccessProvider (platform role) → SessionProviders (call, presence, social…)
 └─ app/(app)/tambayan/layout   reads the cookie
    └─ ShellProviders           admin access, ShellKind, layout, unreads, ShellUI, watchers, ConfirmHost
-      ├─ ClassicFrame          (Classic) rail + columns
-      └─ PulseShell            (Pulse) PulseUI, PulseMenuSkin, PulseTooltipSkin
-         ├─ Navigator          header, Home · People · Spaces, Jump to…, Pinned, the view
-         └─ canvas column      BroadcastBanner, CallStrip, the page (WorkspacePanel "main")
+      └─ AppFrame              one persistent frame; Pulse UI and skin providers stay mounted
+         ├─ navigation         Classic rail, or Pulse Navigator and resize handle
+         └─ content column     BroadcastBanner, Pulse CallStrip, persistent page slot, shell's phone navigation
 ```
 
-Only the frame inside `ShellProviders` changes on a switch, so the call (in `SessionProviders`), unread counts
-and the membership, DM and reminder watchers stay mounted (tested in `tests/ui/pulse-shell.test.tsx`).
+`AppFrame` (exported from `pulse/shell/PulseShell.tsx`) stays mounted when the shell changes. `ClassicFrame` and
+`PulseShell` remain wrappers for standalone uses; the app layout renders `AppFrame` directly. Pulse's UI, menu
+and tooltip providers stay mounted, with the skins active only in Pulse. The main page and its content slot also
+retain their identity. This preserves pending uploads and local conversation state as well as the call (in
+`SessionProviders`), unreads and membership/DM/reminder watchers. Swapping frame component types would remount the
+page and run Composer's upload cleanup, so retaining only the session providers is insufficient.
+
+Inline message edit text belongs to `MessageItem` rather than the shell-specific edit box, so changing the
+transcript markup does not reset an unsaved edit. Switching tests cover input node identity, local conversation
+state, pending uploads, inline edits and the existing call/watchers contract.
 
 ### Seams
 
@@ -59,7 +67,7 @@ Shared logic was lifted out of Classic components rather than copied: `useServer
 
 ### The Classic bridge
 
-Pages inside the canvas keep their Classic markup until Step 5. They read Classic tokens (`--color-midnight`,
+Shared pages and overlays still read Classic tokens (`--color-midnight`,
 `--color-white`, `--color-slate-*`…); inside Pulse, [`pulse.css`](../../diskarte/src/app/pulse.css) maps those
 to Pulse tokens so the text stays readable on Pulse surfaces in both modes. Accent tokens are untouched (the
 themes own them).
@@ -118,7 +126,7 @@ themes own them).
 | --- | --- | --- |
 | ⌘/Ctrl K | Anywhere | Jump to… (Go anywhere) |
 | ⌘/Ctrl ⇧ H, ⌘/Ctrl ⇧ M | Anywhere | Home, Messages |
-| Alt (Option) 1–9 | Anywhere but a text field, no dialog open | Open the 1st–9th Space (HQ first, then your order) on its last room. Not ⌘/Ctrl: browsers keep those for tabs. Matched on the key position (`Digit1`…), since Option + digit types a symbol on macOS. Listed in Settings → Keybinds for super admins |
+| Alt (Option) 1–9 | Anywhere but a text field, no dialog open | Open the 1st–9th Space (HQ first, then your order) on its last room. Not ⌘/Ctrl: browsers keep those for tabs. Matched on the key position (`Digit1`…), since Option + digit types a symbol on macOS. Listed in Settings → Keybinds when Pulse is available |
 | ↑ / ↓, Home / End | Navigator lists | Move between rows and their buttons (rooms included) |
 | Escape | Navigator | Back to the canvas (`#main-content`); on phones it closes the drawer |
 | ← / → | Home · People · Spaces, Context tabs | Move and select |
@@ -129,11 +137,11 @@ The skip link ("Skip to content") is the first Tab stop and lands on the canvas,
 
 ## Tests
 
-- `tests/ui/pulse-shell.test.tsx`: a shell switch keeps the call and ShellProviders mounted, WorkspacePanel's two
+- `tests/ui/pulse-shell.test.tsx`: shell-switch preservation, WorkspacePanel's two
   paths, RLS-scoped navigator data (no hidden rooms or their occupants, Control Center only for super admins),
   Alt 1–9 (and not Ctrl/⌘ or while typing), arrows and Escape, the Context tabs, `openContext("pinned")`, the
-  You menu rejoining presence after Invisible, and pin storage. `tests/ui/pulse-gate.test.tsx`: only super admins
-  get Pulse from the cookie.
+  You menu rejoining presence after Invisible, and pin storage. `tests/ui/pulse-gate.test.tsx` and
+  `tests/ui/pulse-opt-in.test.tsx`: server rollout eligibility, Classic by default and the public switch.
 - `tests/browser/pulse-shell.spec.ts`: axe (WCAG 2.2 AA) in dark and light at 390, 768, 1280 and 1440 px on six
   routes, the phone navigator and the Context sheet; no horizontal overflow; an h1 in `#main-content`; the skip
   link; the pinned Context column. Screenshots: `test-results/pulse-shell-*.png`.
@@ -149,8 +157,7 @@ cd diskarte && CI=1 npx playwright test --config playwright.experience.config.ts
   use the Masthead: see [Pulse communities and pages](pulse-communities.md). Other page bodies (Moments, the Workspace
   body, the Control Center body) keep their Classic look in the canvas.
 - No Media tab in the Context sheet: recent attachments need a new query (Step 5).
-- Phones: the navigator is a drawer and MobileNavigation's tabs stay; the Pulse phone design is Step 6
-  (the voice redesign is done: [Pulse voice](pulse-voice.md)).
+- Phones and voice have their Pulse paths: see [Pulse on phones](pulse-mobile.md) and [Pulse voice](pulse-voice.md).
 - Rooms can't be dragged to reorder in Pulse yet (moderators use Classic, or edit the channel).
 - Space-level live indicators only show your own call; other Spaces' voice activity needs the voice preview
   data per Space.

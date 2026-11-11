@@ -194,9 +194,10 @@ reload, so the call and session providers in the `(app)` layout stay mounted.
 the call when switching); a server-side flag per account (needs a migration and makes a stuck user
 unable to switch back in another browser); a `localStorage` flag (the server can't see it, so the
 first paint would flash the wrong shell).
-**Consequences.** Classic needs no changes and its tests prove it is untouched. Pulse fonts load only
-when Pulse styles use them. Until there is a visible switch, Pulse is reached by setting the cookie.
-The preference is per browser, like the theme; syncing it across devices would be a later decision.
+**Consequences.** Classic stays the default and shares the existing data and call providers. Pulse fonts load only
+when Pulse styles use them. The public switch is available only when the server's
+`DISKARTE_PULSE_ROLLOUT=opt-in` gate is enabled; otherwise the super-admin preview remains. The preference is
+per browser; syncing it across devices would be a later decision. See the [rollout gate](../design/pulse-rollout.md).
 
 ## 017. One frame mount, shell-aware seams
 
@@ -205,9 +206,11 @@ The preference is per browser, like the theme; syncing it across devices would b
 **Context.** The Pulse shell (Spaces navigator, canvas, Context sheet) has to wrap every existing page
 (Home, Explore, Search, Messages, Friends, DMs, channels, the Control Center) without duplicating their data
 loading, actions or permission checks, and switching shells must not drop a call or the unread state.
-**Decision.** `app/(app)/tambayan/layout.tsx` is the only place a frame is chosen: it reads the
-`diskarte-shell` cookie and renders `<PulseShell>` or `<ClassicFrame>` inside one shared `<ShellProviders>`
-(admin access, layout, unreads, shell toggles, watchers, confirm host), so a switch swaps only the frame.
+**Decision.** `app/(app)/tambayan/layout.tsx` resolves the cookie and server rollout eligibility, then renders
+one persistent `<AppFrame>` inside `<ShellProviders>` (admin access, layout, unreads, shell toggles, watchers,
+confirm host). `AppFrame`, exported from `pulse/shell/PulseShell.tsx`, changes navigation and styling without
+replacing the frame type or the page's content slot. Pulse UI/menu/tooltip providers stay mounted; their skins
+are active only for Pulse. `ClassicFrame` and `PulseShell` remain wrappers for standalone renders.
 Pages stay as they are. The seams they already use read a `ShellKindContext`: `WorkspacePanel` (nav renders
 nothing in Pulse, main is the canvas), `ChannelHeader` and `PageHeader` (the masthead), `RosterDrawer` (the
 Context sheet) and `MemberList` (paged). The open Space's rooms are rendered by `[serverId]/layout.tsx`, after
@@ -216,6 +219,9 @@ content inside Pulse reads Classic tokens, which `pulse.css` maps to Pulse ones 
 **Alternatives considered.** A parallel `(pulse)` route tree (every page and loader twice); having each page
 branch on the shell (dozens of edits, easy to miss one); the navigator fetching the Space's rooms itself (a
 second, client-side data path beside the RLS-scoped server bundle).
-**Consequences.** Classic renders exactly as before and its tests are unchanged. Pulse inherits every page,
-action and permission check, and shows only data the server layouts already loaded. Pages keep their Classic
-look inside the canvas until Steps 5 and 6 restyle them. Rolling back is clearing the cookie.
+**Consequences.** Pulse inherits each page's actions and permission checks, and shows only data the server
+layouts already loaded. Keeping the session providers alone is insufficient: replacing a frame remounts
+Composer and removes pending uploads. `WorkspacePanel` therefore preserves one main/content slot, and inline
+edit text lives above shell-specific edit markup. Tests cover conversation state, input identity, pending
+uploads, edits, the live call and shared watchers while switching. Users roll back through the switch or by
+clearing the cookie; operators close public opt-in through the deployment flag.
