@@ -5,7 +5,7 @@ import { AlarmClock, Bookmark, BookmarkX, Clock, Copy, CornerUpLeft, Forward, Ma
 import { memo, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { PersonContextMenu } from "@/components/social/PersonMenu";
-import { Button as PulseButton } from "@/components/pulse/Button";
+import { IconButton, Button as PulseButton } from "@/components/pulse/Button";
 import { Toolbar } from "@/components/pulse/Controls";
 import { Sheet } from "@/components/pulse/Dialog";
 import { useShellKind } from "@/components/shell/ShellKind";
@@ -13,7 +13,9 @@ import { ContextMenu, ContextMenuItems, ContextMenuPickContext, copyText, useCon
 import { Glyph } from "@/components/ui/Glyph";
 import type { MenuItem } from "@/components/ui/Menu";
 import type { ChatMessage } from "@/hooks/useChannelChat";
+import { useIsClient } from "@/hooks/useIsClient";
 import { useSwipeReply } from "@/hooks/useSwipeReply";
+import { formatTime, SERVER_TIME_ZONE } from "@/lib/chat-format";
 import { QUICK_REACTIONS } from "@/lib/emoji";
 import { parseAttachments, previewText, type Reaction } from "@/lib/messages";
 import { cn } from "@/lib/utils";
@@ -275,7 +277,8 @@ export const MessageItem = memo(function MessageItem({
 }) {
   const pulse = useShellKind() === "pulse";
   const mine = message.author_id === meId;
-  const { reactions: showReactions, embeds } = useDisplayPrefs();
+  const prefs = useDisplayPrefs();
+  const { reactions: showReactions, embeds } = prefs;
   // A message that's only a GIF link shows the GIF alone (the link stays visible if previews are off).
   const gifOnly = embeds && isGifOnlyMessage(message.content);
   const menu = useContextMenu({ disabled: !interactive || editing });
@@ -286,15 +289,34 @@ export const MessageItem = memo(function MessageItem({
   const official = !message.author && message.webhook_name === UPDATES_NAME && message.server_id === HQ_SERVER_ID;
 
   const settled = !message.pending && !message.failed && !message.queued;
+  const tz = useIsClient() ? (prefs.timeZone === "system" ? undefined : prefs.timeZone) : SERVER_TIME_ZONE;
   if (pulse) {
     // A long-press on a touch screen opens the actions in a bottom sheet instead of a floating menu.
     const sheet = menu.point !== null && Boolean(window.matchMedia?.("(pointer: coarse)").matches);
     const menuItems = <MessageMenuItems message={message} mine={mine} canModerate={canModerate} actions={actions} setEditing={setEditing} />;
     const marginTime = <Timestamp iso={message.created_at} variant="time" className="block text-pulse-caption text-pulse-muted" />;
+    // Plain text for screen readers: who, when, then the start of the message (no raw markdown).
+    const spoken = previewText(message.content, 140) || (message.sticker ? "Sticker" : attachments.length ? "Attachment" : "");
+    // Pointer: a quiet button at the margin's edge opens the inline action row (it never appears on hover by itself).
+    const openActions = settled && interactive && !editing && (
+      <IconButton
+        label="Message actions"
+        icon={<MoreHorizontal />}
+        size="sm"
+        tabIndex={-1}
+        className="invisible absolute left-0 top-0.5 hidden size-6 group-hover:visible md:inline-flex"
+        onClick={(e) => {
+          const row = e.currentTarget.closest<HTMLElement>(".pulse-msg");
+          if (!row) return;
+          row.dataset.actions = "open";
+          row.querySelector<HTMLElement>(".pulse-msg-actions button")?.focus();
+        }}
+      />
+    );
     return (
       <article
         id={`message-${message.id}`}
-        aria-label={`${name}${mentioned ? " (mentions you)" : ""}: ${message.content.slice(0, 80)}`}
+        aria-label={`${name}${mentioned ? " (mentions you)" : ""}, ${formatTime(message.created_at, tz, prefs.hour24, prefs.language)}: ${spoken}`}
         data-testid="message"
         data-message-id={message.id}
         data-grouped={String(grouped)}
@@ -307,18 +329,20 @@ export const MessageItem = memo(function MessageItem({
         className={cn(
           // Margin transcript: author and time in a right-aligned margin, the message in the column beside it.
           "pulse-msg group relative grid touch-pan-y grid-cols-[4.5rem_minmax(0,1fr)] gap-x-3 rounded-pulse-control px-3 font-pulse-text text-pulse-text -outline-offset-2 md:grid-cols-[6.5rem_minmax(0,1fr)] md:gap-x-4 md:px-5",
-          grouped ? "py-0.5" : "mt-2 pb-0.5 pt-1.5",
+          // A header row starts a new block; the same author's follow-ups sit tight under it.
+          grouped ? "py-0.5" : "mt-3 pb-0.5 pt-1.5 md:mt-4",
           // Mentions: the alert tint plus an edge bar (shape) and "mentions you" for screen readers, never colour alone.
           mentioned ? "bg-pulse-mention shadow-[inset_3px_0_0_var(--pulse-alert)]" : "hover:bg-pulse-hover",
           (message.pending || message.queued) && "opacity-60",
         )}
       >
-        <div className="min-w-0 pt-px text-right" data-message-margin="">
+        <div className="relative min-w-0 pt-px text-right md:pl-7" data-message-margin="">
+          {openActions}
           {grouped ? (
             <span className="invisible group-hover:visible group-focus-within:visible">{marginTime}</span>
           ) : (
             <>
-              <Author message={message} actions={actions} className="block w-full truncate text-right text-pulse-label font-semibold text-pulse-text">
+              <Author message={message} actions={actions} className="block w-full text-right text-pulse-label font-semibold text-pulse-text max-md:line-clamp-2 max-md:break-words md:truncate">
                 {name}
               </Author>
               {marginTime}
@@ -364,7 +388,7 @@ export const MessageItem = memo(function MessageItem({
             />
           ) : (
             (message.content || message.pinned) && (
-              <div className="flex flex-wrap items-end gap-x-2 gap-y-0.5 [&>.chat-markdown]:min-w-0 [&>.chat-markdown]:max-w-full">
+              <div className="flex max-w-[72ch] flex-wrap items-end gap-x-2 gap-y-0.5 [&>.chat-markdown]:min-w-0 [&>.chat-markdown]:max-w-full">
                 {message.content && !gifOnly && <MessageMarkdown content={message.content} />}
                 {message.edited_at && <EditedMark pulse messageId={message.id} current={message.content} editedAt={message.edited_at} canView={(mine || canModerate) && "channel_id" in message} />}
                 {message.pinned && (
@@ -415,7 +439,7 @@ export const MessageItem = memo(function MessageItem({
             </p>
           )}
           {settled && !editing && interactive && (
-            // Inline action row under the message: shown on hover (after a short rest) and on keyboard focus (pulse.css).
+            // Inline action row under the message: shown on keyboard focus, from the margin's actions button and while a popup is open (pulse.css).
             <Toolbar label="Message actions" className="pulse-msg-actions mt-1 flex-wrap gap-0.5">
               <PulseButton variant="quiet" size="sm" icon={<CornerUpLeft />} onClick={() => actions.onReply(message)}>
                 Reply

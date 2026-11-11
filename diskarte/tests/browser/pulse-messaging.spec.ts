@@ -103,7 +103,14 @@ test("Pulse message log: one Tab stop, arrows, the action row and back out", asy
   expect(await page.evaluate(() => !document.querySelector("[data-testid=message-list]")?.contains(document.activeElement))).toBe(true);
 
   // More… opens the message menu (before the reply below: the log re-settling at the bottom closes open menus).
+  // Hover alone doesn't reflow the log: the action row stays hidden until the margin's button opens it.
+  const before = await page.locator("#message-r6").boundingBox();
   await page.locator("#message-r6").hover();
+  await page.waitForTimeout(400);
+  expect((await page.locator("#message-r6").boundingBox())?.height).toBe(before?.height);
+  await expect(page.locator("#message-r6").getByRole("toolbar", { name: "Message actions" })).toBeHidden();
+  await page.locator("#message-r6").getByRole("button", { name: "Message actions" }).click();
+  await expect(page.locator("#message-r6").getByRole("button", { name: "Reply" })).toBeFocused();
   await page.locator("#message-r6").getByRole("button", { name: "More…" }).click();
   await expect(page.getByRole("menu", { name: "Message options" })).toBeVisible();
   await expectNoAxeViolations(page);
@@ -112,6 +119,7 @@ test("Pulse message log: one Tab stop, arrows, the action row and back out", asy
 
   // Reply from the action row: the ticket stub sits on the dock, Escape in the field cancels it.
   await page.locator("#message-r4").hover();
+  await page.locator("#message-r4").getByRole("button", { name: "Message actions" }).click();
   await page.locator("#message-r4").getByRole("button", { name: "Reply" }).click();
   await expect(page.locator("[data-reply-stub]").last()).toContainText("Replying to Juan");
   await expect(page.getByTestId("composer")).toBeFocused();

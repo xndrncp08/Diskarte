@@ -274,24 +274,13 @@ html[data-shell="pulse"]:not([data-high-contrast]) :focus-visible {
 
 /* ---------- Messaging (docs/design/pulse-messaging.md) ---------- */
 
-/* The inline action row under a message: hidden at rest; shown on keyboard focus straight away, while one of its
-   popups is open, and on hover once the pointer rests (180 ms) so sweeping past messages doesn't reflow the log. */
+/* The inline action row under a message: hidden at rest, so hovering never reflows the log. It shows on keyboard focus,
+   when the margin's "Message actions" button or Enter opens the row ([data-actions]), and while one of its popups is open. */
 :root[data-shell="pulse"] .pulse-msg-actions {
   display: none;
 }
-@media (hover: hover) {
-  :root[data-shell="pulse"] .pulse-msg:hover .pulse-msg-actions {
-    display: flex;
-    /* Longhands: the CSS minifier folds "0s 180ms" into a 180 ms duration, which shows the row at once. */
-    transition-property: display;
-    transition-duration: 0s;
-    transition-delay: 180ms;
-    transition-behavior: allow-discrete;
-  }
-}
 :root[data-shell="pulse"] .pulse-msg:is(:focus-visible, [data-actions], :has(:focus-visible), :has([aria-expanded="true"])) .pulse-msg-actions {
   display: flex;
-  transition: none;
 }
 
 /* Message text: Figtree at the reading size with a comfortable line height, Pulse ink for emphasis and links. */

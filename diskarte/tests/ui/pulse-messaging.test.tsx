@@ -187,6 +187,8 @@ describe("Pulse message row", () => {
     expect(within(margin).getByText("Juan")).toBeInTheDocument();
     expect(margin.querySelector("time")).not.toBeNull();
     expect(within(row).getByText("ranked").tagName).toBe("STRONG");
+    // The row's name is plain text: who, when, what (no raw markdown).
+    expect(row).toHaveAccessibleName(/^Juan, \d{1,2}:\d{2}\s?[AP]M: Tara ranked$/);
     expect(within(row).getByText("Edited")).toBeInTheDocument();
     expect(within(row).getByText("Pinned")).toBeInTheDocument();
     // No Classic floating toolbar.
@@ -198,6 +200,17 @@ describe("Pulse message row", () => {
     const margin = screen.getByTestId("message").querySelector("[data-message-margin]") as HTMLElement;
     expect(within(margin).queryByText("Juan")).toBeNull();
     expect(margin.querySelector("time")).not.toBeNull();
+  });
+
+  it("opens the action row from the margin's quiet button (never by hover alone) and focuses Reply", () => {
+    renderRow();
+    const row = screen.getByTestId("message");
+    const open = within(row.querySelector("[data-message-margin]") as HTMLElement).getByRole("button", { name: "Message actions" });
+    expect(open).toHaveAttribute("tabindex", "-1");
+    expect(row).not.toHaveAttribute("data-actions");
+    fireEvent.click(open);
+    expect(row).toHaveAttribute("data-actions", "open");
+    expect(within(screen.getByRole("toolbar", { name: "Message actions" })).getByRole("button", { name: "Reply" })).toHaveFocus();
   });
 
   it("has an inline, labelled action row: Reply, React, Thread and More…", () => {
@@ -224,7 +237,7 @@ describe("Pulse message row", () => {
     const original = msg("m0", MOD_ID, "2026-10-16T09:00:00Z", { content: "Sino sasama?" });
     renderRow({ mentioned: true, message: msg("m1", MEMBER_ID, "2026-10-16T10:00:00Z", { content: "@kapitan ako!", reply_to_id: "m0" }), replyTo: original });
     const row = screen.getByTestId("message");
-    expect(row).toHaveAccessibleName(/^Juan \(mentions you\):/);
+    expect(row).toHaveAccessibleName(/^Juan \(mentions you\), \d{1,2}:\d{2}\s?[AP]M: @kapitan ako!$/);
     const stub = row.querySelector("[data-reply-stub]") as HTMLElement;
     expect(stub).toHaveTextContent("MariaSino sasama?");
     expect(stub.className).toContain("border-dashed");

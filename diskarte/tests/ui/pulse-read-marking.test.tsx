@@ -24,7 +24,7 @@ function answer(unreads: { data: unknown; error: unknown }) {
   rpc.mockImplementation((async (fn: string) => (fn === "my_unreads" ? unreads : { data: null, error: null })) as never);
 }
 
-const marked = (channelId: string) => rpc.mock.calls.some(([fn, args]) => fn === "mark_channel_read_until" && (args as { p_channel?: string })?.p_channel === channelId);
+const marked = (channelId: string) => (rpc.mock.calls as unknown as [string, { p_channel?: string } | undefined][]).some(([fn, args]) => fn === "mark_channel_read_until" && args?.p_channel === channelId);
 
 beforeEach(() => {
   localStorage.removeItem("diskarte:pending-reads");
