@@ -88,7 +88,8 @@ themes own them).
 ## Canvas and Context
 
 - **CallStrip:** while you're in a call, a slim live strip across the top of the canvas (tablet and up): the
-  room, connection meter, mute, deafen, mixer and disconnect. Phones keep MobileNavigation's call strip.
+  room, connection meter, mute, deafen, mixer and disconnect. On phones it sits above the tab bar
+  ([Pulse on phones](pulse-mobile.md)).
 - **Masthead:** see the seams table. The Context toggle is on channel pages.
 - **Context sheet:** People (the member list), Pinned (the channel's pinned messages, same query as the Pins
   drawer, fetched while the tab shows) and About (channel topic, Space description, rules). "Keep open beside the
@@ -149,8 +150,8 @@ cd diskarte && CI=1 npx playwright test --config playwright.experience.config.ts
   use the Masthead: see [Pulse communities and pages](pulse-communities.md). Other page bodies (Moments, the Workspace
   body, the Control Center body) keep their Classic look in the canvas.
 - No Media tab in the Context sheet: recent attachments need a new query (Step 5).
-- Phones: the navigator is a drawer and MobileNavigation's tabs stay; the Pulse phone design is Step 6, as is
-  the voice redesign (the CallStrip is the Classic dock, re-laid-out).
+- Phones have their own tabs, screens and Back: see [Pulse on phones](pulse-mobile.md). The voice redesign is Step 6a
+  (the CallStrip is the Classic dock, re-laid-out).
 - Rooms can't be dragged to reorder in Pulse yet (moderators use Classic, or edit the channel).
 - Space-level live indicators only show your own call; other Spaces' voice activity needs the voice preview
   data per Space.
