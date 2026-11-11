@@ -102,6 +102,14 @@ test("Pulse message log: one Tab stop, arrows, the action row and back out", asy
   await page.keyboard.press("Tab");
   expect(await page.evaluate(() => !document.querySelector("[data-testid=message-list]")?.contains(document.activeElement))).toBe(true);
 
+  // More… opens the message menu (before the reply below: the log re-settling at the bottom closes open menus).
+  await page.locator("#message-r6").hover();
+  await page.locator("#message-r6").getByRole("button", { name: "More…" }).click();
+  await expect(page.getByRole("menu", { name: "Message options" })).toBeVisible();
+  await expectNoAxeViolations(page);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu", { name: "Message options" })).toBeHidden();
+
   // Reply from the action row: the ticket stub sits on the dock, Escape in the field cancels it.
   await page.locator("#message-r4").hover();
   await page.locator("#message-r4").getByRole("button", { name: "Reply" }).click();
@@ -109,11 +117,4 @@ test("Pulse message log: one Tab stop, arrows, the action row and back out", asy
   await expect(page.getByTestId("composer")).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(page.getByText("Replying to Juan")).toBeHidden();
-
-  // More… opens the message menu.
-  await page.locator("#message-r6").hover();
-  await page.locator("#message-r6").getByRole("button", { name: "More…" }).click();
-  await expect(page.getByRole("menu", { name: "Message options" })).toBeVisible();
-  await expectNoAxeViolations(page);
-  await page.keyboard.press("Escape");
 });

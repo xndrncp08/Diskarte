@@ -333,6 +333,9 @@ html[data-shell="pulse"]:not([data-high-contrast]) :focus-visible {
   border-radius: var(--pulse-radius-item);
   font-size: 0.85rem;
   line-height: 1.5;
+  /* Long lines wrap: no sideways scroll region to reach by keyboard, readable on a phone. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 /* Paper: the dark-ground highlight colours are too light on the raised code surface (each is at least 4.5:1 on #efede7). */
 :root[data-shell="pulse"][data-color-mode="light"] .chat-markdown pre :is(.hljs-comment, .hljs-quote) { color: #5f596a; }

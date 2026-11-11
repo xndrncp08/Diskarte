@@ -356,7 +356,7 @@ export function Composer({
   if (pulse) {
     // Compose dock: a raised card a little above the bottom edge. The field on top, tools and the Send pill under it.
     return (
-      <div className="message-composer relative px-3 pb-safe font-pulse-text md:px-5" {...dragProps}>
+      <div className="relative px-3 pb-safe font-pulse-text md:px-5" {...dragProps}>
         <SyncNotice sync={draftSync} />
         {dragging && (
           <div className="pointer-events-none absolute inset-x-3 -top-24 bottom-3 z-20 flex items-center justify-center rounded-pulse-card border-2 border-dashed border-pulse-accent-mark bg-pulse-surface text-pulse-label font-semibold text-pulse-text md:inset-x-5">
@@ -387,7 +387,7 @@ export function Composer({
             <IconButton label="Cancel reply" icon={<X />} size="sm" onClick={onCancelReply} />
           </div>
         )}
-        <div className="composer-surface @container mb-3 overflow-hidden rounded-pulse-card border border-pulse-line bg-pulse-surface shadow-pulse-2 transition-[border-color,box-shadow] has-[textarea:focus-visible]:border-pulse-focus has-[textarea:focus-visible]:shadow-[0_0_0_1px_var(--pulse-focus-ring)]">
+        <div className="@container mb-3 overflow-hidden rounded-pulse-card border border-pulse-line bg-pulse-surface shadow-pulse-2 transition-[border-color,box-shadow] has-[textarea:focus-visible]:border-pulse-focus has-[textarea:focus-visible]:shadow-[0_0_0_1px_var(--pulse-focus-ring)]">
           {commands.length > 0 && (
             <ul className="border-b border-pulse-line p-1" aria-label="Commands" data-testid="slash-commands">
               {commands.map((c) => (
@@ -478,9 +478,9 @@ export function Composer({
                 )}
                 {draft.length > MESSAGE_MAX - 200 && <span className={cn("tabular-nums", draft.length > MESSAGE_MAX ? "font-semibold text-pulse-alert" : "text-pulse-muted")}>{MESSAGE_MAX - draft.length}</span>}
               </span>
-              <PulseButton type="submit" variant="primary" size="sm" disabled={sendDisabled} aria-label="Send message" className="composer-send gap-2">
+              <PulseButton type="submit" variant="primary" size="sm" disabled={sendDisabled} aria-label="Send message" className="gap-2">
                 Send
-                <Kbd label="Enter" className="border-pulse-on-accent/30 bg-transparent text-pulse-on-accent max-md:hidden">
+                <Kbd label="Enter" className="border-current/30 bg-transparent text-current max-md:hidden">
                   ↵
                 </Kbd>
               </PulseButton>

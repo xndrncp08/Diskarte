@@ -45,7 +45,7 @@ export function ReactionBar({ reactions, meId, onToggle, names }: { reactions: R
               pulse
                 ? // Compact chip: icon and count. Yours: accent tint, accent edge and a bold count (not colour alone).
                   cn(
-                    "reaction-chip inline-flex h-7 items-center gap-1 rounded-pulse-control border px-1.5 font-pulse-text text-pulse-label tabular-nums transition-[background-color,border-color,transform] duration-(--pulse-dur-press) pointer-coarse:min-h-11 pointer-coarse:px-2.5 pulse-motion:active:scale-95",
+                    "inline-flex h-7 items-center gap-1 rounded-pulse-control border px-1.5 font-pulse-text text-pulse-label tabular-nums transition-[background-color,border-color,transform] duration-(--pulse-dur-press) pointer-coarse:min-h-11 pointer-coarse:px-2.5 pulse-motion:active:scale-95",
                     r.mine ? "border-pulse-accent-mark bg-pulse-selected font-bold text-pulse-text" : "border-pulse-line text-pulse-muted hover:bg-pulse-hover hover:text-pulse-text",
                   )
                 : cn(

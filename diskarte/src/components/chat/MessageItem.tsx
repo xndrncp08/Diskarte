@@ -364,7 +364,7 @@ export const MessageItem = memo(function MessageItem({
             />
           ) : (
             (message.content || message.pinned) && (
-              <div className="flex flex-wrap items-end gap-x-2 gap-y-0.5">
+              <div className="flex flex-wrap items-end gap-x-2 gap-y-0.5 [&>.chat-markdown]:min-w-0 [&>.chat-markdown]:max-w-full">
                 {message.content && !gifOnly && <MessageMarkdown content={message.content} />}
                 {message.edited_at && <EditedMark pulse messageId={message.id} current={message.content} editedAt={message.edited_at} canView={(mine || canModerate) && "channel_id" in message} />}
                 {message.pinned && (
