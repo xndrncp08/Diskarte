@@ -49,7 +49,7 @@ export function SegmentedControl<T extends string>({ label, options, value, onCh
             tabIndex={checked ? 0 : -1}
             onClick={() => onChange(o.value)}
             className={cn(
-              "inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-pulse-control px-3 text-pulse-label transition-colors pointer-coarse:min-h-11 [&_svg]:size-4",
+              "inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-pulse-control px-3 text-pulse-label transition-colors pointer-coarse:min-h-11 pointer-coarse:min-w-11 justify-center [&_svg]:size-4",
               checked ? "bg-pulse-surface font-semibold text-pulse-text shadow-pulse-1" : "text-pulse-muted hover:text-pulse-text",
             )}
           >
