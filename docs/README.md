@@ -44,6 +44,7 @@ something is unverified.
 - [Authentication and security](security.md) · [SECURITY.md](../SECURITY.md) (threat model, reporting)
 - [Testing](testing.md)
 - [UI, UX and design system](design-system.md)
+- [Pulse rollout and regression gate](design/pulse-rollout.md) — opt-in controls, reconstructed journeys and acceptance gaps
 
 **Operations**
 - [Deployment and operations](operations/deployment.md) — Supabase, LiveKit, Vercel, Docker/Render, releases, health, backups, rollback, incidents
@@ -51,6 +52,8 @@ something is unverified.
 - Feature runbooks: [Web Push](../diskarte/docs/web-push.md) · [Voice previews](../diskarte/docs/voice-preview.md) · [Platform experience notes](../diskarte/docs/platform-experience.md)
 
 **User guide** — [index](user-guide/README.md)
+
+- [Try the new Diskarte](user-guide/pulse.md) — optional Pulse preview, navigation, calls and returning to Classic
 
 **Contributing**
 - [Contributing guide](contributing/README.md) — workflow, conventions, PRs, docs checklist
@@ -62,6 +65,7 @@ something is unverified.
 - [Changelog](../diskarte/CHANGELOG.md) and release notes: [2026-10-29](../diskarte/RELEASE-2026-10-29.md),
   [2026-10-15](../diskarte/RELEASE-2026-10-15.md), [2026-10-14](../diskarte/RELEASE-2026-10-14.md),
   [2026-10-14 follow-up](../diskarte/RELEASE-2026-10-14-remaining.md)
+- [Pending Pulse opt-in release](../diskarte/RELEASE-PULSE.md) — deployment gates and unpublished community update copy
 
 ## The Help Center website
 

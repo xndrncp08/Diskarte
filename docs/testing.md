@@ -43,6 +43,15 @@ npm run docs:db                   # regenerate docs/reference/database.md
 
 Install the browser once: `npx playwright install chromium`.
 
+## Pulse acceptance
+
+The [Pulse rollout gate](design/pulse-rollout.md) records a reconstructed 15-journey matrix, the
+missing original definitions, shell-switch preservation requirements and pending acceptance.
+Run the production build before local browser tests. Pulse browser fixtures exercise real components
+with sample data; they do not verify live Supabase/LiveKit, physical phones or manual screen readers.
+Existing backend journeys use Classic selectors and need explicit Pulse coverage before the
+both-mode gate can pass. Never run account-creation/deletion journeys against production.
+
 ## Database / RLS tests
 
 [`tests/db/harness.ts`](../diskarte/tests/db/harness.ts) boots a fresh PGlite instance, applies

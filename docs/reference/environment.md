@@ -42,6 +42,7 @@ return 503.
 | `SIGNUP_MODE` | Closing registration | `invite` pauses public sign-up (also turn off "Allow new users to sign up" in Supabase so OAuth can't create accounts) |
 | `ALLOWED_ORIGINS` | Cross-origin API callers | Comma-separated extra origins for CORS + CSRF on `/api/*` |
 | `RELEASE_ANNOUNCEMENTS` | Official update posts | `on` lets each new production deployment post its release notes to Diskarte HQ #announcements (needs `SUPABASE_SERVICE_ROLE_KEY` and the `20261107000000` migration). Set it for **Production only** |
+| `DISKARTE_PULSE_ROLLOUT` | Public Pulse opt-in | Only `opt-in` opens **Try the new Diskarte** to ordinary members. Unset or any other value keeps the super-admin preview. Classic remains the default; the server validates rollout eligibility separately from the shell cookie |
 
 Push is enabled only when **all five** push values are valid (`pushConfig()` in
 [`lib/push-server.ts`](../../diskarte/src/lib/push-server.ts)) and the database setup has run.
