@@ -20,14 +20,25 @@ const { RuntimeConfigProvider } = await import("@/components/providers/RuntimeCo
 const { PresenceProvider } = await import("@/components/providers/PresenceProvider");
 const { SocialContext } = await import("@/components/providers/SocialProvider");
 const { WorkspacePanel } = await import("@/components/workspace/WorkspacePanel");
-const { CallProvider } = await import("@/components/voice/CallProvider");
+const { CallContext, CallProvider, useCall } = await import("@/components/voice/CallProvider");
 const { MEMBERS, RUNTIME } = await import("../fixtures/layout");
 const { SERVER_ID, ServerFixture, server } = await import("../fixtures/server");
 
 const social = { friends: [], blocked: [], profiles: new Map(), conversations: [], attention: 4, reload: async () => {}, reloadConversations: async () => {}, markRead: () => {}, nicknames: new Map(), setNickname: async () => false, favourites: new Set<string>(), setFavourite: async () => false } as unknown as SocialValue;
 
+/** A call being set up in the fixture Space's voice room (connecting: no LiveKit room needed). */
+function InCall({ children }: { children: ReactNode }) {
+  const call = useCall();
+  return <CallContext.Provider value={{ ...call, status: "connecting", target: { kind: "channel", serverId: SERVER_ID, serverName: server.name, channelId: "voice-1", channelName: "Tambayan" } }}>{children}</CallContext.Provider>;
+}
+
 /** The Pulse frame on a phone (jsdom's matchMedia matches nothing, so below md) around one page with a masthead. */
-function Phone({ page }: { page?: ReactNode }) {
+function Phone({ page, call = false }: { page?: ReactNode; call?: boolean }) {
+  const frame = (
+    <PulseShell servers={[server]}>
+      {page ?? <WorkspacePanel id="main" title="Page"><Masthead title="Screen title" /></WorkspacePanel>}
+    </PulseShell>
+  );
   return (
     <RuntimeConfigProvider value={RUNTIME}>
       <ServerFixture members={MEMBERS}>
@@ -36,9 +47,7 @@ function Phone({ page }: { page?: ReactNode }) {
             <SocialContext.Provider value={social}>
               <AdminAccessProvider role="member">
                 <ShellKindContext.Provider value="pulse">
-                  <PulseShell servers={[server]}>
-                    {page ?? <WorkspacePanel id="main" title="Page"><Masthead title="Screen title" /></WorkspacePanel>}
-                  </PulseShell>
+                  {call ? <InCall>{frame}</InCall> : frame}
                 </ShellKindContext.Provider>
               </AdminAccessProvider>
             </SocialContext.Provider>
@@ -95,6 +104,19 @@ describe("phone tab bar", () => {
     expect(tabs()).toBeNull();
     expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Open navigation" })).toBeNull();
+  });
+
+  it("keeps the live call strip above the tabs, and on its own inside a conversation", () => {
+    const { unmount } = render(<Phone call />);
+    const bottom = screen.getByTestId("pulse-phone-nav");
+    const strip = within(bottom).getByTestId("call-dock");
+    expect(strip.compareDocumentPosition(within(bottom).getByRole("navigation")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(strip).getByRole("button", { name: "Disconnect" })).toBeInTheDocument();
+    unmount();
+    navigation.reset("/tambayan/dm/abc");
+    render(<Phone call />);
+    expect(within(screen.getByTestId("pulse-phone-nav")).getByTestId("call-dock")).toBeInTheDocument();
+    expect(tabs()).toBeNull();
   });
 
   it("steps aside while the on-screen keyboard is up", async () => {

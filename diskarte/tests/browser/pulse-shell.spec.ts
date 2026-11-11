@@ -42,11 +42,12 @@ for (const mode of ["dark", "light"] as const) {
         if (width === 390 || width === 1440) await page.screenshot({ path: `test-results/pulse-shell-${mode}-${width}-${name(route)}.png` });
       }
       if (width < 768) {
-        await page.goto(`/tambayan/${SERVER_ID}/${channels[0].id}`);
+        // On phones a room has Back instead (pulse-mobile.spec.ts); the Space's landing still opens the drawer.
+        await page.goto(`/tambayan/${SERVER_ID}`);
         await page.getByRole("button", { name: "Open navigation" }).click();
         await expect(page.getByTestId("pulse-rooms")).toBeVisible();
         // The drawer starts on where you are, not its first button (whose tooltip would cover the header).
-        await expect(page.getByTestId("pulse-rooms").getByRole("link", { name: channels[0].name })).toBeFocused();
+        await expect(page.getByTestId("pulse-rooms").getByRole("link", { name: "Overview" })).toBeFocused();
         await expectNoAxeViolations(page);
         await page.screenshot({ path: `test-results/pulse-shell-${mode}-${width}-navigator.png` });
         await page.keyboard.press("Escape");
