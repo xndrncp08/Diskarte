@@ -6,7 +6,6 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { BroadcastBanner } from "@/components/broadcast/BroadcastBanner";
 import { PushBadge } from "@/components/notifications/PushBadge";
 import { useNavDrawer } from "@/components/shell/AppShell";
-import { MobileNavigation } from "@/components/shell/MobileNavigation";
 import type { RailEntry } from "@/components/shell/ServerRail";
 import { useShellUI } from "@/components/shell/ShellUI";
 import { ResizeHandle } from "@/components/workspace/ResizeHandle";
@@ -17,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { PulseMenuSkin } from "../Menu";
 import { PulseTooltipSkin } from "../Tooltip";
 import { CallStrip } from "./CallStrip";
+import { PulseMobileNavigation, useBack, usePhoneNavigation } from "./MobileTabs";
 import { Navigator } from "./Navigator";
 import { PulseUIProvider } from "./PulseUI";
 
@@ -25,18 +25,22 @@ const PULSE_NAV = { ...NAV_WIDTH, min: 280, initial: 280 };
 
 /**
  * The Pulse frame ("Canvas"): the Spaces navigator on the left (resizable on tablets and up, a full-height drawer on
- * phones), then the canvas column: broadcast banner, the live call strip, and the page (its WorkspacePanel "main" is
- * the canvas; its "nav" panel renders nothing here). Rendered inside ShellProviders, so switching shells keeps the
+ * phones), then the canvas column: broadcast banner, the live call strip, the page (its WorkspacePanel "main" is
+ * the canvas; its "nav" panel renders nothing here) and, on phones, the call strip and tab bar (PulseMobileNavigation). Rendered inside ShellProviders, so switching shells keeps the
  * call, unreads and watchers mounted. Reused Classic menus take the Pulse skin.
  */
 export function PulseShell({ servers, children }: { servers: RailEntry[]; children: ReactNode }) {
   const { navOpen, setNavOpen } = useShellUI();
-  const swipe = useSwipeDrawer(navOpen, setNavOpen);
+  const back = useBack();
+  // In a conversation the left-edge swipe goes Back (as the masthead's Back button does) instead of opening the drawer.
+  const swipe = useSwipeDrawer(navOpen, (open) => (open && back.href ? back.back() : setNavOpen(open)));
   const desktop = useIsCanvas();
   const [layout, setLayout] = useLayout();
   const frame = useRef<HTMLDivElement>(null);
+  const canvas = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   useAppViewport(frame);
+  usePhoneNavigation(canvas);
   useNavDrawer(frame, navOpen, desktop, setNavOpen);
   // Every navigator row is a link: following one on a phone closes the drawer.
   useEffect(() => setNavOpen(false), [pathname, setNavOpen]);
@@ -80,10 +84,10 @@ export function PulseShell({ servers, children }: { servers: RailEntry[]; childr
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <BroadcastBanner />
             <CallStrip />
-            <div className="relative flex min-h-0 min-w-0 flex-1" data-workspace="">
+            <div ref={canvas} className="relative flex min-h-0 min-w-0 flex-1 max-md:pulse-motion:data-enter:animate-pulse-enter" data-workspace="">
               {children}
             </div>
-            <MobileNavigation />
+            <PulseMobileNavigation />
           </div>
         </div>
       </PulseTooltipSkin>

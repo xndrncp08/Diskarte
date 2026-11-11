@@ -84,9 +84,14 @@
 @theme inline {
   --animate-pulse-travel: pulse-travel 2.8s var(--pulse-ease) infinite;
   --animate-pulse-ripple: pulse-ripple var(--pulse-dur-loop) var(--pulse-ease) infinite;
+  /* A phone conversation sliding in from the right (no fill: nothing keeps a transform on the canvas afterwards). */
+  --animate-pulse-enter: pulse-enter 260ms var(--pulse-ease);
   @keyframes pulse-travel {
     from { transform: translateX(-100%); }
     to { transform: translateX(500%); }
+  }
+  @keyframes pulse-enter {
+    from { transform: translateX(100%); }
   }
   @keyframes pulse-ripple {
     from { transform: scale(1); opacity: 0.7; }
@@ -228,6 +233,11 @@ html[data-shell="pulse"][data-theme]:not([data-theme="solar"]) {
 html[data-shell="pulse"][data-color-mode="light"][data-theme]:not([data-theme="solar"]) {
   --pulse-sun-ink: color-mix(in srgb, var(--color-sun) 42%, #1a1720);
   --pulse-bg: color-mix(in srgb, var(--color-sun) 6%, #f7f6f2);
+}
+
+/* Landscape phones are wider than md, so the notch side needs clearing there too (env() is 0 on other screens). */
+html[data-shell="pulse"] .app-viewport {
+  padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
 }
 
 /* The page behind the app (overscroll, safe areas, the gap above the keyboard) is Pulse ground too. */

@@ -1,8 +1,9 @@
 "use client";
 
 import type { ComponentProps, ReactNode } from "react";
-import { ContextMenu as BaseContextMenu } from "@/components/ui/ContextMenu";
+import { ContextMenu as BaseContextMenu, TouchMenuContext, type TouchMenu } from "@/components/ui/ContextMenu";
 import { Menu as BaseMenu, MenuSkinContext, type MenuSkin } from "@/components/ui/Menu";
+import { Sheet } from "./Dialog";
 
 export { ContextMenuItems, useContextMenu, useContextMenuPick } from "@/components/ui/ContextMenu";
 export type { MenuItem } from "@/components/ui/Menu";
@@ -20,12 +21,24 @@ const PULSE_MENU: MenuSkin = {
   check: "size-4 shrink-0 text-pulse-accent-ink",
 };
 
+// A long-press on a touch screen opens the menu's rows in a bottom sheet (Space, room and conversation menus alike).
+const TouchSheet: TouchMenu = ({ open, label, onClose, children }) => (
+  <Sheet open={open} onClose={onClose} title={label}>
+    <div role="menu" aria-label={label} className="-mx-2">{children}</div>
+  </Sheet>
+);
+
 /**
- * Gives every Menu and ContextMenu below it the Pulse skin, including Classic menus reused inside Pulse screens.
- * The Pulse shell root wraps its tree in this; the Menu and ContextMenu below set it themselves.
+ * Gives every Menu and ContextMenu below it the Pulse skin, including Classic menus reused inside Pulse screens, and
+ * opens context menus in a bottom Sheet on touch screens. The Pulse shell root wraps its tree in this; the Menu and
+ * ContextMenu below set it themselves.
  */
 export function PulseMenuSkin({ children }: { children: ReactNode }) {
-  return <MenuSkinContext.Provider value={PULSE_MENU}>{children}</MenuSkinContext.Provider>;
+  return (
+    <MenuSkinContext.Provider value={PULSE_MENU}>
+      <TouchMenuContext.Provider value={TouchSheet}>{children}</TouchMenuContext.Provider>
+    </MenuSkinContext.Provider>
+  );
 }
 
 /**

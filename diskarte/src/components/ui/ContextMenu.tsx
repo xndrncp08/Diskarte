@@ -196,6 +196,10 @@ const PickContext = createContext<() => void>(() => undefined);
 /** Provide it around menu rows rendered outside <ContextMenu> (the Pulse touch sheet) so picking a row closes that container. */
 export const ContextMenuPickContext = PickContext;
 
+/** Renders context menus on touch screens (Pulse: in a bottom Sheet). Unset (Classic): the floating panel everywhere. */
+export type TouchMenu = (props: { open: boolean; label: string; onClose: () => void; children: ReactNode }) => ReactNode;
+export const TouchMenuContext = createContext<TouchMenu | null>(null);
+
 /**
  * The menu panel, portalled to <body> at the pointer. `children` (usually <ContextMenuItems>, or a
  * component that builds items with hooks) only mount while the menu is open.
@@ -205,9 +209,13 @@ export function ContextMenu({ menu, label, children }: { menu: ContextMenuState;
   const { point, close } = menu;
   const open = point !== null;
   const skin = useContext(MenuSkinContext);
+  const touch = useContext(TouchMenuContext);
   // Lists render one of these per row (every chat message): skip the portal until first opened.
   const [used, setUsed] = useState(false);
   if (open && !used) setUsed(true);
+  // Pulse on a touch screen: the menu opens in its sheet, which brings its own dismissal, focus and keys.
+  const sheet = used && touch !== null && Boolean(window.matchMedia?.("(pointer: coarse)").matches);
+  const floating = open && !sheet;
 
   // Measure, then nudge inside the viewport before paint. Written straight to the node: framer-motion
   // owns transform/opacity, and a state round-trip would paint one frame at the raw pointer.
@@ -228,7 +236,7 @@ export function ContextMenu({ menu, label, children }: { menu: ContextMenuState;
     close(false);
   });
   useEffect(() => {
-    if (!open) return;
+    if (!floating) return;
     window.addEventListener("scroll", onScrollOrResize, true);
     window.addEventListener("resize", onScrollOrResize);
     window.addEventListener("blur", onScrollOrResize);
@@ -241,12 +249,13 @@ export function ContextMenu({ menu, label, children }: { menu: ContextMenuState;
       window.visualViewport?.removeEventListener("resize", onScrollOrResize);
       window.visualViewport?.removeEventListener("scroll", onScrollOrResize);
     };
-  }, [open]);
+  }, [floating]);
 
-  useMenuDismiss(open, [panel], () => close(false));
-  useMenuKeyboard(open, panel, () => close(true), () => close(false));
+  useMenuDismiss(floating, [panel], () => close(false));
+  useMenuKeyboard(floating, panel, () => close(true), () => close(false));
 
   if (!used) return null;
+  if (sheet && touch) return touch({ open, label, onClose: () => close(true), children: <PickContext.Provider value={() => close(true)}>{children}</PickContext.Provider> });
   return (
     <FloatingPortal>
       <AnimatePresence>
