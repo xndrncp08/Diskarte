@@ -10,7 +10,6 @@ import type { MenuItem } from "@/components/ui/Menu";
 import { NotificationHub } from "@/components/workspace/NotificationHub";
 import { WorkspacePanel } from "@/components/workspace/WorkspacePanel";
 import { Avatar } from "../Avatar";
-import { Button } from "../Button";
 import { Masthead } from "../shell/Masthead";
 import { useYouItems } from "../shell/Navigator";
 
@@ -40,8 +39,9 @@ function Sections({ items }: { items: MenuItem[] }) {
 
 /**
  * The phone You tab (`/tambayan/you`, a plain page on wider screens): your face and status, the status and custom
- * status choices (useStatusMenu, the same as the You menu), notifications (the hub, and their settings), Settings,
- * the Control Center for super admins and Back to Classic (useYouItems), last, within thumb reach.
+ * status choices (useStatusMenu, the same as the You menu), then, last and within thumb reach, Edit profile,
+ * Notification settings, Settings, the Control Center for super admins and Back to Classic (useYouItems). The
+ * notification hub is in the masthead.
  */
 export function PulseYou({ servers }: { servers: RailEntry[] }) {
   const { me } = useMe();
@@ -49,7 +49,10 @@ export function PulseYou({ servers }: { servers: RailEntry[] }) {
   const you = useYouItems();
   const settings = useSettingsDialog();
   const status = me.status === "invisible" ? "offline" : me.status;
-  const notifications: MenuItem = { label: "Notification settings", icon: <Bell />, group: "You", onSelect: () => settings?.openSettings("notifications"), hidden: !settings };
+  const own: MenuItem[] = [
+    { label: "Edit profile", icon: <Pencil />, group: "You", onSelect: () => settings?.openSettings("profile"), hidden: !settings },
+    { label: "Notification settings", icon: <Bell />, group: "You", onSelect: () => settings?.openSettings("notifications"), hidden: !settings },
+  ];
   return (
     <WorkspacePanel id="main" title="You">
       <section className="flex min-h-0 min-w-0 flex-1 flex-col font-pulse-text text-pulse-text">
@@ -62,9 +65,8 @@ export function PulseYou({ servers }: { servers: RailEntry[] }) {
                 <p className="truncate font-pulse-display text-pulse-title font-semibold">{me.display_name}</p>
                 <p className="truncate text-pulse-label text-pulse-muted">{label}</p>
               </div>
-              {settings && <Button size="sm" icon={<Pencil />} onClick={() => settings.openSettings("profile")}>Edit profile</Button>}
             </div>
-            <Sections items={[...items, notifications, ...you]} />
+            <Sections items={[...items, ...own, ...you]} />
           </div>
         </div>
       </section>

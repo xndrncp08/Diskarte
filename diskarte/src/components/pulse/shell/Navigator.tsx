@@ -133,7 +133,7 @@ export function PeopleActions({ className }: { className?: string }) {
   const accepted = (friends ?? []).filter((f) => f.status === "accepted");
   return (
     <div className={cn("flex gap-2", className)}>
-      <Button size="sm" icon={<Sparkles />} onClick={() => setDialog("hangout")} className="flex-1">Start a Hangout</Button>
+      <Button size="sm" variant="primary" icon={<Sparkles />} onClick={() => setDialog("hangout")} className="flex-1">Start a Hangout</Button>
       <Button size="sm" variant="quiet" icon={<Plus />} onClick={() => setDialog("group")}>Group</Button>
       <StartHangoutDialog open={dialog === "hangout"} onClose={() => setDialog(null)} />
       <Modal open={dialog === "group"} onClose={() => setDialog(null)} title="New group DM">

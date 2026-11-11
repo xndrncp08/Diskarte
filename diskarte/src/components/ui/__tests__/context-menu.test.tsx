@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { computeContextMenuPosition, ContextMenu, ContextMenuItems, LONG_PRESS_MS, useContextMenu } from "@/components/ui/ContextMenu";
 import { ConfirmHost, confirmAction } from "@/components/ui/ConfirmHost";
+import { PulseMenuSkin } from "@/components/pulse/Menu";
 import type { MenuItem } from "@/components/ui/Menu";
 
 describe("computeContextMenuPosition", () => {
@@ -115,8 +116,40 @@ describe("ContextMenu", () => {
     act(() => vi.advanceTimersByTime(LONG_PRESS_MS));
     expect(screen.getByRole("menu", { name: "Row menu" })).toBeInTheDocument();
     fireEvent.pointerUp(row);
-    fireEvent.click(row);
+    fireEvent.click(row, { clientX: 10, clientY: 10 });
     expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it.each(["classic", "pulse"])("a cancelled %s long-press leaves the next same-position tap usable", (shell) => {
+    vi.useFakeTimers();
+    vi.spyOn(window, "matchMedia").mockImplementation((query) => ({ matches: query === "(pointer: coarse)", media: query, onchange: null, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent: () => false }) as MediaQueryList);
+    const onClick = vi.fn();
+    const target = <Target name="Row" items={[{ label: "Do it", onSelect: vi.fn() }]} />;
+    render(<>{shell === "pulse" ? <PulseMenuSkin>{target}</PulseMenuSkin> : target}<button onClick={onClick}>Next tap</button></>);
+    const row = screen.getByRole("button", { name: "Row" });
+    fireEvent.pointerDown(row, { pointerType: "touch", clientX: 30, clientY: 30 });
+    act(() => vi.advanceTimersByTime(LONG_PRESS_MS));
+    fireEvent.pointerCancel(window, { pointerType: "touch" });
+    // A cancelled touch produces no lifting click. The next click may land on the sheet scrim at the same coordinates.
+    fireEvent.click(screen.getByText("Next tap"), { clientX: 30, clientY: 30 });
+    expect(onClick).toHaveBeenCalledOnce();
+    vi.restoreAllMocks();
+  });
+
+  it.each(["lift without a click", "unmount"])("removes the global click guard after %s", (end) => {
+    vi.useFakeTimers();
+    const { unmount } = render(<Target name="Row" items={[{ label: "Do it", onSelect: vi.fn() }]} />);
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Row" }), { pointerType: "touch", clientX: 30, clientY: 30 });
+    act(() => vi.advanceTimersByTime(LONG_PRESS_MS));
+    if (end === "unmount") unmount();
+    else {
+      fireEvent.pointerUp(window);
+      act(() => vi.advanceTimersByTime(0));
+    }
+    const onClick = vi.fn();
+    window.addEventListener("click", onClick, { once: true });
+    fireEvent.click(document.body, { clientX: 30, clientY: 30 });
+    expect(onClick).toHaveBeenCalledOnce();
   });
 
   it("does not open when the finger moves (a scroll)", () => {

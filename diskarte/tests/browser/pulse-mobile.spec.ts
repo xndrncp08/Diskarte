@@ -55,10 +55,14 @@ for (const mode of ["dark", "light"] as const) {
         await page.goto(route);
         await expect(page.locator("#main-content h1").first()).toBeVisible();
         const tabs = page.getByRole("navigation", { name: "Main destinations" });
-        // Landscape phones (≥ 768 px wide) get the tablet layout: navigator column, no tab bar.
+        // Short landscape keeps the navigator in a drawer and a compact masthead, without a tab bar.
         if (TOP.has(name) && !landscape) await expect(tabs).toBeVisible();
         else await expect(tabs).toBeHidden();
-        if (!landscape) await expect(page.getByRole("button", { name: TOP.has(name) ? "Open navigation" : "Back" })).toBeVisible();
+        await expect(page.getByRole("button", { name: TOP.has(name) ? "Open navigation" : "Back" })).toBeVisible();
+        if (landscape) {
+          await expect(page.locator("[data-mobile-navigation]")).toHaveAttribute("inert", "");
+          expect((await page.locator("#main-content [data-pulse-masthead]").boundingBox())!.height).toBeLessThanOrEqual(60);
+        }
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${name} overflows`).toBe(true);
         await expectNoAxeViolations(page, name);
         // Pulse's own phone chrome and screens: the masthead, the tab bar and the Spaces, You and People pages.
@@ -74,6 +78,15 @@ for (const mode of ["dark", "light"] as const) {
 
 test("Pulse phone flows: tabs, a conversation and Back, Spaces to a room, edge swipe, focus on arrival", async ({ browser }) => {
   const page = await phone(browser, "dark", { width: 390, height: 844 });
+  // Installed PWA: only it owns a custom edge Back gesture. Browser tabs keep their native gesture.
+  await page.addInitScript(() => {
+    const match = window.matchMedia.bind(window);
+    window.matchMedia = (query) => {
+      const media = match(query);
+      if (query === "(display-mode: standalone)") Object.defineProperty(media, "matches", { value: true });
+      return media;
+    };
+  });
   const tabs = page.getByRole("navigation", { name: "Main destinations" });
   await page.goto("/tambayan");
   await expect(tabs.getByRole("link", { name: "Home" })).toHaveAttribute("aria-current", "page");
@@ -109,8 +122,10 @@ test("Pulse phone flows: tabs, a conversation and Back, Spaces to a room, edge s
 
   // Deep link: Back from a room you opened directly goes to its Space's landing.
   await page.goto(SCREENS.room);
+  const historyLength = await page.evaluate(() => history.length);
   await page.getByRole("button", { name: "Back" }).tap();
   await expect(page).toHaveURL(new RegExp(`/tambayan/${SERVER_ID}$`));
+  expect(await page.evaluate(() => history.length)).toBe(historyLength); // fallback replaces the room, never pushes it
   await page.context().close();
 });
 

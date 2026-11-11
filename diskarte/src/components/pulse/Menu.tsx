@@ -1,8 +1,8 @@
 "use client";
 
-import type { ComponentProps, ReactNode } from "react";
+import { useRef, type ComponentProps, type ReactNode } from "react";
 import { ContextMenu as BaseContextMenu, TouchMenuContext, type TouchMenu } from "@/components/ui/ContextMenu";
-import { Menu as BaseMenu, MenuSkinContext, type MenuSkin } from "@/components/ui/Menu";
+import { Menu as BaseMenu, MenuSkinContext, useMenuKeyboard, type MenuSkin } from "@/components/ui/Menu";
 import { Sheet } from "./Dialog";
 
 export { ContextMenuItems, useContextMenu, useContextMenuPick } from "@/components/ui/ContextMenu";
@@ -21,12 +21,22 @@ const PULSE_MENU: MenuSkin = {
   check: "size-4 shrink-0 text-pulse-accent-ink",
 };
 
-// A long-press on a touch screen opens the menu's rows in a bottom sheet (Space, room and conversation menus alike).
-const TouchSheet: TouchMenu = ({ open, label, onClose, children }) => (
-  <Sheet open={open} onClose={onClose} title={label}>
-    <div role="menu" aria-label={label} className="-mx-2">{children}</div>
-  </Sheet>
-);
+/**
+ * A menu in a bottom sheet: what a long-press opens on a touch screen (Spaces, rooms, conversations, messages). Still a
+ * menu: it opens on its first row and ↑/↓/Home/End move (a tablet's keyboard); Escape, the scrim and Close shut it,
+ * and Tab stays in the sheet.
+ */
+export function MenuSheet({ open, label, title = label, onClose, children }: { open: boolean; label: string; title?: string; onClose: () => void; children: ReactNode }) {
+  const panel = useRef<HTMLDivElement>(null);
+  useMenuKeyboard(open, panel, onClose, () => {});
+  return (
+    <Sheet open={open} onClose={onClose} title={title}>
+      <div ref={panel} role="menu" aria-label={label} className="-mx-2">{children}</div>
+    </Sheet>
+  );
+}
+
+const TouchSheet: TouchMenu = (props) => <MenuSheet {...props} />;
 
 /**
  * Gives every Menu and ContextMenu below it the Pulse skin, including Classic menus reused inside Pulse screens, and

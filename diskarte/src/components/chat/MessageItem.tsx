@@ -7,7 +7,7 @@ import { UserAvatar } from "@/components/profile/UserAvatar";
 import { PersonContextMenu } from "@/components/social/PersonMenu";
 import { IconButton, Button as PulseButton } from "@/components/pulse/Button";
 import { Toolbar } from "@/components/pulse/Controls";
-import { Sheet } from "@/components/pulse/Dialog";
+import { MenuSheet } from "@/components/pulse/Menu";
 import { useShellKind } from "@/components/shell/ShellKind";
 import { ContextMenu, ContextMenuItems, ContextMenuPickContext, copyText, useContextMenu, useContextMenuPick } from "@/components/ui/ContextMenu";
 import { Glyph } from "@/components/ui/Glyph";
@@ -461,11 +461,9 @@ export const MessageItem = memo(function MessageItem({
           )}
         </div>
         {sheet ? (
-          <Sheet open onClose={() => menu.close()} title="Message actions">
-            <div role="menu" aria-label="Message options" className="-mx-2">
-              <ContextMenuPickContext.Provider value={() => menu.close()}>{menuItems}</ContextMenuPickContext.Provider>
-            </div>
-          </Sheet>
+          <MenuSheet open onClose={() => menu.close()} title="Message actions" label="Message options">
+            <ContextMenuPickContext.Provider value={() => menu.close()}>{menuItems}</ContextMenuPickContext.Provider>
+          </MenuSheet>
         ) : (
           <ContextMenu menu={menu} label="Message options">
             {menuItems}

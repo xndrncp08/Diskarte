@@ -17,7 +17,10 @@ function push(path: string) {
 }
 const router = {
   push,
-  replace: push,
+  replace: (path: string) => {
+    history.replaceState(null, "", path);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  },
   refresh: () => window.dispatchEvent(new PopStateEvent("popstate")),
   back: () => history.back(),
   prefetch: async () => {},

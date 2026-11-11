@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { PulseMenuSkin } from "../Menu";
 import { PulseTooltipSkin } from "../Tooltip";
 import { CallStrip } from "./CallStrip";
-import { PulseMobileNavigation, useBack, usePhoneNavigation } from "./MobileTabs";
+import { PulseMobileNavigation, standalone, useBack, usePhoneNavigation, useShortScreen } from "./MobileTabs";
 import { Navigator } from "./Navigator";
 import { PulseUIProvider } from "./PulseUI";
 
@@ -32,9 +32,16 @@ const PULSE_NAV = { ...NAV_WIDTH, min: 280, initial: 280 };
 export function PulseShell({ servers, children }: { servers: RailEntry[]; children: ReactNode }) {
   const { navOpen, setNavOpen } = useShellUI();
   const back = useBack();
-  // In a conversation the left-edge swipe goes Back (as the masthead's Back button does) instead of opening the drawer.
-  const swipe = useSwipeDrawer(navOpen, (open) => (open && back.href ? back.back() : setNavOpen(open)));
-  const desktop = useIsCanvas();
+  // In a conversation the left-edge swipe goes Back (as the masthead's Back button does), but only in the installed app:
+  // in a browser tab the browser's own edge swipe already goes back, and both would fire.
+  const swipe = useSwipeDrawer(navOpen, (open) => {
+    if (open && !standalone()) return;
+    if (open && back.href) back.back();
+    else setNavOpen(open);
+  });
+  // Short landscape (a phone on its side) is wider than md but keeps the navigator as a drawer.
+  const short = useShortScreen();
+  const desktop = useIsCanvas() && !short;
   const [layout, setLayout] = useLayout();
   const frame = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLDivElement>(null);
@@ -60,7 +67,7 @@ export function PulseShell({ servers, children }: { servers: RailEntry[]; childr
               <motion.button
                 type="button"
                 aria-label="Close navigation"
-                className="fixed inset-0 z-30 bg-pulse-scrim md:hidden"
+                className={cn("fixed inset-0 z-30 bg-pulse-scrim", desktop && "md:hidden")}
                 onClick={() => setNavOpen(false)}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -74,12 +81,13 @@ export function PulseShell({ servers, children }: { servers: RailEntry[]; childr
             inert={!desktop && !navOpen}
             style={{ "--pulse-nav-w": `${width}px` } as React.CSSProperties}
             className={cn(
-              "fixed inset-y-0 left-0 z-40 flex w-[min(22rem,calc(100vw-3rem))] border-r border-pulse-line transition-transform duration-200 ease-out md:relative md:z-10 md:w-(--pulse-nav-w) md:shrink-0 md:translate-x-0 md:border-r-0",
+              "fixed inset-y-0 left-0 z-40 flex w-[min(22rem,calc(100vw-3rem))] border-r border-pulse-line transition-transform duration-200 ease-out",
+              desktop ? "md:relative md:z-10 md:w-(--pulse-nav-w) md:shrink-0 md:translate-x-0 md:border-r-0" : "bg-pulse-bg pl-[env(safe-area-inset-left)]",
               navOpen ? "translate-x-0" : "-translate-x-full",
             )}
           >
             <Navigator servers={servers} />
-            <ResizeHandle label="Resize navigator" side="right" value={width} {...PULSE_NAV} onChange={(nav) => setLayout({ nav })} />
+            {desktop && <ResizeHandle label="Resize navigator" side="right" value={width} {...PULSE_NAV} onChange={(nav) => setLayout({ nav })} />}
           </div>
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <BroadcastBanner />

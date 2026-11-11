@@ -142,6 +142,7 @@ describe("phone navigation", () => {
     render(<Phone />);
     await userEvent.setup().click(screen.getByRole("button", { name: "Back" }));
     expect(navigation.path).toBe(`/tambayan/${SERVER_ID}`);
+    expect(navigation.history).toEqual([]); // replace the conversation, so browser Back cannot loop into it
   });
 
   it("Back returns through history when you came from the parent", async () => {
@@ -152,7 +153,8 @@ describe("phone navigation", () => {
     expect(navigation.history).toEqual([]); // router.back(), not a new entry
   });
 
-  it("a swipe from the left edge goes Back in a conversation, and opens the navigator on a top-level screen", async () => {
+  it("an installed app edge swipe goes Back in a conversation, and opens navigation on a top-level screen", async () => {
+    vi.spyOn(window, "matchMedia").mockImplementation((query) => ({ matches: query === "(display-mode: standalone)", media: query, onchange: null, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent: () => false }) as MediaQueryList);
     navigation.reset("/tambayan/dm/abc");
     render(<Phone />);
     const shell = screen.getByTestId("shell");
@@ -166,6 +168,22 @@ describe("phone navigation", () => {
     await waitFor(() => expect(tabs()).not.toBeNull());
     swipe();
     expect(screen.getByRole("button", { name: "Close navigation" })).toBeInTheDocument();
+    vi.restoreAllMocks();
+  });
+
+  it("leaves browser edge swipes alone on conversations and top-level screens", () => {
+    render(<Phone />);
+    const shell = screen.getByTestId("shell");
+    const swipe = () => {
+      fireEvent.touchStart(shell, { touches: [{ clientX: 8, clientY: 300 }] });
+      fireEvent.touchMove(shell, { touches: [{ clientX: 90, clientY: 304 }] });
+      fireEvent.touchEnd(shell);
+    };
+    swipe();
+    expect(screen.queryByRole("button", { name: "Close navigation" })).toBeNull();
+    act(() => navigation.push("/tambayan/dm/abc"));
+    swipe();
+    expect(navigation.path).toBe("/tambayan/dm/abc");
   });
 });
 
@@ -177,6 +195,13 @@ describe("Spaces and You screens", () => {
     expect(within(screen.getByRole("list", { name: "Your Spaces" })).getByRole("link", { name: new RegExp(server.name) })).toHaveAttribute("href", `/tambayan/${SERVER_ID}`);
     expect(within(screen.getByRole("main")).getByRole("button", { name: "Add a Space" })).toBeInTheDocument();
     expect(within(tabs()!).getByRole("link", { name: /Spaces/ })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("uses Open Space in the Space menu", () => {
+    navigation.reset("/tambayan/spaces");
+    render(<Phone page={<PulseSpaces servers={[server]} />} />);
+    fireEvent.contextMenu(within(screen.getByRole("list", { name: "Your Spaces" })).getByRole("link"), { clientX: 20, clientY: 20 });
+    expect(screen.getByRole("menuitem", { name: "Open Space" })).toBeInTheDocument();
   });
 
   it("You shows your status choices, notifications, Settings and Back to Classic", () => {
@@ -209,7 +234,10 @@ describe("touch context menus", () => {
     await user.click(screen.getByRole("button", { name: "Lakbay Crew" }));
     const sheet = await screen.findByRole("dialog", { name: "Lakbay Crew options" });
     expect(within(sheet).getByRole("menu", { name: "Lakbay Crew options" })).toBeInTheDocument();
-    expect(within(sheet).getByRole("menuitem", { name: "Mark as read" })).toBeInTheDocument();
+    const first = within(sheet).getByRole("menuitem", { name: "Mark as read" });
+    expect(first).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(first).toHaveFocus();
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     vi.restoreAllMocks();

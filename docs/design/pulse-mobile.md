@@ -4,8 +4,10 @@ Step 6b of Diskarte Pulse: phone navigation that is designed for a phone rather 
 [Pulse shell](pulse-shell.md) and is built from the [Pulse components](pulse-components.md). Pulse is still a
 super-admin preview; Classic's phone layout (its `MobileNavigation`, colours and drawer) is unchanged.
 
-"Phone" means below `md` (768 px). A phone in landscape (for example 844 × 390) is wider than that and gets the
-tablet layout: the navigator column, no tab bar.
+"Phone" means below `md` (768 px). Short touch screens (at most 500 px high, including 844 × 390 landscape)
+keep the navigator in a drawer and use a compact masthead at every width. Above `md` they have no tab bar; the
+masthead still exposes navigation or Back. While typing, the composer shares a row with Send and keeps character
+limits/slow-mode feedback visible; blur the field to show its other tools again.
 
 ## Screens and tabs
 
@@ -28,22 +30,25 @@ The **BottomTabBar** (a `<nav>` of links labelled "Main destinations", not ARIA 
   order (`useSpaces`, `SpaceRow`, the navigator's rows). A tap opens the Space's landing, where its rooms are;
   long-press opens the Space menu. Explore Spaces, then **Add a Space** at the bottom.
 - **You** ([`views/You.tsx`](../../diskarte/src/components/pulse/views/You.tsx)) shows your face and status, the
-  status and custom status choices (`useStatusMenu`, pressed toggles under an h2 per group), Notification settings,
-  then Settings, the Control Center (super admins) and Back to Classic (`useYouItems`, shared with the You menu). The
+  status and custom status choices (`useStatusMenu`, pressed toggles under an h2 per group), Edit profile and
+  Notification settings, then Settings, the Control Center (super admins) and Back to Classic (`useYouItems`, shared with the You menu). The
   notification hub is in its masthead.
 - The two new routes need no new data: Spaces reads `getMyServers` like Messages; You reads the profile already in
   `MeProvider`. Both check `previewShell` on the server and send Classic to `/tambayan`. Every route still opens
   directly (deep links).
 - The phone navigator drawer stays: the masthead's menu button on top-level screens, a swipe from the left edge,
-  and a landing's "All N rooms". Its Home · People · Spaces switch is unchanged.
+  and a landing's "All N rooms". Custom edge swipes open the drawer only in the installed PWA; browser tabs keep
+  native Back. Its Home · People · Spaces switch is unchanged.
 
 ## Conversations, Back and gestures
 
 - The Masthead shows **Back** instead of the menu button in a conversation. `backTarget(pathname)`: a DM goes to
-  People, anything inside a Space to its landing. `useBack()` returns through history when you came from that
-  screen (so the list keeps its scroll) and otherwise pushes it (a deep link has no history to go back to).
-- A **swipe from the left edge** goes Back in a conversation (the same `useSwipeDrawer` gesture that opens the drawer
-  on top-level screens).
+  People, anything inside a Space to its landing. `useBack()` returns through history when you came from any
+  top-level screen (so Home → DM → Back returns Home and preserves its scroll). For a deep link or conversation-to-
+  conversation navigation it replaces the route with the parent, preventing Back from looping into that conversation.
+- In the **installed PWA only**, a swipe from the left edge goes Back in a conversation (the same `useSwipeDrawer`
+  gesture that opens the drawer on top-level screens). Browser tabs keep their native edge Back gesture; closing a
+  drawer by swiping remains available in either mode.
 - A conversation opened from a top-level screen **slides in from the right**: the canvas gets `data-enter` and
   `max-md:pulse-motion:data-enter:animate-pulse-enter` (260 ms, no fill mode, so no transform lingers). Under reduced
   motion (OS or Settings) it simply appears.
@@ -55,7 +60,9 @@ The **BottomTabBar** (a `<nav>` of links labelled "Main destinations", not ARIA 
 - **Long-press** on a Space, room or conversation opens its menu in a bottom **Sheet** on touch screens
   (`pointer: coarse`). The shared `ContextMenu` reads `TouchMenuContext`; `PulseMenuSkin` provides a Sheet, Classic
   provides nothing and keeps its floating menu. The click that follows lifting the finger is dropped, so it can't
-  close the sheet or pick a row. Messages already did this (Step 5a).
+  close the sheet or pick a row. Cancellation removes the click guard immediately, so the next same-position tap
+  still works in Classic and Pulse; lifting without a click and unmounting also clean up the guard. Messages use the
+  same menu sheet, including arrow/Home/End keyboard navigation, first-item focus and the modal Tab trap.
 - The **Context** panel is a bottom Sheet on phones. Sheets close with Escape, the scrim, Close or Back.
 
 ## Calls, keyboard and safe areas

@@ -466,7 +466,7 @@ export function Composer({
             </label>
             {/* 16 px on phones so iOS doesn't zoom into the field. */}
             <textarea {...textareaProps} className="max-h-60 min-h-11 w-full resize-none bg-transparent px-4 pb-1 pt-3 text-base text-pulse-text outline-none placeholder:text-pulse-muted md:text-pulse-body" />
-            <div className="flex flex-wrap items-center gap-0.5 px-2 pb-2" data-testid="composer-tools">
+            <div className="flex flex-wrap items-center gap-0.5 px-2 pb-2" data-testid="composer-tools" data-dock-tools="">
               {allowUploads && <IconButton tooltip label="Attach files" icon={<Paperclip />} size="sm" onClick={() => fileInput.current?.click()} />}
               {voiceEl}
               {gifEl}
@@ -474,7 +474,7 @@ export function Composer({
               {stickerEl}
               {extra}
               {scheduleEl}
-              <span className="flex min-w-2 flex-1 items-center justify-end gap-2 pr-1 text-pulse-caption">
+              <span data-compose-feedback="" className="flex min-w-2 flex-1 items-center justify-end gap-2 pr-1 text-pulse-caption">
                 {slowmodeSeconds > 0 && (
                   <span className={cn("inline-flex items-center gap-1", cooldown > 0 ? "font-semibold text-pulse-text" : "text-pulse-muted")} data-testid="slowmode-indicator">
                     <Turtle className="size-3.5" aria-hidden />

@@ -240,6 +240,23 @@ html[data-shell="pulse"] .app-viewport {
   padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
 }
 
+/* A phone on its side (docs/design/pulse-mobile.md): while you type, the dock's tools step aside and only Send stays, so
+   the messages keep what little height the keyboard leaves. */
+@media (max-height: 500px) and (pointer: coarse) {
+  html[data-shell="pulse"] form:has(textarea:focus) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+  }
+  html[data-shell="pulse"] form:has(textarea:focus) [data-dock-tools] {
+    justify-content: flex-end;
+    padding-block: 4px;
+  }
+  html[data-shell="pulse"] form:has(textarea:focus) [data-dock-tools] > :not([type="submit"]):not([data-compose-feedback]) {
+    display: none;
+  }
+}
+
 /* The page behind the app (overscroll, safe areas, the gap above the keyboard) is Pulse ground too. */
 html[data-shell="pulse"],
 html[data-shell="pulse"] body {

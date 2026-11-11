@@ -2,6 +2,7 @@
 
 import { Inbox as InboxIcon, MessageCircle, Users } from "lucide-react";
 import { useSocial } from "@/components/providers/SocialProvider";
+import { useIsCanvas } from "@/components/workspace/WorkspaceProvider";
 import Link from "next/link";
 import { RelativeTime } from "../RelativeTime";
 import { ConversationAvatar } from "@/components/social/HomeSidebar";
@@ -14,6 +15,7 @@ import { NavItem } from "../Nav";
 import { EmptyState, Skeleton } from "../States";
 import { Masthead } from "../shell/Masthead";
 import { PeopleActions } from "../shell/Navigator";
+import { useShortScreen } from "../shell/MobileTabs";
 
 /**
  * Messages in Pulse is a focused inbox, not a second copy of the navigator's People list: search, All / Unread, and
@@ -23,11 +25,14 @@ import { PeopleActions } from "../shell/Navigator";
  */
 export function PulseInbox({ conversations, list, query, onQuery, unreadOnly, onUnreadOnly }: { conversations: ConversationSummary[] | null; list: ConversationSummary[]; query: string; onQuery: (value: string) => void; unreadOnly: boolean; onUnreadOnly: (value: boolean) => void }) {
   const now = useNow();
+  const short = useShortScreen();
+  const phone = !useIsCanvas() || short;
   const unread = conversations?.filter(isUnread).length ?? 0;
   const incoming = useSocial().friends?.filter((f) => f.status === "incoming").length ?? 0;
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col font-pulse-text text-pulse-text">
-      <Masthead eyebrow="People" title="Messages" icon={<MessageCircle />} description={unread ? `${unread} unread` : "You're all caught up"} />
+      {/* On phones this is the People tab. */}
+      <Masthead eyebrow={phone ? undefined : "People"} title={phone ? "People" : "Messages"} icon={<MessageCircle />} description={unread ? `${unread} unread` : "You're all caught up"} />
       <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-3xl p-4 md:p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">

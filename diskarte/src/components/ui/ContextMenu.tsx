@@ -92,6 +92,7 @@ export function useContextMenu({ disabled = false }: { disabled?: boolean } = {}
   const viaKeyboard = useRef(false);
   const press = useRef<{ x: number; y: number; timer: ReturnType<typeof setTimeout> } | null>(null);
   const swallowClick = useRef(false);
+  const clearLift = useRef<(() => void) | null>(null);
 
   const clearPress = useCallback(() => {
     if (press.current) clearTimeout(press.current.timer);
@@ -101,6 +102,7 @@ export function useContextMenu({ disabled = false }: { disabled?: boolean } = {}
   useEffect(
     () => () => {
       clearPress();
+      clearLift.current?.();
       if (dismissCurrent === dismiss) dismissCurrent = null;
     },
     [clearPress, dismiss],
@@ -152,6 +154,7 @@ export function useContextMenu({ disabled = false }: { disabled?: boolean } = {}
     },
     onPointerDown: (e) => {
       if (outside(e)) return;
+      clearLift.current?.();
       swallowClick.current = false;
       if (disabled || e.pointerType !== "touch" || handled.has(e.nativeEvent)) return;
       handled.add(e.nativeEvent);
@@ -168,11 +171,28 @@ export function useContextMenu({ disabled = false }: { disabled?: boolean } = {}
           // …nor whatever now covers it (a touch sheet's scrim, a menu row): drop the click that follows the finger lifting.
           // Only the next click, and only where the finger was (a tap elsewhere is a real tap).
           const swallow = (ev: MouseEvent) => {
-            window.removeEventListener("click", swallow, true);
+            clearLift.current?.();
             if (Math.hypot(ev.clientX - x, ev.clientY - y) <= LONG_PRESS_SLOP) { ev.preventDefault(); ev.stopPropagation(); }
           };
           window.addEventListener("click", swallow, true);
-          window.addEventListener("pointerup", () => setTimeout(() => window.removeEventListener("click", swallow, true)), { capture: true, once: true });
+          let expiry: ReturnType<typeof setTimeout> | undefined;
+          // A lift's click follows its pointerup in the same task; a cancelled touch has no click at all.
+          const end = (ev: PointerEvent) => {
+            window.removeEventListener("pointerup", end, true);
+            window.removeEventListener("pointercancel", end, true);
+            if (ev.type === "pointercancel") clearLift.current?.();
+            else expiry = setTimeout(() => clearLift.current?.());
+          };
+          clearLift.current = () => {
+            clearTimeout(expiry);
+            window.removeEventListener("click", swallow, true);
+            window.removeEventListener("pointerup", end, true);
+            window.removeEventListener("pointercancel", end, true);
+            swallowClick.current = false;
+            clearLift.current = null;
+          };
+          window.addEventListener("pointerup", end, true);
+          window.addEventListener("pointercancel", end, true);
           navigator.vibrate?.(10);
           openAt(x, y, el, false);
         }, LONG_PRESS_MS),

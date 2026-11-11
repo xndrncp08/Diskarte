@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { Home, LayoutGrid, MessageCircle, UserRound } from "lucide-react";
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useRef, useSyncExternalStore, type RefObject } from "react";
 import { useOptionalSocial } from "@/components/providers/SocialProvider";
 import { useCall } from "@/components/voice/CallProvider";
 import { useKeyboardUp } from "@/hooks/useAppViewport";
@@ -33,15 +33,35 @@ export function backTarget(pathname: string): string | null {
   return first === "dm" ? "/tambayan/messages" : `/tambayan/${first}`;
 }
 
-// The path before the current one, so Back can return through history when it came from the parent screen.
+// The path before the current one, so Back can return through history when it came from a top-level screen.
 let previousPath: string | null = null;
 
-/** Back from a conversation: through history when you came from its parent (keeps that screen's scroll), else to the parent (deep links). */
+/**
+ * Back from a conversation. Opened from a top-level screen (a tab, a Space's landing): history back to it, so Home → DM →
+ * Back lands on Home and the browser's own Back can't re-enter the DM. A deep link, or arriving from another
+ * conversation: to the parent (`backTarget`).
+ */
 export function useBack() {
   const pathname = usePathname();
   const router = useRouter();
   const href = backTarget(pathname);
-  return { href, back: () => (href === null ? undefined : previousPath === href ? router.back() : router.push(href)) };
+  return { href, back: () => (href === null ? undefined : previousPath !== null && phoneTab(previousPath) !== null ? router.back() : router.replace(href)) };
+}
+
+/** Installed app (standalone): no browser edge-swipe Back of its own, so the shell's swipe may go Back. */
+export const standalone = () => Boolean(window.matchMedia?.("(display-mode: standalone)").matches);
+
+// A phone on its side: too short for the navigator column and a tall masthead, whatever its width.
+const SHORT = "(max-height: 500px) and (pointer: coarse)";
+function subscribeShort(onChange: () => void) {
+  const mq = window.matchMedia?.(SHORT);
+  mq?.addEventListener?.("change", onChange);
+  return () => mq?.removeEventListener?.("change", onChange);
+}
+
+/** Short landscape on a touch screen: the navigator is a drawer and the masthead compact, so messages get the height. */
+export function useShortScreen() {
+  return useSyncExternalStore(subscribeShort, () => window.matchMedia?.(SHORT).matches ?? false, () => false);
 }
 
 const phone = () => !window.matchMedia?.("(min-width: 768px)").matches;
@@ -66,11 +86,13 @@ export function usePhoneNavigation(canvas: RefObject<HTMLElement | null>) {
       el.setAttribute("data-enter", "");
     }
     // After the drawer (if any) has closed and handed focus back.
-    const frame = requestAnimationFrame(() => requestAnimationFrame(() => {
-      const h1 = document.querySelector<HTMLElement>("#main-content h1");
-      if (h1 && !h1.hasAttribute("tabindex")) h1.tabIndex = -1;
-      (h1 ?? document.getElementById("main-content"))?.focus({ preventScroll: true });
-    }));
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => {
+        const h1 = document.querySelector<HTMLElement>("#main-content h1");
+        if (h1 && !h1.hasAttribute("tabindex")) h1.tabIndex = -1;
+        (h1 ?? document.getElementById("main-content"))?.focus({ preventScroll: true });
+      });
+    });
     return () => cancelAnimationFrame(frame);
   }, [pathname, canvas]);
 }
