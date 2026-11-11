@@ -32,6 +32,9 @@ import { usePathname } from "./navigation";
 import { people, members } from "./database";
 import "@/app/globals.css";
 import { PulseGallery } from "./pulse-gallery";
+import { ForumView } from "@/components/chat/ForumView";
+import { DmView } from "@/components/social/DmView";
+import { DM_ID, dmProps, FORUM, forumHistory, richHistory } from "./pulse-messaging-data";
 
 const social: SocialValue = {
   friends: [
@@ -97,6 +100,8 @@ function Fixture() {
         />
       ) : path === "/tambayan/explore" ? (
         <ExploreView servers={[server]} />
+      ) : path === `/tambayan/dm/${DM_ID}` ? (
+        <DmView servers={[server]} {...dmProps} />
       ) : path === "/tambayan/messages" ? (<MessagesView servers={[server]} />) : path === "/tambayan/friends" ? (
         <FriendsView servers={[server]} />
       ) : (
@@ -107,13 +112,15 @@ function Fixture() {
           <WorkspacePanel id="main" title={server.name}>
             {path.endsWith("workspace") ? (
               <SharedWorkspaceView />
+            ) : path.endsWith("/forum") ? (
+              <ForumView channel={FORUM} initial={forumHistory} />
             ) : channel.type === "voice" ? (
               <VoiceChannelView channel={channel} />
             ) : (
               <ChatView
                 key={channel.id}
                 channel={channel}
-                initial={{
+                initial={richHistory(channel.id) ?? {
                   messages: [
                     {
                       id: "m1",
