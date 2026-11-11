@@ -2,7 +2,7 @@
 
 import { useRef, type ComponentProps, type ReactNode } from "react";
 import { ContextMenu as BaseContextMenu, TouchMenuContext, type TouchMenu } from "@/components/ui/ContextMenu";
-import { Menu as BaseMenu, MenuSkinContext, useMenuKeyboard, type MenuSkin } from "@/components/ui/Menu";
+import { Menu as BaseMenu, MenuSkinContext, CLASSIC_MENU, useMenuKeyboard, type MenuSkin } from "@/components/ui/Menu";
 import { Sheet } from "./Dialog";
 
 export { ContextMenuItems, useContextMenu, useContextMenuPick } from "@/components/ui/ContextMenu";
@@ -43,10 +43,10 @@ const TouchSheet: TouchMenu = (props) => <MenuSheet {...props} />;
  * opens context menus in a bottom Sheet on touch screens. The Pulse shell root wraps its tree in this; the Menu and
  * ContextMenu below set it themselves.
  */
-export function PulseMenuSkin({ children }: { children: ReactNode }) {
+export function PulseMenuSkin({ children, active = true }: { children: ReactNode; active?: boolean }) {
   return (
-    <MenuSkinContext.Provider value={PULSE_MENU}>
-      <TouchMenuContext.Provider value={TouchSheet}>{children}</TouchMenuContext.Provider>
+    <MenuSkinContext.Provider value={active ? PULSE_MENU : CLASSIC_MENU}>
+      <TouchMenuContext.Provider value={active ? TouchSheet : null}>{children}</TouchMenuContext.Provider>
     </MenuSkinContext.Provider>
   );
 }

@@ -248,6 +248,8 @@ html[data-shell="pulse"] .app-viewport {
 /* A phone on its side (docs/design/pulse-mobile.md): while you type, the dock's tools step aside and only Send stays, so
    the messages keep what little height the keyboard leaves. */
 @media (max-height: 500px) and (pointer: coarse) {
+  :root[data-shell="pulse"] textarea[data-testid="composer"] { font-size: 16px; }
+  :root[data-shell="pulse"] [data-testid="typing-line"]:empty { display: none; }
   html[data-shell="pulse"] form:has(textarea:focus) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;

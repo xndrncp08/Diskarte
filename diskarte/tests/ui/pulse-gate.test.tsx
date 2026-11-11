@@ -11,8 +11,7 @@ vi.mock("@/lib/admin-server", () => ({ getPlatformRole: async () => state.role }
 
 const { default: TambayanLayout } = await import("@/app/(app)/tambayan/layout");
 const { resolveShell } = await import("@/lib/shell");
-const { PulseShell } = await import("@/components/pulse/shell/PulseShell");
-const { ClassicFrame } = await import("@/components/shell/AppShell");
+const { AppFrame } = await import("@/components/shell/AppFrame");
 
 async function frame() {
   const tree = (await TambayanLayout({ children: null, params: Promise.resolve({}) } as never)) as ReactElement<{ shell: string; children: ReactElement }>;
@@ -36,19 +35,19 @@ describe("Pulse preview gate", () => {
   it("public opt-in accepts an explicit Pulse preference for members, but keeps Classic the default", async () => {
     vi.stubEnv("DISKARTE_PULSE_ROLLOUT", "opt-in");
     expect(resolveShell("pulse", "member", true)).toBe("pulse");
-    expect(await frame()).toEqual({ shell: "pulse", frame: PulseShell });
+    expect(await frame()).toEqual({ shell: "pulse", frame: AppFrame });
     state.cookie = undefined;
-    expect(await frame()).toEqual({ shell: "classic", frame: ClassicFrame });
+    expect(await frame()).toEqual({ shell: "classic", frame: AppFrame });
   });
 
   it("a member who sets the cookie by hand still gets Classic", async () => {
-    expect(await frame()).toEqual({ shell: "classic", frame: ClassicFrame });
+    expect(await frame()).toEqual({ shell: "classic", frame: AppFrame });
   });
 
   it("a super admin with the cookie gets Pulse; without it, Classic", async () => {
     state.role = "super_admin";
-    expect(await frame()).toEqual({ shell: "pulse", frame: PulseShell });
+    expect(await frame()).toEqual({ shell: "pulse", frame: AppFrame });
     state.cookie = undefined;
-    expect(await frame()).toEqual({ shell: "classic", frame: ClassicFrame });
+    expect(await frame()).toEqual({ shell: "classic", frame: AppFrame });
   });
 });

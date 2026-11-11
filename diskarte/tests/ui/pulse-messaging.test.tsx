@@ -175,6 +175,18 @@ describe("roving keyboard model", () => {
 });
 
 describe("Pulse message row", () => {
+  it("preserves an unsaved inline edit across shell switches", () => {
+    const a = actions();
+    const message = msg("m1", OWNER_ID, "2026-10-16T10:00:00Z");
+    const tree = (shell: "classic" | "pulse") => <ShellKindContext.Provider value={shell}><ServerFixture members={members}><MessageItem message={message} grouped={false} replyTo={undefined} reactions={[]} meId={OWNER_ID} canModerate mentioned={false} editing setEditing={vi.fn()} actions={a} /></ServerFixture></ShellKindContext.Provider>;
+    const { rerender } = render(tree("classic"));
+    fireEvent.change(screen.getByRole("textbox", { name: "Edit message" }), { target: { value: "Unsent edit" } });
+    rerender(tree("pulse"));
+    expect(screen.getByRole("textbox", { name: "Edit message" })).toHaveValue("Unsent edit");
+    rerender(tree("classic"));
+    expect(screen.getByRole("textbox", { name: "Edit message" })).toHaveValue("Unsent edit");
+  });
+
   function renderRow(props: Partial<Parameters<typeof MessageItem>[0]> = {}) {
     const a = actions();
     render(

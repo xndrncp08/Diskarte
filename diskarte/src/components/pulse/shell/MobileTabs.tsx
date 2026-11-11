@@ -71,10 +71,11 @@ const phone = () => !window.matchMedia?.("(min-width: 768px)").matches;
  * conversation in from the right when it opens from a top-level screen (only under `pulse-motion`, via the canvas's
  * `data-enter`), and moves focus to the new screen's h1 (else the canvas) so screen readers land on it.
  */
-export function usePhoneNavigation(canvas: RefObject<HTMLElement | null>) {
+export function usePhoneNavigation(canvas: RefObject<HTMLElement | null>, active = true) {
   const pathname = usePathname();
   const last = useRef<string | null>(null);
   useEffect(() => {
+    if (!active) { last.current = null; previousPath = null; return; }
     const prev = last.current;
     last.current = pathname;
     previousPath = prev;
@@ -94,7 +95,7 @@ export function usePhoneNavigation(canvas: RefObject<HTMLElement | null>) {
       });
     });
     return () => cancelAnimationFrame(frame);
-  }, [pathname, canvas]);
+  }, [pathname, canvas, active]);
 }
 
 /**
@@ -112,10 +113,7 @@ export function PulseMobileNavigation() {
   if (keyboard || (!tab && !inCall)) return null;
   return (
     <div className="shrink-0 md:hidden" data-testid="pulse-phone-nav">
-      {/* shortcut: un-hides the default (tablet) strip on phones; render <CallStrip compact /> once the voice step adds it. */}
-      {inCall && <div className="[&>[data-testid=call-dock]]:flex">
-        <CallStrip />
-      </div>}
+      {inCall && <CallStrip compact />}
       {tab ? (
         <BottomTabBar
           label="Main destinations"

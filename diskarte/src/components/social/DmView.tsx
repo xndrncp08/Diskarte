@@ -193,7 +193,7 @@ export function DmView({
           )}
 
           {inCall && (call.status === "connected" || (pulse && call.status === "reconnecting")) && (
-            <div className="flex max-h-[55%] min-h-64 shrink-0 flex-col border-b border-white/5" data-testid="dm-call">
+            <div className={cn("flex shrink-0 flex-col border-b border-white/5", pulse ? "h-[25dvh] min-h-0" : "max-h-[55%] min-h-64")} data-testid="dm-call">
               <VoiceStage />
             </div>
           )}

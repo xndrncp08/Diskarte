@@ -208,7 +208,7 @@ per browser; syncing it across devices would be a later decision. See the [rollo
 loading, actions or permission checks, and switching shells must not drop a call or the unread state.
 **Decision.** `app/(app)/tambayan/layout.tsx` resolves the cookie and server rollout eligibility, then renders
 one persistent `<AppFrame>` inside `<ShellProviders>` (admin access, layout, unreads, shell toggles, watchers,
-confirm host). `AppFrame`, exported from `pulse/shell/PulseShell.tsx`, changes navigation and styling without
+confirm host). `AppFrame`, exported from `shell/AppFrame.tsx`, changes navigation and styling without
 replacing the frame type or the page's content slot. Pulse UI/menu/tooltip providers stay mounted; their skins
 are active only for Pulse. `ClassicFrame` and `PulseShell` remain wrappers for standalone renders.
 Pages stay as they are. The seams they already use read a `ShellKindContext`: `WorkspacePanel` (nav renders

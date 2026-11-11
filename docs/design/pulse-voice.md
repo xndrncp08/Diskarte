@@ -117,9 +117,10 @@ before the scroller was measured, which pulled the transcript up).
 cd diskarte && CI=1 npx playwright test --config playwright.experience.config.ts pulse-voice
 ```
 
+Embedded DM stages are bounded to a quarter of the viewport height in Pulse, with scrollable participants and
+sticky call controls, leaving room for the transcript and composer. Empty typing lines collapse on short touch screens.
+
 ## Not yet
 
-- The phone call strip above the tab bar is placed by the phone navigation (Step 6b); until then phones keep
-  MobileNavigation's call strip.
 - The soundboard, activities and mixer panels keep their Classic look (readable through the Classic bridge).
 - No real-device check of audio, autoplay or permission prompts: the states are covered with a stubbed LiveKit.

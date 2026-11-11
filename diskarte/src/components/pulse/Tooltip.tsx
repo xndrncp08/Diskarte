@@ -15,6 +15,6 @@ export function Tooltip(props: Omit<ComponentProps<typeof BaseTooltip>, "tipClas
 }
 
 /** Gives reused Classic tooltips below it the Pulse bubble (the Pulse shell wraps its tree in this, like PulseMenuSkin). */
-export function PulseTooltipSkin({ children }: { children: ReactNode }) {
-  return <TooltipSkinContext.Provider value={PULSE_TIP}>{children}</TooltipSkinContext.Provider>;
+export function PulseTooltipSkin({ children, active = true }: { children: ReactNode; active?: boolean }) {
+  return <TooltipSkinContext.Provider value={active ? PULSE_TIP : null}>{children}</TooltipSkinContext.Provider>;
 }

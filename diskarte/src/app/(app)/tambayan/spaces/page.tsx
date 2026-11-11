@@ -5,7 +5,7 @@ import { PulseSpaces } from "@/components/pulse/views/Spaces";
 import { getPlatformRole } from "@/lib/admin-server";
 import { requireProfile } from "@/lib/auth";
 import { getMyServers } from "@/lib/data/servers";
-import { previewShell, SHELL_COOKIE } from "@/lib/shell";
+import { resolveShell, SHELL_COOKIE } from "@/lib/shell";
 
 export const metadata: Metadata = { title: "Spaces" };
 
@@ -13,6 +13,6 @@ export const metadata: Metadata = { title: "Spaces" };
 export default async function SpacesPage() {
   const { profile } = await requireProfile("/tambayan/spaces");
   const [servers, platformRole, jar] = await Promise.all([getMyServers(profile.id), getPlatformRole(), cookies()]);
-  if (previewShell(jar.get(SHELL_COOKIE)?.value, platformRole) !== "pulse") redirect("/tambayan");
+  if (resolveShell(jar.get(SHELL_COOKIE)?.value, platformRole, process.env.DISKARTE_PULSE_ROLLOUT === "opt-in") !== "pulse") redirect("/tambayan");
   return <PulseSpaces servers={servers} />;
 }

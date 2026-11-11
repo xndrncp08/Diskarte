@@ -189,3 +189,14 @@ test("Pulse phone safe areas: the masthead clears the notch, the tabs clear the 
     await page.context().close();
   }
 });
+
+// The landscape drawer must remove the conversation from the accessibility tree, just like portrait.
+test("Pulse landscape drawer makes the conversation inert until dismissed", async ({ browser }) => {
+  const page = await phone(browser, "dark", { width: 844, height: 390 });
+  await page.goto("/tambayan");
+  await page.getByRole("button", { name: "Open navigation" }).click();
+  await expect(page.locator("#main-content")).toHaveAttribute("inert", "");
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#main-content")).not.toHaveAttribute("inert");
+  await page.context().close();
+});

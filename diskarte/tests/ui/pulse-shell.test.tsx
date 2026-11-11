@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livekitMock } from "../mocks/livekit";
 import { navigation } from "../mocks/navigation";
@@ -10,6 +10,9 @@ vi.mock("@/actions/profile", async () => (await import("../mocks/actions")).prof
 vi.mock("sonner", async () => (await import("../mocks/actions")).toastMock);
 // Counts mounts of one of ShellProviders' watchers: it must survive a shell switch.
 const watcher = vi.hoisted(() => ({ mounts: 0 }));
+const composer = vi.hoisted(() => ({ upload: vi.fn(), send: vi.fn(async () => "sent" as const) }));
+vi.mock("@/lib/uploads", async (original) => ({ ...(await original<typeof import("@/lib/uploads")>()), uploadAttachment: composer.upload }));
+
 // Presence rejoins after a status save leaves Invisible (release/privacy-hardening); the You menu must do it too.
 const presence = vi.hoisted(() => ({ rejoin: vi.fn() }));
 vi.mock("@/components/providers/PresenceProvider", async (importOriginal) => ({
@@ -24,10 +27,12 @@ vi.mock("@/components/shell/DmNotifier", async (importOriginal) => ({
   },
 }));
 
-const { ClassicFrame, ShellProviders } = await import("@/components/shell/AppShell");
+const { ShellProviders } = await import("@/components/shell/AppShell");
+const { Composer } = await import("@/components/chat/Composer");
 const { SessionProviders } = await import("@/components/shell/SessionProviders");
 const { ShellKindContext } = await import("@/components/shell/ShellKind");
 const { ShellUIProvider } = await import("@/components/shell/ShellUI");
+const { AppFrame } = await import("@/components/shell/AppFrame");
 const { PulseShell } = await import("@/components/pulse/shell/PulseShell");
 const { PulseRooms } = await import("@/components/pulse/shell/Rooms");
 const { viewFor } = await import("@/components/pulse/shell/Navigator");
@@ -258,32 +263,42 @@ describe("switching shells", () => {
     const call = useCall();
     return <button type="button" onClick={() => void call.join({ serverId: SERVER_ID, serverName: server.name, channelId: TAMBAYAN.id, channelName: TAMBAYAN.name })}>Join voice</button>;
   }
+  function DraftProbe() {
+    const [value, setValue] = useState("");
+    return <WorkspacePanel id="main" title="Conversation"><input aria-label="Unsent draft" value={value} onChange={(event) => setValue(event.target.value)} /><Composer channelName="general" serverId={SERVER_ID} channelId={GENERAL.id} replyTo={null} onCancelReply={() => {}} onSend={composer.send} onEditLast={() => {}} typingNames={[]} onTyping={() => {}} onStopTyping={() => {}} /></WorkspacePanel>;
+  }
   function CallStatus() {
     return <output data-testid="call-status">{useCall().status}</output>;
   }
   /** app/(app)/layout.tsx → SessionProviders; tambayan/layout.tsx → ShellProviders around one frame or the other. */
   function App({ shell }: { shell: "classic" | "pulse" }) {
-    const Frame = shell === "pulse" ? PulseShell : ClassicFrame;
     return (
       <RuntimeConfigProvider value={RUNTIME}>
         <SessionProviders profile={MEMBERS[0].profile} account={ACCOUNT}>
           <CallStatus />
           <ShellProviders shell={shell}>
-            <Frame servers={[server]}>
+            <AppFrame shell={shell} servers={[server]}>
               <JoinButton />
-            </Frame>
+              <DraftProbe />
+            </AppFrame>
           </ShellProviders>
         </SessionProviders>
       </RuntimeConfigProvider>
     );
   }
 
-  it("keeps the call and the shared providers mounted; only the frame swaps", async () => {
+  it("keeps the call, conversation state and shared providers mounted across both presentations", async () => {
     const user = userEvent.setup();
-    const { rerender } = render(<App shell="classic" />);
+    const { rerender, container } = render(<App shell="classic" />);
+    const attachment = { path: `${SERVER_ID}/${GENERAL.id}/${MEMBERS[0].user_id}/voice.mp3`, name: "voice.mp3", size: 12, type: "audio/mpeg" };
+    composer.upload.mockResolvedValue(attachment);
+    fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [new File(["ID3 recording"], "voice.mp3", { type: "audio/mpeg" })] } });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Send message" })).toBeEnabled());
     expect(screen.getByTestId("micro-dock")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Join voice" }));
     await waitFor(() => expect(screen.getByTestId("call-status")).toHaveTextContent("connected"), { timeout: 5000 });
+    fireEvent.change(screen.getByRole("textbox", { name: "Unsent draft" }), { target: { value: "Keep this draft" } });
+    const draft = screen.getByRole("textbox", { name: "Unsent draft" });
     const room = livekitMock.rooms.at(-1)!;
     expect(watcher.mounts).toBe(1);
 
@@ -291,12 +306,19 @@ describe("switching shells", () => {
     expect(screen.queryByTestId("micro-dock")).toBeNull();
     expect(screen.getByTestId("pulse-navigator")).toBeInTheDocument();
     expect(screen.getByTestId("call-status")).toHaveTextContent("connected");
+    expect(screen.getByRole("textbox", { name: "Unsent draft" })).toBe(draft);
+    expect(draft).toHaveValue("Keep this draft");
     expect(room.disconnect).not.toHaveBeenCalled();
     expect(watcher.mounts).toBe(1);
 
     rerender(<App shell="classic" />);
     expect(screen.getByTestId("micro-dock")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Unsent draft" })).toBe(draft);
+    expect(draft).toHaveValue("Keep this draft");
     expect(room.disconnect).not.toHaveBeenCalled();
     expect(watcher.mounts).toBe(1);
+    expect(screen.getByText("voice.mp3")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Send message" }));
+    expect(composer.send).toHaveBeenCalledWith("", [attachment], null);
   });
 });

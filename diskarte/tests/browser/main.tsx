@@ -1,5 +1,5 @@
 import { createRoot } from "react-dom/client";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { FixtureCallProvider, type FixtureCall } from "./call";
 import { RuntimeConfigProvider } from "@/components/providers/RuntimeConfig";
 import { MeProvider } from "@/components/providers/MeProvider";
@@ -12,8 +12,8 @@ import { ServerContext } from "@/components/providers/ServerProvider";
 import { CallProvider } from "@/components/voice/CallProvider";
 import { SettingsDialogProvider } from "@/components/profile/SettingsDialog";
 import { MediaViewerProvider } from "@/components/chat/MediaViewer";
-import { ClassicFrame, ShellProviders } from "@/components/shell/AppShell";
-import { PulseShell } from "@/components/pulse/shell/PulseShell";
+import { ShellProviders } from "@/components/shell/AppShell";
+import { AppFrame } from "@/components/shell/AppFrame";
 import { PulseRooms } from "@/components/pulse/shell/Rooms";
 import { parseShell } from "@/lib/shell";
 import { HomeView } from "@/components/shell/HomeView";
@@ -71,9 +71,14 @@ const social: SocialValue = {
 // The diskarte-shell cookie picks the frame, as in app/(app)/tambayan/layout.tsx (the root layout sets data-shell).
 const shell = parseShell(document.cookie.match(/(?:^|; )diskarte-shell=([^;]*)/)?.[1]);
 document.documentElement.dataset.shell = shell;
-const Frame = shell === "pulse" ? PulseShell : ClassicFrame;
+function subscribeShell(callback: () => void) {
+  const observer = new MutationObserver(callback);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-shell"] });
+  return () => observer.disconnect();
+}
 
 function Fixture() {
+  const shell = useSyncExternalStore(subscribeShell, () => parseShell(document.documentElement.dataset.shell));
   const path = usePathname();
   const prefs = useDisplayPrefs();
   useEffect(() => {
@@ -88,7 +93,7 @@ function Fixture() {
     channels.find((item) => path.endsWith(item.id)) ?? channels[0];
   return (
     <ShellProviders shell={shell}>
-    <Frame servers={[server]}>
+    <AppFrame shell={shell} servers={[server]}>
       {path === "/tambayan" ? (
         <HomeView
           servers={[server]}
@@ -179,7 +184,7 @@ function Fixture() {
           </RosterDrawer>
         </>
       )}
-    </Frame>
+    </AppFrame>
     </ShellProviders>
   );
 }
@@ -205,6 +210,7 @@ createRoot(document.getElementById("root")!).render(
       supabaseAnonKey: "fixture-public-key",
       siteUrl: location.origin,
       livekitUrl: "wss://fixture.invalid",
+      pulseOptIn: true,
     }}
   >
     <MeProvider profile={people[0]}>

@@ -1,8 +1,7 @@
 # Pulse on phones
 
 Step 6b of Diskarte Pulse: phone navigation that is designed for a phone rather than a shrunk desktop. It sits in the
-[Pulse shell](pulse-shell.md) and is built from the [Pulse components](pulse-components.md). Pulse is still a
-super-admin preview; Classic's phone layout (its `MobileNavigation`, colours and drawer) is unchanged.
+[Pulse shell](pulse-shell.md) and is built from the [Pulse components](pulse-components.md). Availability follows the [controlled opt-in gate](pulse-rollout.md); Classic's phone layout (its `MobileNavigation`, colours and drawer) is unchanged.
 
 "Phone" means below `md` (768 px). Short touch screens (at most 500 px high, including 844 × 390 landscape)
 keep the navigator in a drawer and use a compact masthead at every width. Above `md` they have no tab bar; the
@@ -34,7 +33,7 @@ The **BottomTabBar** (a `<nav>` of links labelled "Main destinations", not ARIA 
   Notification settings, then Settings, the Control Center (super admins) and Back to Classic (`useYouItems`, shared with the You menu). The
   notification hub is in its masthead.
 - The two new routes need no new data: Spaces reads `getMyServers` like Messages; You reads the profile already in
-  `MeProvider`. Both check `previewShell` on the server and send Classic to `/tambayan`. Every route still opens
+  `MeProvider`. Both check `resolveShell` on the server and send Classic to `/tambayan`. Every route still opens
   directly (deep links).
 - The phone navigator drawer stays: the masthead's menu button on top-level screens, a swipe from the left edge,
   and a landing's "All N rooms". Custom edge swipes open the drawer only in the installed PWA; browser tabs keep
@@ -67,8 +66,8 @@ The **BottomTabBar** (a `<nav>` of links labelled "Main destinations", not ARIA 
 
 ## Calls, keyboard and safe areas
 
-- During a call the live **CallStrip** sits above the tab bar, and at the bottom of a conversation. Until the voice
-  step's `compact` variant lands, the default strip is un-hidden on phones (marked `shortcut:` in the code).
+- During a call, `<CallStrip compact />` sits above the tab bar or at the bottom of a conversation. The stage owns
+  its controls and recovery notices while open; the compact strip does not duplicate the call announcer.
 - **Keyboard:** `useKeyboardUp()` follows `useAppViewport`'s `<html data-keyboard>`; while the keyboard is up the
   tab bar and call strip are not rendered and the composer or search field stays in view. Inputs are 16 px on
   phones (no iOS zoom).
@@ -100,6 +99,5 @@ cd diskarte && CI=1 npx playwright test --config playwright.experience.config.ts
 
 - Real-device checks (iOS Safari, Android Chrome, installed PWA): everything above is browser emulation.
 - Swipe-to-dismiss on sheets, and an interactive (finger-following) Back swipe; the swipe triggers after 56 px.
-- The compact call strip (voice step) and the voice room's phone layout.
 - Room and DM pages inside a conversation have no quick switcher besides Back; the drawer is one tap away from
   the landing.

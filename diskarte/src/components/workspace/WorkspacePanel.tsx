@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, type ReactNode } from "react";
+import { useShortScreen } from "@/components/pulse/shell/MobileTabs";
 import { useShellKind } from "@/components/shell/ShellKind";
 import { useShellUI } from "@/components/shell/ShellUI";
 import { cn } from "@/lib/utils";
@@ -26,26 +27,24 @@ export function WorkspacePanel({ id, title, children, className }: WorkspacePane
   const shell = useShellKind();
   const { navOpen } = useShellUI();
   const [layout, setLayout] = useLayout();
-  const desktop = useIsCanvas();
+  const short = useShortScreen();
+  const desktop = useIsCanvas() && (shell !== "pulse" || !short);
   const ref = useRef<HTMLElement>(null);
   const panel = useFloatingPanel(id, ref);
   const controls = panel.floating && <FloatingPanelControls title={title} panel={panel} />;
   const content = <div className="flex min-h-0 min-w-0 flex-1">{children}</div>;
 
-  // Pulse: the shell's Spaces navigator owns navigation, so a page's nav column renders nothing; main is the canvas.
-  if (shell === "pulse") {
-    if (id === "nav") return null;
-    return (
-      <main id="main-content" tabIndex={-1} inert={navOpen && !desktop} aria-label={title} data-panel="main" className={cn("relative flex min-h-0 min-w-0 flex-1 flex-col bg-pulse-surface text-pulse-text outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] md:my-2 md:mr-2 md:overflow-hidden md:rounded-pulse-card md:border md:border-pulse-line md:shadow-pulse-1", className)}>
-        {content}
-      </main>
-    );
-  }
-
+  // Keep the same main/content slot in both shells: remounting would discard queued uploads and edits.
+  if (shell === "pulse" && id === "nav") return null;
   if (id === "main") {
+    const pulse = shell === "pulse";
     return (
-      <main ref={ref} style={panel.style} onPointerDownCapture={panel.raise} onFocusCapture={panel.raise} data-floating-panel={panel.floating ? "" : undefined} id="main-content" tabIndex={-1} inert={navOpen && !desktop} aria-label={title} data-panel="main" className={cn("workspace-main relative flex min-h-0 min-w-0 flex-1 flex-col outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] md:bg-abyss/40", panel.floating && "glass overflow-hidden rounded-2xl shadow-2xl", className)}>
-        {controls}{content}
+      <main ref={ref} style={pulse ? undefined : panel.style} onPointerDownCapture={pulse ? undefined : panel.raise} onFocusCapture={pulse ? undefined : panel.raise} data-floating-panel={!pulse && panel.floating ? "" : undefined} id="main-content" tabIndex={-1} inert={navOpen && !desktop} aria-label={title} data-panel="main" className={cn(
+        "relative flex min-h-0 min-w-0 flex-1 flex-col outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px]",
+        pulse ? "bg-pulse-surface text-pulse-text md:my-2 md:mr-2 md:overflow-hidden md:rounded-pulse-card md:border md:border-pulse-line md:shadow-pulse-1" : "workspace-main md:bg-abyss/40",
+        !pulse && panel.floating && "glass overflow-hidden rounded-2xl shadow-2xl", className,
+      )}>
+        {!pulse && controls}{content}
       </main>
     );
   }

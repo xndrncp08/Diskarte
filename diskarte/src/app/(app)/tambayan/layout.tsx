@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
-import { ClassicFrame, ShellProviders } from "@/components/shell/AppShell";
-import { PulseShell } from "@/components/pulse/shell/PulseShell";
+import { ShellProviders } from "@/components/shell/AppShell";
+import { AppFrame } from "@/components/shell/AppFrame";
 import { getPlatformRole } from "@/lib/admin-server";
 import { requireProfile } from "@/lib/auth";
 import { getMyServers } from "@/lib/data/servers";
@@ -17,7 +17,7 @@ export default async function TambayanLayout({ children }: LayoutProps<"/tambaya
   const shell = resolveShell(jar.get(SHELL_COOKIE)?.value, platformRole, process.env.DISKARTE_PULSE_ROLLOUT === "opt-in");
   return (
     <ShellProviders platformRole={platformRole} shell={shell}>
-      {shell === "pulse" ? <PulseShell servers={servers}>{children}</PulseShell> : <ClassicFrame servers={servers}>{children}</ClassicFrame>}
+      <AppFrame shell={shell} servers={servers}>{children}</AppFrame>
     </ShellProviders>
   );
 }

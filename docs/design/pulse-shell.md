@@ -33,7 +33,7 @@ app/(app)/layout.tsx           AdminAccessProvider (platform role) → SessionPr
          └─ content column     BroadcastBanner, Pulse CallStrip, persistent page slot, shell's phone navigation
 ```
 
-`AppFrame` (exported from `pulse/shell/PulseShell.tsx`) stays mounted when the shell changes. `ClassicFrame` and
+`AppFrame` (in `components/shell/AppFrame.tsx`) stays mounted when the shell changes. `ClassicFrame` and
 `PulseShell` remain wrappers for standalone uses; the app layout renders `AppFrame` directly. Pulse's UI, menu
 and tooltip providers stay mounted, with the skins active only in Pulse. The main page and its content slot also
 retain their identity. This preserves pending uploads and local conversation state as well as the call (in

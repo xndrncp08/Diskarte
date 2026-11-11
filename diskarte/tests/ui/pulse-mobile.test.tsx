@@ -109,13 +109,13 @@ describe("phone tab bar", () => {
   it("keeps the live call strip above the tabs, and on its own inside a conversation", () => {
     const { unmount } = render(<Phone call />);
     const bottom = screen.getByTestId("pulse-phone-nav");
-    const strip = within(bottom).getByTestId("call-dock");
+    const strip = within(bottom).getByTestId("call-strip-compact");
     expect(strip.compareDocumentPosition(within(bottom).getByRole("navigation")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(within(strip).getByRole("button", { name: "Disconnect" })).toBeInTheDocument();
+    expect(within(strip).getByRole("button", { name: "Leave call" })).toBeInTheDocument();
     unmount();
     navigation.reset("/tambayan/dm/abc");
     render(<Phone call />);
-    expect(within(screen.getByTestId("pulse-phone-nav")).getByTestId("call-dock")).toBeInTheDocument();
+    expect(within(screen.getByTestId("pulse-phone-nav")).getByTestId("call-strip-compact")).toBeInTheDocument();
     expect(tabs()).toBeNull();
   });
 

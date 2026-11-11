@@ -75,8 +75,7 @@ function ToolbarButton({ label, onClick, children, danger = false }: { label: st
 /** The React picker's trigger, dressed as a Pulse quiet small button to match the rest of the action row. */
 const PULSE_ACTION = "inline-flex h-8 items-center gap-1.5 rounded-pulse-control px-3 font-pulse-text text-pulse-label font-semibold text-pulse-muted hover:bg-pulse-hover hover:text-pulse-text pointer-coarse:min-h-11";
 
-function EditBox({ initial, onSave, onCancel, pulse = false }: { initial: string; onSave: (value: string) => void; onCancel: () => void; pulse?: boolean }) {
-  const [value, setValue] = useState(initial);
+function EditBox({ value, onChange, onSave, onCancel, pulse = false }: { value: string; onChange: (value: string) => void; onSave: (value: string) => void; onCancel: () => void; pulse?: boolean }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     const el = ref.current;
@@ -101,7 +100,7 @@ function EditBox({ initial, onSave, onCancel, pulse = false }: { initial: string
         <textarea
           ref={ref}
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => onChange(e.target.value)}
           onKeyDown={onKeyDown}
           aria-label="Edit message"
           rows={Math.min(8, value.split("\n").length + 1)}
@@ -119,7 +118,7 @@ function EditBox({ initial, onSave, onCancel, pulse = false }: { initial: string
       <textarea
         ref={ref}
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}
         aria-label="Edit message"
         rows={Math.min(8, value.split("\n").length + 1)}
@@ -276,6 +275,9 @@ export const MessageItem = memo(function MessageItem({
   tabStop?: boolean;
 }) {
   const pulse = useShellKind() === "pulse";
+  // The row markup changes between shells; keep an unsaved edit above that subtree.
+  const [editDraft, setEditDraft] = useState({ editing, value: message.content });
+  if (editDraft.editing !== editing) setEditDraft({ editing, value: message.content });
   const mine = message.author_id === meId;
   const prefs = useDisplayPrefs();
   const { reactions: showReactions, embeds } = prefs;
@@ -375,7 +377,8 @@ export const MessageItem = memo(function MessageItem({
           {editing ? (
             <EditBox
               pulse
-              initial={message.content}
+              value={editDraft.value}
+              onChange={(value) => setEditDraft({ editing, value })}
               onCancel={() => setEditing(null)}
               onSave={async (value) => {
                 if (value.trim() === message.content.trim()) return setEditing(null);
@@ -548,7 +551,8 @@ export const MessageItem = memo(function MessageItem({
 
         {editing ? (
           <EditBox
-            initial={message.content}
+            value={editDraft.value}
+            onChange={(value) => setEditDraft({ editing, value })}
             onCancel={() => setEditing(null)}
             onSave={async (value) => {
               if (value.trim() === message.content.trim()) return setEditing(null);

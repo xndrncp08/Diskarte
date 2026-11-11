@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { channels, SERVER_ID } from "../fixtures/server";
+import { DM_ID } from "./pulse-messaging-data";
 
 // Pulse voice (docs/design/pulse-voice.md): the lobby, the stage and the live strip on the fixture app. A call is faked
 // with localStorage `fixture:call` (tests/browser/call.tsx; LiveKit's React bindings are stubbed by tests/browser/livekit.tsx).
@@ -60,15 +61,11 @@ for (const mode of ["dark", "light"] as const) {
 
       await page.goto(TEXT);
       await expect(page.getByTestId("message").first()).toBeVisible();
-      const strip = page.getByRole("region", { name: "Live call" });
-      if (width >= 768) {
-        await expect(strip).toBeVisible();
-        await expect(strip.getByRole("link", { name: "Open stage" })).toBeVisible();
-        await check(page, `${mode}-${width}-strip`);
-      } else {
-        // Phones: the compact strip is placed by the phone navigation (Step 6b); the wide one stays hidden.
-        await expect(strip).toBeHidden();
-      }
+      const strip = page.getByTestId(width >= 768 ? "call-dock" : "call-strip-compact");
+      await expect(strip).toBeVisible();
+      await expect(strip.getByRole("link", { name: "Open stage" })).toBeVisible();
+      await expect(page.getByTestId("call-announcer")).toHaveCount(1);
+      await check(page, `${mode}-${width}-strip`);
       expect(errors).toEqual([]);
     });
   }
@@ -101,6 +98,24 @@ for (const mode of ["dark", "light"] as const) {
     await expect(page.getByText("Call sound is off")).toHaveCount(0);
   });
 }
+
+test.describe("Pulse mobile DM calls", () => {
+  test.use({ isMobile: true, hasTouch: true });
+  for (const viewport of [{ width: 320, height: 568 }, { width: 844, height: 390 }]) {
+    test(`keeps the transcript and composer usable at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+      await pulse(page, "dark", "dm");
+      await page.setViewportSize(viewport);
+      await page.goto(`/tambayan/dm/${DM_ID}`);
+      await expect(page.getByTestId("dm-call")).toBeVisible();
+      await expect(page.getByTestId("pulse-voice-stage")).toBeVisible();
+      const composer = page.getByTestId("composer");
+      await expect(composer).toBeInViewport();
+      const log = page.getByTestId("message-list");
+      expect((await log.boundingBox())!.height).toBeGreaterThanOrEqual(80);
+      await check(page, `dark-${viewport.width}-dm-call`);
+    });
+  }
+});
 
 test("Open stage and back keeps the transcript where you left it", async ({ page }) => {
   await pulse(page, "dark", "connected");

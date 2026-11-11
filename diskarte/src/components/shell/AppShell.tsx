@@ -1,26 +1,20 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useEffect, useMemo, useRef, type ReactNode, type RefObject } from "react";
-import { useAppViewport } from "@/hooks/useAppViewport";
-import { MobileNavigation } from "./MobileNavigation";
-import { useSwipeDrawer } from "@/hooks/useSwipeDrawer";
+import { useCallback, useEffect, useMemo, type ReactNode, type RefObject } from "react";
 import { useMe } from "@/components/providers/MeProvider";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { subscribeDbChanges } from "@/lib/realtime";
+import { cn } from "@/lib/utils";
 import type { Server } from "@/lib/servers";
 import { ConfirmHost } from "@/components/ui/ConfirmHost";
 import { AdminAccessProvider } from "@/components/admin/AdminAccess";
-import { BroadcastBanner } from "@/components/broadcast/BroadcastBanner";
 import type { PlatformRole } from "@/lib/admin";
-import { cn } from "@/lib/utils";
-import { useIsCanvas, useLayout, WorkspaceProvider } from "@/components/workspace/WorkspaceProvider";
+import { useLayout, WorkspaceProvider } from "@/components/workspace/WorkspaceProvider";
 import { UnreadsProvider } from "@/components/providers/UnreadsProvider";
 import { AppBadge, DmNotifier } from "./DmNotifier";
 import { ReminderWatcher } from "@/components/chat/Reminders";
-import { PushBadge } from "@/components/notifications/PushBadge";
-import { ServerRail } from "./ServerRail";
+import { AppFrame } from "@/components/shell/AppFrame";
 import type { Shell } from "@/lib/shell";
 import { ShellKindContext } from "./ShellKind";
 import { ShellUIProvider, useShellUI } from "./ShellUI";
@@ -70,56 +64,7 @@ export function useNavDrawer(frame: RefObject<HTMLElement | null>, navOpen: bool
 
 /** Classic's frame: the server rail, then the columns (channels · main · members) that the pages render. */
 export function ClassicFrame({ servers, children }: { servers: Server[]; children: ReactNode }) {
-  const { navOpen, setNavOpen } = useShellUI();
-  const swipe = useSwipeDrawer(navOpen, setNavOpen);
-  const desktop = useIsCanvas();
-  const frame = useRef<HTMLDivElement>(null);
-  useAppViewport(frame);
-  useNavDrawer(frame, navOpen, desktop, setNavOpen);
-  return (
-    <div ref={frame} className="diskarte-backdrop app-viewport relative flex h-dvh overflow-hidden" data-testid="shell" {...swipe}>
-      <PushBadge />
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-lg focus:bg-sun focus:px-4 focus:py-2 focus:font-semibold focus:text-abyss"
-      >
-        Skip to content
-      </a>
-      <AnimatePresence>
-        {navOpen && (
-          <motion.button
-            type="button"
-            aria-label="Close navigation"
-            className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm md:hidden"
-            onClick={() => setNavOpen(false)}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, pointerEvents: "none" }}
-            transition={{ duration: 0.2 }}
-          />
-        )}
-      </AnimatePresence>
-      <div
-        data-mobile-navigation=""
-        inert={!desktop && !navOpen}
-        className={cn(
-          "fixed inset-y-0 left-0 z-40 transition-transform duration-200 ease-out md:relative md:z-10 md:flex md:translate-x-0",
-          navOpen ? "translate-x-0" : "-translate-x-full",
-        )}
-      >
-        <ServerRail servers={servers} />
-      </div>
-      {/* The sticky broadcast banner sits above the columns. The column row has no z-index: a stacking
-          context would trap the phone drawer panels (z-40) beneath the drawer backdrop (z-30). */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <BroadcastBanner />
-        <div className="relative flex min-h-0 min-w-0 flex-1" data-workspace="">
-          {children}
-        </div>
-        <MobileNavigation />
-      </div>
-    </div>
-  );
+  return <AppFrame servers={servers} shell="classic">{children}</AppFrame>;
 }
 
 /** Bridges the shell's member toggle to the saved layout. */

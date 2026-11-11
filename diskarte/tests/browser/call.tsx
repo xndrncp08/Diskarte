@@ -2,12 +2,13 @@ import { useMemo, useState, type ReactNode } from "react";
 import { CallContext, CallSpeakingContext, type CallContextValue } from "@/components/voice/CallProvider";
 import { channels, server } from "../fixtures/server";
 import { people } from "./database";
+import { DM_ID } from "./pulse-messaging-data";
 
 /**
  * A connected call for the browser fixture (localStorage `fixture:call`): "connected", "share" (Maria shares her screen),
  * "blocked" (the browser paused call sound) or "reconnecting". The room is a stand-in read by tests/browser/livekit.tsx.
  */
-export type FixtureCall = "connected" | "share" | "blocked" | "reconnecting";
+export type FixtureCall = "connected" | "share" | "blocked" | "reconnecting" | "dm";
 
 const VOICE = channels.find((c) => c.type === "voice")!;
 
@@ -49,7 +50,7 @@ export function FixtureCallProvider({ kind, children }: { kind: FixtureCall; chi
     return {
       ...state,
       status: kind === "reconnecting" ? "reconnecting" : "connected",
-      target: { serverId: server.id, serverName: server.name, channelId: VOICE.id, channelName: VOICE.name },
+      target: kind === "dm" ? { kind: "dm", serverId: "", serverName: "Direct message", channelId: DM_ID, channelName: "Maria" } : { serverId: server.id, serverName: server.name, channelId: VOICE.id, channelName: VOICE.name },
       quality: 4,
       room: room as unknown as CallContextValue["room"],
       join: none, prewarm: () => undefined, leave: () => undefined,
