@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
+import { FixtureCallProvider, type FixtureCall } from "./call";
 import { RuntimeConfigProvider } from "@/components/providers/RuntimeConfig";
 import { MeProvider } from "@/components/providers/MeProvider";
 import { PresenceProvider } from "@/components/providers/PresenceProvider";
@@ -181,6 +182,12 @@ function Fixture() {
   );
 }
 
+// localStorage `fixture:call` puts the fixture in a connected call (tests/browser/call.tsx); otherwise the real provider, idle.
+const fixtureCall = localStorage.getItem("fixture:call") as FixtureCall | null;
+function Call({ children }: { children: ReactNode }) {
+  return fixtureCall ? <FixtureCallProvider kind={fixtureCall}>{children}</FixtureCallProvider> : <CallProvider>{children}</CallProvider>;
+}
+
 // /pulse-gallery renders the Pulse component gallery on its own (?mode=light for paper).
 if (location.pathname === "/pulse-gallery") {
   document.documentElement.dataset.shell = "pulse";
@@ -200,7 +207,7 @@ createRoot(document.getElementById("root")!).render(
   >
     <MeProvider profile={people[0]}>
       <PresenceProvider>
-        <CallProvider>
+        <Call>
           <SocialContext.Provider value={social}>
             <SettingsDialogProvider
               account={{ email: "kapitan@example.test", providers: ["email"] }}
@@ -229,7 +236,7 @@ createRoot(document.getElementById("root")!).render(
               </MediaViewerProvider>
             </SettingsDialogProvider>
           </SocialContext.Provider>
-        </CallProvider>
+        </Call>
       </PresenceProvider>
     </MeProvider>
   </RuntimeConfigProvider>,
