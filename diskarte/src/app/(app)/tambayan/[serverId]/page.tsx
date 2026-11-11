@@ -7,7 +7,7 @@ import { requireProfile } from "@/lib/auth";
 import { getServerBundle } from "@/lib/data/servers";
 import { activeEvents } from "@/lib/events";
 import { firstTextChannel } from "@/lib/servers";
-import { previewShell, SHELL_COOKIE } from "@/lib/shell";
+import { resolveShell, SHELL_COOKIE } from "@/lib/shell";
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 
@@ -21,7 +21,7 @@ export default async function ServerIndex({ params, searchParams }: PageProps<"/
   const withEvent = z.uuid().safeParse(event).success;
   const [platformRole, jar] = await Promise.all([getPlatformRole(), cookies()]);
   // Pulse: the Space's landing page. Classic (and an event link, which opens in the first room) goes straight to a room.
-  if (previewShell(jar.get(SHELL_COOKIE)?.value, platformRole) === "pulse" && !withEvent) {
+  if (resolveShell(jar.get(SHELL_COOKIE)?.value, platformRole, process.env.DISKARTE_PULSE_ROLLOUT === "opt-in") === "pulse" && !withEvent) {
     const at = new Date();
     const now = at.toISOString();
     const since = new Date(at.getTime() - 4 * 3600000).toISOString();

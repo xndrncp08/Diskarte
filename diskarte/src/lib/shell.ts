@@ -14,11 +14,11 @@ export function parseShell(value: unknown): Shell {
 }
 
 /**
- * The shell the server renders while Pulse is a super-admin preview: the cookie counts only for a super admin
- * (the role the server verified), so nobody else can opt in by setting it by hand.
+ * The server keeps Pulse in admin preview until the controlled opt-in rollout is enabled.
+ * This preference chooses presentation only; authorization stays with each data request.
  */
-export function previewShell(value: unknown, platformRole: string): Shell {
-  return platformRole === "super_admin" ? parseShell(value) : "classic";
+export function resolveShell(value: unknown, platformRole: string, publicOptIn = false): Shell {
+  return publicOptIn || platformRole === "super_admin" ? parseShell(value) : "classic";
 }
 
 /**

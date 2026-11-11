@@ -40,6 +40,7 @@ import { SoundSettings } from "@/components/profile/SoundSettings";
 import { ThemePicker } from "@/components/profile/ThemePicker";
 import { ShellPreviewToggle } from "@/components/profile/ShellPreviewToggle";
 import { usePlatformRole } from "@/components/admin/AdminAccess";
+import { useOptionalRuntimeConfig } from "@/components/providers/RuntimeConfig";
 import { PwaSettings } from "@/components/profile/PwaSettings";
 import { ConnectionDiagnostics } from "@/components/profile/ConnectionDiagnostics";
 import { AccountSyncStatus } from "@/components/profile/AccountPreferencesSync";
@@ -94,6 +95,7 @@ export function SettingsPanels({
 }) {
   const { me } = useMe();
   const platformRole = usePlatformRole();
+  const pulseAvailable = useOptionalRuntimeConfig()?.pulseOptIn || platformRole === "super_admin";
   const { t: translate } = useLocale();
   const id = useId();
   const tabs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -311,8 +313,8 @@ export function SettingsPanels({
                 ["Send a message", "Enter"],
                 ["New line in a message", "Shift + Enter"],
                 ["Close the current menu or dialog", "Escape"],
-                // The new Diskarte's Space shortcut, listed for the people who can preview it.
-                ...(platformRole === "super_admin" ? [["Open your first nine Spaces (new Diskarte)", "Alt / Option + 1–9"]] : []),
+                // Listed for everyone who can opt in.
+                ...(pulseAvailable ? [["Open your first nine Spaces (new Diskarte)", "Alt / Option + 1–9"]] : []),
               ].map(([label, keys]) => (
                 <div key={label}>
                   <dt>{label}</dt>

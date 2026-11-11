@@ -8,7 +8,7 @@ import { PwaProvider } from "@/components/providers/PwaProvider";
 import { VisitBeacon } from "@/components/VisitBeacon";
 import { tryGetPublicEnv } from "@/lib/env";
 import { getPlatformRole } from "@/lib/admin-server";
-import { parseShell, previewShell, SHELL_COOKIE } from "@/lib/shell";
+import { parseShell, resolveShell, SHELL_COOKIE } from "@/lib/shell";
 import { isTheme, THEME_COOKIE } from "@/lib/theme";
 import "./globals.css";
 
@@ -70,10 +70,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const mode = savedMode === "light" || savedMode === "system" ? savedMode : "dark";
   const language = jar.get("diskarte-language")?.value === "fil" ? "fil" : "en";
   const env = tryGetPublicEnv();
-  // Pulse is a super-admin preview: the role is looked up only when the cookie asks for Pulse, and any failure
-  // (signed out, no env, a slow database) falls back to Classic rather than breaking every page.
+  // Resolve the same rollout gate as the signed-in shell so its first paint matches the frame.
   const savedShell = jar.get(SHELL_COOKIE)?.value;
-  const shell = parseShell(savedShell) === "pulse" ? previewShell(savedShell, await getPlatformRole().catch(() => "member")) : "classic";
+  const shell = parseShell(savedShell) === "pulse" ? resolveShell(savedShell, await getPlatformRole().catch(() => "member"), process.env.DISKARTE_PULSE_ROLLOUT === "opt-in") : "classic";
 
   return (
     <html
@@ -89,7 +88,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <RuntimeConfigProvider
           value={
             env
-              ? { supabaseUrl: env.supabaseUrl, supabaseAnonKey: env.supabaseAnonKey, livekitUrl: env.livekitUrl, siteUrl: env.siteUrl }
+              ? { supabaseUrl: env.supabaseUrl, supabaseAnonKey: env.supabaseAnonKey, livekitUrl: env.livekitUrl, siteUrl: env.siteUrl, pulseOptIn: process.env.DISKARTE_PULSE_ROLLOUT === "opt-in" }
               : null
           }
         >

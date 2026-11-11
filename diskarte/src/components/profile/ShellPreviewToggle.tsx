@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useSyncExternalStore } from "react";
 import { usePlatformRole } from "@/components/admin/AdminAccess";
+import { useOptionalRuntimeConfig } from "@/components/providers/RuntimeConfig";
 import { Switch } from "@/components/ui/Switch";
 import { setShell } from "@/lib/shell";
 
@@ -13,17 +14,18 @@ function subscribe(callback: () => void) {
 }
 
 /**
- * Settings → Appearance: "Try the new Diskarte" (the Pulse shell). Super admins only for now; the role is the one
- * the server rendered (AdminAccessProvider in the (app) layout). Switching refreshes in place, so a call survives.
+ * Settings → Appearance: optional Pulse presentation, available during the controlled rollout.
+ * The server supplies availability; switching refreshes in place, so the session survives.
  */
 export function ShellPreviewToggle() {
   const role = usePlatformRole();
   const router = useRouter();
+  const publicOptIn = useOptionalRuntimeConfig()?.pulseOptIn === true;
   const pulse = useSyncExternalStore(subscribe, () => document.documentElement.dataset.shell === "pulse", () => false);
-  if (role !== "super_admin") return null;
+  if (!publicOptIn && role !== "super_admin") return null;
   return (
     <section className="mt-8 max-w-md space-y-3" data-testid="shell-preview">
-      <h3 className="text-sm font-semibold text-white">Preview</h3>
+      <h3 className="text-sm font-semibold text-white">The new Diskarte</h3>
       <Switch
         checked={pulse}
         onChange={(on) => setShell(on ? "pulse" : "classic", router)}
