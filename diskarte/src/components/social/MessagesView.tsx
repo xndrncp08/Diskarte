@@ -8,6 +8,8 @@ import { useSocial } from "@/components/providers/SocialProvider";
 import { conversationTitle, isUnread } from "@/lib/social";
 import type { Server } from "@/lib/servers";
 import { WorkspacePanel } from "@/components/workspace/WorkspacePanel";
+import { PulseInbox } from "@/components/pulse/views/Inbox";
+import { useShellKind } from "@/components/shell/ShellKind";
 import { DmRow, HomeSidebar } from "./HomeSidebar";
 
 /** The Messages tab: every DM and group DM, full screen on phones, searchable. */
@@ -23,11 +25,13 @@ export function MessagesView({ servers }: { servers: Server[] }) {
       (!unreadOnly || isUnread(c)),
   );
   const incoming = friends?.filter((f) => f.status === "incoming").length ?? 0;
+  const pulse = useShellKind() === "pulse";
 
   return (
     <>
       <HomeSidebar servers={servers} />
       <WorkspacePanel id="main" title="Messages">
+        {pulse ? <PulseInbox conversations={conversations ?? null} list={list} query={query} onQuery={setQuery} unreadOnly={unreadOnly} onUnreadOnly={setUnreadOnly} /> : (
         <section className="flex min-w-0 flex-1 flex-col">
           <header className="page-header">
             <button
@@ -116,6 +120,7 @@ export function MessagesView({ servers }: { servers: Server[] }) {
             </ul>
           </div>
         </section>
+        )}
       </WorkspacePanel>
     </>
   );

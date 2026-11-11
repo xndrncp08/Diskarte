@@ -78,8 +78,8 @@ themes own them).
   count, unread dot, "In call" while you're in its voice room and the Classic server menu (plus Pin) on
   right-click. The open Space's row gets a "…" button (Classic's server menu: invite, settings, Bantay-Bayan,
   notifications, create channel, leave) and Invite, and the Space expands to its **rooms** as plain rows (no tree
-  lines, no # icons): LFG Board, Shared workspace, **Live** (voice rooms with people in them, "N in voice"), then
-  the rest. The default "Text Channels"/"Voice Channels" labels are hidden; custom categories keep theirs. Each
+  lines, no # icons): Overview (the Space's [landing page](pulse-communities.md)), LFG Board, Shared workspace,
+  **Live** (voice rooms with people in them, "N in voice"), then the rest. The default "Text Channels"/"Voice Channels" labels are hidden; custom categories keep theirs. Each
   room shows unread and mentions and has the Classic channel menu (copy link, mute, edit, delete).
 - The navigator is ≥ 280 px, resizable with the same saved width as Classic's channel column. On phones it is a
   full-height drawer (the menu button in the masthead, swipe, scrim, Escape or Back to close) that opens with
@@ -145,9 +145,9 @@ cd diskarte && CI=1 npx playwright test --config playwright.experience.config.ts
 ## Not yet
 
 - Messages, the composer, DMs, threads and forums have their Pulse look: see [Pulse messaging](pulse-messaging.md).
-  Other page bodies keep their Classic look in the canvas (Step 5).
-- Messages, Friends and Shared workspace pages still render their own headers instead of the Masthead (Step 5); the
-  DM page uses it.
+- Messages, Friends, Shared workspace, Search, the Control Center, Home, Explore, the Space landing and the DM page
+  use the Masthead: see [Pulse communities and pages](pulse-communities.md). Other page bodies (Moments, the Workspace
+  body, the Control Center body) keep their Classic look in the canvas.
 - No Media tab in the Context sheet: recent attachments need a new query (Step 5).
 - Phones: the navigator is a drawer and MobileNavigation's tabs stay; the Pulse phone design is Step 6, as is
   the voice redesign (the CallStrip is the Classic dock, re-laid-out).

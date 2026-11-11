@@ -94,6 +94,9 @@ export interface Database {
           /** Joining questions (≤ 5 strings) and whether moderators approve joins; absent before migration 20261108010000. */
           join_questions?: Json;
           join_approval?: boolean;
+          /** Community identity (Pulse): https banner and readable #rrggbb accent; null = default look. Absent before migration 20261109010000. */
+          banner_url?: string | null;
+          accent_color?: string | null;
           is_system: boolean;
           invite_code: string;
           automod_enabled: boolean;
@@ -117,6 +120,8 @@ export interface Database {
           welcome_channel_id?: string | null;
           welcome_message?: string | null;
           rules?: string | null;
+          banner_url?: string | null;
+          accent_color?: string | null;
           is_system?: boolean;
           invite_code?: string;
           automod_enabled?: boolean;
@@ -499,7 +504,7 @@ export interface Database {
       create_server: { Args: { p_name: string; p_description?: string; p_icon_url?: string | null }; Returns: string };
       get_invite: {
         Args: { p_code: string };
-        Returns: { server_id: string; name: string; description: string; icon_url: string | null; member_count: number; already_member: boolean }[];
+        Returns: { server_id: string; name: string; description: string; icon_url: string | null; member_count: number; already_member: boolean; banner_url?: string | null; accent_color?: string | null }[];
       };
       join_server: { Args: { p_code: string }; Returns: string };
       regenerate_invite: { Args: { p_server_id: string }; Returns: string };
@@ -618,7 +623,7 @@ export interface Database {
       mark_all_read: { Args: { p_server?: string }; Returns: undefined };
       discover_servers: {
         Args: { p_query?: string; p_category?: string | null; p_limit?: number; p_offset?: number };
-        Returns: { id: string; name: string; description: string; icon_url: string | null; category: string; member_count: number; active_members: number; is_member: boolean }[];
+        Returns: { id: string; name: string; description: string; icon_url: string | null; category: string; member_count: number; active_members: number; is_member: boolean; banner_url?: string | null; accent_color?: string | null }[];
       };
       join_public_server: { Args: { p_server: string }; Returns: string };
       mark_channel_read_until: { Args: { p_channel: string; p_at: string }; Returns: undefined };

@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, usePathname } from "next/navigation";
-import { LayoutGrid, MessagesSquare, MoreHorizontal, Radio, UserPlus, Volume2 } from "lucide-react";
+import { LayoutDashboard, LayoutGrid, MessagesSquare, MoreHorizontal, Radio, UserPlus, Volume2 } from "lucide-react";
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useChannelUnread } from "@/components/providers/UnreadsProvider";
@@ -27,9 +27,10 @@ const HEADING = "px-3 pb-1 pt-3 text-pulse-caption font-semibold text-pulse-mute
 
 /**
  * A room: unread and mentions (muted rooms dimmed, no dot), "N in voice" with the live mark, the channel menu on
- * right-click. `place` lists a room where it belongs: an occupied voice room under Live, the rest in their category.
+ * right-click. `place` lists a room where it belongs: an occupied voice room under Live, the rest in their category
+ * (omit it to always show the row, as the landing's Rooms tile does).
  */
-function RoomRow({ channel, active, canManage, muted, onDialog, place }: { channel: Channel; active: boolean; canManage: boolean; muted: boolean; onDialog: OnDialog; place: "live" | "category" }) {
+export function RoomRow({ channel, active, canManage, muted, onDialog, place }: { channel: Channel; active: boolean; canManage: boolean; muted: boolean; onDialog: OnDialog; place?: "live" | "category" }) {
   const { server } = useServer();
   const menu = useContextMenu();
   const prewarm = usePrewarm();
@@ -37,7 +38,7 @@ function RoomRow({ channel, active, canManage, muted, onDialog, place }: { chann
   const { unread, mentions } = useChannelUnread(channel.id, channel.last_message_at);
   // Presence of visible rooms only: this list is useServer().channels, which RLS already filtered.
   const inVoice = useVoiceRoster(channel.id).length;
-  if ((place === "live") !== inVoice > 0) return null;
+  if (place && (place === "live") !== inVoice > 0) return null;
   const warm = channel.type === "voice" ? prewarm({ serverId: server.id, serverName: server.name, channelId: channel.id, channelName: channel.name }) : {};
   return (
     <li {...warm} {...menu.triggerProps}>
@@ -93,6 +94,7 @@ function Rooms() {
   const rooms = (
     <div aria-label={`${server.name} rooms`} role="group" data-testid="pulse-rooms">
       <ul>
+        <li><NavItem label="Overview" leading={<LayoutDashboard />} href={`/tambayan/${server.id}`} current={pathname === `/tambayan/${server.id}`} className="min-h-10" /></li>
         <li><NavItem label="LFG Board" leading={<Radio />} href={`/tambayan/${server.id}/lfg`} current={pathname === `/tambayan/${server.id}/lfg`} className="min-h-10" /></li>
         <li><NavItem label="Shared workspace" leading={<LayoutGrid />} href={`/tambayan/${server.id}/workspace`} current={pathname.endsWith("/workspace")} className="min-h-10" /></li>
       </ul>

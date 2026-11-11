@@ -1,6 +1,8 @@
 "use client";
 
 import { HelpLink } from "@/components/ui/HelpLink";
+import { Masthead } from "@/components/pulse/shell/Masthead";
+import { useShellKind } from "@/components/shell/ShellKind";
 import { BookOpen, Columns3, Menu, Plus, Timer, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -46,6 +48,7 @@ export function SharedWorkspaceView() {
   const supabase = useSupabase();
   const { server, channels, myRole } = useServer();
   const { setNavOpen } = useShellUI();
+  const pulse = useShellKind() === "pulse";
   const options = channels.filter((c) => c.type !== "voice");
   const [channelId, setChannelId] = useState(options[0]?.id ?? "");
   const [documents, setDocuments] = useState<WorkspaceDocument[] | null>(null);
@@ -164,6 +167,7 @@ export function SharedWorkspaceView() {
   };
   return (
     <section className="workspace-library flex min-h-0 min-w-0 flex-1 flex-col">
+      {pulse ? <Masthead eyebrow={server.name} title="Shared workspace" icon={<Columns3 />} description="Notes, plans and files, kept together" /> : (
       <header className="page-header">
         <button
           type="button"
@@ -176,6 +180,7 @@ export function SharedWorkspaceView() {
         <Columns3 className="size-5 text-sun" aria-hidden />
         <h1 className="truncate font-semibold">Shared workspace</h1>
       </header>
+      )}
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         <div className="mx-auto max-w-5xl space-y-4">
           <p className="text-sm text-slate-400">

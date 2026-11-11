@@ -339,3 +339,38 @@ html[data-shell="pulse"]:not([data-high-contrast]) :focus-visible {
   border-color: var(--pulse-line);
   border-radius: var(--pulse-radius-item);
 }
+
+/* Getting started and What's new (shared with Classic Home) as Pulse cards on Pulse Home: same markup, Pulse tokens. */
+:root[data-shell="pulse"] [data-pulse-home] .home-panel {
+  margin: 0;
+  border-color: var(--pulse-line);
+  border-radius: var(--pulse-radius-card);
+  background: var(--pulse-surface);
+  box-shadow: var(--pulse-elevation-1);
+  color: var(--pulse-text-muted);
+  font-family: var(--pulse-font-text);
+}
+:root[data-shell="pulse"] [data-pulse-home] .home-panel h3 {
+  color: var(--pulse-text);
+  font-family: var(--pulse-font-display);
+  font-size: var(--pulse-size-20);
+  line-height: var(--pulse-leading-20);
+}
+:root[data-shell="pulse"] [data-pulse-home] .home-panel :is(strong, .section-kicker) {
+  color: var(--pulse-text);
+}
+:root[data-shell="pulse"] [data-pulse-home] .home-panel :is(a, li button) {
+  color: var(--pulse-accent-ink);
+}
+:root[data-shell="pulse"] [data-pulse-home] .getting-started-step {
+  border-color: var(--pulse-line);
+  border-radius: var(--pulse-radius-item);
+}
+:root[data-shell="pulse"] [data-pulse-home] .getting-started-step small {
+  color: var(--pulse-text-muted);
+}
+:root[data-shell="pulse"] [data-pulse-home] .getting-started-icon {
+  border-radius: var(--pulse-radius-control);
+  background: var(--pulse-selected);
+  color: var(--pulse-text);
+}
