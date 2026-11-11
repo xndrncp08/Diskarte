@@ -9,7 +9,7 @@ import { Sticker } from "./Sticker";
 import { Glyph } from "@/components/ui/Glyph";
 
 /** Composer button → Pinoy sticker packs. Picking one sends it immediately. */
-export function StickerPicker({ onPick, disabled = false }: { onPick: (id: string) => void; disabled?: boolean }) {
+export function StickerPicker({ onPick, disabled = false, triggerClassName }: { onPick: (id: string) => void; disabled?: boolean; /** Replaces the trigger's look (Pulse's compose dock). */ triggerClassName?: string }) {
   const [pack, setPack] = useState<StickerPackId>(STICKER_PACKS[0].id);
   return (
     <Popover
@@ -24,10 +24,13 @@ export function StickerPicker({ onPick, disabled = false }: { onPick: (id: strin
           disabled={disabled}
           onClick={toggle}
           {...aria}
-          className={cn(
-            "touch-target relative rounded-md p-1.5 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-30 pointer-coarse:p-3",
-            open ? "text-sun" : "text-slate-400",
-          )}
+          className={
+            triggerClassName ??
+            cn(
+              "touch-target relative rounded-md p-1.5 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-30 pointer-coarse:p-3",
+              open ? "text-sun" : "text-slate-400",
+            )
+          }
         >
           <StickerIcon className="size-5" aria-hidden />
         </button>

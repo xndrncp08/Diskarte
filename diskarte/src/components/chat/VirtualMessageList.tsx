@@ -31,7 +31,7 @@ interface Props {
   onScroll?: (event: UIEvent<HTMLDivElement>) => void;
   estimateSize?: number;
   /** Pulse: the log's keyboard model (useMessageRoving). */
-  roving?: { tabStop: string | null; onKeyDown: (e: KeyboardEvent<HTMLElement>) => void; onFocus: (e: FocusEvent<HTMLElement>) => void; onBlur: (e: FocusEvent<HTMLElement>) => void };
+  roving?: { tabStop: string | null; focusInLog: boolean; onKeyDown: (e: KeyboardEvent<HTMLElement>) => void; onFocus: (e: FocusEvent<HTMLElement>) => void; onBlur: (e: FocusEvent<HTMLElement>) => void };
 }
 
 /**
@@ -123,7 +123,7 @@ export const VirtualMessageList = forwardRef<VirtualMessageListHandle, Props>(fu
       onScroll={onScroll}
       className="scrollbar-thin flex-1 overflow-y-auto overscroll-contain"
       role="log"
-      aria-live="polite"
+      aria-live={roving?.focusInLog ? "off" : "polite"}
       aria-relevant="additions"
       data-testid="message-list"
       // Roving focus: the log itself takes Tab only while its tab-stop message is scrolled out of the DOM.

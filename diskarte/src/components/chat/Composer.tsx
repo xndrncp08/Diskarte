@@ -25,6 +25,8 @@ import { Kbd } from "@/components/pulse/Controls";
 import { useShellKind } from "@/components/shell/ShellKind";
 import { previewText } from "@/lib/messages";
 
+const PULSE_TOOL = "inline-flex size-8 items-center justify-center rounded-pulse-control p-0 text-pulse-muted hover:bg-pulse-hover hover:text-pulse-text aria-expanded:bg-pulse-selected aria-expanded:text-pulse-text disabled:text-pulse-disabled disabled:opacity-100 pointer-coarse:size-11 [&_svg]:size-4";
+
 /** Seconds left until `until` (a Date.now() timestamp), ticking while it's in the future. */
 function useCountdown(until: number | null | undefined) {
   const [now, setNow] = useState(() => Date.now());
@@ -292,9 +294,12 @@ export function Composer({
     />
   );
   const voiceEl = allowUploads && <VoiceRecorder disabled={cooldown > 0} onRecorded={(file, seconds) => void sendVoice(file, seconds)} />;
-  const emojiEl = <EmojiPicker onPick={(value) => insert(value.startsWith(":") ? `${value} ` : value)} label="Insert icon" triggerClassName="pointer-coarse:p-3.5" />;
+  // Pulse: the pickers' triggers match the dock's IconButtons (32 px, 44 px on touch).
+  const tool = pulse ? PULSE_TOOL : undefined;
+  const emojiEl = <EmojiPicker onPick={(value) => insert(value.startsWith(":") ? `${value} ` : value)} label="Insert icon" triggerClassName={tool ?? "pointer-coarse:p-3.5"} />;
   const gifEl = (
     <GifPicker
+      triggerClassName={tool}
       disabled={cooldown > 0}
       onPick={(url) => {
         const replyId = replyTo?.id ?? null;
@@ -303,7 +308,7 @@ export function Composer({
       }}
     />
   );
-  const stickerEl = onSticker && <StickerPicker onPick={onSticker} disabled={cooldown > 0} />;
+  const stickerEl = onSticker && <StickerPicker onPick={onSticker} disabled={cooldown > 0} triggerClassName={tool} />;
   const scheduleEl = schedulable && (
     <ScheduleButton
       channelId={channelId}
@@ -364,7 +369,7 @@ export function Composer({
           </div>
         )}
         {/* Typing: a quiet line above the dock, words first (the dots only move when motion is welcome). */}
-        <p className="flex h-6 items-center gap-1.5 px-1 text-pulse-caption text-pulse-muted" aria-live="polite" data-testid="typing-line">
+        <p className="flex h-6 items-center gap-1.5 px-1 text-pulse-caption text-pulse-muted" aria-live="off" data-testid="typing-line">
           {typing && (
             <>
               <span className="inline-flex gap-0.5" aria-hidden>

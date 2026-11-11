@@ -79,7 +79,7 @@ export function ForumView({ channel: initialChannel, initial }: { channel: Chann
   const field = useField();
 
   return (
-    <div className="flex h-full min-w-0">
+    <div className="flex h-full w-full min-w-0">
       <section className="flex min-w-0 flex-1 flex-col" aria-label={`Forum ${channel.name}`}>
         <ChannelHeader channel={channel} />
         <div className={cn("flex items-center gap-2 border-b py-3", pulse ? "border-pulse-line px-3 md:px-5" : "border-white/5 px-4")}>

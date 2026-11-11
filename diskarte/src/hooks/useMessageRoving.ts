@@ -50,6 +50,8 @@ function leave(container: HTMLElement, forward: boolean) {
  */
 export function useMessageRoving(keys: readonly string[], reveal?: (key: string) => void) {
   const [current, setCurrent] = useState<string | null>(null);
+  // While someone is moving through the log, new messages aren't announced over what they're reading.
+  const [focusInLog, setFocusInLog] = useState(false);
   const tabStop = current !== null && keys.includes(current) ? current : (keys.at(-1) ?? null);
 
   function focusMessage(container: HTMLElement, key: string) {
@@ -112,14 +114,17 @@ export function useMessageRoving(keys: readonly string[], reveal?: (key: string)
     // instead, so the log is one Tab stop. Not for clicks (no focus ring) or focus coming back from a menu.
     const from = e.relatedTarget as Element | null;
     const tabbedIn = !container.contains(from) && !from?.closest("[role=menu], [role=dialog]") && keyboardFocus(target);
+    setFocusInLog(true);
     closeActions(container, row);
     if (tabStop && tabbedIn && (target === container || key !== tabStop)) return focusMessage(container, tabStop);
     if (key) setCurrent(key);
   }
 
   function onBlur(e: FocusEvent<HTMLElement>) {
-    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) closeActions(e.currentTarget, null);
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+    setFocusInLog(false);
+    closeActions(e.currentTarget, null);
   }
 
-  return { tabStop, onKeyDown, onFocus, onBlur };
+  return { tabStop, focusInLog, onKeyDown, onFocus, onBlur };
 }

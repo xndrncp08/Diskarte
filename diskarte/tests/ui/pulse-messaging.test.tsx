@@ -115,7 +115,7 @@ describe("roving keyboard model", () => {
     return (
       <>
         <button type="button">Before</button>
-        <div role="log" aria-label="Messages" onKeyDown={roving.onKeyDown} onFocus={roving.onFocus}>
+        <div role="log" aria-label="Messages" aria-live={roving.focusInLog ? "off" : "polite"} onKeyDown={roving.onKeyDown} onFocus={roving.onFocus} onBlur={roving.onBlur}>
           {messages.map((m, i) => (
             <MessageItem key={m.id} message={m} grouped={sharesMargin(messages, i, -1)} replyTo={undefined} reactions={[]} meId={OWNER_ID} canModerate={false} mentioned={false} editing={false} setEditing={() => undefined} actions={a} tabStop={roving.tabStop === m.id} />
           ))}
@@ -136,8 +136,12 @@ describe("roving keyboard model", () => {
     const rows = screen.getAllByTestId("message");
     // Only the newest message is in the tab order.
     expect(rows.map((r) => r.tabIndex)).toEqual([-1, -1, 0]);
+    const log = screen.getByRole("log");
+    expect(log).toHaveAttribute("aria-live", "polite");
 
     act(() => rows[2].focus());
+    // Moving through the log: new messages aren't announced over what you're reading.
+    expect(log).toHaveAttribute("aria-live", "off");
     fireEvent.keyDown(rows[2], { key: "ArrowUp" });
     expect(rows[1]).toHaveFocus();
     expect(rows.map((r) => r.tabIndex)).toEqual([-1, 0, -1]);
@@ -166,6 +170,7 @@ describe("roving keyboard model", () => {
     act(() => rows[2].focus());
     fireEvent.keyDown(rows[2], { key: "Tab", shiftKey: true });
     expect(screen.getByRole("button", { name: "Before" })).toHaveFocus();
+    expect(log).toHaveAttribute("aria-live", "polite");
   });
 });
 
