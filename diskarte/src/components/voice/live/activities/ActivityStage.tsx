@@ -15,6 +15,9 @@ import { TriviaGame } from "./TriviaGame";
 import type { ActivityControls } from "./useActivity";
 import { WatchParty } from "./WatchParty";
 import { Glyph } from "@/components/ui/Glyph";
+import { useShellKind } from "@/components/shell/ShellKind";
+import { cn } from "@/lib/utils";
+import { DOCK_BUTTON } from "../../pulse/controls";
 
 function useNameOf(me: string) {
   const server = useOptionalServer();
@@ -65,6 +68,7 @@ export function ActivityStage({ controls }: { controls: ActivityControls }) {
 export function ActivitiesMenu({ controls }: { controls: ActivityControls }) {
   const [url, setUrl] = useState("");
   const { start, me, activity } = controls;
+  const pulse = useShellKind() === "pulse";
 
   function startWatch(event: FormEvent, close: () => void) {
     event.preventDefault();
@@ -83,7 +87,13 @@ export function ActivitiesMenu({ controls }: { controls: ActivityControls }) {
       label="Activities"
       testId="activities"
       className="w-80"
-      trigger={({ ref, toggle, open, ...aria }) => (
+      trigger={({ ref, toggle, open, ...aria }) => pulse ? (
+        // A running activity reads as pressed-in (selected tint) in the dock, as Classic's white button does.
+        <button ref={ref} type="button" onClick={toggle} {...aria} className={cn(DOCK_BUTTON, activity && "bg-pulse-selected")}>
+          <Gamepad2 aria-hidden />
+          Activities
+        </button>
+      ) : (
         <button
           ref={ref}
           type="button"

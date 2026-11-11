@@ -21,7 +21,7 @@ import { confirmAction } from "@/components/ui/ConfirmHost";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ContextMenu, ContextMenuItems, copyText, useContextMenu } from "@/components/ui/ContextMenu";
 import { CallDock } from "@/components/voice/CallDock";
-import { useCall, usePrewarm } from "@/components/voice/CallProvider";
+import { useCall, useCallSpeaking, usePrewarm } from "@/components/voice/CallProvider";
 import { Menu, type MenuItem } from "@/components/ui/Menu";
 import { useOnline } from "@/hooks/useOnline";
 import { useVoiceRoster } from "@/hooks/useVoiceRoster";
@@ -53,13 +53,14 @@ type DialogState =
 
 function VoiceOccupants({ channelId }: { channelId: string }) {
   const call = useCall();
+  const callSpeakers = useCallSpeaking();
   const { server, channels } = useServer();
   // In the call: LiveKit's own active-speaker events. Watching from outside: the members' ephemeral
   // "speaking" broadcasts on the server's presence channel (a private channel's own topic).
   const isPrivate = channels.find((c) => c.id === channelId)?.is_private === true;
   const observed = useTopicSpeaking(isPrivate ? voiceTopic(channelId) : serverTopic(server.id));
   const live = call.status === "connected" && call.target?.channelId === channelId;
-  return <OccupantList channelId={channelId} speaking={live ? new Set(call.speaking) : observed} />;
+  return <OccupantList channelId={channelId} speaking={live ? new Set(callSpeakers) : observed} />;
 }
 
 function OccupantList({ channelId, speaking }: { channelId: string; speaking: ReadonlySet<string> | null }) {

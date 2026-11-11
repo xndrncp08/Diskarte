@@ -39,12 +39,14 @@ export interface CallState {
   screen: boolean;
   noiseSuppression: boolean;
   quality: SignalLevel;
+  /** The browser refused the microphone (permission denied); cleared once unmuting works. */
+  micDenied?: boolean;
+  /** The browser blocked call audio until a click (autoplay); `room.startAudio()` from a click lifts it. */
+  audioBlocked?: boolean;
 }
 
 export interface CallContextValue extends CallState {
   room: Room | null;
-  /** Identities LiveKit currently reports as speaking (active speaker detection). */
-  speaking: string[];
   join: (target: CallTarget) => Promise<void>;
   /** Warm up a likely join (hover/focus on a voice channel): load the SDK and mint a token ahead of time. */
   prewarm: (target: CallTarget) => void;
@@ -99,6 +101,10 @@ const SoundboardReceiver = dynamic(() => import("./SoundboardReceiver").then((m)
 
 /** Exported for tests; app code uses <CallProvider> / useCall(). */
 export const CallContext = createContext<CallContextValue | null>(null);
+/** Identities LiveKit reports as speaking. Its own context: it changes several times a second while people talk, and
+    only the few components that draw speaking rings should re-render for it, not every useCall() consumer. */
+export const CallSpeakingContext = createContext<readonly string[]>([]);
+export const useCallSpeaking = () => useContext(CallSpeakingContext);
 
 export function qualityToLevel(quality: ConnectionQuality | string): SignalLevel {
   switch (quality) {
@@ -123,6 +129,8 @@ export function mediaErrorMessage(err: unknown, device: "mic" | "camera" | "scre
   if (["NotReadableError", "TrackStartError", "AbortError"].includes(name)) return `Another app is using the ${what}.`;
   return `Couldn't turn on the ${what}.`;
 }
+
+const isPermissionDenied = (err: unknown) => ["NotAllowedError", "PermissionDeniedError", "SecurityError"].includes((err as Error | undefined)?.name ?? "");
 
 function readNoiseSuppression() {
   return micProcessing(readVoicePrefs()).noiseSuppression;
@@ -384,7 +392,8 @@ export function CallProvider({ children }: { children: ReactNode }) {
           if (publication.source === lk.Track.Source.ScreenShare) setState((s) => ({ ...s, screen: false }));
           if (publication.source === lk.Track.Source.Camera) setState((s) => ({ ...s, camera: false }));
         })
-        .on(lk.RoomEvent.MediaDevicesError, (err: Error) => toast.error(mediaErrorMessage(err, "mic")))
+        .on(lk.RoomEvent.MediaDevicesError, (err: Error) => { toast.error(mediaErrorMessage(err, "mic")); if (isPermissionDenied(err)) setState((s) => ({ ...s, micDenied: true })); })
+        .on(lk.RoomEvent.AudioPlaybackStatusChanged, () => setState((s) => ({ ...s, audioBlocked: next.canPlaybackAudio === false })))
         // A moderator moved you to another voice channel of the server ("voice:<channelId>").
         .on(lk.RoomEvent.Moved, (roomName: string) => {
           const channelId = roomName.startsWith("voice:") ? roomName.slice(6) : null;
@@ -435,14 +444,14 @@ export function CallProvider({ children }: { children: ReactNode }) {
       joiningTarget.current = null;
       playSfx("join");
       const startMuted = restore?.muted === true || restore?.deafened === true;
-      setState((s) => ({ ...s, status: "connected", noiseSuppression: ns, muted: startMuted, deafened: restore?.deafened === true }));
+      setState((s) => ({ ...s, status: "connected", noiseSuppression: ns, muted: startMuted, deafened: restore?.deafened === true, audioBlocked: next.canPlaybackAudio === false }));
       try {
         await next.localParticipant.setMicrophoneEnabled(!startMuted);
         // Push to talk: the mic is published (permission asked now) but stays off until the key is held.
         if (readVoicePrefs().pushToTalk) await next.localParticipant.setMicrophoneEnabled(false);
       } catch (err) {
         toast.error(mediaErrorMessage(err, "mic"));
-        setState((s) => ({ ...s, muted: true }));
+        setState((s) => ({ ...s, muted: true, micDenied: isPermissionDenied(err) }));
       }
     },
     [disconnect, teardown],
@@ -472,9 +481,10 @@ export function CallProvider({ children }: { children: ReactNode }) {
     try {
       await current.localParticipant.setMicrophoneEnabled(unmuting);
       playSfx(unmuting ? "unmute" : "mute");
-      setState((s) => ({ ...s, muted: !unmuting, deafened: unmuting ? false : s.deafened }));
+      setState((s) => ({ ...s, muted: !unmuting, deafened: unmuting ? false : s.deafened, micDenied: false }));
     } catch (err) {
       toast.error(mediaErrorMessage(err, "mic"));
+      if (isPermissionDenied(err)) setState((s) => ({ ...s, micDenied: true }));
     }
   }, [state.muted, state.deafened]);
 
@@ -630,7 +640,6 @@ export function CallProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const saved = takeRejoin();
     if (!saved) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- restoring the call is the external sync here
     void join(saved.target, saved);
     // Once per page load.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -668,7 +677,6 @@ export function CallProvider({ children }: { children: ReactNode }) {
     () => ({
       ...state,
       room,
-      speaking,
       join,
       prewarm,
       leave,
@@ -688,12 +696,12 @@ export function CallProvider({ children }: { children: ReactNode }) {
       toggleVideoOff,
       switchDevice,
     }),
-    [state, room, speaking, join, prewarm, leave, toggleMute, toggleDeafen, toggleCamera, toggleScreen, toggleNoiseSuppression, sendData, onData, mix, setMasterVolume, setParticipantVolume, toggleLocalMute, toggleVideoOff, setStreamVolume, toggleStreamMute, switchDevice],
+    [state, room, join, prewarm, leave, toggleMute, toggleDeafen, toggleCamera, toggleScreen, toggleNoiseSuppression, sendData, onData, mix, setMasterVolume, setParticipantVolume, toggleLocalMute, toggleVideoOff, setStreamVolume, toggleStreamMute, switchDevice],
   );
 
   return (
     <CallContext.Provider value={value}>
-      {children}
+      <CallSpeakingContext.Provider value={speaking}>{children}</CallSpeakingContext.Provider>
       {room && state.status !== "idle" && <CallAudio room={room} muted={state.deafened} />}
       {room && state.status === "connected" && <SoundboardReceiver />}
     </CallContext.Provider>

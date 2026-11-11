@@ -5,7 +5,7 @@ import { Mic, MicOff, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useReducer, useState } from "react";
 import { Switch } from "@/components/ui/Switch";
 import { cn } from "@/lib/utils";
-import { loadLivekit, useCall } from "./CallProvider";
+import { loadLivekit, useCall, useCallSpeaking } from "./CallProvider";
 import { useMediaDevices as useDevices } from "@/hooks/useMediaDevices";
 
 function percent(v: number) {
@@ -146,7 +146,7 @@ function PersonRow({ participant }: { participant: RemoteParticipant }) {
   const call = useCall();
   const name = participant.name || participant.identity;
   const volume = call.mix.people[participant.identity] ?? 1;
-  const speaking = call.speaking.includes(participant.identity);
+  const speaking = useCallSpeaking().includes(participant.identity);
   const silenced = volume === 0;
   return (
     <li className="rounded-xl bg-white/[0.04] px-3 py-2" data-testid="mixer-person">

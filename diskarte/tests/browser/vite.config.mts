@@ -54,6 +54,11 @@ export default defineConfig({
         replacement: resolve(import.meta.dirname, "database.ts"),
       },
       { find: "vitest", replacement: resolve(import.meta.dirname, "spy.ts") },
+      // LiveKit's React bindings read the fixture call's stand-in room (no WebRTC); see call.tsx.
+      {
+        find: "@livekit/components-react",
+        replacement: resolve(import.meta.dirname, "livekit.tsx"),
+      },
       { find: "@", replacement: resolve(app, "src") },
     ],
   },

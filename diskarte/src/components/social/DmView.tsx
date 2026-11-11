@@ -192,7 +192,7 @@ export function DmView({
             <HangoutBar conversation={{ id: conversation.id, hangoutUntil, hangoutTopic: conversation.hangout_topic ?? null }} title={title} isHost={conversation.owner_id === me.id} />
           )}
 
-          {inCall && call.status === "connected" && (
+          {inCall && (call.status === "connected" || (pulse && call.status === "reconnecting")) && (
             <div className="flex max-h-[55%] min-h-64 shrink-0 flex-col border-b border-white/5" data-testid="dm-call">
               <VoiceStage />
             </div>
