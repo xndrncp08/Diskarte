@@ -282,10 +282,14 @@ html[data-shell="pulse"]:not([data-high-contrast]) :focus-visible {
 @media (hover: hover) {
   :root[data-shell="pulse"] .pulse-msg:hover .pulse-msg-actions {
     display: flex;
-    transition: display 0s 180ms allow-discrete;
+    /* Longhands: the CSS minifier folds "0s 180ms" into a 180 ms duration, which shows the row at once. */
+    transition-property: display;
+    transition-duration: 0s;
+    transition-delay: 180ms;
+    transition-behavior: allow-discrete;
   }
 }
-:root[data-shell="pulse"] .pulse-msg:is(:focus-visible, :has(:focus-visible), :has([aria-expanded="true"])) .pulse-msg-actions {
+:root[data-shell="pulse"] .pulse-msg:is(:focus-visible, [data-actions], :has(:focus-visible), :has([aria-expanded="true"])) .pulse-msg-actions {
   display: flex;
   transition: none;
 }

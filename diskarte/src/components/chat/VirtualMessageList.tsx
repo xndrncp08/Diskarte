@@ -31,7 +31,7 @@ interface Props {
   onScroll?: (event: UIEvent<HTMLDivElement>) => void;
   estimateSize?: number;
   /** Pulse: the log's keyboard model (useMessageRoving). */
-  roving?: { tabStop: string | null; onKeyDown: (e: KeyboardEvent<HTMLElement>) => void; onFocus: (e: FocusEvent<HTMLElement>) => void };
+  roving?: { tabStop: string | null; onKeyDown: (e: KeyboardEvent<HTMLElement>) => void; onFocus: (e: FocusEvent<HTMLElement>) => void; onBlur: (e: FocusEvent<HTMLElement>) => void };
 }
 
 /**
@@ -130,6 +130,7 @@ export const VirtualMessageList = forwardRef<VirtualMessageListHandle, Props>(fu
       tabIndex={roving && roving.tabStop !== null && !items.some((item) => keys[item.index] === roving.tabStop) ? 0 : undefined}
       onKeyDown={roving?.onKeyDown}
       onFocus={roving?.onFocus}
+      onBlur={roving?.onBlur}
     >
       <div>{header}</div>
       <div ref={list} className="relative w-full" style={{ height: virtualizer.getTotalSize() }} data-testid="message-rows" data-rendered={items.length}>

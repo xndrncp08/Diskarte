@@ -147,7 +147,7 @@ function ThreadBody({ channel, root, initial, locked }: { channel: Channel; root
 
   return (
     <>
-      <div className="scrollbar-thin flex-1 overflow-y-auto py-3" role="log" aria-label="Thread replies" onKeyDown={pulse ? roving.onKeyDown : undefined} onFocus={pulse ? roving.onFocus : undefined}>
+      <div className="scrollbar-thin flex-1 overflow-y-auto py-3" role="log" aria-label="Thread replies" onKeyDown={pulse ? roving.onKeyDown : undefined} onFocus={pulse ? roving.onFocus : undefined} onBlur={pulse ? roving.onBlur : undefined}>
         <p className={pulse ? "px-3 pb-1 text-pulse-label font-semibold text-pulse-muted md:px-4" : "px-4 pb-2 font-silk text-[11px] uppercase tracking-wider text-slate-500"}>
           {chat.messages.length} {chat.messages.length === 1 ? "reply" : "replies"}
         </p>

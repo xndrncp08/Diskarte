@@ -76,12 +76,16 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
   const pulseUI = usePulseUI();
   const [confirmDelete, setConfirmDelete] = useState<ChatMessage | null>(null);
   const { listRef, atBottom, unseen, onScroll, scrollToBottom, restoringHistory } = useConversationScroll(`${me.id}:${channel.id}`, chat.messages, me.id, chat.loadOlder, chat.hasMore, chat.loadingOlder);
+  // Pulse marks the channel read only once the unread counts have loaded, so a fresh page load still knows where the
+  // "New" line goes (the read position would otherwise already be "now").
+  const unreadCount = useOptionalUnreads()?.channels.size ?? 1;
+  const readKnown = !pulse || unreadCount > 0;
   useEffect(() => {
-    if (!markRead || !atBottom || messageTarget) return;
+    if (!markRead || !atBottom || messageTarget || !readKnown) return;
     const mark = () => document.visibilityState === "visible" && markRead(channel.id);
     mark(); document.addEventListener("visibilitychange", mark);
     return () => document.removeEventListener("visibilitychange", mark);
-  }, [markRead, channel.id, newest, atBottom, messageTarget]);
+  }, [markRead, channel.id, newest, atBottom, messageTarget, readKnown]);
 
   const messageKeys = useMemo(() => chat.messages.map((m) => m.id), [chat.messages]);
   const byId = useMemo(() => new Map(chat.messages.map((m) => [m.id, m])), [chat.messages]);

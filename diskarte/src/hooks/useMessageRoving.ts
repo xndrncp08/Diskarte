@@ -19,6 +19,19 @@ export function logIndex(key: string, index: number, length: number) {
 const visible = (el: Element) => (el as HTMLElement & { checkVisibility?: () => boolean }).checkVisibility?.() ?? true;
 const tabbables = (root: ParentNode) => Array.from(root.querySelectorAll<HTMLElement>(TABBABLE)).filter((el) => el.tabIndex >= 0 && visible(el));
 
+/** Rows opened with Enter keep their action row shown (pulse.css) until focus goes to another row or leaves the log. */
+function closeActions(container: HTMLElement, except: Element | null) {
+  container.querySelectorAll<HTMLElement>("[data-actions]").forEach((el) => el !== except && delete el.dataset.actions);
+}
+
+function keyboardFocus(el: Element) {
+  try {
+    return el.matches(":focus-visible");
+  } catch {
+    return true; // engines without :focus-visible
+  }
+}
+
 /** Moves focus to the first tab stop after (or the last before) `container`, so Tab leaves the log in one step. */
 function leave(container: HTMLElement, forward: boolean) {
   const outside = tabbables(document).filter((el) => !container.contains(el) && Boolean(container.compareDocumentPosition(el) & (forward ? Node.DOCUMENT_POSITION_FOLLOWING : Node.DOCUMENT_POSITION_PRECEDING)));
@@ -32,7 +45,7 @@ function leave(container: HTMLElement, forward: boolean) {
  * Pulse message log keyboard model: the log is one Tab stop (the last focused message, else the newest); ↑/↓,
  * Home/End move between messages; Enter or → goes into the message (its action row first), Tab walks its controls
  * and leaves the log after the last one; Escape returns to the message; Tab or Shift+Tab on a message leaves the log.
- * Spread `onKeyDown`/`onFocus` on the log and give each message `tabIndex={tabStop === id ? 0 : -1}`.
+ * Spread `onKeyDown`/`onFocus`/`onBlur` on the log and give each message `tabIndex={tabStop === id ? 0 : -1}`.
  * `reveal` scrolls an unrendered (virtualized) message into the DOM before it is focused.
  */
 export function useMessageRoving(keys: readonly string[], reveal?: (key: string) => void) {
@@ -69,6 +82,8 @@ export function useMessageRoving(keys: readonly string[], reveal?: (key: string)
         const first = tabbables(row.querySelector(ACTIONS) ?? row)[0] ?? row.querySelector<HTMLElement>(`${ACTIONS} button`);
         if (!first) return;
         e.preventDefault();
+        // Keep the row open through the focus move: Chrome drops focus to <body> if the target hides mid-move.
+        row.dataset.actions = "open";
         first.focus();
       } else if (e.key === "Tab" && leave(container, !e.shiftKey)) e.preventDefault();
       return;
@@ -77,6 +92,7 @@ export function useMessageRoving(keys: readonly string[], reveal?: (key: string)
     if (target.matches("textarea, input") || target.getAttribute("aria-expanded") === "true") return;
     if (e.key === "Escape") {
       e.preventDefault();
+      delete row.dataset.actions;
       row.focus();
     } else if (e.key === "Tab") {
       const inside = tabbables(row);
@@ -88,12 +104,22 @@ export function useMessageRoving(keys: readonly string[], reveal?: (key: string)
   }
 
   function onFocus(e: FocusEvent<HTMLElement>) {
+    const container = e.currentTarget;
     const target = e.target as HTMLElement;
     const row = target.closest<HTMLElement>(ROW);
-    if (row && e.currentTarget.contains(row) && row.dataset.messageId) setCurrent(row.dataset.messageId);
-    // The log itself is focusable only while its tab stop is scrolled out of the DOM: hand focus to that message.
-    else if (target === e.currentTarget && tabStop) focusMessage(e.currentTarget, tabStop);
+    const key = row && container.contains(row) ? (row.dataset.messageId ?? null) : null;
+    // Tabbing in from outside lands on the first (or last) control in the log; hand it to the tab-stop message
+    // instead, so the log is one Tab stop. Not for clicks (no focus ring) or focus coming back from a menu.
+    const from = e.relatedTarget as Element | null;
+    const tabbedIn = !container.contains(from) && !from?.closest("[role=menu], [role=dialog]") && keyboardFocus(target);
+    closeActions(container, row);
+    if (tabStop && tabbedIn && (target === container || key !== tabStop)) return focusMessage(container, tabStop);
+    if (key) setCurrent(key);
   }
 
-  return { tabStop, onKeyDown, onFocus };
+  function onBlur(e: FocusEvent<HTMLElement>) {
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) closeActions(e.currentTarget, null);
+  }
+
+  return { tabStop, onKeyDown, onFocus, onBlur };
 }
