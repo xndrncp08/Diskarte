@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -138,27 +138,22 @@ describe("recovery states", () => {
 
   it("CallProvider tracks a refused microphone and blocked sound", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ token: "jwt", url: RUNTIME.livekitUrl, room: `voice:${TAMBAYAN.id}` }), { status: 200 })));
-    let call!: CallContextValue;
-    function Probe() {
-      call = useCall();
-      return null;
-    }
-    render(<Pulse><Probe /></Pulse>);
-    await act(() => call.join(TARGET));
-    await waitFor(() => expect(call.status).toBe("connected"));
+    const { result } = renderHook(() => useCall(), { wrapper: ({ children }: { children: ReactNode }) => <Pulse>{children}</Pulse> });
+    await act(() => result.current.join(TARGET));
+    await waitFor(() => expect(result.current.status).toBe("connected"));
     const room = livekitMock.rooms.at(-1)!;
-    await act(() => call.toggleMute());
+    await act(() => result.current.toggleMute());
     room.localParticipant.setMicrophoneEnabled.mockRejectedValueOnce(Object.assign(new Error("denied"), { name: "NotAllowedError" }));
-    await act(() => call.toggleMute());
-    expect(call.micDenied).toBe(true);
-    await act(() => call.toggleMute());
-    expect(call.micDenied).toBe(false);
+    await act(() => result.current.toggleMute());
+    expect(result.current.micDenied).toBe(true);
+    await act(() => result.current.toggleMute());
+    expect(result.current.micDenied).toBe(false);
 
     act(() => {
       Object.assign(room, { canPlaybackAudio: false });
       room.emit("audioPlaybackChanged");
     });
-    expect(call.audioBlocked).toBe(true);
+    expect(result.current.audioBlocked).toBe(true);
     vi.unstubAllGlobals();
   });
 });
