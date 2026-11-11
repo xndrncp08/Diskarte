@@ -182,8 +182,9 @@ export function useMenuKeyboard(open: boolean, panel: RefObject<HTMLElement | nu
     // starts with actions (the server menu) opens on its first row.
     const focusFirst = () => {
       const item = el.querySelector(ITEM_SELECTOR)?.getAttribute("role") === "menuitemradio" ? (el.querySelector<HTMLElement>("[aria-checked=true]") ?? el.querySelector<HTMLElement>(ITEM_SELECTOR)) : el.querySelector<HTMLElement>(ITEM_SELECTOR);
-      // Reduced motion makes every transition 0.01 ms, visibility included, so rows of a just-positioned panel can stay
-      // hidden (and refuse focus) until their transitions end; transitionend bubbles up to the panel.
+      // With motion on, rows of a just-positioned panel can still be mid-transition (visibility included) and refuse
+      // focus until it ends; transitionend bubbles up to the panel. Reduced motion has no transitions (0s), so the
+      // immediate call below always succeeds there.
       if (!item || getComputedStyle(item).visibility === "hidden") return;
       item.focus();
       el.removeEventListener("transitionend", focusFirst);
