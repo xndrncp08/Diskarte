@@ -84,6 +84,11 @@
 @theme inline {
   --animate-pulse-travel: pulse-travel 2.8s var(--pulse-ease) infinite;
   --animate-pulse-ripple: pulse-ripple var(--pulse-dur-loop) var(--pulse-ease) infinite;
+  --animate-pulse-ring: pulse-ring 1.2s var(--pulse-ease) infinite;
+  @keyframes pulse-ring {
+    from { transform: scale(1); opacity: 0.8; }
+    to { transform: scale(1.22); opacity: 0; }
+  }
   @keyframes pulse-travel {
     from { transform: translateX(-100%); }
     to { transform: translateX(500%); }
@@ -373,4 +378,28 @@ html[data-shell="pulse"]:not([data-high-contrast]) :focus-visible {
   border-radius: var(--pulse-radius-control);
   background: var(--pulse-selected);
   color: var(--pulse-text);
+}
+
+/* ---------- Voice (docs/design/pulse-voice.md) ---------- */
+
+/* Classic's floating "turn on call audio" button (LiveKit StartAudio) in Pulse colours, and out of the way while a Pulse
+   recovery notice offers "Turn on sound" on screen: the stage's (any width), the live strip's (md and up) or the compact
+   strip's (phones). It keeps working wherever no notice is visible. !important: StartAudio sets its display inline. */
+:root[data-shell="pulse"] .call-start-audio {
+  background: var(--pulse-accent);
+  color: var(--pulse-on-accent);
+  font-family: var(--pulse-font-text);
+}
+:root[data-shell="pulse"]:has([data-audio-prompt="all"]) .call-start-audio {
+  display: none !important;
+}
+@media (width >= 48rem) {
+  :root[data-shell="pulse"]:has([data-audio-prompt="wide"]) .call-start-audio {
+    display: none !important;
+  }
+}
+@media (width < 48rem) {
+  :root[data-shell="pulse"]:has([data-audio-prompt="phone"]) .call-start-audio {
+    display: none !important;
+  }
 }

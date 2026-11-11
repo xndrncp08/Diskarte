@@ -2,10 +2,24 @@
 
 import { useMe } from "@/components/providers/MeProvider";
 import { useTopicPresence, voiceTopic } from "@/components/providers/PresenceProvider";
-import { useServer } from "@/components/providers/ServerProvider";
+import { useOptionalServer, useServer } from "@/components/providers/ServerProvider";
 import { useCall } from "@/components/voice/CallProvider";
 import type { PresencePayload } from "@/lib/presence";
 import type { MemberWithProfile } from "@/lib/servers";
+
+const NOBODY = new Map<string, PresencePayload>();
+
+/**
+ * The presence map that may describe a voice channel: a private channel's own `voice:<id>` topic, never the
+ * server-wide one (where private occupancy is never published); a public channel's server presence. Empty outside a
+ * Tambayan (DM calls) or for a channel RLS didn't return.
+ */
+export function useChannelVoicePresence(channelId: string | null | undefined): Map<string, PresencePayload> {
+  const server = useOptionalServer();
+  const isPrivate = !!channelId && server?.channels.find((c) => c.id === channelId)?.is_private === true;
+  const privatePresence = useTopicPresence(isPrivate ? voiceTopic(channelId) : null);
+  return isPrivate ? privatePresence : (server?.presence ?? NOBODY);
+}
 
 /**
  * Who's in a voice channel: everyone else from presence, and you from your own call — instantly and
@@ -13,10 +27,8 @@ import type { MemberWithProfile } from "@/lib/servers";
  * A private channel's occupants come from its own `voice:<id>` topic, never the server-wide one.
  */
 export function useVoiceRoster(channelId: string): { member: MemberWithProfile; presence: PresencePayload | undefined }[] {
-  const { members, presence: serverPresence, channels } = useServer();
-  const isPrivate = channels.find((c) => c.id === channelId)?.is_private === true;
-  const privatePresence = useTopicPresence(isPrivate ? voiceTopic(channelId) : null);
-  const presence = isPrivate ? privatePresence : serverPresence;
+  const { members } = useServer();
+  const presence = useChannelVoicePresence(channelId);
   const { me } = useMe();
   const call = useCall();
   const here = (call.status === "connected" || call.status === "reconnecting") && call.target?.channelId === channelId;

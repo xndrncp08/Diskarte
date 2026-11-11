@@ -14,7 +14,7 @@ export function CallAudio({ room, muted }: { room: Room; muted: boolean }) {
       <RoomAudioRenderer room={room} muted={muted} />
       <StartAudio
         label="Click to turn on call audio"
-        className="fixed bottom-4 left-1/2 z-[60] -translate-x-1/2 rounded-full bg-sun px-4 py-2 text-sm font-bold text-abyss shadow-xl shadow-black/50"
+        className="call-start-audio fixed bottom-4 left-1/2 z-[60] -translate-x-1/2 rounded-full bg-sun px-4 py-2 text-sm font-bold text-abyss shadow-xl shadow-black/50"
       />
     </RoomContext.Provider>
   );

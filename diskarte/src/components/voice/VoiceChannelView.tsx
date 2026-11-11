@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/Button";
 import type { Channel } from "@/lib/servers";
 import { useCall } from "./CallProvider";
 import { StageSkeleton } from "./StageSkeleton";
+import { useShellKind } from "@/components/shell/ShellKind";
+import { VoiceLobby } from "./pulse/VoiceLobby";
 
 // The call grid pulls in @livekit/components-react; load it only once you're in the call.
 const VoiceStage = dynamic(() => import("./live/VoiceStage").then((m) => m.VoiceStage), { ssr: false, loading: () => <StageSkeleton /> });
@@ -22,6 +24,7 @@ export function VoiceChannelView({ channel }: { channel: Channel }) {
   const { server } = useServer();
   const call = useCall();
   const here = call.target?.channelId === channel.id;
+  const pulse = useShellKind() === "pulse";
   const inRoom = useVoiceRoster(channel.id).map((r) => r.member);
   const target = { serverId: server.id, serverName: server.name, channelId: channel.id, channelName: channel.name };
 
@@ -32,6 +35,19 @@ export function VoiceChannelView({ channel }: { channel: Channel }) {
     // Warm once per channel opened, not on every call-state change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channel.id, prewarm]);
+
+  const joining = here && (call.status === "connecting" || call.status === "reconnecting");
+  if (pulse)
+    return (
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden" aria-label={channel.name}>
+        <ChannelHeader channel={channel} />
+        {here && call.status === "connected" ? (
+          <VoiceStage />
+        ) : (
+          <VoiceLobby channel={channel} joining={joining} label={here && call.status !== "idle" ? "Connecting…" : call.target ? "Switch to this room" : "Join"} onJoin={() => void call.join(target)} />
+        )}
+      </section>
+    );
 
   return (
     <motion.section
@@ -66,7 +82,7 @@ export function VoiceChannelView({ channel }: { channel: Channel }) {
           )}
           <Button
             size="lg"
-            loading={here && (call.status === "connecting" || call.status === "reconnecting")}
+            loading={joining}
             onClick={() => void call.join(target)}
             data-testid="join-voice"
           >

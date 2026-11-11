@@ -30,6 +30,9 @@ const BASE =
   "transition-[background-color,color,filter,transform] duration-(--pulse-dur-press) ease-(--pulse-ease) pulse-motion:active:scale-[0.97] " +
   "disabled:pointer-events-none disabled:not-aria-busy:border-transparent disabled:not-aria-busy:bg-pulse-raised disabled:not-aria-busy:text-pulse-disabled disabled:not-aria-busy:shadow-none aria-busy:cursor-progress";
 
+/** The Button look for a link that acts as one (a Next <Link> to a page): same variants and sizes, 44 px on touch. */
+export const buttonClasses = (variant: ButtonVariant = "secondary", size: ButtonSize = "md") => cn(BASE, VARIANTS[variant], SIZES[size]);
+
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
@@ -51,7 +54,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 ) {
   const loading = useMinimumLoading(loadingProp);
   return (
-    <button ref={ref} type={type} disabled={disabled || loading} aria-busy={loading || undefined} data-variant={variant} className={cn(BASE, VARIANTS[variant], SIZES[size], className)} {...props}>
+    <button ref={ref} type={type} disabled={disabled || loading} aria-busy={loading || undefined} data-variant={variant} className={cn(buttonClasses(variant, size), className)} {...props}>
       {loading ? <Loader2 className="size-4 animate-spin" aria-hidden /> : icon && <span className="inline-flex [&_svg]:size-4" aria-hidden>{icon}</span>}
       {children}
     </button>
