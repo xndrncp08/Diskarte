@@ -76,6 +76,7 @@
         { "source": "docs/design/pulse-messaging.md", "slug": "developers/pulse-messaging", "title": "Pulse messaging" },
         { "source": "docs/design/pulse-communities.md", "slug": "developers/pulse-communities", "title": "Pulse communities and pages" },
         { "source": "docs/design/pulse-voice.md", "slug": "developers/pulse-voice", "title": "Pulse voice" },
+        { "source": "docs/design/pulse-mobile.md", "slug": "developers/pulse-mobile", "title": "Pulse on phones" },
         { "source": "docs/architecture/decisions.md", "slug": "developers/decisions" },
         { "source": "docs/contributing/README.md", "slug": "developers/contributing", "title": "Contributing" },
         { "source": "docs/contributing/database-migrations.md", "slug": "developers/database-migrations" }

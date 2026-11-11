@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type RefObject } from "react";
+import { useEffect, useSyncExternalStore, type RefObject } from "react";
 
 /**
  * Keyboard only. The shell is plain 100dvh (the browser keeps that right as its toolbars move);
@@ -37,4 +37,15 @@ export function useAppViewport(ref: RefObject<HTMLElement | null>) {
       delete root.dataset.keyboard;
     };
   }, [ref]);
+}
+
+function subscribeKeyboard(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-keyboard"] });
+  return () => observer.disconnect();
+}
+
+/** Whether the on-screen keyboard is up, as useAppViewport last measured it (`<html data-keyboard>`). */
+export function useKeyboardUp() {
+  return useSyncExternalStore(subscribeKeyboard, () => document.documentElement.dataset.keyboard === "true", () => false);
 }

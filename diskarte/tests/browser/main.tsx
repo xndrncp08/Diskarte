@@ -23,6 +23,8 @@ import { FriendsView } from "@/components/social/FriendsView";
 import { SharedWorkspaceView } from "@/components/workspace/SharedWorkspaceView";
 import { WorkspacePanel } from "@/components/workspace/WorkspacePanel";
 import { CommunityLanding } from "@/components/pulse/community/CommunityLanding";
+import { PulseSpaces } from "@/components/pulse/views/Spaces";
+import { PulseYou } from "@/components/pulse/views/You";
 import { ChannelSidebar } from "@/components/server/ChannelSidebar";
 import { ChatView } from "@/components/chat/ChatView";
 import { VoiceChannelView } from "@/components/voice/VoiceChannelView";
@@ -104,7 +106,7 @@ function Fixture() {
         <ExploreView servers={[server]} />
       ) : path === `/tambayan/dm/${DM_ID}` ? (
         <DmView servers={[server]} {...dmProps} />
-      ) : path === "/tambayan/messages" ? (<MessagesView servers={[server]} />) : path === "/tambayan/friends" ? (
+      ) : path === "/tambayan/messages" ? (<MessagesView servers={[server]} />) : path === "/tambayan/spaces" ? (<PulseSpaces servers={[server]} />) : path === "/tambayan/you" ? (<PulseYou servers={[server]} />) : path === "/tambayan/friends" ? (
         <FriendsView servers={[server]} />
       ) : (
         <>

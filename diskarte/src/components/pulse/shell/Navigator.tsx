@@ -21,6 +21,7 @@ import { readLastChannels } from "@/lib/last-channel";
 import { togglePin, useDisplayPrefs } from "@/lib/display-prefs";
 import { hangoutTimeLeft, topicLabel } from "@/lib/hangouts";
 import { setShell } from "@/lib/shell";
+import { cn } from "@/lib/utils";
 import { conversationTitle, isUnread, type ConversationSummary } from "@/lib/social";
 import { Avatar, Monogram } from "../Avatar";
 import { Button } from "../Button";
@@ -31,7 +32,7 @@ import { usePulseUI } from "./PulseUI";
 
 export type NavigatorView = "home" | "people" | "spaces";
 
-const HOME_ROUTES = new Set(["explore", "search", "admin"]);
+const HOME_ROUTES = new Set(["explore", "search", "admin", "you"]);
 const PEOPLE_ROUTES = new Set(["dm", "messages", "friends"]);
 
 /** Which view a route belongs to: a conversation shows People, a Space shows Spaces, the rest Home. */
@@ -55,10 +56,11 @@ function pinItem(pin: string, pinned: boolean): MenuItem {
   return { label: pinned ? "Unpin" : "Pin to top", icon: pinned ? <PinOff /> : <Pin />, onSelect: () => togglePin(pin) };
 }
 
-/** A Space: Monogram, unread and mention counts (muted channels ignored), "In call" while you're in its voice room. */
-function SpaceRow({ server, active, pinned, actions, children }: { server: RailEntry; active: boolean; pinned: boolean; actions?: (el: HTMLElement | null) => void; children?: ReactNode }) {
+/** A Space: Monogram, unread and mention counts (muted channels ignored), "In call" while you're in its voice room. `href` overrides its last room. */
+export function SpaceRow({ server, active, pinned, actions, href: to, children }: { server: RailEntry; active: boolean; pinned: boolean; actions?: (el: HTMLElement | null) => void; href?: string; children?: ReactNode }) {
   const menu = useContextMenu();
-  const href = useServerHref(server);
+  const last = useServerHref(server);
+  const href = to ?? last;
   const badge = useServerBadge(server.id);
   const call = useCall();
   const live = call.status !== "idle" && call.target?.serverId === server.id ? "In call" : undefined;
@@ -92,20 +94,25 @@ function ConversationRow({ conversation: c, active, pinned }: { conversation: Co
   );
 }
 
-/** "You": your face and status in the navigator header; status, Settings, the Control Center (super admins) and Classic. */
-function YouMenu() {
-  const { me } = useMe();
-  const { items, label } = useStatusMenu();
+/** Settings, the Control Center (super admins) and Back to Classic: the You menu's rows, and the phone You screen's. */
+export function useYouItems(): MenuItem[] {
   const settings = useSettingsDialog();
   const role = usePlatformRole();
   const router = useRouter();
-  const status = me.status === "invisible" ? "offline" : me.status;
-  const more: MenuItem[] = [
+  return [
     { label: "Settings", icon: <Settings />, group: "You", onSelect: () => (settings ? settings.openSettings() : router.push("/settings/profile")) },
     // Shown only when the server said so (the page itself re-checks); never derived on the client.
     { label: "Control Center", icon: <ShieldCheck />, group: "You", onSelect: () => router.push("/tambayan/admin"), hidden: role !== "super_admin" },
     { label: "Back to Classic", icon: <Undo2 />, group: "You", onSelect: () => setShell("classic", router) },
   ];
+}
+
+/** "You": your face and status in the navigator header; status, Settings, the Control Center (super admins) and Classic. */
+function YouMenu() {
+  const { me } = useMe();
+  const { items, label } = useStatusMenu();
+  const more = useYouItems();
+  const status = me.status === "invisible" ? "offline" : me.status;
   return (
     <Menu
       label="You"
@@ -116,6 +123,23 @@ function YouMenu() {
         </button>
       )}
     />
+  );
+}
+
+/** Start a Hangout (the People view's one primary action) and a new group DM, with their dialogs. */
+export function PeopleActions({ className }: { className?: string }) {
+  const { friends, profiles } = useSocial();
+  const [dialog, setDialog] = useState<"hangout" | "group" | null>(null);
+  const accepted = (friends ?? []).filter((f) => f.status === "accepted");
+  return (
+    <div className={cn("flex gap-2", className)}>
+      <Button size="sm" variant="primary" icon={<Sparkles />} onClick={() => setDialog("hangout")} className="flex-1">Start a Hangout</Button>
+      <Button size="sm" variant="quiet" icon={<Plus />} onClick={() => setDialog("group")}>Group</Button>
+      <StartHangoutDialog open={dialog === "hangout"} onClose={() => setDialog(null)} />
+      <Modal open={dialog === "group"} onClose={() => setDialog(null)} title="New group DM">
+        <GroupDmForm friendIds={accepted.map((f) => f.userId)} profiles={profiles} onDone={() => setDialog(null)} />
+      </Modal>
+    </div>
   );
 }
 
@@ -131,7 +155,7 @@ export function Navigator({ servers }: { servers: RailEntry[] }) {
   const pathname = usePathname();
   const router = useRouter();
   const activeId = useParams<{ serverId?: string }>().serverId;
-  const { conversations, friends, profiles, attention } = useSocial();
+  const { conversations, friends, attention } = useSocial();
   const role = usePlatformRole();
   const { setRoomsSlot, setSpaceActionsSlot } = usePulseUI();
   const pins = useDisplayPrefs().pins ?? [];
@@ -140,7 +164,7 @@ export function Navigator({ servers }: { servers: RailEntry[] }) {
   // The route picks the view; a choice sticks until the next navigation.
   const [chosen, setChosen] = useState<{ view: NavigatorView; path: string } | null>(null);
   const view = chosen?.path === pathname ? chosen.view : viewFor(pathname);
-  const [dialog, setDialog] = useState<"space" | "hangout" | "group" | null>(null);
+  const [addSpace, setAddSpace] = useState(false);
   const incoming = friends?.filter((f) => f.status === "incoming").length ?? 0;
 
   useEffect(() => {
@@ -185,7 +209,6 @@ export function Navigator({ servers }: { servers: RailEntry[] }) {
 
   const pinnedSpaces = pins.flatMap((p) => (p.startsWith("space:") ? (spaces.find((s) => `space:${s.id}` === p) ?? []) : []));
   const pinnedConversations = pins.flatMap((p) => (p.startsWith("dm:") ? ((conversations ?? []).find((c) => `dm:${c.id}` === p) ?? []) : []));
-  const accepted = (friends ?? []).filter((f) => f.status === "accepted");
 
   return (
     <aside aria-label="Navigator" className="flex h-full w-full min-w-0 flex-col bg-pulse-bg font-pulse-text text-pulse-text">
@@ -236,10 +259,7 @@ export function Navigator({ servers }: { servers: RailEntry[] }) {
 
         {view === "people" && (
           <>
-            <div className="flex gap-2 px-1 pt-2">
-              <Button size="sm" icon={<Sparkles />} onClick={() => setDialog("hangout")} className="flex-1">Start a Hangout</Button>
-              <Button size="sm" variant="quiet" icon={<Plus />} onClick={() => setDialog("group")}>Group</Button>
-            </div>
+            <PeopleActions className="px-1 pt-2" />
             <ul className="pt-2">
               <li><NavItem label="Friends" leading={<Users />} href="/tambayan/friends" current={pathname === "/tambayan/friends"} count={incoming} countLabel={incoming === 1 ? "friend request" : "friend requests"} countTone="accent" /></li>
             </ul>
@@ -268,7 +288,7 @@ export function Navigator({ servers }: { servers: RailEntry[] }) {
               ))}
             </ul>
             <ul className="pt-2">
-              <li><NavItem label="Add a Space" leading={<Plus />} onClick={() => setDialog("space")} /></li>
+              <li><NavItem label="Add a Space" leading={<Plus />} onClick={() => setAddSpace(true)} /></li>
               <li><NavItem label="Explore Spaces" leading={<Compass />} href="/tambayan/explore" current={pathname === "/tambayan/explore"} /></li>
             </ul>
           </>
@@ -276,11 +296,7 @@ export function Navigator({ servers }: { servers: RailEntry[] }) {
       </nav>
 
       {goAnywhere.palette}
-      <AddServerDialog open={dialog === "space"} onClose={() => setDialog(null)} />
-      <StartHangoutDialog open={dialog === "hangout"} onClose={() => setDialog(null)} />
-      <Modal open={dialog === "group"} onClose={() => setDialog(null)} title="New group DM">
-        <GroupDmForm friendIds={accepted.map((f) => f.userId)} profiles={profiles} onDone={() => setDialog(null)} />
-      </Modal>
+      <AddServerDialog open={addSpace} onClose={() => setAddSpace(false)} />
     </aside>
   );
 }

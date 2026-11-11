@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { leaveServerAction } from "@/actions/servers";
 import { useMe } from "@/components/providers/MeProvider";
 import { useOptionalRuntimeConfig } from "@/components/providers/RuntimeConfig";
+import { useShellKind } from "./ShellKind";
 import { confirmAction } from "@/components/ui/ConfirmHost";
 import { ContextMenu, ContextMenuItems, copyText, type ContextMenuState } from "@/components/ui/ContextMenu";
 import type { MenuItem } from "@/components/ui/Menu";
@@ -16,6 +17,7 @@ const icon = "size-4";
 /** Right-click on a server (the rail, Home's server list): open it, copy its invite, leave it. */
 function ServerMenuItems({ server, onPreview, before = [] }: { server: Server; onPreview?: () => void; before?: MenuItem[] }) {
   const { me } = useMe();
+  const pulse = useShellKind() === "pulse";
   const router = useRouter();
   const active = useParams<{ serverId?: string }>().serverId === server.id;
   const siteUrl = useOptionalRuntimeConfig()?.siteUrl ?? window.location.origin;
@@ -25,7 +27,7 @@ function ServerMenuItems({ server, onPreview, before = [] }: { server: Server; o
       items={[
         ...before,
         { label: "Voice activity", icon: <Volume2 className={icon} aria-hidden />, onSelect: () => onPreview?.(), hidden: !onPreview },
-        { label: "Open server", icon: <ArrowRight className={icon} aria-hidden />, onSelect: () => router.push(`/tambayan/${server.id}`), hidden: active },
+        { label: pulse ? "Open Space" : "Open server", icon: <ArrowRight className={icon} aria-hidden />, onSelect: () => router.push(`/tambayan/${server.id}`), hidden: active },
         {
           label: "Copy invite link",
           icon: <Link2 className={icon} aria-hidden />,

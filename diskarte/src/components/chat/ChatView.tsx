@@ -12,6 +12,7 @@ import { useServer } from "@/components/providers/ServerProvider";
 import { useOptionalUnreads } from "@/components/providers/UnreadsProvider";
 import { ChannelHeader } from "@/components/server/ChannelHeader";
 import { usePulseUI } from "@/components/pulse/shell/PulseUI";
+import { IconButton } from "@/components/pulse/Button";
 import { useShellKind } from "@/components/shell/ShellKind";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -198,18 +199,20 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
         <ChannelHeader
           channel={channel}
           actions={
+            // Pulse: pins live in the Context sheet's Pinned tab; a real 44 px button on touch.
+            pulse ? <IconButton tooltip label="Pinned messages" icon={<Pin />} onClick={() => pulseUI.openContext("pinned")} /> : (
             <Tooltip label="Pinned messages" side="bottom">
               <button
                 type="button"
                 aria-label="Pinned messages"
-                aria-expanded={pulse ? undefined : pinsOpen}
-                // Pulse: pins live in the Context sheet's Pinned tab.
-                onClick={() => (pulse ? pulseUI.openContext("pinned") : setPinsOpen((o) => !o))}
+                aria-expanded={pinsOpen}
+                onClick={() => setPinsOpen((o) => !o)}
                 className={cn("touch-target relative rounded-md p-1.5 transition-colors hover:bg-white/10", pinsOpen ? "text-white" : "text-slate-400")}
               >
                 <Pin className="size-5" aria-hidden />
               </button>
             </Tooltip>
+            )
           }
         />
         <ForwardDialog

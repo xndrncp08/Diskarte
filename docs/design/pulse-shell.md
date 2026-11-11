@@ -96,7 +96,8 @@ themes own them).
 ## Canvas and Context
 
 - **CallStrip:** while you're in a call and not on its stage, the live strip across the top of the canvas (tablet and
-  up; a `compact` variant for phones). See [Pulse voice](pulse-voice.md).
+  up; a `compact` variant for phones above the tab bar or at the bottom of a conversation). See
+  [Pulse voice](pulse-voice.md) and [Pulse on phones](pulse-mobile.md).
 - **Masthead:** see the seams table. The Context toggle is on channel pages.
 - **Context sheet:** People (the member list), Pinned (the channel's pinned messages, same query as the Pins
   drawer, fetched while the tab shows) and About (channel topic, Space description, rules). "Keep open beside the
