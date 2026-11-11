@@ -47,6 +47,8 @@ interface ChannelUnread {
 interface UnreadsValue {
   /** Per text channel I can see. */
   channels: ReadonlyMap<string, ChannelUnread>;
+  /** The first unread fetch has finished (an empty map then means "nothing unread", not "not loaded yet"). */
+  loaded: boolean;
   /** I've read this channel (now, and at least up to its newest message). */
   markRead: (channelId: string) => void;
   /** Discord's "Mark Unread": unread again from this message on. */
@@ -83,6 +85,7 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
   const [channels, setChannels] = useState<ReadonlyMap<string, ChannelUnread>>(
     () => new Map(),
   );
+  const [loaded, setLoaded] = useState(false);
   const generation = useRef(0);
   const current = useRef<ReadonlyMap<string, ChannelUnread>>(new Map());
   useEffect(() => { current.current = channels; }, [channels]);
@@ -184,8 +187,10 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
     if (!supabase) return;
     const token = ++generation.current;
     const { data, error } = await supabase.rpc("my_unreads");
+    if (token !== generation.current) return;
+    setLoaded(true);
     // Not migrated yet (or offline): keep what we have; no badges is the safe default.
-    if (error || !data || token !== generation.current) return;
+    if (error || !data) return;
     setChannels(
       new Map(
         data.map((r) => {
@@ -399,13 +404,14 @@ export function UnreadsProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       channels,
+      loaded,
       markRead,
       markUnread,
       noteActivity,
       markAllRead,
       refresh: () => void refresh(),
     }),
-    [channels, markRead, markUnread, noteActivity, markAllRead, refresh],
+    [channels, loaded, markRead, markUnread, noteActivity, markAllRead, refresh],
   );
   return (
     <UnreadsContext.Provider value={value}>{children}</UnreadsContext.Provider>

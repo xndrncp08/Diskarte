@@ -78,8 +78,8 @@ export function ChatView({ channel: initialChannel, initial }: { channel: Channe
   const { listRef, atBottom, unseen, onScroll, scrollToBottom, restoringHistory } = useConversationScroll(`${me.id}:${channel.id}`, chat.messages, me.id, chat.loadOlder, chat.hasMore, chat.loadingOlder);
   // Pulse marks the channel read only once the unread counts have loaded, so a fresh page load still knows where the
   // "New" line goes (the read position would otherwise already be "now").
-  const unreadCount = useOptionalUnreads()?.channels.size ?? 1;
-  const readKnown = !pulse || unreadCount > 0;
+  const unreadsLoaded = useOptionalUnreads()?.loaded ?? true;
+  const readKnown = !pulse || unreadsLoaded;
   useEffect(() => {
     if (!markRead || !atBottom || messageTarget || !readKnown) return;
     const mark = () => document.visibilityState === "visible" && markRead(channel.id);
