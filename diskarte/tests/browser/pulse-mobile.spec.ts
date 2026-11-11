@@ -82,7 +82,7 @@ test("Pulse phone flows: tabs, a conversation and Back, Spaces to a room, edge s
   await tabs.getByRole("link", { name: /People/ }).tap();
   await expect(page).toHaveURL(/\/tambayan\/messages$/);
   await expect(page.locator("#main-content h1")).toBeFocused();
-  await expect(page.getByRole("button", { name: "Start a Hangout" })).toBeVisible();
+  await expect(page.locator("#main-content").getByRole("button", { name: "Start a Hangout" })).toBeVisible();
   await page.getByTestId("messages-list").getByRole("link").first().tap();
   await expect(page).toHaveURL(new RegExp(`/tambayan/dm/${DM_ID}$`));
   await expect(tabs).toBeHidden();
