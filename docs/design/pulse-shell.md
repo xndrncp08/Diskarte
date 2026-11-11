@@ -144,8 +144,10 @@ cd diskarte && CI=1 npx playwright test --config playwright.experience.config.ts
 
 ## Not yet
 
-- Messages, composer, DM and page bodies keep their Classic look in the canvas (Step 5).
-- Messages, Friends, DM and Shared workspace pages still render their own headers instead of the Masthead (Step 5).
+- Messages, the composer, DMs, threads and forums have their Pulse look: see [Pulse messaging](pulse-messaging.md).
+  Other page bodies keep their Classic look in the canvas (Step 5).
+- Messages, Friends and Shared workspace pages still render their own headers instead of the Masthead (Step 5); the
+  DM page uses it.
 - No Media tab in the Context sheet: recent attachments need a new query (Step 5).
 - Phones: the navigator is a drawer and MobileNavigation's tabs stay; the Pulse phone design is Step 6, as is
   the voice redesign (the CallStrip is the Classic dock, re-laid-out).
