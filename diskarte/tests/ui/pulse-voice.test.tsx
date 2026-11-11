@@ -18,6 +18,11 @@ const { CallAnnouncer, CallRecovery, recoveryKind } = await import("@/components
 const { SpeakingAvatar } = await import("@/components/voice/pulse/people");
 const { VoiceLobby } = await import("@/components/voice/pulse/VoiceLobby");
 const { ParticipantTile } = await import("@/components/voice/live/ParticipantTile");
+const { VoiceChannelView } = await import("@/components/voice/VoiceChannelView");
+const { VoiceStage } = await import("@/components/voice/live/VoiceStage");
+const { participantProfile } = await import("@/components/voice/participant-profile");
+const { useChannelVoicePresence } = await import("@/hooks/useVoiceRoster");
+const { toastMock } = await import("../mocks/actions");
 const { CHANNELS, MEMBERS, RUNTIME, TAMBAYAN, channelUrl, GENERAL } = await import("../fixtures/layout");
 const { SERVER_ID, ServerFixture, makeChannel, presenceFor, server } = await import("../fixtures/server");
 
@@ -61,6 +66,13 @@ beforeEach(() => {
 });
 
 describe("call controls", () => {
+  it("applies System default to an active call when selected in the lobby", async () => {
+    const call = fakeCall();
+    render(<Pulse call={call}><VoiceLobby channel={TAMBAYAN} joining={false} label="Join" onJoin={() => undefined} /></Pulse>);
+    await userEvent.setup().selectOptions(screen.getByRole("combobox", { name: "Microphone" }), "");
+    expect(call.switchDevice).toHaveBeenCalledWith("audioinput", "default");
+  });
+
   it("keep fixed names and report state with aria-pressed", async () => {
     const user = userEvent.setup();
     const call = fakeCall({ muted: true, camera: true });
@@ -136,6 +148,31 @@ describe("recovery states", () => {
     expect(region).toHaveTextContent("");
   });
 
+  it("announces poor connection again after leaving and rejoining the same room", () => {
+    const at = (call: CallContextValue) => <Pulse call={call}><CallAnnouncer /></Pulse>;
+    const { rerender } = render(at(fakeCall({ quality: 1 })));
+    expect(screen.getByRole("status")).toHaveTextContent(/^Poor connection/);
+    rerender(at(fakeCall({ status: "idle", target: null })));
+    rerender(at(fakeCall({ quality: 1 })));
+    expect(screen.getByRole("status")).toHaveTextContent(/^Poor connection/);
+  });
+
+  it("reports a rejected sound retry and leaves the recovery action available", async () => {
+    const room = { startAudio: vi.fn(async () => { throw new Error("blocked"); }) };
+    render(<Pulse call={fakeCall({ audioBlocked: true, room: room as unknown as CallContextValue["room"] })}><CallRecovery prompt="all" /></Pulse>);
+    await userEvent.setup().click(screen.getByRole("button", { name: "Turn on sound" }));
+    expect(toastMock.toast.error).toHaveBeenCalledWith("Couldn't start call sound. Try again.");
+    expect(screen.getByRole("button", { name: "Turn on sound" })).toBeEnabled();
+  });
+
+  it("keeps the stage, recovery notice and Leave control while reconnecting", async () => {
+    const room = { localParticipant: mockParticipant(MEMBERS[0].user_id, { isLocal: true }), remoteParticipants: new Map(), on: vi.fn(), off: vi.fn() };
+    render(<Pulse call={fakeCall({ status: "reconnecting", room: room as unknown as CallContextValue["room"] })}><VoiceChannelView channel={TAMBAYAN} /></Pulse>);
+    await waitFor(() => expect(screen.getByTestId("pulse-voice-stage")).toBeInTheDocument());
+    expect(screen.getByText("Reconnecting…")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Leave" })).toBeInTheDocument();
+  });
+
   it("CallProvider tracks a refused microphone and blocked sound", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ token: "jwt", url: RUNTIME.livekitUrl, room: `voice:${TAMBAYAN.id}` }), { status: 200 })));
     const { result } = renderHook(() => useCall(), { wrapper: ({ children }: { children: ReactNode }) => <Pulse>{children}</Pulse> });
@@ -154,11 +191,30 @@ describe("recovery states", () => {
       room.emit("audioPlaybackChanged");
     });
     expect(result.current.audioBlocked).toBe(true);
+    act(() => room.emit("reconnecting"));
+    expect(result.current.status).toBe("reconnecting");
+    expect(result.current.room).toBe(room);
+    act(() => room.emit("reconnected"));
+    expect(result.current.status).toBe("connected");
+    expect(livekitMock.rooms).toHaveLength(1);
     vi.unstubAllGlobals();
   });
 });
 
 describe("private rooms", () => {
+  it("returns no voice presence for a missing or unauthorized channel", () => {
+    const presence = new Map([[MEMBERS[1].user_id, presenceFor(MEMBERS[1].user_id, { voice_channel_id: PRIVATE.id })]]);
+    const { result, rerender } = renderHook(({ id }: { id: string | null }) => useChannelVoicePresence(id), {
+      initialProps: { id: null as string | null },
+      wrapper: ({ children }) => <Pulse call={fakeCall()} presence={presence}>{children}</Pulse>,
+    });
+    expect(result.current.size).toBe(0);
+    rerender({ id: "unknown-channel" });
+    expect(result.current.size).toBe(0);
+    rerender({ id: TAMBAYAN.id });
+    expect(result.current.size).toBe(1);
+  });
+
   it("the lobby never shows a private room's occupants from server-wide presence", () => {
     // Server presence claims Maria is in the private room; only its own voice:<id> topic may say so.
     const presence = new Map([[MEMBERS[1].user_id, presenceFor(MEMBERS[1].user_id, { voice_channel_id: PRIVATE.id })], [MEMBERS[2].user_id, presenceFor(MEMBERS[2].user_id, { voice_channel_id: TAMBAYAN.id })]]);
@@ -175,6 +231,39 @@ describe("private rooms", () => {
 });
 
 describe("speaking", () => {
+  it("keeps keyboard focus inside the screen-share fallback and restores it on Escape", async () => {
+    const participant = mockParticipant(MEMBERS[1].user_id);
+    livekitMock.tracks = [{ participant, source: "screen_share" }];
+    const room = { localParticipant: mockParticipant(MEMBERS[0].user_id), remoteParticipants: new Map(), on: vi.fn(), off: vi.fn() };
+    render(<Pulse call={fakeCall({ room: room as unknown as CallContextValue["room"] })}><VoiceStage /></Pulse>);
+    const user = userEvent.setup();
+    const focus = screen.getByRole("button", { name: "Focus mode (fullscreen)" });
+    await user.click(focus);
+    const dialog = screen.getByRole("dialog", { name: "Screen share" });
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+    await user.tab();
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: "Screen share" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Focus mode (fullscreen)" })).toHaveFocus();
+  });
+
+  it("makes a remote stream's context menu reachable from the keyboard", async () => {
+    const participant = mockParticipant(MEMBERS[1].user_id);
+    render(<Pulse call={fakeCall()}><ParticipantTile trackRef={{ participant, source: "screen_share" } as never} /></Pulse>);
+    const stream = screen.getByRole("group", { name: "Maria's stream options" });
+    stream.focus();
+    await userEvent.setup().keyboard("{Shift>}{F10}{/Shift}");
+    expect(screen.getByRole("menu", { name: "Maria's stream" })).toBeInTheDocument();
+  });
+
+  it("falls back safely when participant metadata has an unexpected JSON shape", () => {
+    const participant = mockParticipant("guest", { name: "Guest" });
+    participant.metadata = "null";
+    expect(participantProfile(participant as never)).toMatchObject({ name: "Guest", avatar_url: null, avatar_preset: "araw" });
+    participant.metadata = JSON.stringify({ avatar_url: {}, avatar_preset: [] });
+    expect(participantProfile(participant as never)).toMatchObject({ name: "Guest", avatar_url: null, avatar_preset: "araw" });
+  });
   it("the pulse ring only animates under pulse-motion; the static ring stays for reduced motion", () => {
     const { rerender } = render(<SpeakingAvatar profile={MEMBERS[1].profile} speaking size={72} />);
     const ring = document.querySelector("[data-pulse-ring]")!;
@@ -206,6 +295,14 @@ describe("speaking", () => {
 });
 
 describe("live strip", () => {
+  it("keeps Leave available on the call route while the connection is being established", () => {
+    navigation.reset(channelUrl(TAMBAYAN.id));
+    const call = fakeCall({ status: "connecting" });
+    render(<Pulse call={call}><CallStrip compact /></Pulse>);
+    expect(screen.getByRole("region", { name: "Live call" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Leave call" })).toBeEnabled();
+  });
+
   it("shows the room, the people from the call and Open stage; steps aside on the stage page", () => {
     const room = { localParticipant: mockParticipant(MEMBERS[0].user_id, { isLocal: true }), remoteParticipants: new Map([[MEMBERS[2].user_id, mockParticipant(MEMBERS[2].user_id)]]), on: vi.fn(), off: vi.fn() };
     const call = fakeCall({ room: room as unknown as CallContextValue["room"] });

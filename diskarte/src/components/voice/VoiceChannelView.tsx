@@ -41,7 +41,7 @@ export function VoiceChannelView({ channel }: { channel: Channel }) {
     return (
       <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden" aria-label={channel.name}>
         <ChannelHeader channel={channel} />
-        {here && call.status === "connected" ? (
+        {here && (call.status === "connected" || call.status === "reconnecting") ? (
           <VoiceStage />
         ) : (
           <VoiceLobby channel={channel} joining={joining} label={here && call.status !== "idle" ? "Connecting…" : call.target ? "Switch to this room" : "Join"} onJoin={() => void call.join(target)} />

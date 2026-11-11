@@ -14,7 +14,11 @@ export function participantProfile(participant: Participant, members: readonly M
   if (member) return { ...member.profile, name: member.nickname ?? member.profile.display_name };
   let meta: { avatar_url?: string | null; avatar_preset?: string } = {};
   try {
-    meta = participant.metadata ? JSON.parse(participant.metadata) : {};
+    const parsed: unknown = participant.metadata ? JSON.parse(participant.metadata) : null;
+    if (parsed && typeof parsed === "object") {
+      const fields = parsed as Record<string, unknown>;
+      meta = { avatar_url: typeof fields.avatar_url === "string" ? fields.avatar_url : null, avatar_preset: typeof fields.avatar_preset === "string" ? fields.avatar_preset : "araw" };
+    }
   } catch {
     meta = {};
   }

@@ -80,6 +80,17 @@ for (const mode of ["dark", "light"] as const) {
     await expect(page.getByTestId("screen-focus")).toBeVisible();
     await expect(page.getByRole("list", { name: "People in the call" }).getByTestId("participant-card")).toHaveCount(3);
     await check(page, `${mode}-1280-share`);
+    // Exercise the iOS-style fallback without claiming a physical Safari check.
+    await page.evaluate(() => Object.defineProperty(HTMLElement.prototype, "requestFullscreen", { value: undefined, configurable: true }));
+    await page.getByTestId("screen-focus").hover();
+    await page.getByRole("button", { name: "Focus mode (fullscreen)" }).click();
+    const focused = page.getByRole("dialog", { name: "Screen share" });
+    await expect(focused).toHaveAttribute("aria-modal", "true");
+    await page.keyboard.press("Tab");
+    expect(await focused.evaluate((el) => el.contains(document.activeElement))).toBe(true);
+    await check(page, `${mode}-1280-focus-fallback`);
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("button", { name: "Focus mode (fullscreen)" })).toBeFocused();
 
     await pulse(page, mode, "blocked");
     await page.setViewportSize({ width: 390, height: 900 });
@@ -122,3 +133,17 @@ test("Open stage and back keeps the transcript where you left it", async ({ page
   await expect.poll(async () => (await shown()).id).toBe(before.id);
   expect(Math.abs((await shown()).at - before.at)).toBeLessThanOrEqual(48);
 });
+
+for (const viewport of [{ width: 320, height: 568 }, { width: 844, height: 390 }]) {
+  test(`Pulse stage remains usable while reconnecting at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+    await pulse(page, "dark", "reconnecting");
+    await page.setViewportSize(viewport);
+    await page.goto(VOICE);
+    const stage = page.getByTestId("pulse-voice-stage");
+    await expect(stage.getByText("Reconnecting…")).toBeVisible();
+    const leave = stage.getByRole("button", { name: "Leave", exact: true });
+    await leave.scrollIntoViewIfNeeded();
+    await expect(leave).toBeInViewport();
+    await check(page, `dark-${viewport.width}-reconnecting`);
+  });
+}

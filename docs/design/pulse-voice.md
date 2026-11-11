@@ -27,7 +27,8 @@ a crossed-out icon. Recovery notices sit under the row.
 **Props (stable, for the phone navigation):** `<CallStrip />` is the tablet-and-up strip (`max-md:hidden`) and owns the
 call's single live region, so render exactly one. `<CallStrip compact />` is one row for phones (room, Mute, Leave,
 Open stage) with a compact recovery notice and no live region; the phone navigation places it above the tab bar. Both
-render nothing on the call's own page (`callHref(target)`): the stage has its own dock and notice.
+step aside on the call's own page (`callHref(target)`) once the stage is available: the stage has its own dock and
+notice. During the initial connection the strip remains available, including **Leave call**.
 
 People in the strip come from the LiveKit room you're in (`useRoomPeople`, re-read only when someone joins, leaves or
 renames), never from presence.
@@ -56,6 +57,10 @@ this room" when you're in another call, "Connecting…" with a spinner while joi
   labelled buttons **Mute, Deafen, Camera, Share screen, Noise filter, Soundboard, Activities, Mixer** and **Leave**
   (alert fill, on-alert text). One Tab stop with arrow keys (Pulse `Toolbar`); 56 px tall, so 44 px on every pointer.
   The soundboard and activities panels are the Classic ones (readable through the Classic bridge).
+- Remote screen shares are keyboard focusable in both shells; **Shift+F10** or the Menu key opens their stream
+  volume and mute menu. Escape returns focus to the share.
+- When native fullscreen is unavailable, screen focus uses the shared modal behaviour: a named dialog, trapped
+  keyboard focus, Escape to leave and focus restored to the original control.
 - Test ids differ from Classic (`pulse-voice-stage`, `participant-card`) so Classic's dark-stage CSS doesn't apply.
 
 ## Recovery states
@@ -69,6 +74,10 @@ poor or lost). `CallRecovery` shows it inline with what to do next and the fix w
 - **Announced once:** the notices are not live regions. `CallAnnouncer` (in the non-compact `CallStrip`, mounted for the
   whole Pulse session) reads each state once when it starts, never again while it lasts or when the strip and the stage
   swap, then "Back in the call." after a reconnect. A connection that flaps between poor and fine is read once per call.
+  Leaving resets that limit, including when the next call is in the same room. Failed sound retries report an error
+  and keep **Turn on sound** available.
+- **Keep the stage:** Pulse voice rooms and DM calls retain their stage during reconnection, so the recovery notice
+  and **Leave** remain reachable. LiveKit reconnects the existing room; the UI does not join a second room.
 - Classic's floating "Click to turn on call audio" (LiveKit `StartAudio`, `.call-start-audio`) gets Pulse colours and
   hides while a Pulse notice offering "Turn on sound" is on screen (`data-audio-prompt`: the stage's at any width, the
   strip's from md, the compact strip's on phones), so it still works anywhere no notice is visible.
@@ -86,6 +95,8 @@ before the scroller was measured, which pulled the transcript up).
 - A private room's occupants come from its own `voice:<id>` presence topic, never the server-wide one
   (`useChannelVoicePresence`, used by `useVoiceRoster`, the lobby and the stage's deafened state); its speakers from the
   same topic (`useTopicSpeaking`). In the call, people come from the LiveKit room.
+- Missing or unauthorized channels return no voice presence. Participant metadata is checked before avatar fields
+  reach the UI; malformed JSON and unexpected field types use the fallback avatar.
 - **Speaking has its own context** (`CallSpeakingContext`, `useCallSpeaking()`): LiveKit's active speakers change
   several times a second, and they used to re-render every `useCall()` consumer (44 of them, every navigator room row
   included). Now only the strip, the mixer's rows and Classic's occupant list re-render for them.
@@ -98,7 +109,8 @@ before the scroller was measured, which pulled the transcript up).
   hidden on the stage) and the compact strip.
 - `tests/browser/pulse-voice.spec.ts`: axe (WCAG 2.2 AA) in dark and light at 390 and 1280 px on the lobby, the stage
   and the live strip, the featured screen share and the "sound is off" notice; no horizontal overflow; Open stage and
-  back keeps the transcript; screenshots in `test-results/pulse-voice-*.png`. A call is faked with localStorage
+  back keeps the transcript; reconnecting stage controls at 320 × 568 and 844 × 390; screenshots in
+  `test-results/pulse-voice-*.png`. A call is faked with localStorage
   `fixture:call` (`tests/browser/call.tsx`); `@livekit/components-react` is aliased to `tests/browser/livekit.tsx`.
 
 ```sh

@@ -16,9 +16,9 @@ const NOBODY = new Map<string, PresencePayload>();
  */
 export function useChannelVoicePresence(channelId: string | null | undefined): Map<string, PresencePayload> {
   const server = useOptionalServer();
-  const isPrivate = !!channelId && server?.channels.find((c) => c.id === channelId)?.is_private === true;
-  const privatePresence = useTopicPresence(isPrivate ? voiceTopic(channelId) : null);
-  return isPrivate ? privatePresence : (server?.presence ?? NOBODY);
+  const channel = server?.channels.find((c) => c.id === channelId);
+  const privatePresence = useTopicPresence(channel?.is_private ? voiceTopic(channel.id) : null);
+  return !channel ? NOBODY : channel.is_private ? privatePresence : (server?.presence ?? NOBODY);
 }
 
 /**

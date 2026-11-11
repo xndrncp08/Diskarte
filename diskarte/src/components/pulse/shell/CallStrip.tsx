@@ -43,7 +43,7 @@ export function CallStrip({ compact = false }: { compact?: boolean }) {
   const target = call.target;
   const href = target ? callHref(target) : null;
   // The stage page has its own dock and recovery notice.
-  const visible = call.status !== "idle" && !!target && pathname !== href;
+  const visible = call.status !== "idle" && !!target && (pathname !== href || call.status === "connecting");
   const announcer = compact ? null : <CallAnnouncer />;
   if (!visible || !target || !href) return announcer;
 

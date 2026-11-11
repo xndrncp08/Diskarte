@@ -2,6 +2,7 @@
 
 import { MicOff, RotateCw, VolumeX, WifiLow } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/pulse/Button";
 import { cn } from "@/lib/utils";
 import { useCall, type CallContextValue } from "../CallProvider";
@@ -36,7 +37,7 @@ export function CallRecovery({ prompt, compact = false, className }: { prompt: "
   const kind = recoveryKind(call);
   if (!kind) return null;
   const copy = RECOVERY[kind];
-  const act = kind === "audio" ? () => void call.room?.startAudio() : kind === "mic" ? () => void call.toggleMute() : undefined;
+  const act = kind === "audio" ? () => void call.room?.startAudio().catch(() => toast.error("Couldn't start call sound. Try again.")) : kind === "mic" ? () => void call.toggleMute() : undefined;
   return (
     <div
       className={cn(
@@ -76,6 +77,7 @@ export function CallAnnouncer() {
   const last = useRef<RecoveryKind | null>(null);
   const poorSaid = useRef<string | null>(null);
   useEffect(() => {
+    if (!callKey) poorSaid.current = null;
     const previous = last.current;
     last.current = kind;
     if (kind === previous) return;

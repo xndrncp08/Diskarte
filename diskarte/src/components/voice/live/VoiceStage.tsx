@@ -19,6 +19,7 @@ import { useChannelVoicePresence } from "@/hooks/useVoiceRoster";
 import { CallRecovery } from "../pulse/CallRecovery";
 import { CallControls } from "../pulse/controls";
 import type { ActivityControls } from "./activities/useActivity";
+import { useModalBehaviour } from "@/components/ui/Modal";
 
 /**
  * The Pulse stage: people as cards on the canvas (avatar with the speaking ring, or their camera; name and state under it),
@@ -101,12 +102,7 @@ function FocusableScreen({ trackRef, onStop }: { trackRef: TrackReferenceOrPlace
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
 
-  useEffect(() => {
-    if (!overlay) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOverlay(false);
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [overlay]);
+  useModalBehaviour(overlay, box, () => setOverlay(false));
 
   const toggle = useCallback(async () => {
     const el = box.current;
@@ -131,7 +127,7 @@ function FocusableScreen({ trackRef, onStop }: { trackRef: TrackReferenceOrPlace
     ? "flex min-h-8 items-center gap-1.5 rounded-pulse-control border border-pulse-line bg-pulse-raised px-2.5 font-pulse-text text-pulse-caption font-semibold text-pulse-text shadow-pulse-1 hover:bg-pulse-surface pointer-coarse:min-h-11"
     : "flex items-center gap-1.5 rounded-lg bg-black/70 px-2.5 py-1.5 text-xs font-semibold text-white backdrop-blur hover:bg-black/90";
   return (
-    <div ref={box} className={cn("group/screen relative min-h-0 flex-1", pulse ? "bg-pulse-code rounded-pulse-card" : "bg-black", overlay && "fixed inset-0 z-50", focused && "flex rounded-none")} data-testid="screen-focus" data-focused={focused || undefined}>
+    <div ref={box} role={overlay ? "dialog" : undefined} aria-modal={overlay || undefined} aria-label={overlay ? "Screen share" : undefined} className={cn("group/screen relative min-h-0 flex-1", pulse ? "bg-pulse-code rounded-pulse-card" : "bg-black", overlay && "fixed inset-0 z-50", focused && "flex rounded-none")} data-testid="screen-focus" data-focused={focused || undefined}>
       <ParticipantTile trackRef={trackRef} className={cn("size-full", focused && "rounded-none border-0")} />
       <div className="absolute right-3 top-3 flex gap-1.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover/screen:opacity-100 pointer-coarse:opacity-100">
         {!focused && (

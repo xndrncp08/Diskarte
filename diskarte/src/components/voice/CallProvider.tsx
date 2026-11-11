@@ -640,7 +640,6 @@ export function CallProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const saved = takeRejoin();
     if (!saved) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- restoring the call is the external sync here
     void join(saved.target, saved);
     // Once per page load.
     // eslint-disable-next-line react-hooks/exhaustive-deps

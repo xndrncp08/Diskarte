@@ -24,7 +24,7 @@ function DevicePreview() {
   const settings = useSettingsDialog();
   const pick = (kind: "audioinput" | "audiooutput", id: string) => {
     setVoicePrefs(kind === "audioinput" ? { inputId: id || null } : { outputId: id || null });
-    if (id && call.status === "connected") void call.switchDevice(kind, id);
+    if (call.status === "connected") void call.switchDevice(kind, id || "default");
   };
   return (
     <fieldset className="flex flex-col gap-3">

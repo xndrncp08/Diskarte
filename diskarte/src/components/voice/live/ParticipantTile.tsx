@@ -49,6 +49,7 @@ export function ParticipantTile({ trackRef, className, compact = false, deafened
   const call = useContext(CallContext);
   const streamMenu = !!call && isScreen && !participant.isLocal;
   const menu = useContextMenu({ disabled: !streamMenu });
+  const streamTrigger = streamMenu ? { ...menu.triggerProps, tabIndex: 0, role: "group", "aria-label": `${profile.name}'s stream options`, "aria-haspopup": "menu" as const } : {};
   const streamVolume = Math.round((call?.mix.streams?.[participant.identity] ?? 1) * 100);
   const streamMuted = !!call?.mix.streamMuted?.[participant.identity];
   const streamMenuNode = streamMenu && (
@@ -79,7 +80,7 @@ export function ParticipantTile({ trackRef, className, compact = false, deafened
   if (pulse)
     return (
       <div
-        {...(streamMenu ? menu.triggerProps : {})}
+        {...streamTrigger}
         className={cn(
           "relative flex min-w-0 flex-col overflow-hidden rounded-pulse-card border bg-pulse-surface font-pulse-text text-pulse-text shadow-pulse-1",
           speaking && !isScreen ? "border-pulse-live" : "border-pulse-line",
@@ -122,7 +123,7 @@ export function ParticipantTile({ trackRef, className, compact = false, deafened
 
   return (
     <div
-      {...(streamMenu ? menu.triggerProps : {})}
+      {...streamTrigger}
       className={cn(
         "relative flex items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-midnight/80 backdrop-blur-md transition-shadow duration-150",
         speaking && !isScreen ? "neon-speaking" : "shadow-[0_0_0_1px_rgb(255_255_255_/_0.06)]",
