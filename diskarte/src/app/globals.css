@@ -547,7 +547,8 @@ body {
 [data-reduce-motion] *::after {
   animation-duration: 0.01ms !important;
   animation-iteration-count: 1 !important;
-  transition-duration: 0.01ms !important;
+  /* 0s, not 0.01ms: transition-property defaults to all, so any non-zero duration turns every style change into a transition and layout reads lag a frame. */
+  transition-duration: 0s !important;
   scroll-behavior: auto !important;
 }
 [data-underline-links] a[href] {
@@ -560,7 +561,7 @@ body {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 0s !important;
     scroll-behavior: auto !important;
   }
 }
