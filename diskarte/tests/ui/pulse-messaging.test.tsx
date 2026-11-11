@@ -136,12 +136,12 @@ describe("roving keyboard model", () => {
     const rows = screen.getAllByTestId("message");
     // Only the newest message is in the tab order.
     expect(rows.map((r) => r.tabIndex)).toEqual([-1, -1, 0]);
-    const log = screen.getByRole("log");
-    expect(log).toHaveAttribute("aria-live", "polite");
+    const region = screen.getByRole("log");
+    expect(region).toHaveAttribute("aria-live", "polite");
 
     act(() => rows[2].focus());
     // Moving through the log: new messages aren't announced over what you're reading.
-    expect(log).toHaveAttribute("aria-live", "off");
+    expect(region).toHaveAttribute("aria-live", "off");
     fireEvent.keyDown(rows[2], { key: "ArrowUp" });
     expect(rows[1]).toHaveFocus();
     expect(rows.map((r) => r.tabIndex)).toEqual([-1, 0, -1]);
@@ -170,7 +170,7 @@ describe("roving keyboard model", () => {
     act(() => rows[2].focus());
     fireEvent.keyDown(rows[2], { key: "Tab", shiftKey: true });
     expect(screen.getByRole("button", { name: "Before" })).toHaveFocus();
-    expect(log).toHaveAttribute("aria-live", "polite");
+    expect(region).toHaveAttribute("aria-live", "polite");
   });
 });
 
