@@ -105,10 +105,11 @@ export const VirtualMessageList = forwardRef<VirtualMessageListHandle, Props>(fu
       scrollToAnchor(key: string, offset: number) {
         cancelAnimationFrame(bottomFrame.current);
         const index = keys.indexOf(key);
-        if (index < 0 || !scroller.current) return false;
-        const destination = virtualizer.getOffsetForIndex(index, "start");
-        if (!destination) return false;
-        virtualizer.scrollToOffset(destination[0] + offset);
+        const item = virtualizer.measurementsCache[index];
+        if (index < 0 || !scroller.current || !item) return false;
+        // On a fresh mount (coming back to a conversation) the header's height isn't in scrollMargin yet, so the row's start
+        // is taken against the header's real height, not getOffsetForIndex (which also clamps to the unmeasured scroller).
+        scroller.current.scrollTop = item.start - virtualizer.options.scrollMargin + (list.current?.offsetTop ?? 0) + offset;
         return true;
       },
     }),
