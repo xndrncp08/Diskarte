@@ -85,7 +85,7 @@ export function ParticipantTile({ trackRef, className, compact = false, deafened
           speaking && !isScreen ? "border-pulse-live" : "border-pulse-line",
           className,
         )}
-        data-testid="participant-tile"
+        data-testid="participant-card"
         data-speaking={speaking || undefined}
       >
         {hasVideo ? (

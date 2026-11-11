@@ -1,7 +1,7 @@
 "use client";
 
 import type { Participant, Room } from "livekit-client";
-import { HeadphoneOff, Mic, MicOff, SignalLow, Video } from "lucide-react";
+import { HeadphoneOff, Mic, MicOff, Video, WifiLow } from "lucide-react";
 import { useEffect, useReducer } from "react";
 import { Avatar } from "@/components/pulse/Avatar";
 import type { AvatarProfile } from "@/components/profile/UserAvatar";
@@ -44,7 +44,7 @@ export function ParticipantStates({ micOn, deafened, video, poor, speaking, icon
   const states = [
     deafened ? { key: "deafened", icon: <HeadphoneOff className="text-pulse-alert" />, label: "Deafened" } : micOn ? { key: "mic", icon: <Mic />, label: speaking ? "Speaking" : "Mic on" } : { key: "mic", icon: <MicOff className="text-pulse-alert" />, label: "Muted" },
     video && { key: "video", icon: <Video />, label: "Camera on" },
-    poor && { key: "poor", icon: <SignalLow className="text-pulse-alert" />, label: "Weak connection" },
+    poor && { key: "poor", icon: <WifiLow className="text-pulse-alert" />, label: "Weak connection" },
   ].filter((s) => !!s);
   return (
     <ul className={cn("flex flex-wrap items-center gap-x-2.5 gap-y-1 font-pulse-text text-pulse-caption text-pulse-muted", className)}>

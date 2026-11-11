@@ -201,7 +201,7 @@ describe("speaking", () => {
         <ParticipantTile trackRef={mockCameraPlaceholder(me) as never} deafened />
       </Pulse>,
     );
-    const [mariaCard, myCard] = screen.getAllByTestId("participant-tile");
+    const [mariaCard, myCard] = screen.getAllByTestId("participant-card");
     expect(within(mariaCard).getByText("Maria")).toBeInTheDocument();
     expect(within(mariaCard).getByText("Muted")).toBeInTheDocument();
     expect(within(myCard).getByText("(you)")).toBeInTheDocument();

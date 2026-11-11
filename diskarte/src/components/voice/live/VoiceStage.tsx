@@ -31,7 +31,7 @@ function PulseStage({ cameras, watched, unwatched, watch, activity }: { cameras:
   const presence = useChannelVoicePresence(call.target?.kind === "dm" ? null : call.target?.channelId);
   const deafened = (t: TrackReferenceOrPlaceholder) => (t.participant.isLocal ? call.deafened : presence.get(t.participant.identity)?.deafened);
   return (
-    <div className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 font-pulse-text md:p-5" data-testid="voice-stage" data-stage="pulse">
+    <div className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 font-pulse-text md:p-5" data-testid="pulse-voice-stage">
       <CallRecovery prompt="all" />
       <ActivityStage controls={activity} />
       {watched ? (

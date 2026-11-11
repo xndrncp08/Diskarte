@@ -1,6 +1,6 @@
 "use client";
 
-import { MicOff, RotateCw, SignalLow, VolumeX } from "lucide-react";
+import { MicOff, RotateCw, VolumeX, WifiLow } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/pulse/Button";
 import { cn } from "@/lib/utils";
@@ -23,7 +23,7 @@ export const RECOVERY: Record<RecoveryKind, { title: string; body: string; actio
   mic: { title: "Microphone blocked", body: "Allow the microphone in your browser's site settings, then try again.", action: "Try again" },
   poor: { title: "Poor connection", body: "Others may hear you break up. Turn off your camera or move closer to your Wi-Fi." },
 };
-const ICONS: Record<RecoveryKind, ReactNode> = { reconnecting: <RotateCw />, audio: <VolumeX />, mic: <MicOff />, poor: <SignalLow /> };
+const ICONS: Record<RecoveryKind, ReactNode> = { reconnecting: <RotateCw />, audio: <VolumeX />, mic: <MicOff />, poor: <WifiLow /> };
 
 /**
  * The call's recovery state inline: what happened and what to do next, with the fix as a button where there is one
