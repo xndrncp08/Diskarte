@@ -1,15 +1,20 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { ContextPanel } from "@/components/pulse/shell/ContextPanel";
+import { useShellKind } from "@/components/shell/ShellKind";
 import { ResizeHandle } from "./ResizeHandle";
 import { ROSTER_WIDTH, useLayout } from "./WorkspaceProvider";
 
 /**
  * The member list: a resizable column on the right (desktop), toggled from the channel header ("Toggle
- * member list") and remembered. Phones don't show a member column.
+ * member list") and remembered. Phones don't show a member column. In Pulse the roster is the People tab
+ * of the Context sheet instead.
  */
 export function RosterDrawer({ children }: { children: ReactNode; count?: number }) {
   const [layout, setLayout] = useLayout();
+  const shell = useShellKind();
+  if (shell === "pulse") return <ContextPanel>{children}</ContextPanel>;
   if (!layout.membersOpen) return null;
   return (
     <aside

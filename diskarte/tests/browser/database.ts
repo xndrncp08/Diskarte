@@ -9,6 +9,7 @@ import {
   SERVER_ID,
   server,
 } from "../fixtures/server";
+import { DM_READS, THREAD_REPLIES } from "./pulse-messaging-data";
 export const people = [
   makeProfile(OWNER_ID, "Kapitan"),
   makeProfile(MOD_ID, "Maria"),
@@ -22,6 +23,9 @@ export const members = [
 export const fake = createFakeSupabase({
   profiles: people,
   channels,
+  // Pulse messaging fixtures: a thread's replies and the DM's read positions.
+  messages: THREAD_REPLIES,
+  dm_participants: DM_READS,
   workspace_documents: [
     {
       id: "70000000-0000-4000-8000-000000000001",

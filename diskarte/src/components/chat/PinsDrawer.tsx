@@ -10,6 +10,31 @@ import { MESSAGE_SELECT, parseAttachments, type MessageWithAuthor } from "@/lib/
 import { MessageMarkdown } from "./MessageMarkdown";
 import { Timestamp } from "./Timestamp";
 
+/** A channel's pinned messages (the latest 50, RLS-scoped like every message read), fetched while `enabled`; null until loaded. */
+export function usePinnedMessages(channelId: string, enabled: boolean) {
+  const supabase = useSupabase();
+  const [fetched, setFetched] = useState<MessageWithAuthor[] | null>(null);
+
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    void supabase
+      .from("messages")
+      .select(MESSAGE_SELECT)
+      .eq("channel_id", channelId)
+      .eq("pinned", true)
+      .order("pinned_at", { ascending: false })
+      .limit(50)
+      .then(({ data }) => {
+        if (!cancelled) setFetched((data ?? []) as unknown as MessageWithAuthor[]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, supabase, channelId]);
+  return fetched;
+}
+
 /** Right-hand drawer listing every pinned message in the channel (fetched on open, kept live). */
 export function PinsDrawer({
   open,
@@ -30,26 +55,7 @@ export function PinsDrawer({
   onUnpin: (id: string) => void;
   onJump: (id: string) => void;
 }) {
-  const supabase = useSupabase();
-  const [fetched, setFetched] = useState<MessageWithAuthor[] | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    void supabase
-      .from("messages")
-      .select(MESSAGE_SELECT)
-      .eq("channel_id", channelId)
-      .eq("pinned", true)
-      .order("pinned_at", { ascending: false })
-      .limit(50)
-      .then(({ data }) => {
-        if (!cancelled) setFetched((data ?? []) as unknown as MessageWithAuthor[]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [open, supabase, channelId]);
+  const fetched = usePinnedMessages(channelId, open);
 
   // Loaded messages are authoritative (realtime); fetched ones cover older history.
   const merged = new Map<string, MessageWithAuthor>();

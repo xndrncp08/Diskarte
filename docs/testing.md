@@ -43,6 +43,15 @@ npm run docs:db                   # regenerate docs/reference/database.md
 
 Install the browser once: `npx playwright install chromium`.
 
+## Pulse acceptance
+
+The [Pulse rollout gate](design/pulse-rollout.md) records a reconstructed 15-journey matrix, the
+missing original definitions, shell-switch preservation requirements and pending acceptance.
+Run the production build before local browser tests. Pulse browser fixtures exercise real components
+with sample data; they do not verify live Supabase/LiveKit, physical phones or manual screen readers.
+Existing backend journeys use Classic selectors and need explicit Pulse coverage before the
+both-mode gate can pass. Never run account-creation/deletion journeys against production.
+
 ## Database / RLS tests
 
 [`tests/db/harness.ts`](../diskarte/tests/db/harness.ts) boots a fresh PGlite instance, applies
@@ -182,3 +191,12 @@ Supabase stack and LiveKit's dev keys. Polling CI without the GitHub CLI:
   services is not.
 - `pg_cron` jobs are tested by calling their functions, not by the scheduler.
 - Production LiveKit webhooks and OAuth providers are not exercised in CI.
+
+
+### Avoid stale standalone E2E servers
+
+The production E2E configuration starts a fresh standalone server and refuses an occupied port.
+Use `E2E_PORT=43127 npm run test:e2e --prefix diskarte -- --retries=0` from the repository root
+when the usual local port is occupied. Build first. Do not reuse another checkout's server: its
+HTML can reference assets from a different build. Full backend journeys still require isolated
+Supabase and LiveKit; setting `E2E_FULL=0` leaves those journeys explicitly skipped.

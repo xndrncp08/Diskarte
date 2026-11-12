@@ -20,6 +20,9 @@ comments and release notes; the date is when the decision shows up in history. N
 | [012](#012-no-emoji-glyph-vocabulary) | Vector glyph vocabulary instead of emoji | Accepted |
 | [013](#013-help-center-rendered-at-authoring-time-inside-the-app) | Help Center rendered at authoring time inside the app | Accepted |
 | [014](#014-release-announcements-published-by-the-deployment-itself) | Release announcements published by the deployment itself | Accepted |
+| [015](#015-hangouts-are-temporary-group-conversations) | Hangouts are temporary group conversations | Accepted |
+| [016](#016-pulse-ships-behind-a-per-browser-shell-preference) | Pulse ships behind a per-browser shell preference | Accepted |
+| [017](#017-one-frame-mount-shell-aware-seams) | One frame mount, shell-aware seams | Accepted |
 
 ## 001. Authorization lives in Postgres
 
@@ -173,3 +176,52 @@ than a quick get-together needs, and cleanup would touch many tables).
 **Consequences.** Every DM code path already handles hangouts; the UI only adds the end-time bar,
 list badges and the start dialog. Hangouts follow group-DM rules (friends only, ≤ 10 people). Files
 need the hangout to be kept first.
+
+## 016. Pulse ships behind a per-browser shell preference
+
+**Status.** Accepted — *2026-11-08*
+
+**Context.** The Diskarte Pulse redesign (Spaces navigator, Conversation Canvas, Context sheet) replaces
+the whole look. It has to be built and tested in production-like conditions over several releases
+while Classic, the current UI, stays exactly as it is for everyone else.
+**Decision.** A `diskarte-shell` cookie (`classic` by default, or `pulse`) is read by the root layout,
+which server-renders `<html data-shell>` like the theme and colour mode. Every Pulse style is scoped
+to `html[data-shell="pulse"]` ([`pulse.css`](../../diskarte/src/app/pulse.css)) and Pulse components
+live in `components/pulse/`, lint-restricted to Pulse tokens. Switching sets the attribute, writes the
+cookie and calls `router.refresh()` ([`lib/shell.ts`](../../diskarte/src/lib/shell.ts)), never a full
+reload, so the call and session providers in the `(app)` layout stay mounted.
+**Alternatives considered.** A separate route tree or app (duplicates data loading and would drop
+the call when switching); a server-side flag per account (needs a migration and makes a stuck user
+unable to switch back in another browser); a `localStorage` flag (the server can't see it, so the
+first paint would flash the wrong shell).
+**Consequences.** Classic stays the default and shares the existing data and call providers. Pulse fonts load only
+when Pulse styles use them. The public switch is available only when the server's
+`DISKARTE_PULSE_ROLLOUT=opt-in` gate is enabled; otherwise the super-admin preview remains. The preference is
+per browser; syncing it across devices would be a later decision. See the [rollout gate](../design/pulse-rollout.md).
+
+## 017. One frame mount, shell-aware seams
+
+**Status.** Accepted — *2026-11-10*
+
+**Context.** The Pulse shell (Spaces navigator, canvas, Context sheet) has to wrap every existing page
+(Home, Explore, Search, Messages, Friends, DMs, channels, the Control Center) without duplicating their data
+loading, actions or permission checks, and switching shells must not drop a call or the unread state.
+**Decision.** `app/(app)/tambayan/layout.tsx` resolves the cookie and server rollout eligibility, then renders
+one persistent `<AppFrame>` inside `<ShellProviders>` (admin access, layout, unreads, shell toggles, watchers,
+confirm host). `AppFrame`, exported from `shell/AppFrame.tsx`, changes navigation and styling without
+replacing the frame type or the page's content slot. Pulse UI/menu/tooltip providers stay mounted; their skins
+are active only for Pulse. `ClassicFrame` and `PulseShell` remain wrappers for standalone renders.
+Pages stay as they are. The seams they already use read a `ShellKindContext`: `WorkspacePanel` (nav renders
+nothing in Pulse, main is the canvas), `ChannelHeader` and `PageHeader` (the masthead), `RosterDrawer` (the
+Context sheet) and `MemberList` (paged). The open Space's rooms are rendered by `[serverId]/layout.tsx`, after
+its membership guard and inside its `ServerProvider`, and portalled into a slot in the navigator. Classic
+content inside Pulse reads Classic tokens, which `pulse.css` maps to Pulse ones (the Classic bridge).
+**Alternatives considered.** A parallel `(pulse)` route tree (every page and loader twice); having each page
+branch on the shell (dozens of edits, easy to miss one); the navigator fetching the Space's rooms itself (a
+second, client-side data path beside the RLS-scoped server bundle).
+**Consequences.** Pulse inherits each page's actions and permission checks, and shows only data the server
+layouts already loaded. Keeping the session providers alone is insufficient: replacing a frame remounts
+Composer and removes pending uploads. `WorkspacePanel` therefore preserves one main/content slot, and inline
+edit text lives above shell-specific edit markup. Tests cover conversation state, input identity, pending
+uploads, edits, the live call and shared watchers while switching. Users roll back through the switch or by
+clearing the cookie; operators close public opt-in through the deployment flag.

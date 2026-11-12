@@ -2,6 +2,8 @@
 
 import { Menu } from "lucide-react";
 import type { ReactNode } from "react";
+import { Masthead } from "@/components/pulse/shell/Masthead";
+import { useShellKind } from "@/components/shell/ShellKind";
 import { useShellUI } from "@/components/shell/ShellUI";
 
 export function PageHeader({
@@ -16,6 +18,8 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   const { setNavOpen } = useShellUI();
+  // Pulse: the canvas masthead (same title, description and actions).
+  if (useShellKind() === "pulse") return <Masthead title={title} description={description} icon={icon} actions={actions} />;
   return (
     <header className="page-header">
       <button

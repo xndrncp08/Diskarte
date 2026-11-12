@@ -392,7 +392,8 @@ html[data-color-mode="light"] {
   border-color: var(--stroke);
   background: var(--surface-frost);
 }
-[data-floating] {
+/* Classic only (:where keeps the specificity); Pulse panels use their own edge and elevation. */
+:where(html:not([data-shell="pulse"])) [data-floating] {
   border-color: var(--stroke);
   box-shadow: var(--shadow-overlay);
 }

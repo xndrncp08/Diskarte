@@ -8,6 +8,8 @@ export interface RuntimeConfig {
   supabaseAnonKey: string;
   livekitUrl: string;
   siteUrl: string;
+  /** Public opt-in availability, supplied by the server deployment gate. */
+  pulseOptIn?: boolean;
 }
 
 const RuntimeConfigContext = createContext<RuntimeConfig | null>(null);

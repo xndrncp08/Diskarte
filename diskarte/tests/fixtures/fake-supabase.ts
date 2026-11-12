@@ -13,6 +13,7 @@ interface FakeChannelHandle {
   subscribe: (cb?: (status: string) => void) => FakeChannelHandle;
   send: (msg: unknown) => Promise<string>;
   track: (payload?: unknown) => Promise<string>;
+  untrack: () => Promise<string>;
   presenceState: () => Record<string, unknown[]>;
 }
 
@@ -121,6 +122,7 @@ export function createFakeSupabase(tables: Record<string, unknown[]> = {}) {
           return "ok";
         }),
         track: vi.fn(async () => (entry.removing ? "error" : "ok")),
+        untrack: vi.fn(async () => (entry.removing ? "error" : "ok")),
         presenceState: () => entry.presence,
       };
       entry.handle = ch;

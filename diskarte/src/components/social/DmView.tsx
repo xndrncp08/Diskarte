@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, AtSign, LogOut, Menu as MenuIcon, Phone, PhoneOff, Video } from "lucide-react";
+import { ArrowDown, AtSign, LogOut, Menu as MenuIcon, Phone, PhoneOff, Users, Video } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
@@ -9,7 +9,10 @@ import { leaveDmAction, type DirectMessage } from "@/actions/social";
 import { Composer } from "@/components/chat/Composer";
 import { MessageItem, type MessageActions } from "@/components/chat/MessageItem";
 import { OfflineBanner } from "@/components/chat/OfflineBanner";
-import { Timestamp } from "@/components/chat/Timestamp";
+import { DaySeparator, UnreadLine, useReadPosition } from "@/components/chat/Transcript";
+import { IconButton } from "@/components/pulse/Button";
+import { Masthead } from "@/components/pulse/shell/Masthead";
+import { useShellKind } from "@/components/shell/ShellKind";
 import { useMe } from "@/components/providers/MeProvider";
 import { useSocial } from "@/components/providers/SocialProvider";
 import { useShellUI } from "@/components/shell/ShellUI";
@@ -22,7 +25,9 @@ import { useConversationScroll } from "@/hooks/useConversationScroll";
 import { VirtualMessageList } from "@/components/chat/VirtualMessageList";
 import { useDirectChat } from "@/hooks/useDirectChat";
 import type { ChatMessage } from "@/hooks/useChannelChat";
-import { isGroupedWithPrevious, sameDay } from "@/lib/chat-format";
+import { useMessageRoving } from "@/hooks/useMessageRoving";
+import { firstUnreadIndex, sameDay, sharesMargin } from "@/lib/chat-format";
+import { cn } from "@/lib/utils";
 import type { Server } from "@/lib/servers";
 import { conversationTitle, readReceipt, withNickname, type SocialProfile } from "@/lib/social";
 import type { Tables } from "@/lib/supabase/database.types";
@@ -73,6 +78,12 @@ export function DmView({
   const { listRef, atBottom, unseen, onScroll, scrollToBottom, restoringHistory } = useConversationScroll(`${me.id}:${conversation.id}`, chat.messages, me.id, chat.loadOlder, chat.hasMore, chat.loadingOlder);
   const [activeId, setActiveId] = useState<string | null>(null);
   const inCall = call.target?.kind === "dm" && call.target.channelId === conversation.id;
+  const pulse = useShellKind() === "pulse";
+  const keys = useMemo(() => chat.messages.map((m) => m.id), [chat.messages]);
+  // Pulse: the "New" line where you'd read up to when the DM opened, and the log's roving focus.
+  const readAt = useReadPosition(conversation.id, summary?.lastReadAt, chat.messages.at(-1)?.created_at);
+  const unreadAt = pulse ? firstUnreadIndex(chat.messages, readAt, me.id) : -1;
+  const roving = useMessageRoving(keys, (key) => listRef.current?.scrollToKey(key));
 
   useEffect(() => {
     if (!atBottom || messageTarget) return;
@@ -124,6 +135,26 @@ export function DmView({
       <HomeSidebar servers={servers} />
       <WorkspacePanel id="main" title={title}>
         <section className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden" aria-label={title}>
+          {pulse ? (
+            <Masthead
+              title={title}
+              titleTestId="dm-title"
+              eyebrow={conversation.kind === "direct" ? "Direct message" : hangoutUntil ? "Hangout" : "Group"}
+              description={conversation.kind === "group" ? `${participants.length} members` : others[0] ? `@${others[0].username}` : undefined}
+              icon={conversation.kind === "direct" ? <AtSign /> : <Users />}
+              actions={
+                inCall ? (
+                  <IconButton tooltip label="End call" icon={<PhoneOff />} variant="danger" onClick={call.leave} />
+                ) : (
+                  <>
+                    <IconButton tooltip label="Start voice call" icon={<Phone />} onClick={() => void startCall()} {...prewarm(callTarget)} disabled={!canSend} />
+                    <IconButton tooltip label="Start video call" icon={<Video />} onClick={() => void startCall(true)} {...prewarm(callTarget)} disabled={!canSend} />
+                    {conversation.kind === "group" && <IconButton tooltip label="Leave group" icon={<LogOut />} onClick={() => setConfirmLeave(true)} />}
+                  </>
+                )
+              }
+            />
+          ) : (
           <header className="page-header">
             <button type="button" onClick={() => setNavOpen(true)} aria-label="Open navigation" className="touch-target relative rounded-md p-1.5 text-slate-300 hover:bg-white/10 md:hidden">
               <MenuIcon className="size-5" aria-hidden />
@@ -155,18 +186,19 @@ export function DmView({
               )}
             </div>
           </header>
+          )}
 
           {hangoutLive && (
             <HangoutBar conversation={{ id: conversation.id, hangoutUntil, hangoutTopic: conversation.hangout_topic ?? null }} title={title} isHost={conversation.owner_id === me.id} />
           )}
 
-          {inCall && call.status === "connected" && (
-            <div className="flex max-h-[55%] min-h-64 shrink-0 flex-col border-b border-white/5" data-testid="dm-call">
+          {inCall && (call.status === "connected" || (pulse && call.status === "reconnecting")) && (
+            <div className={cn("flex shrink-0 flex-col border-b border-white/5", pulse ? "h-[25dvh] min-h-0" : "max-h-[55%] min-h-64")} data-testid="dm-call">
               <VoiceStage />
             </div>
           )}
 
-          <VirtualMessageList ref={listRef} keys={chat.messages.map((m) => m.id)} onScroll={onScroll}
+          <VirtualMessageList ref={listRef} keys={keys} onScroll={onScroll} roving={pulse ? roving : undefined}
             header={chat.hasMore ? (
               <div className="flex justify-center py-3">
                 <Button variant="ghost" size="sm" disabled={chat.loadingOlder} onClick={() => void chat.loadOlder()}>
@@ -174,10 +206,10 @@ export function DmView({
                 </Button>
               </div>
             ) : (
-              <div className="px-4 pb-2 pt-8">
-                <ConversationAvatar conversation={{ id: conversation.id, kind: conversation.kind, name: conversation.name, ownerId: conversation.owner_id, lastMessageAt: "", lastReadAt: "", others }} size={72} />
-                <h2 className="mt-3 text-2xl font-extrabold text-white">{title}</h2>
-                <p className="text-slate-400">
+              <div className={pulse ? "px-3 pb-2 pt-8 md:px-5" : "px-4 pb-2 pt-8"}>
+                <ConversationAvatar conversation={{ id: conversation.id, kind: conversation.kind, name: conversation.name, ownerId: conversation.owner_id, lastMessageAt: "", lastReadAt: "", others }} size={pulse ? 56 : 72} />
+                <h2 className={pulse ? "mt-3 font-pulse-display text-pulse-title font-semibold text-pulse-text" : "mt-3 text-2xl font-extrabold text-white"}>{title}</h2>
+                <p className={pulse ? "text-pulse-body text-pulse-muted" : "text-slate-400"}>
                   {conversation.kind === "direct"
                     ? `This is the start of your DMs with @${others[0]?.username ?? "?"}.`
                     : hangoutUntil
@@ -192,16 +224,11 @@ export function DmView({
               const newDay = !prev || !sameDay(prev.created_at, m.created_at);
               return (
                 <div key={m.id}>
-                  {newDay && (
-                    <div className="mx-4 my-4 flex items-center gap-2" role="separator">
-                      <span className="h-px flex-1 bg-white/10" />
-                      <Timestamp iso={m.created_at} variant="day" className="font-silk text-[10px] uppercase tracking-wider text-slate-500" />
-                      <span className="h-px flex-1 bg-white/10" />
-                    </div>
-                  )}
+                  {newDay && <DaySeparator iso={m.created_at} />}
+                  {i === unreadAt && <UnreadLine iso={m.created_at} />}
                   <MessageItem
                     message={m}
-                    grouped={!newDay && isGroupedWithPrevious(prev, m)}
+                    grouped={!newDay && sharesMargin(chat.messages, i, unreadAt)}
                     replyTo={m.reply_to_id ? (byId.get(m.reply_to_id) ?? null) : undefined}
                     reactions={NO_REACTIONS}
                     meId={me.id}
@@ -212,9 +239,11 @@ export function DmView({
                     active={activeId === m.id}
                     onActivate={setActiveId}
                     actions={actions}
+                    tabStop={pulse && roving.tabStop === m.id}
                   />
                   {receipt && m.id === lastMine?.id && (
-                    <p className="px-4 pb-1 text-right text-[11px] text-slate-400" data-testid="read-receipt">
+                    // Pulse: a small caption under the message column ("Sent", "Seen"): words, not a colour.
+                    <p className={pulse ? "px-3 pb-1 text-right font-pulse-text text-pulse-caption text-pulse-muted md:px-5" : "px-4 pb-1 text-right text-[11px] text-slate-400"} data-testid="read-receipt">
                       {receipt}
                     </p>
                   )}
@@ -222,7 +251,7 @@ export function DmView({
               );
             }}
           />
-          {!atBottom && <button type="button" onClick={scrollToBottom} className="absolute bottom-40 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-sun px-4 py-2 text-xs font-bold text-abyss"><ArrowDown className="size-4" aria-hidden />{unseen ? `${unseen} new messages` : "Jump to present"}</button>}
+          {!atBottom && <button type="button" onClick={scrollToBottom} className={cn("absolute bottom-40 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold", pulse ? "bg-pulse-accent font-pulse-text text-pulse-on-accent shadow-pulse-2 pointer-coarse:min-h-11" : "bg-sun text-abyss")}><ArrowDown className="size-4" aria-hidden />{unseen ? `${unseen} new messages` : "Jump to present"}</button>}
 
           {restoringHistory && <p role="status" className="px-4 py-2 text-sm text-slate-400">Restoring your reading position…</p>}
           <OfflineBanner queued={chat.queuedCount} />

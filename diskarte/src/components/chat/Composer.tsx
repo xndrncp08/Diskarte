@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, FileText, Loader2, Lock, Paperclip, SendHorizontal, ShieldAlert, Turtle, X } from "lucide-react";
+import { Clock, CornerUpLeft, FileText, Loader2, Lock, Paperclip, SendHorizontal, ShieldAlert, Turtle, X } from "lucide-react";
 import { useCallback, useEffect, useEffectEvent, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useMe } from "@/components/providers/MeProvider";
@@ -20,6 +20,12 @@ import { GifPicker } from "./GifPicker";
 import { StickerPicker } from "./StickerPicker";
 import { useDraft } from "@/lib/drafts";
 import { SyncNotice } from "@/components/profile/AccountPreferencesSync";
+import { Button as PulseButton, IconButton } from "@/components/pulse/Button";
+import { Kbd } from "@/components/pulse/Controls";
+import { useShellKind } from "@/components/shell/ShellKind";
+import { previewText } from "@/lib/messages";
+
+const PULSE_TOOL = "inline-flex size-8 items-center justify-center rounded-pulse-control p-0 text-pulse-muted hover:bg-pulse-hover hover:text-pulse-text aria-expanded:bg-pulse-selected aria-expanded:text-pulse-text disabled:text-pulse-disabled disabled:opacity-100 pointer-coarse:size-11 [&_svg]:size-4";
 
 /** Seconds left until `until` (a Date.now() timestamp), ticking while it's in the future. */
 function useCountdown(until: number | null | undefined) {
@@ -107,6 +113,7 @@ export function Composer({
   const textarea = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const cooldown = useCountdown(cooldownUntil);
+  const pulse = useShellKind() === "pulse";
 
   // Autosize the textarea up to ~10 lines.
   useEffect(() => {
@@ -268,6 +275,226 @@ export function Composer({
   }
 
   const typing = typingLabel(typingNames);
+  const lockIcon = lockKind === "timeout" ? Clock : lockKind === "read-only" ? Lock : ShieldAlert;
+  const fileInputEl = allowUploads && (
+    <input
+      ref={fileInput}
+      type="file"
+      multiple
+      accept={ATTACHMENT_ACCEPT}
+      className="sr-only"
+      aria-label="Attach files"
+      // Triggered by the visible button below; keep it out of the tab order / a11y tree.
+      aria-hidden
+      tabIndex={-1}
+      onChange={(e) => {
+        addFiles(Array.from(e.target.files ?? []));
+        e.target.value = "";
+      }}
+    />
+  );
+  const voiceEl = allowUploads && <VoiceRecorder disabled={cooldown > 0} onRecorded={(file, seconds) => void sendVoice(file, seconds)} />;
+  // Pulse: the pickers' triggers match the dock's IconButtons (32 px, 44 px on touch).
+  const tool = pulse ? PULSE_TOOL : undefined;
+  const emojiEl = <EmojiPicker onPick={(value) => insert(value.startsWith(":") ? `${value} ` : value)} label="Insert icon" triggerClassName={tool ?? "pointer-coarse:p-3.5"} />;
+  const gifEl = (
+    <GifPicker
+      triggerClassName={tool}
+      disabled={cooldown > 0}
+      onPick={(url) => {
+        const replyId = replyTo?.id ?? null;
+        onCancelReply();
+        void onSend(url, [], replyId);
+      }}
+    />
+  );
+  const stickerEl = onSticker && <StickerPicker onPick={onSticker} disabled={cooldown > 0} triggerClassName={tool} />;
+  const scheduleEl = schedulable && (
+    <ScheduleButton
+      channelId={channelId}
+      content={applySlashCommand(draft.trim())}
+      disabled={!draft.trim() || draft.trim().length > MESSAGE_MAX || uploads.length > 0}
+      onScheduled={() => setDraft("")}
+    />
+  );
+  const sendDisabled = (!draft.trim() && ready.length === 0) || busy || failedUpload || cooldown > 0;
+  const textareaProps = {
+    id: `composer-${channelId}`,
+    ref: textarea,
+    value: draft,
+    onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setDraft(e.target.value);
+      if (e.target.value) onTyping();
+      else onStopTyping();
+    },
+    onKeyDown,
+    onPaste,
+    rows: 1,
+    enterKeyHint: "send" as const,
+    maxLength: MESSAGE_MAX + 100,
+    placeholder: placeholder ?? `Message #${channelName}`,
+    "data-testid": "composer",
+  };
+  const dragProps = {
+    onDragOver: (e: DragEvent) => {
+      if (e.dataTransfer.types.includes("Files")) {
+        e.preventDefault();
+        setDragging(true);
+      }
+    },
+    onDragLeave: () => setDragging(false),
+    onDrop,
+  };
+
+  if (locked && pulse) {
+    const Icon = lockIcon;
+    return (
+      <div className="px-3 pb-safe font-pulse-text md:px-5">
+        <p className="mb-3 flex items-center gap-3 rounded-pulse-card border border-pulse-line bg-pulse-raised px-4 py-3 text-pulse-body text-pulse-muted" role="status" data-testid="composer-locked" data-lock={lockKind}>
+          <Icon className="size-5 shrink-0 text-pulse-accent-ink" aria-hidden />
+          {locked}
+        </p>
+      </div>
+    );
+  }
+
+  if (pulse) {
+    // Compose dock: a raised card a little above the bottom edge. The field on top, tools and the Send pill under it.
+    return (
+      <div className="relative px-3 pb-safe font-pulse-text md:px-5" {...dragProps}>
+        <SyncNotice sync={draftSync} />
+        {dragging && (
+          <div className="pointer-events-none absolute inset-x-3 -top-24 bottom-3 z-20 flex items-center justify-center rounded-pulse-card border-2 border-dashed border-pulse-accent-mark bg-pulse-surface text-pulse-label font-semibold text-pulse-text md:inset-x-5">
+            Drop files to attach
+          </div>
+        )}
+        {/* Typing: a quiet line above the dock, words first (the dots only move when motion is welcome). */}
+        <p className="flex h-6 items-center gap-1.5 px-1 text-pulse-caption text-pulse-muted" aria-live="off" data-testid="typing-line">
+          {typing && (
+            <>
+              <span className="inline-flex gap-0.5" aria-hidden>
+                {[0, 1, 2].map((i) => (
+                  <span key={i} className="size-1 rounded-full bg-pulse-faint pulse-motion:animate-bounce" style={{ animationDelay: `${i * 120}ms` }} />
+                ))}
+              </span>
+              <span className="truncate">{typing}</span>
+            </>
+          )}
+        </p>
+        {replyTo && (
+          // Ticket stub: what you're replying to, on a raised tab with a dashed (torn) top edge, attached to the dock.
+          <div className="mx-3 flex items-center gap-2 rounded-t-pulse-item border-x border-t-2 border-pulse-line-strong bg-pulse-raised py-1 pl-3 pr-1 text-pulse-label text-pulse-muted [border-top-style:dashed]" data-reply-stub="">
+            <CornerUpLeft className="size-3.5 shrink-0" aria-hidden />
+            <span className="min-w-0 flex-1 truncate">
+              Replying to <strong className="font-semibold text-pulse-text">{replyTo.author?.display_name ?? "Deleted user"}</strong>
+              {previewText(replyTo.content) && <span> · {previewText(replyTo.content, 80)}</span>}
+            </span>
+            <IconButton label="Cancel reply" icon={<X />} size="sm" onClick={onCancelReply} />
+          </div>
+        )}
+        <div className="@container mb-3 overflow-hidden rounded-pulse-card border border-pulse-line bg-pulse-surface shadow-pulse-2 transition-[border-color,box-shadow] has-[textarea:focus-visible]:border-pulse-focus has-[textarea:focus-visible]:shadow-[0_0_0_1px_var(--pulse-focus-ring)]">
+          {commands.length > 0 && (
+            <ul className="border-b border-pulse-line p-1" aria-label="Commands" data-testid="slash-commands">
+              {commands.map((c) => (
+                <li key={c.name}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDraft(`/${c.name} `);
+                      textarea.current?.focus();
+                    }}
+                    className="flex min-h-9 w-full items-baseline gap-2 rounded-pulse-control px-2 py-1.5 text-left text-pulse-body hover:bg-pulse-hover pointer-coarse:min-h-11"
+                  >
+                    <span className="font-semibold text-pulse-text">/{c.name}</span>
+                    <span className="truncate text-pulse-label text-pulse-muted">{c.hint}</span>
+                  </button>
+                </li>
+              ))}
+              <li className="px-2 pt-0.5 text-pulse-caption text-pulse-muted">
+                <Kbd>Tab</Kbd> to complete
+              </li>
+            </ul>
+          )}
+          {uploads.length > 0 && (
+            <ul className="flex gap-2 overflow-x-auto border-b border-pulse-line p-2" aria-label="Attachments to send">
+              {uploads.map((u) => (
+                <li key={u.key} className="relative w-28 shrink-0 rounded-pulse-item border border-pulse-line bg-pulse-raised p-1.5">
+                  {u.preview ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={u.preview} alt="" className="h-20 w-full rounded-pulse-control object-cover" />
+                  ) : (
+                    <span className="flex h-20 items-center justify-center">
+                      <FileText className="size-8 text-pulse-muted" aria-hidden />
+                    </span>
+                  )}
+                  <p className="mt-1 truncate text-pulse-caption text-pulse-text" title={u.file.name}>
+                    {u.file.name}
+                  </p>
+                  <p className={cn("text-pulse-caption", u.status === "error" ? "font-semibold text-pulse-alert" : "text-pulse-muted")}>{u.status === "error" ? "Failed" : formatBytes(u.file.size)}</p>
+                  {u.status === "error" && (
+                    <button type="button" aria-label={`Retry ${u.file.name}`} onClick={() => void upload(u)} className="mt-1 min-h-11 w-full rounded-pulse-control border border-pulse-input text-pulse-label font-semibold text-pulse-text">
+                      Retry upload
+                    </button>
+                  )}
+                  {u.status === "uploading" && (
+                    <span className="absolute inset-0 flex items-center justify-center rounded-pulse-item bg-pulse-scrim">
+                      <Loader2 className="size-5 animate-spin text-pulse-text" aria-label="Uploading" />
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    aria-label={`Remove ${u.file.name}`}
+                    onClick={() => void removeUpload(u.key)}
+                    className="absolute right-0 top-0 flex size-8 items-center justify-center rounded-full bg-pulse-alert text-pulse-on-alert shadow-pulse-1 pointer-coarse:size-11"
+                  >
+                    <X className="size-3" aria-hidden />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <form
+            className="flex flex-col"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void submit();
+            }}
+          >
+            {fileInputEl}
+            <label htmlFor={`composer-${channelId}`} className="sr-only">
+              Message #{channelName}
+            </label>
+            {/* 16 px on phones so iOS doesn't zoom into the field. */}
+            <textarea {...textareaProps} className="max-h-60 min-h-11 w-full resize-none bg-transparent px-4 pb-1 pt-3 text-base text-pulse-text outline-none placeholder:text-pulse-muted md:text-pulse-body" />
+            <div className="flex flex-wrap items-center gap-0.5 px-2 pb-2" data-testid="composer-tools" data-dock-tools="">
+              {allowUploads && <IconButton tooltip label="Attach files" icon={<Paperclip />} size="sm" onClick={() => fileInput.current?.click()} />}
+              {voiceEl}
+              {gifEl}
+              {emojiEl}
+              {stickerEl}
+              {extra}
+              {scheduleEl}
+              <span data-compose-feedback="" className="flex min-w-2 flex-1 items-center justify-end gap-2 pr-1 text-pulse-caption">
+                {slowmodeSeconds > 0 && (
+                  <span className={cn("inline-flex items-center gap-1", cooldown > 0 ? "font-semibold text-pulse-text" : "text-pulse-muted")} data-testid="slowmode-indicator">
+                    <Turtle className="size-3.5" aria-hidden />
+                    {cooldown > 0 ? `Slow mode: ${cooldown}s` : `Slow mode ${formatDuration(slowmodeSeconds)}`}
+                  </span>
+                )}
+                {draft.length > MESSAGE_MAX - 200 && <span className={cn("tabular-nums", draft.length > MESSAGE_MAX ? "font-semibold text-pulse-alert" : "text-pulse-muted")}>{MESSAGE_MAX - draft.length}</span>}
+              </span>
+              <PulseButton type="submit" variant="primary" size="sm" disabled={sendDisabled} aria-label="Send message" className="gap-2">
+                Send
+                <Kbd label="Enter" className="border-current/30 bg-transparent text-current max-md:hidden">
+                  ↵
+                </Kbd>
+              </PulseButton>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   if (locked) {
     return (
@@ -281,17 +508,7 @@ export function Composer({
   }
 
   return (
-    <div
-      className="message-composer relative px-4 pb-safe"
-      onDragOver={(e) => {
-        if (e.dataTransfer.types.includes("Files")) {
-          e.preventDefault();
-          setDragging(true);
-        }
-      }}
-      onDragLeave={() => setDragging(false)}
-      onDrop={onDrop}
-    >
+    <div className="message-composer relative px-4 pb-safe" {...dragProps}>
       <SyncNotice sync={draftSync} />
       {dragging && (
         <div className="pointer-events-none absolute inset-x-4 -top-24 bottom-6 z-20 flex items-center justify-center rounded-xl border-2 border-dashed border-sun bg-abyss/80 font-pixel text-[10px] text-sun">
@@ -373,25 +590,11 @@ export function Composer({
         >
           {allowUploads && (
             <>
-              <input
-                ref={fileInput}
-                type="file"
-                multiple
-                accept={ATTACHMENT_ACCEPT}
-                className="sr-only"
-                aria-label="Attach files"
-                // Triggered by the visible button below; keep it out of the tab order / a11y tree.
-                aria-hidden
-                tabIndex={-1}
-                onChange={(e) => {
-                  addFiles(Array.from(e.target.files ?? []));
-                  e.target.value = "";
-                }}
-              />
+              {fileInputEl}
               <button type="button" aria-label="Attach files" onClick={() => fileInput.current?.click()} className="touch-target relative rounded-md p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white pointer-coarse:p-3">
                 <Paperclip className="size-5" aria-hidden />
               </button>
-              <VoiceRecorder disabled={cooldown > 0} onRecorded={(file, seconds) => void sendVoice(file, seconds)} />
+              {voiceEl}
             </>
           )}
           <span aria-hidden className="flex-1 @xl:hidden" />
@@ -399,45 +602,17 @@ export function Composer({
             Message #{channelName}
           </label>
           <textarea
-            id={`composer-${channelId}`}
-            ref={textarea}
-            value={draft}
-            onChange={(e) => {
-              setDraft(e.target.value);
-              if (e.target.value) onTyping();
-              else onStopTyping();
-            }}
-            onKeyDown={onKeyDown}
-            onPaste={onPaste}
-            rows={1}
-            enterKeyHint="send"
-            maxLength={MESSAGE_MAX + 100}
-            placeholder={placeholder ?? `Message #${channelName}`}
+            {...textareaProps}
             className="order-first max-h-60 min-h-6 min-w-0 basis-full resize-none bg-transparent @xl:order-none @xl:flex-1 @xl:basis-auto px-1 py-1.5 text-[15px] text-slate-100 outline-none placeholder:text-slate-500"
-            data-testid="composer"
           />
-          <EmojiPicker onPick={(value) => insert(value.startsWith(":") ? `${value} ` : value)} label="Insert icon" triggerClassName="pointer-coarse:p-3.5" />
-          <GifPicker
-            disabled={cooldown > 0}
-            onPick={(url) => {
-              const replyId = replyTo?.id ?? null;
-              onCancelReply();
-              void onSend(url, [], replyId);
-            }}
-          />
-          {onSticker && <StickerPicker onPick={onSticker} disabled={cooldown > 0} />}
+          {emojiEl}
+          {gifEl}
+          {stickerEl}
           {extra}
-          {schedulable && (
-            <ScheduleButton
-              channelId={channelId}
-              content={applySlashCommand(draft.trim())}
-              disabled={!draft.trim() || draft.trim().length > MESSAGE_MAX || uploads.length > 0}
-              onScheduled={() => setDraft("")}
-            />
-          )}
+          {scheduleEl}
           <button
             type="submit"
-            disabled={(!draft.trim() && ready.length === 0) || busy || failedUpload || cooldown > 0}
+            disabled={sendDisabled}
             aria-label="Send message"
             className="composer-send touch-target relative rounded-md p-1.5 text-sun transition-opacity hover:bg-white/10 disabled:opacity-30 pointer-coarse:p-3"
           >

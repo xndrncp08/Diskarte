@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased — Diskarte Pulse opt-in preview
+
+- Added the Canvas experience: unified Spaces navigation, transcript-style conversations, contextual members/pins/details, new typography and warm dark/off-white light surfaces.
+- Added phone navigation for Home, People, Spaces and You, full-screen conversations, deterministic Back navigation and touch action sheets.
+- Added the Pulse voice Stage, live call strip, labelled controls and reconnecting, blocked-sound and microphone recovery states.
+- Prepared **Settings → Appearance → Try the new Diskarte** behind server configuration `DISKARTE_PULSE_ROLLOUT=opt-in`. Classic remains the default; leaving the flag unset keeps the super-admin preview.
+- Retained shared account, message, notification and call behaviour across both shells. Added regression checks for switching without losing conversation work.
+- Step 6/7 adds no migrations. Optional community identity remains on its separate branch (`20261109010000_community_identity.sql`); Pulse uses the default appearance without its fields. Any production migration, including pending privacy changes, needs separate review and explicit authorization.
+- This entry describes local development, not a verified production release. See [pending release notes](RELEASE-PULSE.md) and the [rollout gate](../docs/design/pulse-rollout.md) for acceptance gaps and announcement status.
+
 ## 2026-11-08 — Hangouts, membership screening, suggestion boards, reminders
 
 - Added Instant Hangouts: temporary group chats with a call for you and 1–9 friends, lasting 1–24 hours. Start one from Home, jump straight into voice and ring everyone; anyone adds an hour, the host keeps it, turns it into a Tambayan or ends it. Expired hangouts are deleted with their messages and take no file uploads.

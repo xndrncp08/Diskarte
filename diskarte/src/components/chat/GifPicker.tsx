@@ -86,7 +86,7 @@ function GifResults({ onPick }: { onPick: (gif: Gif) => void }) {
 }
 
 /** Composer button → GIPHY search. Picking a GIF sends it right away. */
-export function GifPicker({ onPick, disabled = false }: { onPick: (url: string) => void; disabled?: boolean }) {
+export function GifPicker({ onPick, disabled = false, triggerClassName }: { onPick: (url: string) => void; disabled?: boolean; /** Replaces the trigger's look (Pulse's compose dock). */ triggerClassName?: string }) {
   return (
     <Popover
       label="GIFs"
@@ -100,10 +100,14 @@ export function GifPicker({ onPick, disabled = false }: { onPick: (url: string) 
           disabled={disabled}
           onClick={toggle}
           {...aria}
-          className={cn(
-            "touch-target relative rounded-md px-1.5 py-1 text-[11px] font-black tracking-tight transition-colors hover:bg-white/10 hover:text-white disabled:opacity-30 pointer-coarse:p-3",
-            open ? "text-sun" : "text-slate-400",
-          )}
+          className={
+            triggerClassName
+              ? cn(triggerClassName, "text-[11px] font-black tracking-tight")
+              : cn(
+                  "touch-target relative rounded-md px-1.5 py-1 text-[11px] font-black tracking-tight transition-colors hover:bg-white/10 hover:text-white disabled:opacity-30 pointer-coarse:p-3",
+                  open ? "text-sun" : "text-slate-400",
+                )
+          }
         >
           <span className="rounded border-2 border-current px-0.5 leading-none">GIF</span>
         </button>

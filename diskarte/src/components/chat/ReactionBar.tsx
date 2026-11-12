@@ -1,5 +1,6 @@
 "use client";
 
+import { useShellKind } from "@/components/shell/ShellKind";
 import { Emote } from "@/components/ui/Emote";
 import { glyphLabel } from "@/lib/glyphs";
 import type { Reaction } from "@/lib/messages";
@@ -19,6 +20,7 @@ export function summarizeReactions(list: Reaction[], meId: string) {
 }
 
 export function ReactionBar({ reactions, meId, onToggle, names }: { reactions: Reaction[]; meId: string; onToggle: (emoji: string) => void; names: (userId: string) => string }) {
+  const pulse = useShellKind() === "pulse";
   const summary = summarizeReactions(reactions, meId);
   if (summary.length === 0) return null;
   return (
@@ -39,18 +41,29 @@ export function ReactionBar({ reactions, meId, onToggle, names }: { reactions: R
             aria-label={`${label}: ${r.count} ${r.count === 1 ? "reaction" : "reactions"}`}
             title={`${label} — ${who}${r.count > 5 ? "…" : ""}`}
             onClick={() => onToggle(r.emoji)}
-            className={cn(
-              "reaction-chip touch-target relative flex h-7 items-center gap-1 rounded-lg border px-2 text-sm transition-[color,background-color,border-color,transform] active:scale-95",
-              r.mine ? "border-sun/60 bg-sun/15 text-sun" : "border-white/10 bg-white/5 text-slate-300 hover:border-white/25",
-            )}
+            className={
+              pulse
+                ? // Compact chip: icon and count. Yours: accent tint, accent edge and a bold count (not colour alone).
+                  cn(
+                    "inline-flex h-7 items-center gap-1 rounded-pulse-control border px-1.5 font-pulse-text text-pulse-label tabular-nums transition-[background-color,border-color,transform] duration-(--pulse-dur-press) pointer-coarse:min-h-11 pointer-coarse:px-2.5 pulse-motion:active:scale-95",
+                    r.mine ? "border-pulse-accent-mark bg-pulse-selected font-bold text-pulse-text" : "border-pulse-line text-pulse-muted hover:bg-pulse-hover hover:text-pulse-text",
+                  )
+                : cn(
+                    "reaction-chip touch-target relative flex h-7 items-center gap-1 rounded-lg border px-2 text-sm transition-[color,background-color,border-color,transform] active:scale-95",
+                    r.mine ? "border-sun/60 bg-sun/15 text-sun" : "border-white/10 bg-white/5 text-slate-300 hover:border-white/25",
+                  )
+            }
           >
             <Emote code={r.emoji} className="size-4" />
-            <span className="font-silk text-[9px] uppercase">{label}</span>
-            <span className="text-xs font-semibold tabular-nums">{r.count}</span>
+            {!pulse && <span className="font-silk text-[9px] uppercase">{label}</span>}
+            <span className={pulse ? undefined : "text-xs font-semibold tabular-nums"}>{r.count}</span>
           </button>
         );
       })}
-      <EmojiPicker onPick={onToggle} triggerClassName="h-7 border border-white/10 bg-white/5" />
+      <EmojiPicker
+        onPick={onToggle}
+        triggerClassName={pulse ? "inline-flex h-7 items-center rounded-pulse-control border border-pulse-line px-1.5 text-pulse-muted hover:bg-pulse-hover hover:text-pulse-text pointer-coarse:min-h-11 pointer-coarse:px-2.5" : "h-7 border border-white/10 bg-white/5"}
+      />
     </div>
   );
 }

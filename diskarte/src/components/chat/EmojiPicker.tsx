@@ -2,7 +2,7 @@
 
 import { AnimatePresence } from "framer-motion";
 import { SmilePlus } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { FloatingPortal, useFloating } from "@/components/ui/floating";
 import { InertWhenExiting } from "@/components/ui/InertWhenExiting";
@@ -25,12 +25,15 @@ export function EmojiPicker({
   align = "end",
   triggerClassName,
   placement = "top",
+  children,
 }: {
   onPick: (value: string) => void;
   label?: string;
   align?: "start" | "end";
   triggerClassName?: string;
   placement?: "top" | "bottom";
+  /** Visible text after the icon (Pulse's labelled "React" action). */
+  children?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -77,6 +80,7 @@ export function EmojiPicker({
         className={cn("touch-target relative rounded-md p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white", triggerClassName)}
       >
         <SmilePlus className="size-4" aria-hidden />
+        {children}
       </button>
       <FloatingPortal>
         <AnimatePresence>

@@ -1,0 +1,434 @@
+/*
+ * Diskarte Pulse tokens (docs/design-system.md#diskarte-pulse). Everything is scoped to
+ * html[data-shell="pulse"], so Classic renders exactly as before. Colour hexes mirror
+ * src/lib/pulse-tokens.ts; tests/ui/pulse-tokens.test.ts keeps them in sync and checks contrast.
+ */
+
+/* Tailwind aliases (bg-pulse-surface, text-pulse-muted, rounded-pulse-card, font-pulse-display…). `inline` makes
+   utilities read the --pulse-* var where they are used; they only resolve inside the Pulse shell. */
+@theme inline {
+  --color-pulse-bg: var(--pulse-bg);
+  --color-pulse-surface: var(--pulse-surface);
+  --color-pulse-raised: var(--pulse-raised);
+  --color-pulse-line: var(--pulse-line);
+  --color-pulse-line-strong: var(--pulse-line-strong);
+  --color-pulse-text: var(--pulse-text);
+  --color-pulse-muted: var(--pulse-text-muted);
+  --color-pulse-faint: var(--pulse-text-faint);
+  --color-pulse-accent: var(--pulse-accent);
+  --color-pulse-accent-ink: var(--pulse-accent-ink);
+  --color-pulse-on-accent: var(--pulse-on-accent);
+  --color-pulse-live: var(--pulse-live);
+  --color-pulse-alert: var(--pulse-alert);
+  --color-pulse-people: var(--pulse-people);
+  --color-pulse-focus: var(--pulse-focus-ring);
+  --color-pulse-online: var(--pulse-presence-online);
+  --color-pulse-idle: var(--pulse-presence-idle);
+  --color-pulse-dnd: var(--pulse-presence-dnd);
+  --color-pulse-offline: var(--pulse-presence-offline);
+  --color-pulse-on-live: var(--pulse-on-live);
+  --color-pulse-on-alert: var(--pulse-on-alert);
+  --color-pulse-accent-mark: var(--pulse-accent-mark);
+  --color-pulse-input: var(--pulse-input-border);
+  --color-pulse-disabled: var(--pulse-disabled);
+  --color-pulse-hover: var(--pulse-hover);
+  --color-pulse-pressed: var(--pulse-pressed);
+  --color-pulse-selected: var(--pulse-selected);
+  --color-pulse-scrim: var(--pulse-scrim);
+  --color-pulse-code: var(--pulse-code);
+  --color-pulse-mention: var(--pulse-mention-bg);
+  --color-pulse-live-tint: var(--pulse-live-tint);
+  --color-pulse-people-tint: var(--pulse-people-tint);
+  --color-pulse-speaking: var(--pulse-speaking-tint);
+
+  --radius-pulse-control: var(--pulse-radius-control);
+  --radius-pulse-item: var(--pulse-radius-item);
+  --radius-pulse-card: var(--pulse-radius-card);
+  --radius-pulse-sheet: var(--pulse-radius-sheet);
+  --radius-pulse-monogram: var(--pulse-radius-monogram);
+
+  --shadow-pulse-1: var(--pulse-elevation-1);
+  --shadow-pulse-2: var(--pulse-elevation-2);
+  --shadow-pulse-3: var(--pulse-elevation-3);
+
+  --font-pulse-display: var(--pulse-font-display);
+  --font-pulse-text: var(--pulse-font-text);
+
+  --text-pulse-caption: var(--pulse-size-12);
+  --text-pulse-caption--line-height: var(--pulse-leading-12);
+  --text-pulse-label: var(--pulse-size-13);
+  --text-pulse-label--line-height: var(--pulse-leading-13);
+  --text-pulse-body: var(--pulse-size-15);
+  --text-pulse-body--line-height: var(--pulse-leading-15);
+  --text-pulse-lead: var(--pulse-size-17);
+  --text-pulse-lead--line-height: var(--pulse-leading-17);
+  --text-pulse-title: var(--pulse-size-20);
+  --text-pulse-title--line-height: var(--pulse-leading-20);
+  --text-pulse-heading: var(--pulse-size-24);
+  --text-pulse-heading--line-height: var(--pulse-leading-24);
+  --text-pulse-display: var(--pulse-size-32);
+  --text-pulse-display--line-height: var(--pulse-leading-32);
+  --text-pulse-hero: var(--pulse-size-44);
+  --text-pulse-hero--line-height: var(--pulse-leading-44);
+}
+
+/* Ambient Pulse motion (the pulse line's travelling glint, the live ripple, the pressed scale) runs only when neither the OS
+   nor Settings → Accessibility asks for reduced motion. Components write `pulse-motion:animate-…`. */
+@custom-variant pulse-motion {
+  @media (prefers-reduced-motion: no-preference) {
+    html:not([data-reduce-motion]) & {
+      @slot;
+    }
+  }
+}
+@theme inline {
+  --animate-pulse-travel: pulse-travel 2.8s var(--pulse-ease) infinite;
+  --animate-pulse-ripple: pulse-ripple var(--pulse-dur-loop) var(--pulse-ease) infinite;
+  --animate-pulse-ring: pulse-ring 1.2s var(--pulse-ease) infinite;
+  @keyframes pulse-ring {
+    from { transform: scale(1); opacity: 0.8; }
+    to { transform: scale(1.22); opacity: 0; }
+  }
+  /* A phone conversation sliding in from the right (no fill: nothing keeps a transform on the canvas afterwards). */
+  --animate-pulse-enter: pulse-enter 260ms var(--pulse-ease);
+  @keyframes pulse-travel {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(500%); }
+  }
+  @keyframes pulse-enter {
+    from { transform: translateX(100%); }
+  }
+  @keyframes pulse-ripple {
+    from { transform: scale(1); opacity: 0.7; }
+    to { transform: scale(2.8); opacity: 0; }
+  }
+}
+
+/* Pulse layout breakpoints, the one global addition: they only add new variants (pulse-sheet:, pulse-wide:)
+   and leave Tailwind's sm/md/lg/xl/2xl untouched. Phones are below md (48rem), as in Classic. */
+@theme {
+  --breakpoint-pulse-sheet: 75rem; /* the Context sheet docks beside the canvas instead of overlaying it */
+  --breakpoint-pulse-wide: 100rem; /* the canvas caps its reading column and centres it */
+}
+
+/* Dark (default) palette and every mode-independent token. */
+html[data-shell="pulse"] {
+  --pulse-bg: #121016;
+  --pulse-surface: #1b1820;
+  --pulse-raised: #24202b;
+  --pulse-line: #312c39;
+  --pulse-line-strong: #443d4f;
+  --pulse-text: #f2eee6;
+  --pulse-text-muted: #a8a2b3;
+  --pulse-text-faint: #8b8597;
+  --pulse-sun: #ffb800;
+  --pulse-on-sun: #1a1300;
+  --pulse-sun-ink: #ffc93d;
+  --pulse-dagat: #2cc8b4;
+  --pulse-gumamela: #ff6b5e;
+  --pulse-ube: #a68cf0;
+  --pulse-presence-online: #3ecf6e;
+  --pulse-presence-idle: #ffb800;
+  --pulse-presence-dnd: #ff6b5e;
+  --pulse-presence-offline: #8b8597;
+  --pulse-on-live: #04201c;
+  --pulse-on-alert: #1a0a08;
+  --pulse-code: #0d0b10;
+  --pulse-scrim: rgb(8 6 10 / 0.6);
+  --pulse-elevation-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --pulse-elevation-2: 0 8px 24px rgb(0 0 0 / 0.45);
+  --pulse-elevation-3: 0 24px 64px rgb(0 0 0 / 0.55);
+
+  /* Semantic roles: components use these, never the palette names above. */
+  --pulse-accent: var(--pulse-sun);
+  --pulse-accent-ink: var(--pulse-sun-ink);
+  --pulse-on-accent: var(--pulse-on-sun);
+  --pulse-live: var(--pulse-dagat);
+  --pulse-alert: var(--pulse-gumamela);
+  --pulse-people: var(--pulse-ube);
+  --pulse-focus-ring: var(--pulse-sun-ink);
+  /* Small accent marks (switch on, selected tab bar, unread dot): gold itself is 1.6:1 on paper. */
+  --pulse-accent-mark: var(--pulse-sun);
+  --pulse-input-border: var(--pulse-text-faint);
+  --pulse-disabled: var(--pulse-text-faint);
+
+  /* Interaction and tinted surfaces, translucent so they work on bg, surface and raised alike.
+     Text on them stays --pulse-text / --pulse-text-muted (contrast-tested over every surface). */
+  --pulse-hover: color-mix(in srgb, var(--pulse-text) 6%, transparent);
+  --pulse-pressed: color-mix(in srgb, var(--pulse-text) 10%, transparent);
+  --pulse-selected: color-mix(in srgb, var(--pulse-accent) 15%, transparent);
+  --pulse-mention-bg: color-mix(in srgb, var(--pulse-alert) 12%, transparent);
+  --pulse-live-tint: color-mix(in srgb, var(--pulse-live) 14%, transparent);
+  --pulse-people-tint: color-mix(in srgb, var(--pulse-people) 14%, transparent);
+  --pulse-speaking-tint: color-mix(in srgb, var(--pulse-live) 24%, transparent);
+
+  /* Stacking: the same steps Classic already uses, named (docs/design-system.md#stacking). Use z-(--pulse-z-…). */
+  --pulse-z-raised: 10;
+  --pulse-z-backdrop: 30;
+  --pulse-z-drawer: 40;
+  --pulse-z-window: 45;
+  --pulse-z-overlay: 50;
+  --pulse-z-call: 55;
+  --pulse-z-prompt: 60;
+  --pulse-z-menu: 70;
+
+  --pulse-radius-control: 6px;
+  --pulse-radius-item: 10px;
+  --pulse-radius-card: 16px;
+  --pulse-radius-sheet: 24px;
+  --pulse-radius-monogram: 7px; /* Space tiles: squarer than an item, never a circle */
+
+  --pulse-dur-press: 120ms;
+  --pulse-dur-ui: 200ms;
+  --pulse-dur-sheet: 320ms;
+  --pulse-dur-loop: 1.6s;
+  --pulse-ease: cubic-bezier(0.23, 1, 0.32, 1);
+
+  --pulse-font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --pulse-font-text: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+  --pulse-size-12: 12px; --pulse-leading-12: 16px;
+  --pulse-size-13: 13px; --pulse-leading-13: 18px;
+  --pulse-size-15: 15px; --pulse-leading-15: 22px;
+  --pulse-size-17: 17px; --pulse-leading-17: 24px;
+  --pulse-size-20: 20px; --pulse-leading-20: 26px;
+  --pulse-size-24: 24px; --pulse-leading-24: 30px;
+  --pulse-size-32: 32px; --pulse-leading-32: 38px;
+  --pulse-size-44: 44px; --pulse-leading-44: 48px;
+
+  /* 4 px grid; Tailwind's own spacing (p-1 = 4 px) already matches, these are for raw CSS. */
+  --pulse-space-1: 4px; --pulse-space-2: 8px; --pulse-space-3: 12px; --pulse-space-4: 16px; --pulse-space-5: 20px;
+  --pulse-space-6: 24px; --pulse-space-8: 32px; --pulse-space-10: 40px; --pulse-space-12: 48px; --pulse-space-16: 64px;
+}
+
+html[data-shell="pulse"][data-color-mode="light"] {
+  --pulse-bg: #f7f6f2;
+  --pulse-surface: #ffffff;
+  --pulse-raised: #efede7;
+  --pulse-line: #e1ddd3;
+  --pulse-line-strong: #cfc9bc;
+  --pulse-text: #1a1720;
+  --pulse-text-muted: #5f596a;
+  --pulse-text-faint: #7a7484;
+  --pulse-sun: #ffb800;
+  --pulse-on-sun: #1a1300;
+  --pulse-sun-ink: #8a5a00;
+  --pulse-dagat: #0a786b;
+  --pulse-gumamela: #c4342a;
+  --pulse-ube: #6a4fb3;
+  --pulse-presence-online: #1f8a4c;
+  --pulse-presence-idle: #a86b00;
+  --pulse-presence-dnd: #c4342a;
+  --pulse-presence-offline: #7a7484;
+  --pulse-on-live: #ffffff;
+  --pulse-on-alert: #ffffff;
+  --pulse-code: #efede7; /* = raised */
+  --pulse-scrim: rgb(26 23 32 / 0.4);
+  --pulse-accent-mark: var(--pulse-sun-ink);
+  --pulse-elevation-1: 0 1px 2px rgb(26 23 32 / 0.08);
+  --pulse-elevation-2: 0 8px 24px rgb(26 23 32 / 0.12);
+  --pulse-elevation-3: 0 24px 64px rgb(26 23 32 / 0.18);
+}
+
+/* The six themes (src/lib/theme.ts) recolour the accent and tint the ground; Solar keeps the exact palette. */
+html[data-shell="pulse"][data-theme]:not([data-theme="solar"]) {
+  --pulse-sun: var(--color-sun);
+  --pulse-sun-ink: var(--color-sun);
+  --pulse-bg: color-mix(in srgb, var(--color-sun) 6%, #121016);
+}
+html[data-shell="pulse"][data-color-mode="light"][data-theme]:not([data-theme="solar"]) {
+  --pulse-sun-ink: color-mix(in srgb, var(--color-sun) 42%, #1a1720);
+  --pulse-bg: color-mix(in srgb, var(--color-sun) 6%, #f7f6f2);
+}
+
+/* Landscape phones are wider than md, so the notch side needs clearing there too (env() is 0 on other screens). */
+html[data-shell="pulse"] .app-viewport {
+  padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
+}
+
+/* A phone on its side (docs/design/pulse-mobile.md): while you type, the dock's tools step aside and only Send stays, so
+   the messages keep what little height the keyboard leaves. */
+@media (max-height: 500px) and (pointer: coarse) {
+  :root[data-shell="pulse"] textarea[data-testid="composer"] { font-size: 16px; }
+  :root[data-shell="pulse"] [data-testid="typing-line"]:empty { display: none; }
+  html[data-shell="pulse"] form:has(textarea:focus) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+  }
+  html[data-shell="pulse"] form:has(textarea:focus) [data-dock-tools] {
+    justify-content: flex-end;
+    padding-block: 4px;
+  }
+  html[data-shell="pulse"] form:has(textarea:focus) [data-dock-tools] > :not([type="submit"]):not([data-compose-feedback]) {
+    display: none;
+  }
+}
+
+/* The page behind the app (overscroll, safe areas, the gap above the keyboard) is Pulse ground too. */
+html[data-shell="pulse"],
+html[data-shell="pulse"] body {
+  background: var(--pulse-bg);
+  color: var(--pulse-text);
+}
+html[data-shell="pulse"] body {
+  font-family: var(--pulse-font-text);
+}
+html[data-shell="pulse"] ::selection {
+  background: color-mix(in srgb, var(--pulse-accent) 35%, transparent);
+  color: var(--pulse-text);
+}
+/* Classic's sun outline is 1.6:1 on paper. High contrast keeps its own outline (globals.css). */
+html[data-shell="pulse"]:not([data-high-contrast]) :focus-visible {
+  outline-color: var(--pulse-focus-ring);
+}
+
+/* The Classic bridge. The Pulse shell reuses Classic pages and dialogs (messages, composer, settings) until Steps 5–6
+   restyle them; they read Classic's surface and text tokens, so inside Pulse those resolve to Pulse ones and stay
+   readable on Pulse surfaces in both modes (Classic's own light remap does the same on its surfaces). :root outranks
+   the light-mode rule in globals.css. Accent tokens (--color-sun…) are left alone: the themes own them. */
+:root[data-shell="pulse"] {
+  --color-midnight: var(--pulse-surface);
+  --color-abyss: var(--pulse-bg);
+  --color-onyx: var(--pulse-raised);
+  --color-panel: var(--pulse-raised);
+  --color-white: var(--pulse-text);
+  --color-slate-100: var(--pulse-text);
+  --color-slate-200: var(--pulse-text);
+  --color-slate-300: var(--pulse-text-muted);
+  --color-slate-400: var(--pulse-text-muted);
+  --color-slate-500: var(--pulse-text-muted);
+}
+/* Moderator names (sky-200) on paper; the phone tab bar's current tab in accent ink rather than raw gold. */
+:root[data-shell="pulse"][data-color-mode="light"] {
+  --color-sky-200: #0369a1;
+}
+:root[data-shell="pulse"] .mobile-navigation [aria-current="page"] {
+  color: var(--pulse-accent-ink);
+}
+
+/* ---------- Messaging (docs/design/pulse-messaging.md) ---------- */
+
+/* The inline action row under a message: hidden at rest, so hovering never reflows the log. It shows on keyboard focus,
+   when the margin's "Message actions" button or Enter opens the row ([data-actions]), and while one of its popups is open. */
+:root[data-shell="pulse"] .pulse-msg-actions {
+  display: none;
+}
+:root[data-shell="pulse"] .pulse-msg:is(:focus-visible, [data-actions], :has(:focus-visible), :has([aria-expanded="true"])) .pulse-msg-actions {
+  display: flex;
+}
+
+/* Message text: Figtree at the reading size with a comfortable line height, Pulse ink for emphasis and links. */
+:root[data-shell="pulse"] .chat-markdown {
+  line-height: 1.55;
+}
+:root[data-shell="pulse"] .chat-markdown :is(strong, h1, h2, h3) {
+  color: var(--pulse-text);
+}
+:root[data-shell="pulse"] .chat-markdown :is(h1, h2, h3) {
+  font-family: var(--pulse-font-display);
+}
+:root[data-shell="pulse"] :is(.chat-markdown a, .chat-card a, a.chat-card) {
+  color: var(--pulse-accent-ink);
+}
+:root[data-shell="pulse"] .chat-markdown blockquote {
+  color: var(--pulse-text-muted);
+  border-color: var(--pulse-line-strong);
+}
+:root[data-shell="pulse"] .chat-markdown :is(th, td) {
+  border-color: var(--pulse-line);
+}
+:root[data-shell="pulse"] .chat-markdown .callout {
+  background: color-mix(in srgb, var(--callout) 10%, var(--pulse-raised));
+  backdrop-filter: none;
+  box-shadow: none;
+}
+/* Code: the code surface token, mono, readable in both modes. */
+:root[data-shell="pulse"] .chat-markdown :not(pre) > code {
+  color: var(--pulse-text);
+  background: var(--pulse-code);
+  border-color: var(--pulse-line);
+}
+:root[data-shell="pulse"] .chat-markdown pre {
+  color: var(--pulse-text);
+  background: var(--pulse-code);
+  border-color: var(--pulse-line);
+  border-left-color: var(--pulse-accent-mark);
+  border-radius: var(--pulse-radius-item);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  /* Long lines wrap: no sideways scroll region to reach by keyboard, readable on a phone. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+/* Paper: the dark-ground highlight colours are too light on the raised code surface (each is at least 4.5:1 on #efede7). */
+:root[data-shell="pulse"][data-color-mode="light"] .chat-markdown pre :is(.hljs-comment, .hljs-quote) { color: #5f596a; }
+:root[data-shell="pulse"][data-color-mode="light"] .chat-markdown pre :is(.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-section, .hljs-link) { color: #7a4f00; }
+:root[data-shell="pulse"][data-color-mode="light"] .chat-markdown pre :is(.hljs-string, .hljs-title, .hljs-name, .hljs-type, .hljs-attribute, .hljs-symbol, .hljs-bullet, .hljs-addition, .hljs-variable, .hljs-template-tag, .hljs-template-variable) { color: #1d6b3c; }
+:root[data-shell="pulse"][data-color-mode="light"] .chat-markdown pre :is(.hljs-number, .hljs-meta, .hljs-built_in, .hljs-params) { color: #0b5a87; }
+:root[data-shell="pulse"][data-color-mode="light"] .chat-markdown pre .hljs-deletion { color: #b42d24; }
+
+/* Attachments, voice notes and link previews: raised cards on the line token instead of Classic's dark glass. */
+:root[data-shell="pulse"] .chat-card {
+  background: var(--pulse-raised);
+  border-color: var(--pulse-line);
+  border-radius: var(--pulse-radius-item);
+}
+
+/* Getting started and What's new (shared with Classic Home) as Pulse cards on Pulse Home: same markup, Pulse tokens. */
+:root[data-shell="pulse"] [data-pulse-home] .home-panel {
+  margin: 0;
+  border-color: var(--pulse-line);
+  border-radius: var(--pulse-radius-card);
+  background: var(--pulse-surface);
+  box-shadow: var(--pulse-elevation-1);
+  color: var(--pulse-text-muted);
+  font-family: var(--pulse-font-text);
+}
+:root[data-shell="pulse"] [data-pulse-home] .home-panel h3 {
+  color: var(--pulse-text);
+  font-family: var(--pulse-font-display);
+  font-size: var(--pulse-size-20);
+  line-height: var(--pulse-leading-20);
+}
+:root[data-shell="pulse"] [data-pulse-home] .home-panel :is(strong, .section-kicker) {
+  color: var(--pulse-text);
+}
+:root[data-shell="pulse"] [data-pulse-home] .home-panel :is(a, li button) {
+  color: var(--pulse-accent-ink);
+}
+:root[data-shell="pulse"] [data-pulse-home] .getting-started-step {
+  border-color: var(--pulse-line);
+  border-radius: var(--pulse-radius-item);
+}
+:root[data-shell="pulse"] [data-pulse-home] .getting-started-step small {
+  color: var(--pulse-text-muted);
+}
+:root[data-shell="pulse"] [data-pulse-home] .getting-started-icon {
+  border-radius: var(--pulse-radius-control);
+  background: var(--pulse-selected);
+  color: var(--pulse-text);
+}
+
+/* ---------- Voice (docs/design/pulse-voice.md) ---------- */
+
+/* Classic's floating "turn on call audio" button (LiveKit StartAudio) in Pulse colours, and out of the way while a Pulse
+   recovery notice offers "Turn on sound" on screen: the stage's (any width), the live strip's (md and up) or the compact
+   strip's (phones). It keeps working wherever no notice is visible. !important: StartAudio sets its display inline. */
+:root[data-shell="pulse"] .call-start-audio {
+  background: var(--pulse-accent);
+  color: var(--pulse-on-accent);
+  font-family: var(--pulse-font-text);
+}
+:root[data-shell="pulse"]:has([data-audio-prompt="all"]) .call-start-audio {
+  display: none !important;
+}
+@media (width >= 48rem) {
+  :root[data-shell="pulse"]:has([data-audio-prompt="wide"]) .call-start-audio {
+    display: none !important;
+  }
+}
+@media (width < 48rem) {
+  :root[data-shell="pulse"]:has([data-audio-prompt="phone"]) .call-start-audio {
+    display: none !important;
+  }
+}

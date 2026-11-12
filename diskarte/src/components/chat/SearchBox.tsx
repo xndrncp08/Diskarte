@@ -9,6 +9,7 @@ import { UserAvatar } from "@/components/profile/UserAvatar";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { useServer } from "@/components/providers/ServerProvider";
 import { parseSearch } from "@/lib/search";
+import { useShellKind } from "@/components/shell/ShellKind";
 import type { Tables } from "@/lib/supabase/database.types";
 
 type Hit = Tables<"messages">;
@@ -22,6 +23,7 @@ export function SearchBox() {
   const supabase = useSupabase();
   const router = useRouter();
   const { server, members, channels } = useServer();
+  const pulse = useShellKind() === "pulse";
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<Hit[] | null>(null);
   const [more, setMore] = useState(false);
@@ -86,7 +88,11 @@ export function SearchBox() {
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search"
           aria-label={`Search ${server.name} (from:name, in:channel)`}
-          className="h-7 w-36 rounded-md border border-white/10 bg-black/40 pl-7 pr-2 text-xs text-slate-100 outline-none transition-[width] focus:w-56 focus:border-sun/60"
+          className={
+            pulse
+              ? "h-9 w-40 rounded-pulse-control border border-pulse-input bg-pulse-surface pl-7 pr-2 font-pulse-text text-pulse-label text-pulse-text outline-none transition-[width] placeholder:text-pulse-muted focus:w-60 focus:border-pulse-accent-mark pointer-coarse:h-11"
+              : "h-7 w-36 rounded-md border border-white/10 bg-black/40 pl-7 pr-2 text-xs text-slate-100 outline-none transition-[width] focus:w-56 focus:border-sun/60"
+          }
         />
       </form>
       {open &&

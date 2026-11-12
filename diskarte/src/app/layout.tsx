@@ -1,12 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import { cookies, headers } from "next/headers";
-import { Inter, JetBrains_Mono, Press_Start_2P, Silkscreen } from "next/font/google";
+import { Bricolage_Grotesque, Figtree, Inter, JetBrains_Mono, Press_Start_2P, Silkscreen } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { AppToaster } from "@/components/AppToaster";
 import { RuntimeConfigProvider } from "@/components/providers/RuntimeConfig";
 import { PwaProvider } from "@/components/providers/PwaProvider";
 import { VisitBeacon } from "@/components/VisitBeacon";
 import { tryGetPublicEnv } from "@/lib/env";
+import { getPlatformRole } from "@/lib/admin-server";
+import { parseShell, resolveShell, SHELL_COOKIE } from "@/lib/shell";
 import { isTheme, THEME_COOKIE } from "@/lib/theme";
 import "./globals.css";
 
@@ -14,6 +16,10 @@ const inter = Inter({ variable: "--font-inter", subsets: ["latin"], display: "sw
 const pressStart = Press_Start_2P({ variable: "--font-press-start", weight: "400", subsets: ["latin"], display: "swap" });
 const silkscreen = Silkscreen({ variable: "--font-silkscreen", weight: ["400", "700"], subsets: ["latin"], display: "swap" });
 const jetbrains = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"], display: "swap" });
+// Pulse-only fonts: not preloaded, so Classic never downloads them (only Pulse styles reference them).
+// Variable files: Bricolage keeps its optical-size axis for the 32/44 px display sizes; Figtree ships italics for emphasis.
+const bricolage = Bricolage_Grotesque({ variable: "--font-bricolage", axes: ["opsz"], subsets: ["latin"], display: "swap", preload: false });
+const figtree = Figtree({ variable: "--font-figtree", style: ["normal", "italic"], subsets: ["latin"], display: "swap", preload: false });
 
 export const TAGLINE = "Tara, Tambay Tayo. Ang Bagong Istambayan ng Bayan.";
 
@@ -64,13 +70,17 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const mode = savedMode === "light" || savedMode === "system" ? savedMode : "dark";
   const language = jar.get("diskarte-language")?.value === "fil" ? "fil" : "en";
   const env = tryGetPublicEnv();
+  // Resolve the same rollout gate as the signed-in shell so its first paint matches the frame.
+  const savedShell = jar.get(SHELL_COOKIE)?.value;
+  const shell = parseShell(savedShell) === "pulse" ? resolveShell(savedShell, await getPlatformRole().catch(() => "member"), process.env.DISKARTE_PULSE_ROLLOUT === "opt-in") : "classic";
 
   return (
     <html
       lang={language}
       data-color-mode={mode}
       data-theme={isTheme(theme) ? theme : undefined}
-      className={`${inter.variable} ${pressStart.variable} ${silkscreen.variable} ${jetbrains.variable} h-full`}
+      data-shell={shell}
+      className={`${inter.variable} ${pressStart.variable} ${silkscreen.variable} ${jetbrains.variable} ${bricolage.variable} ${figtree.variable} h-full`}
       suppressHydrationWarning
     >
       <head>{mode === "system" && <script nonce={nonce ?? undefined} dangerouslySetInnerHTML={{ __html: "document.documentElement.dataset.colorMode=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'" }} />}</head>
@@ -78,7 +88,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <RuntimeConfigProvider
           value={
             env
-              ? { supabaseUrl: env.supabaseUrl, supabaseAnonKey: env.supabaseAnonKey, livekitUrl: env.livekitUrl, siteUrl: env.siteUrl }
+              ? { supabaseUrl: env.supabaseUrl, supabaseAnonKey: env.supabaseAnonKey, livekitUrl: env.livekitUrl, siteUrl: env.siteUrl, pulseOptIn: process.env.DISKARTE_PULSE_ROLLOUT === "opt-in" }
               : null
           }
         >

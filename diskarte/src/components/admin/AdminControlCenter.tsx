@@ -3,6 +3,9 @@
 import { ReleaseAnnouncements } from "./ReleaseAnnouncements";
 import { Activity, BarChart3, LifeBuoy, Megaphone, Radio, RefreshCw, ScrollText, ShieldCheck } from "lucide-react";
 import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { IconButton } from "@/components/pulse/Button";
+import { StatusBadge } from "@/components/pulse/Chip";
+import { Masthead } from "@/components/pulse/shell/Masthead";
 import { cn } from "@/lib/utils";
 import { AuditTab } from "./AuditTab";
 import { BroadcastComposer } from "./BroadcastComposer";
@@ -42,9 +45,10 @@ function Skeleton() {
 /**
  * The Super Admin Control Center: network roster and presence inspector, site traffic, live voice stages, the
  * global announcement dispatcher, problem reports and the audit trail. Rendered inside the workspace's admin panel
- * (tablet and up) or as the /tambayan/admin page on phones. Only mounted for verified super admins.
+ * (tablet and up) or as the /tambayan/admin page on phones. Only mounted for verified super admins. `pulse` (the
+ * /tambayan/admin page in Pulse) puts the title, Live/Polling and Refresh in the canvas Masthead instead of its own header.
  */
-export function AdminControlCenter({ className }: { className?: string }) {
+export function AdminControlCenter({ className, pulse = false }: { className?: string; pulse?: boolean }) {
   const [tab, setTab] = useState<Tab>("network");
   const [query, setQuery] = useState("");
   const snap = useAdminSnapshot(query);
@@ -65,6 +69,20 @@ export function AdminControlCenter({ className }: { className?: string }) {
 
   return (
     <section aria-label="Super Admin Control Center" className={cn("@container flex min-h-0 min-w-0 flex-1 flex-col", className)} data-testid="admin-control-center">
+      {pulse ? (
+        <Masthead
+          eyebrow="Super admin"
+          title="Control Center"
+          icon={<ShieldCheck />}
+          description={snap.data ? `Updated ${formatAbsolute(snap.data.generatedAt)}` : "Platform health, people and reports"}
+          actions={
+            <>
+              <StatusBadge tone={snap.live ? "live" : "neutral"} className="max-sm:hidden">{snap.live ? "Live" : "Polling"}</StatusBadge>
+              <IconButton tooltip label="Refresh" icon={<RefreshCw className={cn(snap.loading && "animate-spin")} />} onClick={snap.refresh} />
+            </>
+          }
+        />
+      ) : (
       <header className="flex shrink-0 items-center gap-2 border-b border-white/[0.06] px-3 py-2">
         <ShieldCheck className="size-4 text-sun" aria-hidden />
         <h2 className="font-pixel text-[10px] uppercase tracking-wider text-white">Control Center</h2>
@@ -80,6 +98,7 @@ export function AdminControlCenter({ className }: { className?: string }) {
           <RefreshCw className={cn("size-3.5", snap.loading && "animate-spin")} aria-hidden />
         </button>
       </header>
+      )}
 
       <div role="tablist" aria-label="Control Center sections" className="scrollbar-none flex shrink-0 gap-1 overflow-x-auto border-b border-white/[0.06] px-2 py-1.5">
         {TABS.map((t) => (

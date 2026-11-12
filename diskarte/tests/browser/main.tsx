@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore, type ReactNode } from "react";
+import { FixtureCallProvider, type FixtureCall } from "./call";
 import { RuntimeConfigProvider } from "@/components/providers/RuntimeConfig";
 import { MeProvider } from "@/components/providers/MeProvider";
 import { PresenceProvider } from "@/components/providers/PresenceProvider";
@@ -11,13 +12,19 @@ import { ServerContext } from "@/components/providers/ServerProvider";
 import { CallProvider } from "@/components/voice/CallProvider";
 import { SettingsDialogProvider } from "@/components/profile/SettingsDialog";
 import { MediaViewerProvider } from "@/components/chat/MediaViewer";
-import { AppShell } from "@/components/shell/AppShell";
+import { ShellProviders } from "@/components/shell/AppShell";
+import { AppFrame } from "@/components/shell/AppFrame";
+import { PulseRooms } from "@/components/pulse/shell/Rooms";
+import { parseShell } from "@/lib/shell";
 import { HomeView } from "@/components/shell/HomeView";
 import { ExploreView } from "@/components/shell/ExploreView";
 import { MessagesView } from "@/components/social/MessagesView";
 import { FriendsView } from "@/components/social/FriendsView";
 import { SharedWorkspaceView } from "@/components/workspace/SharedWorkspaceView";
 import { WorkspacePanel } from "@/components/workspace/WorkspacePanel";
+import { CommunityLanding } from "@/components/pulse/community/CommunityLanding";
+import { PulseSpaces } from "@/components/pulse/views/Spaces";
+import { PulseYou } from "@/components/pulse/views/You";
 import { ChannelSidebar } from "@/components/server/ChannelSidebar";
 import { ChatView } from "@/components/chat/ChatView";
 import { VoiceChannelView } from "@/components/voice/VoiceChannelView";
@@ -28,6 +35,10 @@ import { channels, SERVER_ID, server } from "../fixtures/server";
 import { usePathname } from "./navigation";
 import { people, members } from "./database";
 import "@/app/globals.css";
+import { PulseGallery } from "./pulse-gallery";
+import { ForumView } from "@/components/chat/ForumView";
+import { DmView } from "@/components/social/DmView";
+import { DM_ID, dmProps, FORUM, forumHistory, richHistory } from "./pulse-messaging-data";
 
 const social: SocialValue = {
   friends: [
@@ -57,7 +68,17 @@ const social: SocialValue = {
   setFavourite: async () => false,
 };
 
+// The diskarte-shell cookie picks the frame, as in app/(app)/tambayan/layout.tsx (the root layout sets data-shell).
+const shell = parseShell(document.cookie.match(/(?:^|; )diskarte-shell=([^;]*)/)?.[1]);
+document.documentElement.dataset.shell = shell;
+function subscribeShell(callback: () => void) {
+  const observer = new MutationObserver(callback);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-shell"] });
+  return () => observer.disconnect();
+}
+
 function Fixture() {
+  const shell = useSyncExternalStore(subscribeShell, () => parseShell(document.documentElement.dataset.shell));
   const path = usePathname();
   const prefs = useDisplayPrefs();
   useEffect(() => {
@@ -71,7 +92,8 @@ function Fixture() {
   const channel =
     channels.find((item) => path.endsWith(item.id)) ?? channels[0];
   return (
-    <AppShell servers={[server]}>
+    <ShellProviders shell={shell}>
+    <AppFrame shell={shell} servers={[server]}>
       {path === "/tambayan" ? (
         <HomeView
           servers={[server]}
@@ -87,7 +109,9 @@ function Fixture() {
         />
       ) : path === "/tambayan/explore" ? (
         <ExploreView servers={[server]} />
-      ) : path === "/tambayan/messages" ? (<MessagesView servers={[server]} />) : path === "/tambayan/friends" ? (
+      ) : path === `/tambayan/dm/${DM_ID}` ? (
+        <DmView servers={[server]} {...dmProps} />
+      ) : path === "/tambayan/messages" ? (<MessagesView servers={[server]} />) : path === "/tambayan/spaces" ? (<PulseSpaces servers={[server]} />) : path === "/tambayan/you" ? (<PulseYou servers={[server]} />) : path === "/tambayan/friends" ? (
         <FriendsView servers={[server]} />
       ) : (
         <>
@@ -95,15 +119,19 @@ function Fixture() {
             <ChannelSidebar />
           </WorkspacePanel>
           <WorkspacePanel id="main" title={server.name}>
-            {path.endsWith("workspace") ? (
+            {path === `/tambayan/${SERVER_ID}` ? (
+              <CommunityLanding events={[{ id: "e1", name: "Weekend hangout", starts_at: "2099-11-01T12:00:00Z", ends_at: null }]} />
+            ) : path.endsWith("workspace") ? (
               <SharedWorkspaceView />
+            ) : path.endsWith("/forum") ? (
+              <ForumView channel={FORUM} initial={forumHistory} />
             ) : channel.type === "voice" ? (
               <VoiceChannelView channel={channel} />
             ) : (
               <ChatView
                 key={channel.id}
                 channel={channel}
-                initial={{
+                initial={richHistory(channel.id) ?? {
                   messages: [
                     {
                       id: "m1",
@@ -150,28 +178,44 @@ function Fixture() {
               />
             )}
           </WorkspacePanel>
+          <PulseRooms />
           <RosterDrawer count={members.length}>
             <MemberList />
           </RosterDrawer>
         </>
       )}
-    </AppShell>
+    </AppFrame>
+    </ShellProviders>
   );
+}
+
+// localStorage `fixture:call` puts the fixture in a connected call (tests/browser/call.tsx); otherwise the real provider, idle.
+const fixtureCall = localStorage.getItem("fixture:call") as FixtureCall | null;
+function Call({ children }: { children: ReactNode }) {
+  return fixtureCall ? <FixtureCallProvider kind={fixtureCall}>{children}</FixtureCallProvider> : <CallProvider>{children}</CallProvider>;
+}
+
+// /pulse-gallery renders the Pulse component gallery on its own (?mode=light for paper).
+if (location.pathname === "/pulse-gallery") {
+  document.documentElement.dataset.shell = "pulse";
+  document.documentElement.dataset.colorMode = new URLSearchParams(location.search).get("mode") === "light" ? "light" : "dark";
 }
 
 // Fixture data and disabled server boundaries stay outside Next's production source tree.
 createRoot(document.getElementById("root")!).render(
+  location.pathname === "/pulse-gallery" ? <PulseGallery /> :
   <RuntimeConfigProvider
     value={{
       supabaseUrl: "https://fixture.invalid",
       supabaseAnonKey: "fixture-public-key",
       siteUrl: location.origin,
       livekitUrl: "wss://fixture.invalid",
+      pulseOptIn: true,
     }}
   >
     <MeProvider profile={people[0]}>
       <PresenceProvider>
-        <CallProvider>
+        <Call>
           <SocialContext.Provider value={social}>
             <SettingsDialogProvider
               account={{ email: "kapitan@example.test", providers: ["email"] }}
@@ -179,7 +223,8 @@ createRoot(document.getElementById("root")!).render(
               <MediaViewerProvider>
                 <ServerContext.Provider
                   value={{
-                    server,
+                    // An accent (Pulse community identity) so the landing's accent band is checked; Classic ignores it.
+                    server: { ...server, accent_color: "#1e3a8a" },
                     channels,
                     members,
                     myRole: "admin",
@@ -199,7 +244,7 @@ createRoot(document.getElementById("root")!).render(
               </MediaViewerProvider>
             </SettingsDialogProvider>
           </SocialContext.Provider>
-        </CallProvider>
+        </Call>
       </PresenceProvider>
     </MeProvider>
   </RuntimeConfigProvider>,

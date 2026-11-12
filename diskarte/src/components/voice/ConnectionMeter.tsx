@@ -2,7 +2,8 @@
 
 import { AnimatePresence } from "framer-motion";
 import { useEffect, useId, useRef, useState } from "react";
-import { SignalBars } from "@/components/retro/SignalBars";
+import { SignalBars, type SignalLevel } from "@/components/retro/SignalBars";
+import { useShellKind } from "@/components/shell/ShellKind";
 import { FloatingPortal, useFloating } from "@/components/ui/floating";
 import { InertWhenExiting } from "@/components/ui/InertWhenExiting";
 import { useCallStats } from "@/hooks/useCallStats";
@@ -14,15 +15,31 @@ function fmt(value: number | null, unit: string) {
   return value === null ? "—" : `${value}${unit}`;
 }
 
+/** Pulse's words for the same levels (Classic keeps its arcade labels). */
+export const PULSE_HEALTH: Record<SignalLevel, string> = { 0: "Offline", 1: "Poor", 2: "Fair", 3: "Good", 4: "Excellent" };
+
+/** Pulse bars: four rising bars, as many filled as the level (the shape cue), tinted by health, always beside the word. */
+function PulseBars({ level }: { level: SignalLevel }) {
+  const tone = level <= 1 ? "text-pulse-alert" : level === 2 ? "text-pulse-accent-ink" : "text-pulse-live";
+  return (
+    <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden className={cn("shrink-0", tone)}>
+      {[0, 1, 2, 3].map((i) => <rect key={i} x={i * 3.75} y={12 - (i + 1) * 3} width="2.5" height={(i + 1) * 3} rx="0.75" fill="currentColor" opacity={i < level ? 1 : 0.25} />)}
+    </svg>
+  );
+}
+
 /**
  * 8-bit connection meter for the active call: signal bars from LiveKit quality + measured latency /
- * packet loss, with a details popover (latency, loss, jitter, LiveKit's rating).
+ * packet loss, with a details popover (latency, loss, jitter, LiveKit's rating). In Pulse: Pulse bars, the health as a
+ * word ("Good · 42 ms") and a Pulse popover, same numbers.
  */
-/** `compact`: just the bars (the latency stays in the label and the details popover). */
+/** `compact`: just the bars (the latency stays in the label and the details popover); Pulse keeps the word. */
 export function ConnectionMeter({ compact = false }: { compact?: boolean } = {}) {
   const call = useCall();
+  const pulse = useShellKind() === "pulse";
   const stats = useCallStats(call.status === "connected" ? call.room : null);
   const level = call.status === "connected" ? healthLevel(stats, call.quality) : 1;
+  const labels = pulse ? PULSE_HEALTH : HEALTH_LABEL;
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
@@ -45,6 +62,8 @@ export function ConnectionMeter({ compact = false }: { compact?: boolean } = {})
   }, [open]);
 
   const color = level <= 1 ? "text-red-400" : level === 2 ? "text-signal-idle" : "text-signal-green";
+  const dt = pulse ? "text-pulse-muted" : "text-slate-400";
+  const dd = pulse ? "text-pulse-text" : "text-white";
   return (
     <>
       <button
@@ -54,14 +73,29 @@ export function ConnectionMeter({ compact = false }: { compact?: boolean } = {})
         aria-expanded={open}
         aria-controls={id}
         aria-haspopup="dialog"
-        aria-label={`Connection: ${HEALTH_LABEL[level]}, ${fmt(stats.rttMs, " ms")} latency, ${fmt(stats.lossPct, "%")} packet loss`}
-        className="touch-target relative flex items-center gap-1.5 rounded-md px-1 py-0.5 hover:bg-white/10"
+        aria-label={`Connection: ${labels[level]}, ${fmt(stats.rttMs, " ms")} latency, ${fmt(stats.lossPct, "%")} packet loss`}
+        className={
+          pulse
+            ? "inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-pulse-control px-2 font-pulse-text text-pulse-caption font-semibold text-pulse-text hover:bg-pulse-hover pointer-coarse:min-h-11"
+            : "touch-target relative flex items-center gap-1.5 rounded-md px-1 py-0.5 hover:bg-white/10"
+        }
         data-testid="connection-meter"
+        data-level={level}
       >
-        <SignalBars level={level} />
-        <span className={cn("font-pixel text-[8px] tabular-nums", color, compact && "hidden")} aria-hidden>
-          {stats.rttMs === null ? HEALTH_LABEL[level].toUpperCase() : `${stats.rttMs}MS`}
-        </span>
+        {pulse ? (
+          <>
+            <PulseBars level={level} />
+            <span aria-hidden>{PULSE_HEALTH[level]}</span>
+            {!compact && stats.rttMs !== null && <span aria-hidden className="font-normal tabular-nums text-pulse-muted">{stats.rttMs} ms</span>}
+          </>
+        ) : (
+          <>
+            <SignalBars level={level} />
+            <span className={cn("font-pixel text-[8px] tabular-nums", color, compact && "hidden")} aria-hidden>
+              {stats.rttMs === null ? HEALTH_LABEL[level].toUpperCase() : `${stats.rttMs}MS`}
+            </span>
+          </>
+        )}
       </button>
       <FloatingPortal>
         <AnimatePresence>
@@ -78,20 +112,27 @@ export function ConnectionMeter({ compact = false }: { compact?: boolean } = {})
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 4 }}
               transition={{ duration: 0.12 }}
-              className="glass-strong scanlines z-50 w-60 rounded-xl p-3 shadow-2xl shadow-black/60"
+              className={pulse ? "z-(--pulse-z-menu) w-60 rounded-pulse-item border border-pulse-line bg-pulse-raised p-3 font-pulse-text shadow-pulse-2" : "glass-strong scanlines z-50 w-60 rounded-xl p-3 shadow-2xl shadow-black/60"}
             >
-              <p className="mb-2 flex items-center justify-between font-pixel text-[9px] text-sun">
-                SIGNAL <SignalBars level={level} showLabel />
-              </p>
-              <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                <dt className="text-slate-400">Latency (RTT)</dt>
-                <dd className="text-right font-mono tabular-nums text-white">{fmt(stats.rttMs, " ms")}</dd>
-                <dt className="text-slate-400">Packet loss</dt>
-                <dd className="text-right font-mono tabular-nums text-white">{fmt(stats.lossPct, "%")}</dd>
-                <dt className="text-slate-400">Jitter</dt>
-                <dd className="text-right font-mono tabular-nums text-white">{fmt(stats.jitterMs, " ms")}</dd>
-                <dt className="text-slate-400">LiveKit rating</dt>
-                <dd className="text-right text-white">{HEALTH_LABEL[call.quality]}</dd>
+              {pulse ? (
+                <p className="mb-2 flex items-center justify-between text-pulse-label font-semibold text-pulse-text">
+                  Connection
+                  <span className="inline-flex items-center gap-1.5"><PulseBars level={level} />{PULSE_HEALTH[level]}</span>
+                </p>
+              ) : (
+                <p className="mb-2 flex items-center justify-between font-pixel text-[9px] text-sun">
+                  SIGNAL <SignalBars level={level} showLabel />
+                </p>
+              )}
+              <dl className={cn("grid grid-cols-2 gap-x-3 gap-y-1", pulse ? "text-pulse-caption" : "text-xs")}>
+                <dt className={dt}>Latency (RTT)</dt>
+                <dd className={cn("text-right font-mono tabular-nums", dd)}>{fmt(stats.rttMs, " ms")}</dd>
+                <dt className={dt}>Packet loss</dt>
+                <dd className={cn("text-right font-mono tabular-nums", dd)}>{fmt(stats.lossPct, "%")}</dd>
+                <dt className={dt}>Jitter</dt>
+                <dd className={cn("text-right font-mono tabular-nums", dd)}>{fmt(stats.jitterMs, " ms")}</dd>
+                <dt className={dt}>LiveKit rating</dt>
+                <dd className={cn("text-right", dd)}>{labels[call.quality]}</dd>
               </dl>
             </InertWhenExiting>
           )}

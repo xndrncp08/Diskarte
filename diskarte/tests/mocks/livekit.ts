@@ -32,6 +32,14 @@ export class MockRoom {
     this.handlers.set(event, handler);
     return this;
   }
+  off(event: string, handler: (...args: unknown[]) => void) {
+    if (this.handlers.get(event) === handler) this.handlers.delete(event);
+    return this;
+  }
+  /** Fire a registered RoomEvent handler (by its string value). */
+  emit(event: string, ...args: unknown[]) {
+    this.handlers.get(event)?.(...args);
+  }
   removeAllListeners() {
     this.handlers.clear();
   }

@@ -3,13 +3,17 @@
 import { useState } from "react";
 import { useSupabase } from "@/components/providers/RuntimeConfig";
 import { Modal } from "@/components/ui/Modal";
+import { cn } from "@/lib/utils";
 import { Timestamp } from "./Timestamp";
 
 /** "(edited)": the author and moderators can click it to see what the message said before. */
-export function EditedMark({ messageId, current, editedAt, canView }: { messageId: string; current: string; editedAt: string; canView: boolean }) {
+export function EditedMark({ messageId, current, editedAt, canView, pulse = false }: { messageId: string; current: string; editedAt: string; canView: boolean; pulse?: boolean }) {
   const supabase = useSupabase();
   const [versions, setVersions] = useState<{ content: string; replaced_at: string }[] | null>(null);
-  const label = <span className="shrink-0 pb-0.5 text-[10px] text-slate-500">(edited)</span>;
+  // Pulse: a small "Edited" label in the transcript's caption style instead of Classic's "(edited)".
+  const text = pulse ? "Edited" : "(edited)";
+  const look = pulse ? "shrink-0 rounded-pulse-control border border-pulse-line px-1 text-pulse-caption text-pulse-muted" : "shrink-0 pb-0.5 text-[10px] text-slate-500";
+  const label = <span className={look}>{text}</span>;
   if (!canView) return label;
 
   async function open() {
@@ -19,8 +23,8 @@ export function EditedMark({ messageId, current, editedAt, canView }: { messageI
 
   return (
     <>
-      <button type="button" onClick={() => void open()} className="shrink-0 pb-0.5 text-[10px] text-slate-500 hover:text-slate-300 hover:underline" aria-label="View edit history">
-        (edited)
+      <button type="button" onClick={() => void open()} className={cn(look, pulse ? "hover:bg-pulse-hover hover:text-pulse-text" : "hover:text-slate-300 hover:underline")} aria-label="View edit history">
+        {text}
       </button>
       <Modal open={versions !== null} onClose={() => setVersions(null)} title="Edit history" className="max-w-lg">
         <ol className="scrollbar-thin max-h-96 space-y-2 overflow-y-auto">

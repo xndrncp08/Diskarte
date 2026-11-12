@@ -165,6 +165,133 @@ device testing has not been done.
 | Destructive | Confirm through `ConfirmHost`; typed confirmation for account deletion |
 | Toasts | Sonner, bottom-right on desktop (above the call tray), top on phones so they don't cover the composer |
 
+## Diskarte Pulse
+
+Pulse is the redesign (Direction A, "Canvas": Spaces navigator, Conversation Canvas, Context sheet)
+in warm ink (dark) or paper (light) with a solar gold signature. It is built alongside Classic and
+reached per browser through the shell preference ([ADR 016](architecture/decisions.md#016-pulse-ships-behind-a-per-browser-shell-preference)).
+This section covers the groundwork: tokens, fonts and the lint guard. The shared components (Button, Tabs, Sheet, Avatar…)
+and their contracts are in [Pulse components](design/pulse-components.md). The app frame (Spaces navigator,
+canvas masthead, Context sheet, keyboard map, data sources) is in [Pulse shell](design/pulse-shell.md).
+
+### Scoping: Classic is untouched
+
+- The `diskarte-shell` cookie (`classic` default, `pulse`) is read by the root layout, which renders
+  `<html data-shell="classic|pulse">` on the first byte ([`lib/shell.ts`](../diskarte/src/lib/shell.ts)).
+- Every token lives in [`pulse.css`](../diskarte/src/app/pulse.css) under `html[data-shell="pulse"]`,
+  so Classic computes exactly the same styles as before. The Tailwind aliases (`bg-pulse-surface`…) are
+  `@theme inline`, so they only resolve inside Pulse.
+- Pulse also repaints the page behind the app (`html` and `body` take `--pulse-bg` and `--pulse-text`, so
+  overscroll, safe areas and the keyboard gap match), text selection (accent 35 %) and the focus outline
+  (`--pulse-focus-ring`; Classic's sun outline is 1.6:1 on paper). High contrast keeps its own outline.
+- The only global additions are two breakpoints (see below) and the `pulse-motion:` variant (ambient motion only when
+  neither the OS nor Settings asks for reduced motion); they add variants and change no existing ones.
+- `setShell(shell, router)` flips the attribute, saves the cookie and calls `router.refresh()`; no
+  reload, so a live call, open chats and drafts survive the switch. Super admins switch it in Settings →
+  Appearance ("Try the new Diskarte"); inside Pulse, Classic tokens map to Pulse ones (the Classic bridge,
+  see [Pulse shell](design/pulse-shell.md#the-classic-bridge)) so reused Classic pages stay readable.
+
+### Colour tokens
+
+Hexes come from [`lib/pulse-tokens.ts`](../diskarte/src/lib/pulse-tokens.ts), the source of truth
+that `pulse.css` mirrors. Components use the semantic tokens; palette names (`--pulse-sun`,
+`--pulse-dagat`…) are for the token file only.
+
+| Token | Tailwind | Dark | Light | Role |
+| --- | --- | --- | --- | --- |
+| `--pulse-bg` | `bg-pulse-bg` | `#121016` | `#f7f6f2` | Ground |
+| `--pulse-surface` | `bg-pulse-surface` | `#1b1820` | `#ffffff` | Panels, the canvas |
+| `--pulse-raised` | `bg-pulse-raised` | `#24202b` | `#efede7` | Cards, hovers, inputs |
+| `--pulse-line` / `--pulse-line-strong` | `border-pulse-line` / `-line-strong` | `#312c39` / `#443d4f` | `#e1ddd3` / `#cfc9bc` | Dividers, control borders |
+| `--pulse-text` | `text-pulse-text` | `#f2eee6` | `#1a1720` | Body text |
+| `--pulse-text-muted` | `text-pulse-muted` | `#a8a2b3` | `#5f596a` | Secondary text |
+| `--pulse-text-faint` | `text-pulse-faint` | `#8b8597` | `#7a7484` | Icons and disabled marks only (3:1, not for text) |
+| `--pulse-accent` | `bg-pulse-accent` | `#ffb800` | `#ffb800` | Solar gold fills |
+| `--pulse-on-accent` | `text-pulse-on-accent` | `#1a1300` | `#1a1300` | Text on accent fills |
+| `--pulse-accent-ink` | `text-pulse-accent-ink` | `#ffc93d` | `#8a5a00` | Accent-coloured text and links |
+| `--pulse-live` (dagat) | `text-pulse-live` | `#2cc8b4` | `#0a786b` | Live, voice |
+| `--pulse-alert` (gumamela) | `text-pulse-alert` | `#ff6b5e` | `#c4342a` | Mentions, danger |
+| `--pulse-people` (ube) | `text-pulse-people` | `#a68cf0` | `#6a4fb3` | People, roles |
+| `--pulse-on-live` / `--pulse-on-alert` | `text-pulse-on-live` / `-on-alert` | `#04201c` / `#1a0a08` | `#ffffff` / `#ffffff` | Text on live and alert fills |
+| `--pulse-accent-mark` | `bg-pulse-accent-mark` | sun `#ffb800` | sun-ink `#8a5a00` | Small accent marks: switch on, selected tab bar, unread dot (gold is 1.6:1 on paper) |
+| `--pulse-focus-ring` | `ring-pulse-focus` | `#ffc93d` | `#8a5a00` | Focus outline (applied to every `:focus-visible` in Pulse) |
+| `--pulse-input-border` | `border-pulse-input` | = faint `#8b8597` | = faint `#7a7484` | Input and control edges (3:1, WCAG 1.4.11); `line` is for dividers only |
+| `--pulse-disabled` | `text-pulse-disabled` | = faint | = faint | Disabled controls (exempt from contrast, but still distinguishable) |
+| `--pulse-code` | `bg-pulse-code` | `#0d0b10` | `#efede7` (= raised) | Code blocks |
+| `--pulse-scrim` | `bg-pulse-scrim` | `rgb(8 6 10 / .6)` | `rgb(26 23 32 / .4)` | Behind sheets and dialogs |
+| `--pulse-presence-*` | `bg-pulse-online`, `-idle`, `-dnd`, `-offline` | `#3ecf6e`, `#ffb800`, `#ff6b5e`, `#8b8597` | `#1f8a4c`, `#a86b00`, `#c4342a`, `#7a7484` | Presence dots |
+
+Every text token reaches **4.5:1** on `bg`, `surface` and `raised` in both modes, and presence and
+faint marks reach 3:1; [`tests/ui/pulse-tokens.test.ts`](../diskarte/tests/ui/pulse-tokens.test.ts)
+computes the ratios and checks `pulse.css` still matches the TypeScript values. The light dagat and
+gumamela are a shade darker than the first proposal (`#0b7f72`, `#c8352b`) so they pass on `raised`.
+
+**Interaction and tinted surfaces** are translucent `color-mix(in srgb, <token> N%, transparent)`, so
+one token works on `bg`, `surface` and `raised`. Text on them stays `text-pulse-text` or `text-pulse-muted`;
+both reach 4.5:1 on every tint over every surface, in every theme and mode (percentages live in
+`PULSE_TINTS`, and the test checks `pulse.css` uses them).
+
+| Token | Tailwind | Mix | Use |
+| --- | --- | --- | --- |
+| `--pulse-hover` | `bg-pulse-hover` | text 6 % | Hovered rows and buttons |
+| `--pulse-pressed` | `bg-pulse-pressed` | text 10 % | Pressed state |
+| `--pulse-selected` | `bg-pulse-selected` | accent 15 % | Selected row or Space (pair with `accent-mark`) |
+| `--pulse-mention-bg` | `bg-pulse-mention` | alert 12 % | Messages that mention you; text stays `--pulse-text` |
+| `--pulse-live-tint` / `--pulse-people-tint` | `bg-pulse-live-tint` / `-people-tint` | live / people 14 % | Live voice strip, people chips |
+| `--pulse-speaking-tint` | `bg-pulse-speaking` | live 24 % | Speaking halo behind avatars (decorative, not for text) |
+
+**Status is never shown by colour alone.** Neon and Kalikasan turn the accent teal or green and Ube
+turns it violet, so the accent can look like live (dagat), online (presence green) or people (ube).
+Every live, presence, mention or selected state also carries a shape, icon or text: the live pulse
+line and "Live" label, presence dots with their status name in the tooltip and accessible name, a
+mention badge with a count, the selected bar. Colour only reinforces.
+
+**Themes.** Solar keeps the palette above. The other five themes recolour the accent to
+`--color-sun` and tint the ground with 6 % of it; in light mode accent text is the theme colour mixed
+42 % into the text colour. The same test checks contrast for every theme in both modes.
+
+### Type, shape, depth and motion
+
+| Group | Tokens |
+| --- | --- |
+| Fonts | `font-pulse-display` Bricolage Grotesque, variable weight with the optical-size axis for the 32/44 px sizes (`--pulse-font-display`); `font-pulse-text` Figtree, variable weight with italics (`--pulse-font-text`, the Pulse body font) |
+| Type scale | `text-pulse-caption` 12/16, `-label` 13/18, `-body` 15/22, `-lead` 17/24, `-title` 20/26, `-heading` 24/30, `-display` 32/38, `-hero` 44/48 (`--pulse-size-N` / `--pulse-leading-N`) |
+| Radius | `rounded-pulse-control` 6 px, `-item` 10 px, `-card` 16 px, `-sheet` 24 px, `-monogram` 7 px (Space tiles) |
+| Elevation | `shadow-pulse-1`, `-2`, `-3` (`--pulse-elevation-N`, softer in light mode) |
+| Motion | `--pulse-dur-press` 120 ms, `--pulse-dur-ui` 200 ms, `--pulse-dur-sheet` 320 ms, `--pulse-dur-loop` 1.6 s (live pulse), `--pulse-ease` out-quint |
+| Spacing | 4 px grid: Tailwind's spacing already matches; `--pulse-space-1…16` for raw CSS |
+| Breakpoints | Phones below `md` (48rem), as in Classic; `pulse-sheet:` 75rem docks the Context sheet beside the canvas; `pulse-wide:` 100rem caps and centres the reading column. Tailwind's `sm`/`md`/`lg`/`xl`/`2xl` are unchanged |
+
+Both fonts load through `next/font/google` with `display: swap`, the Latin subset, metric-adjusted
+fallbacks and `preload: false`: Classic never renders them, so Classic visitors don't download them.
+When Pulse becomes the default, switch preloading on.
+
+### Stacking
+
+Pulse names the z-index steps Classic already uses, so the two shells interleave correctly while
+Classic overlays (dialogs, menus, calls) still appear over Pulse screens. Use `z-(--pulse-z-…)`.
+
+| Token | Value | Classic today |
+| --- | --- | --- |
+| `--pulse-z-raised` | 10 | Sticky headers, dragged rows |
+| `--pulse-z-backdrop` | 30 | Phone drawer backdrop (`AppShell`), in-chat panels (pins, search) |
+| `--pulse-z-drawer` | 40 | Phone drawers, thread panel on phones |
+| `--pulse-z-window` | 45 | `FloatingWindow` layer |
+| `--pulse-z-overlay` | 50 | `Modal`, `Popover`, `Menu`, `Tooltip`, emoji picker, full-screen share |
+| `--pulse-z-call` | 55 | Incoming call card (`IncomingCalls`) |
+| `--pulse-z-prompt` | 60 | Skip link, "enable call audio" prompt (`CallAudio`) |
+| `--pulse-z-menu` | 70 | `ContextMenu` (opens from inside dialogs and windows) |
+| — | Sonner's own | Toasts (`AppToaster`) sit above everything |
+
+### Lint guard
+
+Files in `src/components/pulse/` may not use `slate-*`, `gray-*`, `white` or `black` colour utilities,
+Classic tokens (`sun`, `sun-deep`, `midnight`, `abyss`, `onyx`, `panel`, `neon`), arbitrary `[#hex]`
+colours, or hex colours in `style` props (`no-restricted-syntax` in
+[`eslint.config.mjs`](../diskarte/eslint.config.mjs)); the error points here.
+[`PulseSurface`](../diskarte/src/components/pulse/PulseSurface.tsx) is the token-only reference and
+[`tests/ui/pulse-lint.test.ts`](../diskarte/tests/ui/pulse-lint.test.ts) proves the rule fires.
+
 ## Reuse guidelines
 
 1. Use `components/ui` primitives and semantic tokens; don't hard-code colours that themes or light

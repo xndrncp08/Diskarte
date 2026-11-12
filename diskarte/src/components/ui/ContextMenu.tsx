@@ -5,7 +5,8 @@ import { createContext, useCallback, useContext, useEffect, useEffectEvent, useL
 import { toast } from "sonner";
 import { FloatingPortal, visibleViewport } from "./floating";
 import { InertWhenExiting } from "./InertWhenExiting";
-import { MenuItems, useMenuDismiss, useMenuKeyboard, type MenuItem } from "./Menu";
+import { cn } from "@/lib/utils";
+import { MenuItems, MenuSkinContext, useMenuDismiss, useMenuKeyboard, type MenuItem } from "./Menu";
 
 export interface Point {
   x: number;
@@ -64,6 +65,8 @@ export interface ContextMenuState {
   /** The element the menu was opened from: an anchor for windows its items open. */
   target: HTMLElement | null;
   close: (restoreFocus?: boolean) => void;
+  /** Opens the menu under an element (a "More…" button); focus returns to it on close. */
+  openFrom: (el: HTMLElement) => void;
   /** Spread onto the element people right-click / long-press / Shift+F10 on. */
   triggerProps: {
     "data-context-menu": "";
@@ -89,6 +92,7 @@ export function useContextMenu({ disabled = false }: { disabled?: boolean } = {}
   const viaKeyboard = useRef(false);
   const press = useRef<{ x: number; y: number; timer: ReturnType<typeof setTimeout> } | null>(null);
   const swallowClick = useRef(false);
+  const clearLift = useRef<(() => void) | null>(null);
 
   const clearPress = useCallback(() => {
     if (press.current) clearTimeout(press.current.timer);
@@ -98,6 +102,7 @@ export function useContextMenu({ disabled = false }: { disabled?: boolean } = {}
   useEffect(
     () => () => {
       clearPress();
+      clearLift.current?.();
       if (dismissCurrent === dismiss) dismissCurrent = null;
     },
     [clearPress, dismiss],
@@ -149,6 +154,7 @@ export function useContextMenu({ disabled = false }: { disabled?: boolean } = {}
     },
     onPointerDown: (e) => {
       if (outside(e)) return;
+      clearLift.current?.();
       swallowClick.current = false;
       if (disabled || e.pointerType !== "touch" || handled.has(e.nativeEvent)) return;
       handled.add(e.nativeEvent);
@@ -162,6 +168,31 @@ export function useContextMenu({ disabled = false }: { disabled?: boolean } = {}
           press.current = null;
           // The finger lifting after a long-press must not also "tap" the row underneath.
           swallowClick.current = true;
+          // …nor whatever now covers it (a touch sheet's scrim, a menu row): drop the click that follows the finger lifting.
+          // Only the next click, and only where the finger was (a tap elsewhere is a real tap).
+          const swallow = (ev: MouseEvent) => {
+            clearLift.current?.();
+            if (Math.hypot(ev.clientX - x, ev.clientY - y) <= LONG_PRESS_SLOP) { ev.preventDefault(); ev.stopPropagation(); }
+          };
+          window.addEventListener("click", swallow, true);
+          let expiry: ReturnType<typeof setTimeout> | undefined;
+          // A lift's click follows its pointerup in the same task; a cancelled touch has no click at all.
+          const end = (ev: PointerEvent) => {
+            window.removeEventListener("pointerup", end, true);
+            window.removeEventListener("pointercancel", end, true);
+            if (ev.type === "pointercancel") clearLift.current?.();
+            else expiry = setTimeout(() => clearLift.current?.());
+          };
+          clearLift.current = () => {
+            clearTimeout(expiry);
+            window.removeEventListener("click", swallow, true);
+            window.removeEventListener("pointerup", end, true);
+            window.removeEventListener("pointercancel", end, true);
+            swallowClick.current = false;
+            clearLift.current = null;
+          };
+          window.addEventListener("pointerup", end, true);
+          window.addEventListener("pointercancel", end, true);
           navigator.vibrate?.(10);
           openAt(x, y, el, false);
         }, LONG_PRESS_MS),
@@ -180,10 +211,22 @@ export function useContextMenu({ disabled = false }: { disabled?: boolean } = {}
     },
   };
 
-  return { point: open?.point ?? null, target: open?.target ?? null, close, triggerProps };
+  const openFrom = (el: HTMLElement) => {
+    if (disabled) return;
+    const rect = el.getBoundingClientRect();
+    openAt(rect.left, rect.bottom, el, true);
+  };
+
+  return { point: open?.point ?? null, target: open?.target ?? null, close, openFrom, triggerProps };
 }
 
 const PickContext = createContext<() => void>(() => undefined);
+/** Provide it around menu rows rendered outside <ContextMenu> (the Pulse touch sheet) so picking a row closes that container. */
+export const ContextMenuPickContext = PickContext;
+
+/** Renders context menus on touch screens (Pulse: in a bottom Sheet). Unset (Classic): the floating panel everywhere. */
+export type TouchMenu = (props: { open: boolean; label: string; onClose: () => void; children: ReactNode }) => ReactNode;
+export const TouchMenuContext = createContext<TouchMenu | null>(null);
 
 /**
  * The menu panel, portalled to <body> at the pointer. `children` (usually <ContextMenuItems>, or a
@@ -193,9 +236,14 @@ export function ContextMenu({ menu, label, children }: { menu: ContextMenuState;
   const panel = useRef<HTMLDivElement>(null);
   const { point, close } = menu;
   const open = point !== null;
+  const skin = useContext(MenuSkinContext);
+  const touch = useContext(TouchMenuContext);
   // Lists render one of these per row (every chat message): skip the portal until first opened.
   const [used, setUsed] = useState(false);
   if (open && !used) setUsed(true);
+  // Pulse on a touch screen: the menu opens in its sheet, which brings its own dismissal, focus and keys.
+  const sheet = used && touch !== null && Boolean(window.matchMedia?.("(pointer: coarse)").matches);
+  const floating = open && !sheet;
 
   // Measure, then nudge inside the viewport before paint. Written straight to the node: framer-motion
   // owns transform/opacity, and a state round-trip would paint one frame at the raw pointer.
@@ -216,7 +264,7 @@ export function ContextMenu({ menu, label, children }: { menu: ContextMenuState;
     close(false);
   });
   useEffect(() => {
-    if (!open) return;
+    if (!floating) return;
     window.addEventListener("scroll", onScrollOrResize, true);
     window.addEventListener("resize", onScrollOrResize);
     window.addEventListener("blur", onScrollOrResize);
@@ -229,12 +277,13 @@ export function ContextMenu({ menu, label, children }: { menu: ContextMenuState;
       window.visualViewport?.removeEventListener("resize", onScrollOrResize);
       window.visualViewport?.removeEventListener("scroll", onScrollOrResize);
     };
-  }, [open]);
+  }, [floating]);
 
-  useMenuDismiss(open, [panel], () => close(false));
-  useMenuKeyboard(open, panel, () => close(true), () => close(false));
+  useMenuDismiss(floating, [panel], () => close(false));
+  useMenuKeyboard(floating, panel, () => close(true), () => close(false));
 
   if (!used) return null;
+  if (sheet && touch) return touch({ open, label, onClose: () => close(true), children: <PickContext.Provider value={() => close(true)}>{children}</PickContext.Provider> });
   return (
     <FloatingPortal>
       <AnimatePresence>
@@ -250,7 +299,7 @@ export function ContextMenu({ menu, label, children }: { menu: ContextMenuState;
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.97 }}
             transition={{ duration: 0.1 }}
-            className="glass-strong scrollbar-thin z-[70] max-h-[calc(100dvh-1rem)] min-w-52 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-xl bg-slate-950! p-1.5 shadow-xl shadow-black/50"
+            className={cn("scrollbar-thin z-[70] max-h-[calc(100dvh-1rem)] min-w-52 max-w-[calc(100vw-1rem)] overflow-y-auto", skin.panel)}
           >
             <PickContext.Provider value={() => close(true)}>{children}</PickContext.Provider>
           </InertWhenExiting>

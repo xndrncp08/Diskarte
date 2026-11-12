@@ -39,13 +39,17 @@ import { isUnread } from "@/lib/social";
 import type { Server } from "@/lib/servers";
 import { Timestamp } from "@/components/chat/Timestamp";
 import { AddServerDialog } from "./AddServerDialog";
+import { PulseHome } from "@/components/pulse/views/Home";
 import { ServerIcon } from "./ServerIcon";
+import { useShellKind } from "./ShellKind";
 import "./home.css";
 
 type HomeEvent = Pick<
   ServerEvent,
   "id" | "server_id" | "name" | "starts_at" | "ends_at"
 >;
+
+export type HomeEventRow = HomeEvent;
 
 export function HomeView({
   servers,
@@ -87,6 +91,36 @@ export function HomeView({
   const incoming =
     social?.friends?.filter((friend) => friend.status === "incoming").length ??
     0;
+  const pulse = useShellKind() === "pulse";
+  const dialogs = (
+    <>
+      <StartHangoutDialog
+        key={hangoutWith ? `hangout:${hangoutWith.join()}` : "hangout-closed"}
+        open={hangoutWith !== null}
+        onClose={() => setHangoutWith(null)}
+        preselect={hangoutWith ?? []}
+      />
+      <AddServerDialog
+        key={dialog ?? "closed"}
+        open={dialog !== null}
+        onClose={() => setDialog(null)}
+        initialTab={dialog ?? "create"}
+      />
+    </>
+  );
+  if (pulse)
+    return (
+      <>
+        <HomeSidebar servers={servers} />
+        <WorkspacePanel id="main" title="Home">
+          <PulseHome
+            servers={servers} events={events} eventsUnavailable={eventsUnavailable} fresh={fresh} conversations={conversations} mentions={mentions} incoming={incoming}
+            friends={friends} around={around} hangouts={hangouts} activity={activity} now={now} onDialog={setDialog} onHangout={setHangoutWith} onRefresh={() => router.refresh()}
+          />
+        </WorkspacePanel>
+        {dialogs}
+      </>
+    );
   return (
     <>
       <HomeSidebar servers={servers} />
@@ -513,18 +547,7 @@ export function HomeView({
           </div>
         </section>
       </WorkspacePanel>
-      <StartHangoutDialog
-        key={hangoutWith?.join() ?? "closed"}
-        open={hangoutWith !== null}
-        onClose={() => setHangoutWith(null)}
-        preselect={hangoutWith ?? []}
-      />
-      <AddServerDialog
-        key={dialog ?? "closed"}
-        open={dialog !== null}
-        onClose={() => setDialog(null)}
-        initialTab={dialog ?? "create"}
-      />
+      {dialogs}
     </>
   );
 }

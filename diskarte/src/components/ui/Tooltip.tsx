@@ -1,8 +1,22 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { FloatingPortal, useFloating, type Side } from "./floating";
+
+const CLASSIC_TIP = "rounded-md bg-black/90 px-2.5 py-1 text-xs font-semibold text-white shadow-lg";
+
+/** The bubble look for every Tooltip below it that doesn't pass its own (the Pulse shell gives Classic tooltips the Pulse look). */
+export const TooltipSkinContext = createContext<string | null>(null);
+
+/** Focus that shows a ring (keyboard), not a tap or click; engines without :focus-visible keep the old behaviour. */
+function keyboardFocus(el: Element) {
+  try {
+    return el.matches(":focus-visible");
+  } catch {
+    return true;
+  }
+}
 
 /**
  * Hover/focus tooltip rendered in a <body> portal so scrollable rails and sidebars can't clip it.
@@ -14,6 +28,7 @@ export function Tooltip({
   children,
   className,
   disabled = false,
+  tipClassName,
 }: {
   label: string;
   side?: Side;
@@ -21,7 +36,10 @@ export function Tooltip({
   className?: string;
   /** Suppress while the trigger's own popover is open (they'd overlap). */
   disabled?: boolean;
+  /** The bubble's look (the Pulse Tooltip replaces it); placement and behaviour stay the same. */
+  tipClassName?: string;
 }) {
+  const skin = useContext(TooltipSkinContext);
   const [hovered, setOpen] = useState(false);
   const open = hovered && !disabled;
   const anchor = useRef<HTMLSpanElement>(null);
@@ -34,7 +52,8 @@ export function Tooltip({
       className={cn("relative inline-flex", className)}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
-      onFocus={() => setOpen(true)}
+      // Keyboard focus only: a tap focuses the trigger too, and would leave the tooltip stuck open.
+      onFocus={(e) => keyboardFocus(e.target) && setOpen(true)}
       onBlur={() => setOpen(false)}
       onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
     >
@@ -47,7 +66,7 @@ export function Tooltip({
             data-floating="tooltip"
             data-side={resolved}
             style={style}
-            className="pointer-events-none z-50 whitespace-nowrap rounded-md bg-black/90 px-2.5 py-1 text-xs font-semibold text-white shadow-lg"
+            className={cn("pointer-events-none z-50 whitespace-nowrap", tipClassName ?? skin ?? CLASSIC_TIP)}
           >
             {label}
           </span>

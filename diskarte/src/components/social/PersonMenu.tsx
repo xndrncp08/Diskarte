@@ -73,6 +73,7 @@ export function PersonMenuItems({
   onViewProfile,
   before = [],
   after = [],
+  voiceChannelId,
 }: {
   person: Person;
   /** Where a popped-out profile window appears. */
@@ -82,6 +83,8 @@ export function PersonMenuItems({
   /** Context-specific rows around the person rows (e.g. "Mark as read" on a DM). */
   before?: MenuItem[];
   after?: MenuItem[];
+  /** The voice channel a roster row shows them in (private channels aren't in server presence). */
+  voiceChannelId?: string;
 }) {
   const { me } = useMe();
   const social = useOptionalSocial();
@@ -135,7 +138,7 @@ export function PersonMenuItems({
   const lk = call?.room?.remoteParticipants.get(person.id);
   const inMyCall = !self && !!lk && call?.status !== "idle";
   // Where they are in voice in this server (my own room, or what presence says), for moderation.
-  const voiceChannel = inMyCall && call?.target?.kind !== "dm" ? (call?.target?.channelId ?? null) : (serverCtx?.presence.get(person.id)?.voice_channel_id ?? null);
+  const voiceChannel = inMyCall && call?.target?.kind !== "dm" ? (call?.target?.channelId ?? null) : (voiceChannelId ?? serverCtx?.presence.get(person.id)?.voice_channel_id ?? null);
   const sources = lk?.permissions?.canPublishSources ?? [];
   const serverMuted = sources.length > 0 && !sources.includes(2 /* MICROPHONE */);
   const serverDeafened = lk?.permissions?.canSubscribe === false;

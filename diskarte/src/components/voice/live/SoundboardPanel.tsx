@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils";
 import { useCall } from "../CallProvider";
 import { playSoundboard } from "../soundboard-player";
 import { Glyph } from "@/components/ui/Glyph";
+import { useShellKind } from "@/components/shell/ShellKind";
+import { DOCK_BUTTON } from "../pulse/controls";
 
 /** Call toolbar soundboard: built-in 8-bit memes + the tambayan's uploaded clips, heard by everyone. */
 export function SoundboardPanel() {
@@ -22,6 +24,7 @@ export function SoundboardPanel() {
   const [muted, setMuted] = useState(soundboardMuted);
   const [cooling, setCooling] = useState(false);
   const allow = useRef(createThrottle(SOUNDBOARD_COOLDOWN_MS));
+  const pulse = useShellKind() === "pulse";
 
   useEffect(() => {
     if (!serverId) return;
@@ -55,7 +58,12 @@ export function SoundboardPanel() {
       label="Soundboard"
       testId="soundboard"
       className="w-80"
-      trigger={({ ref, toggle, open, ...aria }) => (
+      trigger={({ ref, toggle, open, ...aria }) => pulse ? (
+        <button ref={ref} type="button" onClick={toggle} {...aria} className={DOCK_BUTTON}>
+          <Music4 aria-hidden />
+          Soundboard
+        </button>
+      ) : (
         <button
           ref={ref}
           type="button"

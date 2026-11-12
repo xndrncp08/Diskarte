@@ -184,7 +184,7 @@ subscribers also need a topic rule in `can_access_realtime_topic()` (see
 | Bucket | Public | Limit | Object path | Who writes / reads |
 | --- | --- | --- | --- | --- |
 | `attachments` | no | 10 MB; images, MP3/MP4, voice (WebM/Ogg/MP4 audio) | `<server>/<channel>/<uploader>/<uuid>.<ext>` or `dm/<conversation>/<uploader>/<uuid>.<ext>` | Members of the server upload to their own folder and read; DM participants for `dm/…`; uploader or moderators delete. Served as short-lived **signed URLs** |
-| `avatars` | yes | 5 MB images | `<user>/(avatar\|banner)-<uuid>.<ext>`, `servers/<server>/…` | Owner (or server admin for `servers/`) writes; anyone reads |
+| `avatars` | yes | 5 MB images | `<user>/(avatar\|banner)-<uuid>.<ext>`, `servers/<server>/…` | Owner (or server admin for `servers/`) writes and lists; anyone loads images by public URL, but nobody else can list the bucket |
 | `emoji` | yes | 256 KB PNG/GIF/WebP | `<server>/<uuid>.<ext>` | Server admins write |
 | `soundboard` | no | 1 MB MP3 | `<server>/<uuid>.mp3` | Admins write, members read |
 | `moments` | no | 5 MB images | `<user>/…` | Author writes/deletes; readable while the viewer can see the moment |

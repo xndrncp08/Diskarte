@@ -24,6 +24,18 @@ Settings open as a dialog over the app (so calls keep running); `/settings/profi
 Per-server notification level (@mentions only / nothing) and server mute live in each server's menu;
 channel mutes in the channel's menu.
 
+## Classic and Pulse
+
+Classic remains the default. When the operator opens public opt-in, **Settings → Appearance → Try
+the new Diskarte** switches to Pulse in this browser. **You → Back to Classic** or the same switch
+returns to Classic. Without public opt-in, the switch is a super-admin preview. The preference is
+the `diskarte-shell` cookie, separate from account data and notification preferences.
+
+Switching refreshes the app in place and keeps the active call and current conversation mounted.
+It must preserve drafts, pending uploads, reply/thread context and unsaved message edits. Permissions
+continue through the same server guards, Supabase RLS and LiveKit tokens. See the
+[Pulse user guide](../user-guide/pulse.md) and [rollout gate](../design/pulse-rollout.md).
+
 ## Account security
 
 - **Password**: change in My Account (accounts that sign in with email), with the live policy

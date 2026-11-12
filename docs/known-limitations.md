@@ -17,12 +17,13 @@ couldn't confirm. Keep it current: remove items when they're fixed, add them whe
 | Moments | Photos of purged moments stay in Storage until the author deletes their account |
 | Communities | Custom roles grant only private-channel access; no outgoing webhooks, bot accounts, OAuth apps, interactive commands or general automation builder |
 | Workspace | No real-time co-editing, cursors, comments, history or export |
-| Voice/video | No recording, transcription, stage mode or E2E encryption; can't move members into private voice channels; push call alerts aren't native telephony |
+| Voice/video | No recording, transcription, moderated speaker/audience mode or E2E encryption; Pulse's Stage is the call layout. Can't move members into private voice channels; push call alerts aren't native telephony |
 | Accounts | No passkeys, SMS 2FA, recovery codes or in-app email change |
 | Localization | Filipino covers core navigation, settings, the Home onboarding panels and in-app help links; most screens, notifications and the Help Center are English |
 | Preferences | Most display/voice/notification preferences are per browser, as are the Getting started dismissal and the What's New "seen" marker |
 | Moderation | Rule-based auto-mod only; no ban appeals; audit logs kept indefinitely |
 | Native apps | None; the PWA is the mobile app |
+| Pulse preview | Optional when enabled by the operator; Classic stays default. Room reordering still uses Classic. Shell choice is per browser |
 
 ## Operational limitations
 
@@ -51,6 +52,9 @@ These were not verified by automated tests or during the writing of this documen
   project was not checked while writing these docs (`select jobname, active from cron.job;`).
 - **Backups**: no restore drill has been recorded.
 - **Accessibility**: axe-core automated checks only; no manual screen-reader audit.
+- **Pulse rollout gate**: the original approved 15-journey list was not recovered. The
+  [reconstructed matrix](design/pulse-rollout.md) records the gap; fixture checks do not establish
+  full backend, physical-device or production acceptance across Classic and Pulse.
 - **Performance**: no load testing; bundle and LCP numbers are one-off local measurements.
 
 ## Documentation gaps

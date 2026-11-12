@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { deleteChannelAction, leaveServerAction, reorderChannelsAction } from "@/actions/servers";
 import { SupportDialog } from "@/components/community/SupportDialog";
 import { useMe } from "@/components/providers/MeProvider";
-import { useServerSpeaking } from "@/components/providers/PresenceProvider";
+import { serverTopic, useTopicSpeaking, voiceTopic } from "@/components/providers/PresenceProvider";
 import { useServer } from "@/components/providers/ServerProvider";
 import { UserAvatar } from "@/components/profile/UserAvatar";
 import { SignalBars } from "@/components/retro/SignalBars";
@@ -21,7 +21,7 @@ import { confirmAction } from "@/components/ui/ConfirmHost";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ContextMenu, ContextMenuItems, copyText, useContextMenu } from "@/components/ui/ContextMenu";
 import { CallDock } from "@/components/voice/CallDock";
-import { useCall, usePrewarm } from "@/components/voice/CallProvider";
+import { useCall, useCallSpeaking, usePrewarm } from "@/components/voice/CallProvider";
 import { Menu, type MenuItem } from "@/components/ui/Menu";
 import { useOnline } from "@/hooks/useOnline";
 import { useVoiceRoster } from "@/hooks/useVoiceRoster";
@@ -53,12 +53,14 @@ type DialogState =
 
 function VoiceOccupants({ channelId }: { channelId: string }) {
   const call = useCall();
-  const { server } = useServer();
+  const callSpeakers = useCallSpeaking();
+  const { server, channels } = useServer();
   // In the call: LiveKit's own active-speaker events. Watching from outside: the members' ephemeral
-  // "speaking" broadcasts on the server's presence channel.
-  const observed = useServerSpeaking(server.id);
+  // "speaking" broadcasts on the server's presence channel (a private channel's own topic).
+  const isPrivate = channels.find((c) => c.id === channelId)?.is_private === true;
+  const observed = useTopicSpeaking(isPrivate ? voiceTopic(channelId) : serverTopic(server.id));
   const live = call.status === "connected" && call.target?.channelId === channelId;
-  return <OccupantList channelId={channelId} speaking={live ? new Set(call.speaking) : observed} />;
+  return <OccupantList channelId={channelId} speaking={live ? new Set(callSpeakers) : observed} />;
 }
 
 function OccupantList({ channelId, speaking }: { channelId: string; speaking: ReadonlySet<string> | null }) {
@@ -67,13 +69,13 @@ function OccupantList({ channelId, speaking }: { channelId: string; speaking: Re
   return (
     <ul className="mb-1 ml-7 space-y-0.5" aria-label="In voice">
       {inRoom.map(({ member, presence }) => (
-        <Occupant key={member.user_id} member={member} presence={presence} speaking={speaking?.has(member.user_id) ?? false} />
+        <Occupant key={member.user_id} channelId={channelId} member={member} presence={presence} speaking={speaking?.has(member.user_id) ?? false} />
       ))}
     </ul>
   );
 }
 
-function Occupant({ member, presence: p, speaking }: { member: MemberWithProfile; presence: PresencePayload | undefined; speaking: boolean }) {
+function Occupant({ channelId, member, presence: p, speaking }: { channelId: string; member: MemberWithProfile; presence: PresencePayload | undefined; speaking: boolean }) {
   const menu = useContextMenu();
   return (
     <li className="flex items-center gap-2 rounded px-1.5 py-1 text-[13px] text-slate-300 hover:bg-white/5" data-speaking={speaking || undefined} {...menu.triggerProps}>
@@ -91,44 +93,18 @@ function Occupant({ member, presence: p, speaking }: { member: MemberWithProfile
           <MicOff className="size-3.5 text-red-400" aria-label="Muted" />
         ) : null}
       </span>
-      <PersonContextMenu menu={menu} person={member.profile} />
+      <PersonContextMenu menu={menu} person={member.profile} voiceChannelId={channelId} />
     </li>
   );
 }
 
-/** Right-click on a channel: copy its link, invite people, edit or delete it (managers). */
-function ChannelRow({
-  channel,
-  active,
-  canManage,
-  reorder,
-  onDialog,
-  muted = false,
-}: {
-  channel: Channel;
-  active: boolean;
-  canManage: boolean;
-  /** Muted channels are dimmed (Discord). */
-  muted?: boolean;
-  /** Moderators drag the grip (or press ↑/↓ on it) to move the channel within its category. */
-  reorder?: { onDragEnd: () => void; onMove: (delta: -1 | 1) => void };
-  onDialog: (dialog: DialogState) => void;
-}) {
-  const drag = useDragControls();
-  // A row dragged by its name must not also follow its link on release.
-  const dragged = useRef(false);
+/** A channel's menu: copy its link, invite people, mute, edit or delete it (managers). Shared with Pulse's rooms. */
+export function useChannelMenuItems(channel: Channel, active: boolean, canManage: boolean, muted: boolean, onDialog: (dialog: DialogState) => void): MenuItem[] {
   const { server, removeChannel } = useServer();
-  const { setNavOpen } = useShellUI();
-  const prewarm = usePrewarm();
   const router = useRouter();
-  const menu = useContextMenu();
-  const Icon = channel.type === "voice" ? Volume2 : channel.type === "forum" ? MessagesSquare : Hash;
-  const { unread: hasUnread, mentions } = useChannelUnread(channel.id, channel.last_message_at);
-  // Discord: unread channels (not muted, not the open one) are bright, with a short pill at the edge.
-  const unread = hasUnread && !active && !muted;
   const label = `${channel.type !== "voice" ? "#" : ""}${channel.name}`;
   const icon = "size-4";
-  const items: MenuItem[] = [
+  return [
     { label: "Copy link", icon: <Link2 className={icon} aria-hidden />, onSelect: () => void copyText(`${window.location.origin}/tambayan/${server.id}/${channel.id}`, "Channel link") },
     { label: "Invite people", icon: <UserPlus className={icon} aria-hidden />, onSelect: () => onDialog({ kind: "invite" }), hidden: server.is_system },
     {
@@ -162,6 +138,39 @@ function ChannelRow({
         }),
     },
   ];
+}
+
+/** Right-click on a channel: copy its link, invite people, edit or delete it (managers). */
+function ChannelRow({
+  channel,
+  active,
+  canManage,
+  reorder,
+  onDialog,
+  muted = false,
+}: {
+  channel: Channel;
+  active: boolean;
+  canManage: boolean;
+  /** Muted channels are dimmed (Discord). */
+  muted?: boolean;
+  /** Moderators drag the grip (or press ↑/↓ on it) to move the channel within its category. */
+  reorder?: { onDragEnd: () => void; onMove: (delta: -1 | 1) => void };
+  onDialog: (dialog: DialogState) => void;
+}) {
+  const drag = useDragControls();
+  // A row dragged by its name must not also follow its link on release.
+  const dragged = useRef(false);
+  const { server } = useServer();
+  const { setNavOpen } = useShellUI();
+  const prewarm = usePrewarm();
+  const menu = useContextMenu();
+  const Icon = channel.type === "voice" ? Volume2 : channel.type === "forum" ? MessagesSquare : Hash;
+  const { unread: hasUnread, mentions } = useChannelUnread(channel.id, channel.last_message_at);
+  // Discord: unread channels (not muted, not the open one) are bright, with a short pill at the edge.
+  const unread = hasUnread && !active && !muted;
+  const label = `${channel.type !== "voice" ? "#" : ""}${channel.name}`;
+  const items = useChannelMenuItems(channel, active, canManage, muted, onDialog);
 
   return (
     <Reorder.Item
@@ -368,25 +377,19 @@ function ChannelList({
   );
 }
 
-export function ChannelSidebar() {
-  const { server, channels, myRole, health, members, badges, upsertChannel } = useServer();
+/**
+ * The server menu (Mark as read, invite, settings, Bantay-Bayan, notifications, create channel, leave…) and the
+ * dialogs it opens. Shared by the Classic channel sidebar and Pulse's rooms list, so both offer the same actions
+ * with the same permission checks.
+ */
+export function useServerControls() {
+  const { server, myRole, members } = useServer();
   const { me } = useMe();
-  const { setNavOpen } = useShellUI();
-  const params = useParams<{ channelId?: string }>();
-  // The rail reopens this server on the channel you were last in.
-  useEffect(() => {
-    if (params.channelId) rememberChannel(server.id, params.channelId);
-  }, [server.id, params.channelId]);
-  const pathname = usePathname();
-  const onLfg = pathname === `/tambayan/${server.id}/lfg`;
-  const boost = boostLevel(members.filter((m) => badges.get(m.user_id)?.includes("booster")).length).level;
   const router = useRouter();
-  const online = useOnline();
   const [dialog, setDialog] = useState<DialogState>(null);
   // Server settings (all its tabs) download the first time someone opens them, then stay mounted.
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   if (dialog?.kind === "settings" && !settingsLoaded) setSettingsLoaded(true);
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [leaving, startLeave] = useTransition();
   const canManageChannels = hasRole(myRole, "moderator");
   const mutes = serverMutes(useSyncExternalStore(subscribeChannelMutes, readChannelMutes, () => "{}"), server.id);
@@ -455,6 +458,49 @@ export function ChannelSidebar() {
       hidden: isOwner || server.is_system,
     },
   ];
+  const dialogs = (
+    <>
+      <InviteDialog open={dialog?.kind === "invite"} onClose={() => setDialog(null)} />
+      {settingsLoaded && (
+        <ServerSettingsDialog open={dialog?.kind === "settings"} onClose={() => setDialog(null)} initialTab={dialog?.kind === "settings" ? (dialog.tab ?? (myRole === "admin" ? "overview" : "audit")) : "overview"} />
+      )}
+      <SupportDialog open={dialog?.kind === "support"} onClose={() => setDialog(null)} />
+      <ChannelDialog
+        open={dialog?.kind === "channel"}
+        onClose={() => setDialog(null)}
+        channel={dialog?.kind === "channel" ? dialog.channel : null}
+        defaultType={dialog?.kind === "channel" ? dialog.type : "text"}
+        defaultCategory={dialog?.kind === "channel" ? dialog.category : undefined}
+      />
+      <ConfirmDialog
+        open={dialog?.kind === "leave"}
+        onClose={() => setDialog(null)}
+        onConfirm={leave}
+        pending={leaving}
+        title={`Leave ${server.name}?`}
+        confirmLabel="Leave"
+      >
+        You&apos;ll need a new invite to come back.
+      </ConfirmDialog>
+    </>
+  );
+  return { serverItems, setDialog, dialogs, canManageChannels, mutes };
+}
+
+export function ChannelSidebar() {
+  const { server, channels, health, members, badges, upsertChannel } = useServer();
+  const { setNavOpen } = useShellUI();
+  const params = useParams<{ channelId?: string }>();
+  // The rail reopens this server on the channel you were last in.
+  useEffect(() => {
+    if (params.channelId) rememberChannel(server.id, params.channelId);
+  }, [server.id, params.channelId]);
+  const pathname = usePathname();
+  const onLfg = pathname === `/tambayan/${server.id}/lfg`;
+  const boost = boostLevel(members.filter((m) => badges.get(m.user_id)?.includes("booster")).length).level;
+  const online = useOnline();
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const { serverItems, setDialog, dialogs, canManageChannels, mutes } = useServerControls();
   const headerMenu = useContextMenu();
   const categories = groupChannels(channels);
   // The order being dragged (one category at a time); a ref too, so drag-end reads the final order.
@@ -603,28 +649,7 @@ export function ChannelSidebar() {
       </div>
       <UserPanel />
 
-      <InviteDialog open={dialog?.kind === "invite"} onClose={() => setDialog(null)} />
-      {settingsLoaded && (
-        <ServerSettingsDialog open={dialog?.kind === "settings"} onClose={() => setDialog(null)} initialTab={dialog?.kind === "settings" ? (dialog.tab ?? (myRole === "admin" ? "overview" : "audit")) : "overview"} />
-      )}
-      <SupportDialog open={dialog?.kind === "support"} onClose={() => setDialog(null)} />
-      <ChannelDialog
-        open={dialog?.kind === "channel"}
-        onClose={() => setDialog(null)}
-        channel={dialog?.kind === "channel" ? dialog.channel : null}
-        defaultType={dialog?.kind === "channel" ? dialog.type : "text"}
-        defaultCategory={dialog?.kind === "channel" ? dialog.category : undefined}
-      />
-      <ConfirmDialog
-        open={dialog?.kind === "leave"}
-        onClose={() => setDialog(null)}
-        onConfirm={leave}
-        pending={leaving}
-        title={`Leave ${server.name}?`}
-        confirmLabel="Leave"
-      >
-        You&apos;ll need a new invite to come back.
-      </ConfirmDialog>
+      {dialogs}
     </aside>
   );
 }

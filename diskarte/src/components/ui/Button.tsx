@@ -31,7 +31,8 @@ const sizes: Record<Size, string> = {
 /** A spinner, once shown, stays at least this long so quick responses don't flash it. */
 export const MIN_LOADING_MS = 300;
 
-function useMinimumLoading(loading: boolean) {
+/** `loading`, held for at least MIN_LOADING_MS once it turns on (shared with the Pulse Button). */
+export function useMinimumLoading(loading: boolean) {
   const [held, setHeld] = useState(loading);
   // When the current loading run started (set in the effect; reading the clock during render is impure).
   const since = useRef<number | null>(null);

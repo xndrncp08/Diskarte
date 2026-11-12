@@ -15,6 +15,7 @@ const checks = [
   { name: "Hangouts and friends activity", path: "rpc/friends_activity", body: {} },
   { name: "Membership screening", path: "rpc/join_screening", body: {} },
   { name: "Forum tags and suggestion boards", path: "rpc/forum_overview", body: { p_channel: "00000000-0000-0000-0000-000000000000" } },
+  { name: "Privacy hardening (invisible, private audit rows)", path: "privacy_settings?select=invisible&limit=0" },
 ];
 
 export function databaseCheckState(status, code) {

@@ -7,6 +7,7 @@ import { useContext, useTransition, type ReactNode } from "react";
 import { toast } from "sonner";
 import { setStatusAction } from "@/actions/profile";
 import { useMe } from "@/components/providers/MeProvider";
+import { usePresenceRejoin } from "@/components/providers/PresenceProvider";
 import { useSettingsDialog } from "@/components/profile/SettingsDialog";
 import { SoundSettingsPopover } from "@/components/profile/SoundSettingsPopover";
 import { UserAvatar } from "@/components/profile/UserAvatar";
@@ -20,10 +21,13 @@ import { statusTone } from "@/lib/presence";
 import { cn } from "@/lib/utils";
 import { CallContext } from "@/components/voice/CallProvider";
 
-/** Bottom-left identity panel with the quick status switcher; `controls` slot hosts voice buttons. */
-export function UserPanel({ controls }: { controls?: ReactNode }) {
+/**
+ * The quick status switcher: presence, custom-status triggers, clear and clear-after, applied optimistically and
+ * rolled back with a toast if the save fails. Shared by the Classic user panel and Pulse's "You" menu.
+ */
+export function useStatusMenu() {
   const { me, setMe } = useMe();
-  const settings = useSettingsDialog();
+  const rejoinPresence = usePresenceRejoin();
   const router = useRouter();
   const [, startTransition] = useTransition();
 
@@ -42,6 +46,8 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
         setMe(() => previous);
         toast.error(result.error ?? "Couldn't update your status.");
       } else {
+        // Only now is Invisible cleared server-side, so only now may presence rejoin.
+        if (status !== "invisible") rejoinPresence();
         router.refresh();
       }
     });
@@ -80,6 +86,14 @@ export function UserPanel({ controls }: { controls?: ReactNode }) {
       hidden: !me.custom_status && !me.custom_status_emoji,
     })),
   ];
+  return { items, shown, label };
+}
+
+/** Bottom-left identity panel with the quick status switcher; `controls` slot hosts voice buttons. */
+export function UserPanel({ controls }: { controls?: ReactNode }) {
+  const { me } = useMe();
+  const settings = useSettingsDialog();
+  const { items, shown, label } = useStatusMenu();
 
   return (
     <div

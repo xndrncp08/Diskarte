@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ServerProvider } from "@/components/providers/ServerProvider";
+import { PulseRooms } from "@/components/pulse/shell/Rooms";
 import { ChannelSidebar } from "@/components/server/ChannelSidebar";
 import { MemberList } from "@/components/server/MemberList";
 import { WarningNotice } from "@/components/server/WarningNotice";
@@ -29,6 +30,8 @@ export default async function ServerLayout({ children, params }: LayoutProps<"/t
         {children}
       </WorkspacePanel>
       <WarningNotice />
+      {/* Pulse only: this Space's rooms, portalled into the navigator (renders nothing in Classic). */}
+      <PulseRooms />
       <RosterDrawer count={bundle.members.length}>
         <MemberList />
       </RosterDrawer>

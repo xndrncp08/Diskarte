@@ -38,6 +38,9 @@ import {
 import { PrivacySettings } from "@/components/profile/PrivacySettings";
 import { SoundSettings } from "@/components/profile/SoundSettings";
 import { ThemePicker } from "@/components/profile/ThemePicker";
+import { ShellPreviewToggle } from "@/components/profile/ShellPreviewToggle";
+import { usePlatformRole } from "@/components/admin/AdminAccess";
+import { useOptionalRuntimeConfig } from "@/components/providers/RuntimeConfig";
 import { PwaSettings } from "@/components/profile/PwaSettings";
 import { ConnectionDiagnostics } from "@/components/profile/ConnectionDiagnostics";
 import { AccountSyncStatus } from "@/components/profile/AccountPreferencesSync";
@@ -91,6 +94,8 @@ export function SettingsPanels({
   onTab: (tab: SettingsTab) => void;
 }) {
   const { me } = useMe();
+  const platformRole = usePlatformRole();
+  const pulseAvailable = useOptionalRuntimeConfig()?.pulseOptIn || platformRole === "super_admin";
   const { t: translate } = useLocale();
   const id = useId();
   const tabs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -226,6 +231,7 @@ export function SettingsPanels({
               <h3 className="text-sm font-semibold text-white">Theme</h3>
               <ThemePicker className="max-w-md" />
             </section>
+            <ShellPreviewToggle />
           </>
         ) : tab === "chat" ? (
           <>
@@ -307,6 +313,8 @@ export function SettingsPanels({
                 ["Send a message", "Enter"],
                 ["New line in a message", "Shift + Enter"],
                 ["Close the current menu or dialog", "Escape"],
+                // Listed for everyone who can opt in.
+                ...(pulseAvailable ? [["Open your first nine Spaces (new Diskarte)", "Alt / Option + 1–9"]] : []),
               ].map(([label, keys]) => (
                 <div key={label}>
                   <dt>{label}</dt>

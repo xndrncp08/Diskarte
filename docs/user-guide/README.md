@@ -5,6 +5,7 @@ Plain-language help for using Diskarte. No technical knowledge needed.
 | Guide | You'll learn to |
 | --- | --- |
 | [Getting started](getting-started.md) | Create an account, install Diskarte on your phone or computer, set up your profile |
+| [Try the new Diskarte](pulse.md) | Choose Pulse when the preview is available, use the phone tabs and return to Classic |
 | [Tambayans](tambayans.md) | Create a Tambayan, invite friends, set up channels and run your community |
 | [Messages](messages.md) | Send messages, photos and voice notes, reply, react, search, schedule messages |
 | [Calls](calls.md) | Join voice channels, call friends, share your screen |

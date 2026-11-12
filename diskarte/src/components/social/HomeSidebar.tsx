@@ -224,7 +224,7 @@ export function HomeSidebar({ servers = [] }: { servers?: Server[] }) {
   );
 }
 
-function GroupDmForm({ friendIds, profiles, onDone }: { friendIds: string[]; profiles: ReturnType<typeof useSocial>["profiles"]; onDone: () => void }) {
+export function GroupDmForm({ friendIds, profiles, onDone }: { friendIds: string[]; profiles: ReturnType<typeof useSocial>["profiles"]; onDone: () => void }) {
   const router = useRouter();
   const { reloadConversations } = useSocial();
   const [picked, setPicked] = useState<string[]>([]);

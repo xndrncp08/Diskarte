@@ -70,7 +70,8 @@ export function visibleViewport() {
 
 /**
  * Positions `floatingRef` next to `anchorRef` while `open`, re-measuring on scroll (any scroll
- * container, via capture) and resize. Returns fixed-position styles and the resolved side.
+ * container, via capture) and resize. Returns fixed-position styles, the resolved side, and `ready`
+ * once the panel has been measured (until then it is visibility:hidden and its contents refuse focus).
  */
 export function useFloating(open: boolean, anchorRef: RefObject<HTMLElement | null>, floatingRef: RefObject<HTMLElement | null>, opts: { side: Side; align?: Align; offset?: number }) {
   const [position, setPosition] = useState<(FloatingResult & { maxWidth: number; maxHeight: number }) | null>(null);
@@ -120,7 +121,7 @@ export function useFloating(open: boolean, anchorRef: RefObject<HTMLElement | nu
   const style: CSSProperties = position
     ? { position: "fixed", top: position.top, left: position.left, maxWidth: position.maxWidth, maxHeight: position.maxHeight, overflowY: "auto" }
     : { position: "fixed", top: 0, left: 0, visibility: "hidden" };
-  return { style, side: position?.side ?? side, update };
+  return { style, side: position?.side ?? side, update, ready: position !== null };
 }
 
 /** Renders overlay content into <body> so no ancestor `overflow` or stacking context can clip it. */

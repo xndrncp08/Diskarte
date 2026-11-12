@@ -1,6 +1,6 @@
 {
   "$comment": "Pages published at /docs. Only pages listed in `sections` are public; every other Markdown file in docs/ must be listed in `internal` (repository-only). Paths are relative to the repository root. `reviewed` is the last date a person checked the page against the code. Rebuild with `npm run docs:site --prefix diskarte`.",
-  "reviewed": "2026-11-06",
+  "reviewed": "2026-11-11",
   "sections": [
     {
       "id": "getting-started",
@@ -17,6 +17,7 @@
       "audience": "Everyone",
       "pages": [
         { "source": "docs/user-guide/README.md", "slug": "guides", "title": "User guides" },
+        { "source": "docs/user-guide/pulse.md", "slug": "guides/pulse", "title": "Try the new Diskarte" },
         { "source": "docs/user-guide/tambayans.md", "slug": "guides/tambayans", "title": "Tambayans" },
         { "source": "docs/user-guide/messages.md", "slug": "guides/messages", "title": "Messages" },
         { "source": "docs/user-guide/calls.md", "slug": "guides/calls", "title": "Voice and video calls" },
@@ -70,6 +71,12 @@
         { "source": "docs/reference/environment.md", "slug": "developers/environment" },
         { "source": "docs/testing.md", "slug": "developers/testing" },
         { "source": "docs/design-system.md", "slug": "developers/design-system" },
+        { "source": "docs/design/pulse-components.md", "slug": "developers/pulse-components", "title": "Pulse components" },
+        { "source": "docs/design/pulse-shell.md", "slug": "developers/pulse-shell", "title": "Pulse shell" },
+        { "source": "docs/design/pulse-messaging.md", "slug": "developers/pulse-messaging", "title": "Pulse messaging" },
+        { "source": "docs/design/pulse-communities.md", "slug": "developers/pulse-communities", "title": "Pulse communities and pages" },
+        { "source": "docs/design/pulse-voice.md", "slug": "developers/pulse-voice", "title": "Pulse voice" },
+        { "source": "docs/design/pulse-mobile.md", "slug": "developers/pulse-mobile", "title": "Pulse on phones" },
         { "source": "docs/architecture/decisions.md", "slug": "developers/decisions" },
         { "source": "docs/contributing/README.md", "slug": "developers/contributing", "title": "Contributing" },
         { "source": "docs/contributing/database-migrations.md", "slug": "developers/database-migrations" }
@@ -94,6 +101,7 @@
   ],
   "internal": [
     "docs/README.md",
+    "docs/design/pulse-rollout.md",
     "docs/architecture/background-jobs.md",
     "docs/operations/deployment.md",
     "docs/operations/troubleshooting.md",
