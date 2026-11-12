@@ -191,3 +191,12 @@ Supabase stack and LiveKit's dev keys. Polling CI without the GitHub CLI:
   services is not.
 - `pg_cron` jobs are tested by calling their functions, not by the scheduler.
 - Production LiveKit webhooks and OAuth providers are not exercised in CI.
+
+
+### Avoid stale standalone E2E servers
+
+The production E2E configuration starts a fresh standalone server and refuses an occupied port.
+Use `E2E_PORT=43127 npm run test:e2e --prefix diskarte -- --retries=0` from the repository root
+when the usual local port is occupied. Build first. Do not reuse another checkout's server: its
+HTML can reference assets from a different build. Full backend journeys still require isolated
+Supabase and LiveKit; setting `E2E_FULL=0` leaves those journeys explicitly skipped.

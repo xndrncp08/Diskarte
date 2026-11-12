@@ -81,7 +81,7 @@ npm run typecheck --prefix diskarte
 npm run build --prefix diskarte
 cd diskarte
 npx playwright test --config playwright.experience.config.ts --retries=0
-E2E_PORT=3997 npx playwright test --retries=0
+E2E_PORT=43127 npx playwright test --retries=0
 ```
 
 Build before browser verification. The experience suite runs real components with fixture data in
@@ -91,10 +91,68 @@ journeys into passes. Do not increase retries to hide failures.
 
 ## Acceptance record
 
-Final integrated test totals, lint, typecheck, build and documentation checks: pending.
-Full backend Classic/Pulse acceptance, physical devices, Safari/Firefox and manual screen readers:
-pending. Production rollout flag, CI, deployment and community announcement: not verified by this
-local preparation. The 15-journey gate is not passed while these required checks remain open.
+Verified locally on 2026-11-11:
+
+| Check | Result | Evidence and limits |
+| --- | --- | --- |
+| Vitest | 1,160 passed, 191 files | Includes PGlite privacy/RLS, LiveKit token, presence, menu cancellation, navigation, call recovery and shell-state regression tests |
+| Experience browsers | 65 passed in the full run; 2 focused follow-ups passed | 67 distinct passing checks in total: the added landscape inertness check and opt-in preservation check both passed. Three optional docs screenshot jobs skipped; retries disabled |
+| Production standalone E2E | 56 passed, 28 skipped | Fresh local server on port 43127, `E2E_FULL=0`, dummy local Supabase/LiveKit endpoints, announcements disabled; retries disabled |
+| Lint / TypeScript / production build | Passed | Local Next.js build, not a hosted deployment |
+| Help Center | Regenerated; documentation/release checks passed | Generated content, links, anchors, environment reference, internal-page exclusion and release manifest validation |
+
+An initial standalone attempt reused a server that had been running for almost three days on port
+3997. Its asset/hydration/accessibility failures were not evidence about this checkout. The run was
+stopped, that unrelated server was left untouched, and the successful run used a fresh port with
+reuse disabled. Production E2E now refuses occupied ports rather than silently checking old assets.
+
+The experience tests exercise real components in Chromium against fixtures, including dark/light
+modes, five emulated phone sizes and short landscape, WCAG axe checks, touch targets, focus, safe
+areas and keyboard handling. The opt-in browser test keeps typed text, an uploaded attachment,
+mute state, appearance and route across Classic → Pulse → Classic. Unit tests additionally assert
+conversation node identity, unchanged call/shared-provider mounts and unsaved inline edit text.
+Actual Next.js authenticated refresh and real LiveKit transport remain backend acceptance work.
+
+Full backend Classic/Pulse acceptance, physical devices, Safari/Firefox and manual screen readers
+remain pending. Docker, Supabase CLI and an isolated backend stack were unavailable; destructive
+backend journeys were not pointed at production. The 15-journey gate is **not passed** while these
+required checks and the missing original definitions remain open.
+
+## Integration and review receipt
+
+- Recovery: root checkout `release/privacy-hardening` at `0801281`; Steps 1–5 already combined on
+  `feat/pulse` at `80f1bb2`; messaging at `33b4319` already integrated. Voice and mobile were still
+  isolated, with 11 interrupted mobile edits. All original branches and worktrees were retained.
+- Voice review: `54875a8` retains the stage and recovery/Leave controls during reconnects, fails
+  closed for unknown channel presence, handles audio retry rejection, makes stream menus keyboard
+  reachable, switches an active call to System default, and traps/restores focus in fallback share
+  fullscreen. It was integrated by `b08a2ba`.
+- Mobile review: `f3c0031` finishes shared cancelled-long-press cleanup, history-safe Back, PWA-only
+  custom edge gestures, compact landscape, People/Hangout wording and profile/sheet polish. It was
+  integrated with voice by `e74c2a3`.
+- Combined fixes: `c083c6e` keeps one `AppFrame` and stable conversation slot, preserves pending
+  attachments and edits, connects the compact strip without duplicate announcers, bounds DM stages
+  to preserve message space, and makes the short-landscape conversation inert behind its drawer.
+- Opt-in: `b98740f` adds controlled public eligibility while keeping Classic the default;
+  `3d3b5c3` verifies both Pulse-only phone route gates and browser state preservation.
+- Security review: membership, private message/room visibility, admin authorization and LiveKit
+  token issuance retain their existing server/RLS boundaries. Unknown-room voice presence now
+  returns empty. No Step 6/7 migrations or production data operations were introduced.
+- Compatibility: Classic retains its rail, layouts and menu skin. Switching preserves the call,
+  shared watchers and conversation state. The existing full backend E2E selectors still target
+  Classic, so they cannot certify Pulse backend acceptance without adaptation.
+- Documentation: public Pulse guide, shell/mobile/voice design notes, architecture decisions,
+  environment/testing references, Unreleased changelog and `RELEASE-PULSE.md` are updated. The Help
+  Center uses generated content from `npm run docs:site --prefix diskarte`.
+- Git/release status: changes are local to `feat/pulse`; `main` and the separate privacy release
+  were not pushed or deployed. The privacy release remains nine commits ahead of the fetched
+  `origin/main` and still requires its separate push approval. Untracked local policy folders and
+  dependency links in other worktrees were preserved.
+- CI/deployment: no new remote CI or production deployment was triggered. Public rollout remains
+  disabled by default. No production migration was applied. The optional community identity branch
+  `feat/community-identity` at `f4e28fa` remains isolated; missing identity fields degrade gracefully.
+- Announcement: developer-written copy is prepared in `RELEASE-PULSE.md`; it is unregistered and
+  unpublished until deployment and the actual community post can be verified.
 
 ## Release and announcement gate
 

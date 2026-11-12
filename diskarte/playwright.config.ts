@@ -41,7 +41,8 @@ export default defineConfig({
         {
           command: "npm run start:standalone",
           url: `${baseURL}/api/health`,
-          reuseExistingServer: !process.env.CI,
+          // Always test this checkout's standalone build; an old server can serve stale assets and hide regressions.
+          reuseExistingServer: false,
           timeout: 120_000,
           env: { PORT: String(PORT) },
         },
