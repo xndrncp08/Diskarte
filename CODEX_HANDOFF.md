@@ -166,3 +166,7 @@ also confirm PITR/backup availability. Then present the plan and request explici
   `89ccd1d2…` and no `friends_activity` → apply 20261108000000..030000 (rehearsed) before the repair.
 - Backup/PITR still unverified; owner to check Dashboard → Database → Backups and/or take a pg_dump
   with local PG17 (`/opt/homebrew/opt/postgresql@17/bin/pg_dump`).
+- 2026-11-12 (fourth session): owner authorized the full repair, but Supabase MCP still lists only
+  Resoniq; Diskarte prod unreachable. Searching local env files for a DB URL was denied by the
+  permission classifier — do not retry. Waiting on owner to reconnect MCP to the account owning
+  `vyxqudcxlfsdjyugjwhb` (or provide access). No prod changes made.
