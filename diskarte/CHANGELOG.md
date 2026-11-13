@@ -1,14 +1,14 @@
 # Changelog
 
-## Unreleased — Diskarte Pulse opt-in preview
+## 2026-11-13 — Diskarte Pulse opt-in
 
 - Added the Canvas experience: unified Spaces navigation, transcript-style conversations, contextual members/pins/details, new typography and warm dark/off-white light surfaces.
 - Added phone navigation for Home, People, Spaces and You, full-screen conversations, deterministic Back navigation and touch action sheets.
 - Added the Pulse voice Stage, live call strip, labelled controls and reconnecting, blocked-sound and microphone recovery states.
-- Prepared **Settings → Appearance → Try the new Diskarte** behind server configuration `DISKARTE_PULSE_ROLLOUT=opt-in`. Classic remains the default; leaving the flag unset keeps the super-admin preview.
+- Opened **Settings → Appearance → Try the new Diskarte** to everyone on production (`DISKARTE_PULSE_ROLLOUT=opt-in`). Classic remains the default; **You → Back to Classic** or the switch returns at any time, and unsetting the flag withdraws the public switch on the next deployment.
 - Retained shared account, message, notification and call behaviour across both shells. Added regression checks for switching without losing conversation work.
-- Step 6/7 adds no migrations. Optional community identity remains on its separate branch (`20261109010000_community_identity.sql`); Pulse uses the default appearance without its fields. Any production migration, including pending privacy changes, needs separate review and explicit authorization.
-- This entry describes local development, not a verified production release. See [pending release notes](RELEASE-PULSE.md) and the [rollout gate](../docs/design/pulse-rollout.md) for acceptance gaps and announcement status.
+- Pulse adds no migrations. Optional community identity remains on its separate branch (`20261109010000_community_identity.sql`); Pulse uses the default appearance without its fields.
+- Added a backend acceptance journey (`e2e/pulse.spec.ts`, run by CI under the public opt-in) covering opt-in persistence, per-user route gating, real-time chat between a Pulse and a Classic account, mention badges, LiveKit voice kept across browsing and the switch back, phone navigation and keyboard access. See the [release notes](RELEASE-PULSE.md) and [rollout record](../docs/design/pulse-rollout.md).
 
 ## 2026-11-08 — Hangouts, membership screening, suggestion boards, reminders
 

@@ -65,8 +65,10 @@ backend, physical-device or production acceptance.
 | 14 | Install, offline queue, foreground recovery and private notification handling | `e2e/pwa.spec.ts`, service-worker/push/session tests | Installed devices and actual push services |
 | 15 | Eligible users opt in/out, Classic stays default, rollback preserves calls/data/navigation | shell gate/opt-in/persistence tests | Actual Next.js refresh flow in both rollout states |
 
-Current full backend E2E journeys use Classic selectors and do not opt into Pulse. Their success
-alone cannot certify both-mode acceptance. Run backend tests only against isolated services: several
+`e2e/pulse.spec.ts` runs the Pulse half of journeys 4, 5, 8, 9, 12, 13 and 15 against isolated
+Supabase and LiveKit with the server in the public opt-in state (CI sets `DISKARTE_PULSE_ROLLOUT`);
+its second account stays on Classic, so it also checks interoperability. The remaining journeys run
+in Classic only. Run backend tests only against isolated services: several
 journeys create and delete accounts or community data.
 
 ## Verification procedure
@@ -113,10 +115,16 @@ mute state, appearance and route across Classic → Pulse → Classic. Unit test
 conversation node identity, unchanged call/shared-provider mounts and unsaved inline edit text.
 Actual Next.js authenticated refresh and real LiveKit transport remain backend acceptance work.
 
-Full backend Classic/Pulse acceptance, physical devices, Safari/Firefox and manual screen readers
-remain pending. Docker, Supabase CLI and an isolated backend stack were unavailable; destructive
-backend journeys were not pointed at production. The 15-journey gate is **not passed** while these
-required checks and the missing original definitions remain open.
+### Backend acceptance and release — 2026-11-13
+
+- CI on `main` (`2e52218`): the Pulse backend journey passed alongside the 82 Classic E2E checks,
+  the experience suite, unit tests, lint, typecheck and the Docker build.
+- Production database: level with the repository since 2026-11-12 (schema fingerprint match);
+  Pulse needs no migration.
+- Public opt-in enabled on Vercel Production and smoke-tested; see the handoff for the exact checks.
+- **Not verified, recorded as limitations:** physical iOS/Android devices and installed PWAs,
+  Safari/Firefox, manual screen readers, and the original definitions of the 15 journeys. The
+  phone, keyboard and axe checks are Chromium emulation only.
 
 ## Integration and review receipt
 
@@ -156,12 +164,9 @@ required checks and the missing original definitions remain open.
 
 ## Release and announcement gate
 
-Keep the separate privacy-hardening release unpushed until its explicit approval. Review any
-production migration separately. Before enabling public opt-in, review the remaining acceptance
-gaps, verify CI and the deployed app, and then authorize the deployment's rollout configuration.
+Public opt-in was enabled on 2026-11-13 after the backend journey passed in CI and production was
+smoke-tested. Kill switch: unset `DISKARTE_PULSE_ROLLOUT` on Vercel Production and redeploy.
 
 The [pending release note](../../diskarte/RELEASE-PULSE.md) contains developer-written announcement
-copy and real Help Center links. It is not yet registered in `src/content/releases.json`, because the
-production publisher would otherwise make it eligible before deployment verification. Register and
-publish it through the existing release workflow only after the production release is verified;
-confirm the post actually exists before reporting it published.
+copy and real Help Center links. It is registered in `src/content/releases.json` as `2026-11-13-pulse`. Publication is recorded
+in the handoff once the post in Diskarte HQ #announcements has been confirmed to exist.

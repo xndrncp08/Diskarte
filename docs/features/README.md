@@ -26,7 +26,7 @@ code in `main` and the release notes, not on plans.
 
 | Feature | Status | Notes |
 | --- | --- | --- |
-| Pulse Canvas, phone navigation and voice Stage | Partial / opt-in preparation | Classic remains default. Public preview requires `DISKARTE_PULSE_ROLLOUT=opt-in`; see [rollout acceptance gaps](../design/pulse-rollout.md) |
+| Pulse Canvas, phone navigation and voice Stage | Opt-in (production since 2026-11-13) | Classic remains default; **Settings → Appearance → Try the new Diskarte**. Served when `DISKARTE_PULSE_ROLLOUT=opt-in`; see the [rollout record](../design/pulse-rollout.md) |
 | Text channels, replies, reactions, attachments, pins, edits | Shipped | |
 | Threads and forum channels | Shipped | |
 | Forum tags, Solved posts, suggestion boards with votes and statuses | Shipped | Needs migration `20261108020000`; no post subscriptions |

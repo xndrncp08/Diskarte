@@ -1,6 +1,7 @@
-# Diskarte Pulse — pending opt-in release
+# Diskarte Pulse — public opt-in release (2026-11-13)
 
-Status: local preparation. No production release or announcement is claimed here.
+Status: released to production as an opt-in on 2026-11-13 (`DISKARTE_PULSE_ROLLOUT=opt-in` on Vercel
+Production). Classic remains the default. Registered as `2026-11-13-pulse` in `src/content/releases.json`.
 
 ## User-facing changes
 
@@ -17,16 +18,14 @@ Status: local preparation. No production release or announcement is claimed here
 - Step 6/7 adds no migrations. Optional community customization migration
   `20261109010000_community_identity.sql` remains on the separate `feat/community-identity` branch;
   the Pulse UI falls back to the default look without its fields.
-- The combined Pulse branch includes earlier privacy work, including avatar-listing restrictions.
-  Check production readiness for `20261109000000_privacy_hardening.sql` and
-  `20261109020000_avatar_listing.sql`. Any pending production migrations require a separate review
-  and explicit authorization. Never apply them as part of an automatic app deploy.
-- Do not push the separately pending privacy-hardening release under this handoff's authorization.
-- No full backend/device acceptance or production announcement is implied by local fixture tests.
+- Production's database was brought level with the repository on 2026-11-12 (privacy hardening,
+  avatar listing and the October catch-up); see `docs/sql/production-catchup.sql`.
+- Rollback: unset `DISKARTE_PULSE_ROLLOUT` and redeploy. Open clients return to Classic on their next
+  refresh or navigation; clearing the `diskarte-shell` cookie returns one browser immediately.
 
-## Pending community announcement
+## Community announcement
 
-Do not add this to the automatic publication manifest until the production release is verified.
+Registered in `src/content/releases.json` as `2026-11-13-pulse`; the post below is what the publisher formats.
 
 **Title:** Try the new Diskarte
 
@@ -45,4 +44,4 @@ a try, and switch back whenever you like.
 [Calls](../docs/user-guide/calls.md) (`/docs/guides/calls`),
 [Changelog](CHANGELOG.md) (`/docs/changelog`).
 
-Publication status: pending production verification; this draft has not been published.
+Publication status: see the rollout record in `docs/design/pulse-rollout.md`.
