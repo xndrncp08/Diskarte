@@ -168,5 +168,6 @@ Public opt-in was enabled on 2026-11-13 after the backend journey passed in CI a
 smoke-tested. Kill switch: unset `DISKARTE_PULSE_ROLLOUT` on Vercel Production and redeploy.
 
 The [pending release note](../../diskarte/RELEASE-PULSE.md) contains developer-written announcement
-copy and real Help Center links. It is registered in `src/content/releases.json` as `2026-11-13-pulse`. Publication is recorded
-in the handoff once the post in Diskarte HQ #announcements has been confirmed to exist.
+copy and real Help Center links. It is registered in `src/content/releases.json` as `2026-11-13-pulse` and was published to Diskarte
+HQ #announcements on 2026-11-13 (14:51 UTC) through `publish_release_announcement`; the post was
+confirmed in the database and rendered in production.

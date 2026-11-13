@@ -44,4 +44,4 @@ a try, and switch back whenever you like.
 [Calls](../docs/user-guide/calls.md) (`/docs/guides/calls`),
 [Changelog](CHANGELOG.md) (`/docs/changelog`).
 
-Publication status: see the rollout record in `docs/design/pulse-rollout.md`.
+Publication status: published to Diskarte HQ #announcements on 2026-11-13 and confirmed in production.
