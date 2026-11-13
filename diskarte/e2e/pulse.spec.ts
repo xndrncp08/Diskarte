@@ -77,9 +77,13 @@ test.describe("Pulse public opt-in", () => {
     await rooms.getByRole("link", { name: /^general/ }).click();
     await expect(page.getByRole("region", { name: "Live call" })).toBeVisible();
 
-    // Phone layout: the main destinations replace the desktop navigator (in-app navigation keeps the call).
+    // Phone layout: a room fills the screen; Back reaches the Space landing, where the main destinations
+    // replace the desktop navigator (in-app navigation keeps the call).
     await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole("button", { name: "Back" }).click();
     const tabs = page.getByRole("navigation", { name: "Main destinations" });
+    await expect(tabs.getByRole("link", { name: "Spaces" })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("region", { name: "Live call" })).toBeVisible();
     await tabs.getByRole("link", { name: "Spaces" }).click();
     await expect(tabs.getByRole("link", { name: "Spaces" })).toHaveAttribute("aria-current", "page");
     await page.getByRole("list", { name: "Your Spaces" }).getByRole("link", { name: new RegExp(serverName) }).click();
