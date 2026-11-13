@@ -150,3 +150,19 @@ the 20261108* migrations (Hangouts etc.) may be missing in prod — then the pre
 migrations first (and possibly older 2026-10-14 gaps, see memory). Next step once access returns
 (or owner runs it): execute **only the preflight DO block** (read-only) on prod and record the result;
 also confirm PITR/backup availability. Then present the plan and request explicit approval.
+
+## Preflight status — 2026-11-12 (third session)
+
+- Repair committed as `75bf593` on `fix/privacy-database-readiness` (not pushed).
+- Supabase MCP now authenticates to a different account: `list_projects` shows only `Resoniq`
+  (`ptdhmmhsdccbvvijnbqc`, unrelated — do not touch). Diskarte prod `vyxqudcxlfsdjyugjwhb` is not
+  visible, so no prod catalog/backup check is possible from here. Live `/login` HTML still references
+  `vyxqudcxlfsdjyugjwhb.supabase.co` (prod target confirmed).
+- Preflight (bundle lines 25–72) reviewed: one DO block, catalog SELECTs + local variables + raise
+  only. Owner was given it wrapped in `begin transaction read only; … rollback;` plus a read-only
+  report query (function md5s, 20261108 tables/columns, legacy invisible count); both dry-run OK locally.
+- Reference md5s to read the owner's report: post-20261108 (expected) `can_access_realtime_topic`
+  `32df48d5…`, `friends_activity` `492a6f9f…`; pre-20261108 `can_access_realtime_topic`
+  `89ccd1d2…` and no `friends_activity` → apply 20261108000000..030000 (rehearsed) before the repair.
+- Backup/PITR still unverified; owner to check Dashboard → Database → Backups and/or take a pg_dump
+  with local PG17 (`/opt/homebrew/opt/postgresql@17/bin/pg_dump`).
