@@ -10,11 +10,15 @@ const migrationsDir = path.join(root, "supabase/migrations");
 
 export type Db = PGlite;
 
-/** Boots an in-memory Postgres with the Supabase shim and every migration applied. */
-export async function createDb(): Promise<Db> {
+/**
+ * Boots an in-memory Postgres with the Supabase shim and every migration applied, or every one
+ * before `before` and not starting with a `skip` prefix (to rebuild production's history).
+ */
+export async function createDb(opts: { before?: string; skip?: string[] } = {}): Promise<Db> {
   const db = new PGlite({ extensions: { pgcrypto } });
   await db.exec(shim);
-  for (const file of fs.readdirSync(migrationsDir).filter((f) => f.endsWith(".sql")).sort()) {
+  const wanted = (f: string) => f.endsWith(".sql") && (!opts.before || f < opts.before) && !opts.skip?.some((s) => f.startsWith(s));
+  for (const file of fs.readdirSync(migrationsDir).filter(wanted).sort()) {
     await db.exec(fs.readFileSync(path.join(migrationsDir, file), "utf8"));
   }
   return db;
