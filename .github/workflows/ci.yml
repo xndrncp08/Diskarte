@@ -99,6 +99,8 @@ jobs:
       AUTH_OAUTH_PROVIDERS: ""
       # Every E2E sign-up comes from 127.0.0.1; lift the per-IP auth budget for the run.
       RATE_LIMIT_AUTH_PER_MINUTE: "500"
+      # Run the server as production will for the public Pulse opt-in (Classic stays the default).
+      DISKARTE_PULSE_ROLLOUT: opt-in
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
